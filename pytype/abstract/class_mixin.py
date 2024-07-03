@@ -31,10 +31,8 @@ _METADATA_KEYS = {
     "attr.s": "__attrs_attrs__",
     "attr.attrs": "__attrs_attrs__",
     "attr._make.attrs": "__attrs_attrs__",
-
     # Attr's next-gen APIs
     # See https://www.attrs.org/en/stable/api.html#next-gen
-
     # They accept (almost) all the same arguments as the previous APIs.
     # Technically these only exist when running in Python 3.6 and up. But
     # we mandate Python 3.6 or up anyways.
@@ -44,7 +42,6 @@ _METADATA_KEYS = {
     "attr._next_gen.define": "__attrs_attrs__",
     "attr._next_gen.mutable": "__attrs_attrs__",
     "attr._next_gen.frozen": "__attrs_attrs__",
-
     # Dataclass transform
     "typing.dataclass_transform": "__dataclass_transform__",
     "typing_extensions.dataclass_transform": "__dataclass_transform__",
@@ -93,14 +90,21 @@ class Attribute:
     val = const.value and typ.instantiate(ctx.root_node)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
-    return cls(name=const.name, typ=typ, init=True, kw_only=kw_only,
-               default=val, pytd_const=const)
+    return cls(
+        name=const.name,
+        typ=typ,
+        init=True,
+        kw_only=kw_only,
+        default=val,
+        pytd_const=const,
+    )
 
   @classmethod
   def from_param(cls, param, ctx):
     const = pytd.Constant(param.name, param.type, param.optional)
     return cls.from_pytd_constant(
-        const, ctx, kw_only=param.kind == pytd.ParameterKind.KWONLY)
+        const, ctx, kw_only=param.kind == pytd.ParameterKind.KWONLY
+    )
 
   def to_pytd_constant(self):
     # TODO(mdemello): This is a bit fragile, but we only call this when
@@ -109,8 +113,12 @@ class Attribute:
     return self.pytd_const
 
   def __repr__(self):
-    return str({"name": self.name, "typ": self.typ, "init": self.init,
-                "default": self.default})
+    return str({
+        "name": self.name,
+        "typ": self.typ,
+        "init": self.init,
+        "default": self.default,
+    })
 
 
 @dataclasses.dataclass
@@ -205,11 +213,14 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
     bases = [
         abstract_utils.get_atomic_value(
-            base, default=self.ctx.convert.unsolvable) for base in self.bases()
+            base, default=self.ctx.convert.unsolvable
+        )
+        for base in self.bases()
     ]
     for base in bases:
       abstract_utils.parse_formal_type_parameters(
-          base, self.full_name, self._all_formal_type_parameters)
+          base, self.full_name, self._all_formal_type_parameters
+      )
 
     self._all_formal_type_parameters_loaded = True
 
@@ -232,14 +243,22 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     if not self.has_protocol_base():
       self.protocol_attributes = set()
       return
-    if (_isinstance(self, "PyTDClass") and
-        self.pytd_cls.name.startswith("typing.")):
+    if _isinstance(self, "PyTDClass") and self.pytd_cls.name.startswith(
+        "typing."
+    ):
       protocol_attributes = set()
       if self.pytd_cls.name == "typing.Mapping":
         # Append Mapping-specific attributes to forbid matching against classes
         # that satisfy the Mapping ABC but don't contain mapping_attrs.
-        mapping_attrs = {"__contains__", "keys", "items", "values", "get",
-                         "__eq__", "__ne__"}
+        mapping_attrs = {
+            "__contains__",
+            "keys",
+            "items",
+            "values",
+            "get",
+            "__eq__",
+            "__ne__",
+        }
         protocol_attributes |= mapping_attrs
       # In typing.pytd, we've experimentally marked some classes such as
       # Sequence, which contains a mix of abstract and non-abstract methods, as
@@ -272,8 +291,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       return
     for cls in self.mro:
       if isinstance(cls, Class):
-        if any(x in cls.get_own_attributes()
-               for x in ("__bool__", "__len__")):
+        if any(x in cls.get_own_attributes() for x in ("__bool__", "__len__")):
           self.overrides_bool = True
           return
     self.overrides_bool = False
@@ -293,8 +311,11 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       if not isinstance(cls, Class):
         continue
       # Remove methods implemented by this class.
-      abstract_methods = {m for m in abstract_methods
-                          if m not in cls or m in cls.abstract_methods}
+      abstract_methods = {
+          m
+          for m in abstract_methods
+          if m not in cls or m in cls.abstract_methods
+      }
       # Add abstract methods defined by this class.
       abstract_methods |= {m for m in cls.abstract_methods if m in cls}
     self.abstract_methods = abstract_methods
@@ -313,19 +334,26 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # methods, and we don't want [not-instantiable] errors all over the place
     # because a class has Protocol buried in its MRO.
     for var in self._bases:
-      if any(base.full_name == "typing.Protocol" or
-             isinstance(base, Class) and base.is_protocol for base in var.data):
+      if any(
+          base.full_name == "typing.Protocol"
+          or isinstance(base, Class)
+          and base.is_protocol
+          for base in var.data
+      ):
         return True
     return False
 
   @property
   def is_abstract(self):
-    return ((self._has_explicit_abcmeta() or self._has_implicit_abcmeta()) and
-            bool(self.abstract_methods))
+    return (
+        self._has_explicit_abcmeta() or self._has_implicit_abcmeta()
+    ) and bool(self.abstract_methods)
 
   def is_test_class(self):
-    return any(base.full_name in ("unittest.TestCase", "unittest.case.TestCase")
-               for base in self.mro)
+    return any(
+        base.full_name in ("unittest.TestCase", "unittest.case.TestCase")
+        for base in self.mro
+    )
 
   @property
   def is_enum(self):
@@ -337,8 +365,10 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   @property
   def is_typed_dict_class(self):
-    return (self.full_name == "typing.TypedDict" or
-            self.__class__.__name__ == "TypedDictClass")
+    return (
+        self.full_name == "typing.TypedDict"
+        or self.__class__.__name__ == "TypedDictClass"
+    )
 
   def get_annotated_local(self, name):
     ann = abstract_utils.get_annotations_dict(self.members)
@@ -346,9 +376,11 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
-      if (isinstance(base, Class) and
-          base.cls != self.ctx.convert.unsolvable and
-          base.cls.full_name != "builtins.type"):
+      if (
+          isinstance(base, Class)
+          and base.cls != self.ctx.convert.unsolvable
+          and base.cls.full_name != "builtins.type"
+      ):
         return base.cls
     return None
 
@@ -356,26 +388,32 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Call the metaclass's __init__ method if it does anything interesting."""
     if self.cls.full_name == "builtins.type":
       return node
-    elif (isinstance(self.cls, Class) and
-          "__dataclass_transform__" in self.cls.metadata):
+    elif (
+        isinstance(self.cls, Class)
+        and "__dataclass_transform__" in self.cls.metadata
+    ):
       # A metaclass with @dataclass_transform just needs to apply the attribute
       # to the current class.
       self.metadata["__dataclass_transform__"] = True
       return node
     node, init = self.ctx.attribute_handler.get_attribute(
-        node, self.cls, "__init__")
-    if not init or not any(
-        _isinstance(f, "SignedFunction") for f in init.data):
+        node, self.cls, "__init__"
+    )
+    if not init or not any(_isinstance(f, "SignedFunction") for f in init.data):
       # Only SignedFunctions (InterpreterFunction and SimpleFunction) have
       # interesting side effects.
       return node
     args = function.Args(
-        posargs=(self.to_variable(node),
-                 self.ctx.convert.build_string(node, self.name),
-                 self.ctx.convert.build_tuple(node, self.bases()),
-                 self.ctx.new_unsolvable(node)))
-    log.debug("Calling __init__ on metaclass %s of class %s",
-              self.cls.name, self.name)
+        posargs=(
+            self.to_variable(node),
+            self.ctx.convert.build_string(node, self.name),
+            self.ctx.convert.build_tuple(node, self.bases()),
+            self.ctx.new_unsolvable(node),
+        )
+    )
+    log.debug(
+        "Calling __init__ on metaclass %s of class %s", self.cls.name, self.name
+    )
     node, _ = function.call_function(self.ctx, node, init, args)
     return node
 
@@ -397,13 +435,15 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       __new__ method, or None.
     """
     node, new = self.ctx.attribute_handler.get_attribute(
-        node, value.data, "__new__")
+        node, value.data, "__new__"
+    )
     if new is None:
       return node, None
     if len(new.bindings) == 1:
       f = new.bindings[0].data
-      if (_isinstance(f, "AMBIGUOUS_OR_EMPTY") or
-          self.ctx.convert.object_type.is_object_new(f)):
+      if _isinstance(
+          f, "AMBIGUOUS_OR_EMPTY"
+      ) or self.ctx.convert.object_type.is_object_new(f):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None
@@ -426,7 +466,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   def _call_method(self, node, value, method_name, args):
     node, bound_method = self.ctx.vm.get_bound_method(
-        node, value.data, method_name, value)
+        node, value.data, method_name, value
+    )
     if bound_method:
       call_repr = f"{self.name}.{method_name}(..._)"
       log.debug("calling %s", call_repr)
@@ -464,8 +505,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       return
     if self.ctx.vm.frame and self.ctx.vm.frame.func:
       calling_func = self.ctx.vm.frame.func.data
-      if (_isinstance(calling_func, "InterpreterFunction") and
-          calling_func.name.startswith(f"{self.name}.")):
+      if _isinstance(
+          calling_func, "InterpreterFunction"
+      ) and calling_func.name.startswith(f"{self.name}."):
         return
     self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
 
@@ -489,11 +531,14 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # defined on InitVar's metaclass, preventing pytype from recognizing it as
       # a type annotation. We can remove the check for _InitVarMeta once we
       # support only 3.9+.
-      if self.cls.full_name not in ("builtins.type",
-                                    "dataclasses._InitVarMeta"):
+      if self.cls.full_name not in (
+          "builtins.type",
+          "dataclasses._InitVarMeta",
+      ):
         # This class has a custom metaclass; check if it defines __getitem__.
         _, att = self.ctx.attribute_handler.get_attribute(
-            node, self.cls, name, self.to_binding(node))
+            node, self.cls, name, self.to_binding(node)
+        )
         if att:
           return att
       # Treat this class as a parameterized container in an annotation. We do
@@ -508,9 +553,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   def compute_is_dynamic(self):
     # This needs to be called after self.mro is set.
-    return any(c.has_dynamic_attributes()
-               for c in self.mro
-               if isinstance(c, Class))
+    return any(
+        c.has_dynamic_attributes() for c in self.mro if isinstance(c, Class)
+    )
 
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
@@ -596,8 +641,11 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         type_params = base_cls.formal_type_parameters
         base_cls = base_cls.base_cls
       if metadata_key in base_cls.metadata:
-        sub_attrs.append([a for a in base_cls.metadata[metadata_key]
-                          if a.name not in attributes_to_ignore])
+        sub_attrs.append([
+            a
+            for a in base_cls.metadata[metadata_key]
+            if a.name not in attributes_to_ignore
+        ])
     sub_attrs.append(cls_attrs)
     for attrs in sub_attrs:
       for a in attrs:
@@ -630,9 +678,11 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   def update_official_name(self, name: str) -> None:
     """Update the official name."""
-    if (self._official_name is None or
-        name == self.name or
-        (self._official_name != self.name and name < self._official_name)):
+    if (
+        self._official_name is None
+        or name == self.name
+        or (self._official_name != self.name and name < self._official_name)
+    ):
       # The lexical comparison is to ensure that, in the case of multiple calls
       # to this method, the official name does not depend on the call order.
       self._official_name = name
@@ -664,8 +714,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # Slot names should be strings.
     for s in names:
       if not isinstance(s, str):
-        self.ctx.errorlog.bad_slots(self.ctx.vm.frames,
-                                    f"Invalid {field_name} entry: {str(s)!r}")
+        self.ctx.errorlog.bad_slots(
+            self.ctx.vm.frames, f"Invalid {field_name} entry: {str(s)!r}"
+        )
         return None
     return tuple(self._mangle(s) for s in names)
 

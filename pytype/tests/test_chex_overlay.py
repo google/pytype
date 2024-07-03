@@ -14,12 +14,14 @@ class TestDataclass(test_base.BaseTest):
   def _add_chex(self):
     with test_utils.Tempdir() as d:
       d.create_file(
-          "chex.pyi", """
+          "chex.pyi",
+          """
         from typing import Any
         def dataclass(
             cls = ..., *, init = ..., repr = ..., eq = ..., order = ...,
             unsafe_hash = ..., frozen = ..., mappable_dataclass = ...) -> Any: ...
-      """)
+      """,
+      )
       yield d
 
   def Check(self, *args, **kwargs):
@@ -43,7 +45,9 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import chex
       import dataclasses
       from typing import Any, Dict, Iterator, Mapping, TypeVar
@@ -59,7 +63,8 @@ class TestDataclass(test_base.BaseTest):
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
-    """)
+    """,
+    )
 
   def test_not_mappable(self):
     ty = self.Infer("""
@@ -68,7 +73,9 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import chex
       import dataclasses
       from typing import Dict, TypeVar
@@ -81,7 +88,8 @@ class TestDataclass(test_base.BaseTest):
         @staticmethod
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
-    """)
+    """,
+    )
 
   def test_use_mappable(self):
     self.Check("""
@@ -105,7 +113,9 @@ class TestDataclass(test_base.BaseTest):
         x: int
       foo = Foo(0).replace(x=5)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import chex
       import dataclasses
       from typing import Any, Dict, Iterator, Mapping, TypeVar
@@ -122,7 +132,8 @@ class TestDataclass(test_base.BaseTest):
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
       foo: Foo
-    """)
+    """,
+    )
 
   def test_from_tuple(self):
     ty = self.Infer("""
@@ -132,7 +143,9 @@ class TestDataclass(test_base.BaseTest):
         x: int
       foo = Foo.from_tuple((0,))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import chex
       import dataclasses
       from typing import Any, Dict, Iterator, Mapping, TypeVar
@@ -149,7 +162,8 @@ class TestDataclass(test_base.BaseTest):
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
       foo: Foo
-    """)
+    """,
+    )
 
   def test_to_tuple(self):
     ty = self.Infer("""
@@ -159,7 +173,9 @@ class TestDataclass(test_base.BaseTest):
         x: int
       tup = Foo(0).to_tuple()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import chex
       import dataclasses
       from typing import Any, Dict, Iterator, Mapping, TypeVar
@@ -176,7 +192,8 @@ class TestDataclass(test_base.BaseTest):
         def from_tuple(args) -> Foo: ...
         def to_tuple(self) -> tuple: ...
       tup: tuple
-    """)
+    """,
+    )
 
   def test_multiple_dataclasses(self):
     foo = self.Infer("""
@@ -190,10 +207,13 @@ class TestDataclass(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         print(foo.B(x='hello').replace(x='world'))
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_generic_dataclass(self):
     foo = self.Infer("""
@@ -206,11 +226,15 @@ class TestDataclass(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         a = foo.A(x=42)
         assert_type(a.x, int)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
+
 
 if __name__ == "__main__":
   test_base.main()

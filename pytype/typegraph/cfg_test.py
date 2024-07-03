@@ -59,10 +59,10 @@ class CFGTest(unittest.TestCase):
     data = [1, 2, 3]
     a = u.AddBinding(data, source_set=[], where=node)
     self.assertEqual(a.variable.bindings, [a])
-    origin, = a.origins  # we expect exactly one origin
+    (origin,) = a.origins  # we expect exactly one origin
     self.assertEqual(origin.where, node)
     self.assertEqual(len(origin.source_sets), 1)
-    source_set, = origin.source_sets
+    (source_set,) = origin.source_sets
     self.assertEqual(list(source_set), [])
     self.assertEqual(a.data, data)
 
@@ -75,9 +75,9 @@ class CFGTest(unittest.TestCase):
     c = u.AddBinding(3, source_set=[a, b], where=node)
     expected_source_sets = [[], [a], [a, b]]
     for binding, expected_source_set in zip([a, b, c], expected_source_sets):
-      origin, = binding.origins
+      (origin,) = binding.origins
       self.assertEqual(origin.where, node)
-      source_set, = origin.source_sets
+      (source_set,) = origin.source_sets
       self.assertCountEqual(list(source_set), expected_source_set)
 
   def test_variable_set(self):
@@ -234,8 +234,9 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     unreachable_node = p.NewCFGNode("unreachable_node")
     y = p.NewVariable()
-    unsatisfiable_binding = y.AddBinding("2", source_set=[],
-                                         where=unreachable_node)
+    unsatisfiable_binding = y.AddBinding(
+        "2", source_set=[], where=unreachable_node
+    )
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2", condition=unsatisfiable_binding)
     n3 = n2.ConnectNew("n3")
@@ -250,8 +251,9 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     unreachable_node = p.NewCFGNode("unreachable_node")
     y = p.NewVariable()
-    unsatisfiable_binding = y.AddBinding("2", source_set=[],
-                                         where=unreachable_node)
+    unsatisfiable_binding = y.AddBinding(
+        "2", source_set=[], where=unreachable_node
+    )
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2", condition=unsatisfiable_binding)
     n3 = n2.ConnectNew("n3")
@@ -266,8 +268,9 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     unreachable_node = p.NewCFGNode("unreachable_node")
     y = p.NewVariable()
-    unsatisfiable_binding = y.AddBinding("2", source_set=[],
-                                         where=unreachable_node)
+    unsatisfiable_binding = y.AddBinding(
+        "2", source_set=[], where=unreachable_node
+    )
     n1 = p.NewCFGNode("n1")
     n2 = n1.ConnectNew("n2", condition=unsatisfiable_binding)
     n3 = n2.ConnectNew("n3")
@@ -447,12 +450,15 @@ class CFGTest(unittest.TestCase):
     p = cfg.Program()
     n1 = p.NewCFGNode("n1")
     x1 = p.NewVariable().AddBinding("1", source_set=[], where=n1)
-    n2 = n1.ConnectNew("n2", condition=p.NewVariable().AddBinding(
-        "1", source_set=[], where=n1))
-    n3 = n2.ConnectNew("n3", condition=p.NewVariable().AddBinding(
-        "1", source_set=[], where=n2))
-    n4 = n3.ConnectNew("n3", condition=p.NewVariable().AddBinding(
-        "1", source_set=[], where=n3))
+    n2 = n1.ConnectNew(
+        "n2", condition=p.NewVariable().AddBinding("1", source_set=[], where=n1)
+    )
+    n3 = n2.ConnectNew(
+        "n3", condition=p.NewVariable().AddBinding("1", source_set=[], where=n2)
+    )
+    n4 = n3.ConnectNew(
+        "n3", condition=p.NewVariable().AddBinding("1", source_set=[], where=n3)
+    )
     # Strictly speaking n1, n2 and n3 would be enough to expose errors. n4 is
     # added to increase the chance of a failure if the order is random.
     self.assertTrue(n4.HasCombination([x1]))
@@ -483,9 +489,7 @@ class CFGTest(unittest.TestCase):
     n1 = p.NewCFGNode("n1")
     n2 = p.NewCFGNode("n2")
     x, y, z = "x", "y", "z"
-    variable = p.NewVariable(bindings=[x, y],
-                             source_set=[],
-                             where=n1)
+    variable = p.NewVariable(bindings=[x, y], source_set=[], where=n1)
     variable.AddBinding(z, source_set=variable.bindings, where=n2)
     self.assertCountEqual([x, y, z], [v.data for v in variable.bindings])
     self.assertTrue(any(len(e.origins) for e in variable.bindings))
@@ -619,9 +623,9 @@ class CFGTest(unittest.TestCase):
     x = p.NewVariable()
     ax = x.AddBinding("a", source_set=[], where=n1)
     y = ax.AssignToNewVariable(n2)
-    ay, = y.bindings
+    (ay,) = y.bindings
     z = y.AssignToNewVariable(n3)
-    az, = z.bindings
+    (az,) = z.bindings
     self.assertEqual([v.data for v in y.bindings], ["a"])
     self.assertEqual([v.data for v in z.bindings], ["a"])
     p.entrypoint = n1
@@ -638,9 +642,9 @@ class CFGTest(unittest.TestCase):
     ax = x.AddBinding("a", source_set=[], where=n1)
     y = ax.AssignToNewVariable()
     z = x.AssignToNewVariable()
-    ox, = x.bindings[0].origins
-    oy, = y.bindings[0].origins
-    oz, = z.bindings[0].origins
+    (ox,) = x.bindings[0].origins
+    (oy,) = y.bindings[0].origins
+    (oz,) = z.bindings[0].origins
     self.assertEqual(ox, oy, oz)
 
   def test_paste_variable(self):
@@ -674,9 +678,9 @@ class CFGTest(unittest.TestCase):
     ay, _ = y.bindings
     self.assertEqual([v.data for v in x.bindings], ["a", "b"])
     self.assertEqual([v.data for v in y.bindings], ["a", "b"])
-    o, = ay.origins
+    (o,) = ay.origins
     self.assertCountEqual([set()], o.source_sets)
-    o, = ay.origins
+    (o,) = ay.origins
     self.assertCountEqual([set()], o.source_sets)
 
   def test_paste_with_additional_sources(self):
@@ -689,9 +693,9 @@ class CFGTest(unittest.TestCase):
     ax = x.AddBinding("a", source_set=[], where=n1)
     by = y.AddBinding("b", source_set=[], where=n1)
     z.PasteVariable(x, n2, {by})
-    az, = z.bindings
-    origin, = az.origins
-    source_set, = origin.source_sets
+    (az,) = z.bindings
+    (origin,) = az.origins
+    (source_set,) = origin.source_sets
     self.assertSetEqual(source_set, {ax, by})
 
   def test_paste_at_same_node_with_additional_sources(self):
@@ -703,9 +707,9 @@ class CFGTest(unittest.TestCase):
     _ = x.AddBinding("a", source_set=[], where=n1)
     by = y.AddBinding("b", source_set=[], where=n1)
     z.PasteVariable(x, n1, {by})
-    az, = z.bindings
-    origin, = az.origins
-    source_set, = origin.source_sets
+    (az,) = z.bindings
+    (origin,) = az.origins
+    (source_set,) = origin.source_sets
     self.assertSetEqual(source_set, {by})
 
   def test_paste_binding(self):

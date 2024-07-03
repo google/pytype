@@ -107,7 +107,7 @@ class Program:
 
   def MakeBindingId(self):
     self.next_binding_id += 1
-    return self.next_binding_id-1
+    return self.next_binding_id - 1
 
   def calculate_metrics(self):  # pylint: disable=invalid-name
     return Metrics()  # dummy implementation
@@ -127,12 +127,20 @@ class CFGNode:
     incoming: Other CFGNodes that are connected to this node.
     outgoing: CFGNodes we connect to.
     bindings: Bindings that are being assigned to Variables at this CFGNode.
-    condition: None if no condition is set at this node;
-               The binding representing the condition which needs to be
-                 fulfilled to take the branch represented by this node.
+    condition: None if no condition is set at this node; The binding
+      representing the condition which needs to be fulfilled to take the branch
+      represented by this node.
   """
-  __slots__ = ("program", "id", "name", "incoming", "outgoing", "bindings",
-               "condition")
+
+  __slots__ = (
+      "program",
+      "id",
+      "name",
+      "incoming",
+      "outgoing",
+      "bindings",
+      "condition",
+  )
 
   def __init__(self, program, name, cfgnode_id, condition):
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
@@ -182,22 +190,27 @@ class CFGNode:
 
     Arguments:
       bindings: A list of Bindings.
+
     Returns:
       True if the combination is possible, False otherwise.
     """
     self.program.CreateSolver()
     # Optimization: check the entire combination only if all of the bindings
     # are possible separately.
-    return (all(self.program.solver.Solve({b}, self) for b in bindings)
-            and self.program.solver.Solve(bindings, self))
+    return all(
+        self.program.solver.Solve({b}, self) for b in bindings
+    ) and self.program.solver.Solve(bindings, self)
 
   def RegisterBinding(self, binding):
     self.bindings.add(binding)
 
   def __repr__(self):
     if self.condition:
-      return "<cfgnode %d %s condition:%s>" % (self.id, self.name,
-                                               self.condition.variable.id)
+      return "<cfgnode %d %s condition:%s>" % (
+          self.id,
+          self.name,
+          self.condition.variable.id,
+      )
     else:
       return "<cfgnode %d %s>" % (self.id, self.name)
 
@@ -209,6 +222,7 @@ class SourceSet(frozenset):
   Binding.  E.g., for a statement like "z = a.x + y", a, a.x and y would be the
   Sources to create z, and would form a SourceSet.
   """
+
   __slots__ = ()
 
 
@@ -245,8 +259,15 @@ class Binding:
   originally retrieved from, before being assigned to something else here.
   Origins contain, through source_sets, "sources", which are other bindings.
   """
-  __slots__ = ("program", "id", "variable", "origins", "data",
-               "_cfgnode_to_origin")
+
+  __slots__ = (
+      "program",
+      "id",
+      "variable",
+      "origins",
+      "data",
+      "_cfgnode_to_origin",
+  )
 
   def __init__(self, program, id_num, variable, data):
     """Initialize a new Binding. Usually called through Variable.AddBinding."""
@@ -342,8 +363,14 @@ class Variable:
   OrderedDict instance as to create a list and a dict, while adding a binding to
   the OrderedDict takes 2-3x as long as adding it to both the list and the dict.
   """
-  __slots__ = ("program", "id", "bindings", "_data_id_to_binding",
-               "_cfgnode_to_bindings")
+
+  __slots__ = (
+      "program",
+      "id",
+      "bindings",
+      "_data_id_to_binding",
+      "_cfgnode_to_bindings",
+  )
 
   def __init__(self, program, variable_id):
     """Initialize a new Variable. Called through Program.NewVariable."""
@@ -426,8 +453,10 @@ class Variable:
 
   def _FindOrAddBinding(self, data):
     """Add a new binding if necessary, otherwise return existing binding."""
-    if (len(self.bindings) >= MAX_VAR_SIZE - 1 and
-        id(data) not in self._data_id_to_binding):
+    if (
+        len(self.bindings) >= MAX_VAR_SIZE - 1
+        and id(data) not in self._data_id_to_binding
+    ):
       data = self.program.default_data
     try:
       binding = self._data_id_to_binding[id(data)]
@@ -565,6 +594,7 @@ class State:
     pos: Our current position in the CFG.
     goals: A list of bindings we'd like to be valid at this position.
   """
+
   __slots__ = ("pos", "goals")
 
   def __init__(self, pos, goals):
@@ -609,8 +639,12 @@ class State:
         else:
           removed_goals.add(goal)
           for source_set in origin.source_sets:
-            stack.append((goals_to_remove | source_set, set(seen_goals),
-                          set(removed_goals), set(new_goals)))
+            stack.append((
+                goals_to_remove | source_set,
+                set(seen_goals),
+                set(removed_goals),
+                set(new_goals),
+            ))
       else:
         yield removed_goals, new_goals
 
@@ -697,9 +731,9 @@ class _PathFinder:
     """Determine the highest weighted node we can reach, going backwards.
 
     Args:
-      start: The node to start at. This node is always expanded, even if
-        it appears in seen. The start node's weight is never considered, even
-        if it's the only node with a weight.
+      start: The node to start at. This node is always expanded, even if it
+        appears in seen. The start node's weight is never considered, even if
+        it's the only node with a weight.
       seen: Modified by this function. A set of nodes we're not allowed to
         traverse. This doesn't apply to the node with the highest weight, as
         long as we can reach it without traversing any other nodes in "seen".
@@ -852,7 +886,8 @@ class Solver:
         # "goal" is the assignment we're trying to find.
         for origin in goal.origins:
           path_exist, path = self._path_finder.FindNodeBackwards(
-              state.pos, origin.where, blocked)
+              state.pos, origin.where, blocked
+          )
           if path_exist:
             where = origin.where
             # Check if we found conditions on the way.

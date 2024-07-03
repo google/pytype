@@ -51,6 +51,7 @@ def cd(path):
 
   Arguments:
     path: The directory to change to. If empty, this function is a no-op.
+
   Yields:
     Executes your code, in a changed directory.
   """
@@ -109,6 +110,7 @@ def expand_source_files(filenames, cwd=None):
   Args:
     filenames: A space-separated string of filenames to process.
     cwd: An optional working directory to expand relative paths
+
   Returns:
     A set of full paths to .py files
   """
@@ -130,7 +132,8 @@ def expand_pythonpath(pythonpath, cwd=None):
   """Expand a/b:c/d into [/path/to/a/b, /path/to/c/d]."""
   if pythonpath:
     return expand_paths(
-        (path.strip() for path in pythonpath.split(os.pathsep)), cwd)
+        (path.strip() for path in pythonpath.split(os.pathsep)), cwd
+    )
   else:
     return []
 

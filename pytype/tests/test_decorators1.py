@@ -25,11 +25,14 @@ class DecoratorsTest(test_base.BaseTest):
             pass
           list = staticmethod(list)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class tzwinbase:
         @staticmethod
         def list() -> None: ...
-    """)
+    """,
+    )
 
   def test_staticmethod_return_type(self):
     ty = self.Infer("""
@@ -38,11 +41,14 @@ class DecoratorsTest(test_base.BaseTest):
         def bar():
           return "hello world"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         @staticmethod
         def bar() -> str: ...
-    """)
+    """,
+    )
 
   def test_bad_staticmethod(self):
     ty, _ = self.InferWithErrors("""
@@ -50,11 +56,14 @@ class DecoratorsTest(test_base.BaseTest):
         bar = 42
         bar = staticmethod(bar)  # not-callable
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         bar = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_classmethod(self):
     ty = self.Infer("""
@@ -63,11 +72,14 @@ class DecoratorsTest(test_base.BaseTest):
         def f(cls):
           return "hello world"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         @classmethod
         def f(cls) -> str: ...
-    """)
+    """,
+    )
 
   def test_bad_classmethod(self):
     ty, err = self.InferWithErrors("""
@@ -75,13 +87,25 @@ class DecoratorsTest(test_base.BaseTest):
         bar = 42
         bar = classmethod(bar)  # not-callable[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         bar = ...  # type: Any
-    """)
-    self.assertErrorSequences(err, {
-        "e": ["int", "not callable", "@classmethod applied", "not a function"]})
+    """,
+    )
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "int",
+                "not callable",
+                "@classmethod applied",
+                "not a function",
+            ]
+        },
+    )
 
   def test_bad_keyword(self):
     _, errors = self.InferWithErrors("""
@@ -124,7 +148,9 @@ class DecoratorsTest(test_base.BaseTest):
       x = foo.x
       del foo.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any
       class Foo:
         f = ...  # type: Annotated[Any, 'property']
@@ -132,7 +158,8 @@ class DecoratorsTest(test_base.BaseTest):
         def __init__(self, x) -> None: ...
       foo = ...  # type: Foo
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_property_constructor(self):
     ty = self.Infer("""
@@ -151,7 +178,9 @@ class DecoratorsTest(test_base.BaseTest):
       x = foo.x
       del foo.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any
       class Foo:
         x = ...  # type: Annotated[Any, 'property']
@@ -161,7 +190,8 @@ class DecoratorsTest(test_base.BaseTest):
         def _set(self, x) -> None: ...
       foo = ...  # type: Foo
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_property_constructor_posargs(self):
     # Same as the above test but with posargs for fget, fset, fdel
@@ -181,7 +211,9 @@ class DecoratorsTest(test_base.BaseTest):
       x = foo.x
       del foo.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any
       class Foo:
         x = ...  # type: Annotated[Any, 'property']
@@ -191,7 +223,8 @@ class DecoratorsTest(test_base.BaseTest):
         def _set(self, x) -> None: ...
       foo = ...  # type: Foo
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_property_type(self):
     ty = self.Infer("""
@@ -205,11 +238,14 @@ class DecoratorsTest(test_base.BaseTest):
           def name(self):
             return [42]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, List, Union
       class Foo:
         name = ...  # type: Annotated[Union[int, List[int]], 'property']
-    """)
+    """,
+    )
 
   def test_overwrite_property_type(self):
     ty = self.Infer("""
@@ -221,11 +257,14 @@ class DecoratorsTest(test_base.BaseTest):
         def name(self):
           return "hello"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated
       class Foo:
         name = ...  # type: Annotated[str, 'property']
-    """)
+    """,
+    )
 
   def test_unknown_property_type(self):
     ty = self.Infer("""
@@ -234,12 +273,15 @@ class DecoratorsTest(test_base.BaseTest):
           self._x = x
         name = property(fset=name)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any
       class Foo:
         _x: Any
         name: Annotated[Any, 'property']
-    """)
+    """,
+    )
 
   def test_bad_fget(self):
     ty = self.Infer("""
@@ -247,34 +289,46 @@ class DecoratorsTest(test_base.BaseTest):
         v = "hello"
         name = property(v)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any
       class Foo:
         v = ...  # type: str
         name = ...  # type: Annotated[Any, 'property']
-    """)
+    """,
+    )
 
   def test_infer_called_decorated_method(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any, Callable, List, TypeVar
         T = TypeVar("T")
         def decorator(x: Callable[Any, T]) -> Callable[Any, T]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         class A:
           @foo.decorator
           def f(self, x=None):
             pass
         A().f(42)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any, Callable
         class A:
           f = ...  # type: Callable
-      """)
+      """,
+      )
 
   def test_unknown_decorator(self):
     self.Check("""
@@ -318,18 +372,24 @@ class DecoratorsTest(test_base.BaseTest):
 
   def test_class_decorator(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Type, TypeVar
         _T = TypeVar("_T")
         def f(x: Type[_T]) -> Type[_T]: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         @foo.f
         class A:
           def __init__(self):
             print(A)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 if __name__ == "__main__":

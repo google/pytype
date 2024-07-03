@@ -34,8 +34,7 @@ def UnpackUnion(t):
 
 
 def UnpackGeneric(t, basename):
-  if (isinstance(t, pytd.GenericType) and
-      t.base_type.name == basename):
+  if isinstance(t, pytd.GenericType) and t.base_type.name == basename:
     return t.parameters
   return None
 
@@ -65,7 +64,8 @@ def Concat(*args, **kwargs):
       type_params=sum((arg.type_params for arg in args), ()),
       classes=sum((arg.classes for arg in args), ()),
       functions=sum((arg.functions for arg in args), ()),
-      aliases=sum((arg.aliases for arg in args), ()))
+      aliases=sum((arg.aliases for arg in args), ()),
+  )
 
 
 def JoinTypes(types):
@@ -76,8 +76,8 @@ def JoinTypes(types):
   NothingType) return NothingType.
 
   Arguments:
-    types: A list of types. This list might contain other UnionTypes. If
-    so, they are flattened.
+    types: A list of types. This list might contain other UnionTypes. If so,
+      they are flattened.
 
   Returns:
     A type that represents the union of the types passed in. Order is preserved.
@@ -168,8 +168,9 @@ def GetAllSubClasses(ast):
     pytd.Class (the derived classes).
   """
   hierarchy = ast.Visit(pytd_visitors.ExtractSuperClasses())
-  hierarchy = {cls: list(superclasses)
-               for cls, superclasses in hierarchy.items()}
+  hierarchy = {
+      cls: list(superclasses) for cls, superclasses in hierarchy.items()
+  }
   return utils.invert_dict(hierarchy)
 
 
@@ -186,7 +187,8 @@ def MakeTypeAnnotation(ast, multiline_args=False):
 
 def CreateModule(name="<empty>", **kwargs):
   module = pytd.TypeDeclUnit(
-      name, type_params=(), constants=(), classes=(), functions=(), aliases=())
+      name, type_params=(), constants=(), classes=(), functions=(), aliases=()
+  )
   return module.Replace(**kwargs)
 
 
@@ -197,6 +199,7 @@ def WrapTypeDeclUnit(name, items):
     name: The name attribute of the resulting TypeDeclUnit.
     items: A list of items. Can contain pytd.Class, pytd.Function and
       pytd.Constant.
+
   Returns:
     A pytd.TypeDeclUnit.
   Raises:
@@ -213,11 +216,14 @@ def WrapTypeDeclUnit(name, items):
     if isinstance(item, pytd.Function):
       if item.name in functions:
         if item.kind != functions[item.name].kind:
-          raise ValueError(f"Can't combine {item.kind} and "
-                           f"{functions[item.name].kind}")
+          raise ValueError(
+              f"Can't combine {item.kind} and {functions[item.name].kind}"
+          )
         functions[item.name] = pytd.Function(
-            item.name, functions[item.name].signatures + item.signatures,
-            item.kind)
+            item.name,
+            functions[item.name].signatures + item.signatures,
+            item.kind,
+        )
       else:
         functions[item.name] = item
     elif isinstance(item, pytd.Class):
@@ -237,8 +243,13 @@ def WrapTypeDeclUnit(name, items):
     else:
       raise ValueError(f"Invalid top level pytd item: {type(item)!r}")
 
-  categories = {"function": functions, "class": classes, "constant": constants,
-                "alias": aliases, "typevar": typevars}
+  categories = {
+      "function": functions,
+      "class": classes,
+      "constant": constants,
+      "alias": aliases,
+      "typevar": typevars,
+  }
   for c1, c2 in itertools.combinations(categories, 2):
     _check_intersection(categories[c1], categories[c2], c1, c2)
 
@@ -246,11 +257,13 @@ def WrapTypeDeclUnit(name, items):
       name=name,
       constants=tuple(
           pytd.Constant(name, t.build())
-          for name, t in sorted(constants.items())),
+          for name, t in sorted(constants.items())
+      ),
       type_params=tuple(typevars.values()),
       classes=tuple(classes.values()),
       functions=tuple(functions.values()),
-      aliases=tuple(aliases.values()))
+      aliases=tuple(aliases.values()),
+  )
 
 
 def _check_intersection(items1, items2, name1, name2):
@@ -258,15 +271,22 @@ def _check_intersection(items1, items2, name1, name2):
   items = set(items1) & set(items2)
   if items:
     if len(items) == 1:
-      raise NameError("Top level identifier %r is both %s and %s" %
-                      (list(items)[0], name1, name2))
+      raise NameError(
+          "Top level identifier %r is both %s and %s"
+          % (list(items)[0], name1, name2)
+      )
     max_items = 5  # an arbitrary value
     if len(items) > max_items:
-      raise NameError("Top level identifiers %s, ... are both %s and %s" %
-                      ", ".join(map(repr, sorted(items)[:max_items])),
-                      name1, name2)
-    raise NameError("Top level identifiers %s are both %s and %s" %
-                    (", ".join(map(repr, sorted(items))), name1, name2))
+      raise NameError(
+          "Top level identifiers %s, ... are both %s and %s"
+          % ", ".join(map(repr, sorted(items)[:max_items])),
+          name1,
+          name2,
+      )
+    raise NameError(
+        "Top level identifiers %s are both %s and %s"
+        % (", ".join(map(repr, sorted(items))), name1, name2)
+    )
 
 
 class TypeBuilder:
@@ -286,8 +306,8 @@ class TypeBuilder:
   def wrap(self, base):
     """Wrap the type in a generic type."""
     self.union = pytd.GenericType(
-        base_type=pytd.NamedType(base),
-        parameters=(self.union,))
+        base_type=pytd.NamedType(base), parameters=(self.union,)
+    )
 
   def build(self):
     """Get a union of all the types added so far."""
@@ -332,11 +352,13 @@ class OrderedSet(dict):
 def ASTeq(ast1: pytd.TypeDeclUnit, ast2: pytd.TypeDeclUnit):
   # pytd.TypeDeclUnit does equality by ID, so we need a helper in order to do
   # by-value equality.
-  return (ast1.constants == ast2.constants and
-          ast1.type_params == ast2.type_params and
-          ast1.classes == ast2.classes and
-          ast1.functions == ast2.functions and
-          ast1.aliases == ast2.aliases)
+  return (
+      ast1.constants == ast2.constants
+      and ast1.type_params == ast2.type_params
+      and ast1.classes == ast2.classes
+      and ast1.functions == ast2.functions
+      and ast1.aliases == ast2.aliases
+  )
 
 
 def GetTypeParameters(node):
@@ -351,21 +373,34 @@ def DummyMethod(name, *params):
   Arguments:
     name: The name of the method
     *params: The parameter names.
+
   Returns:
     A pytd.Function.
   """
+
   def make_param(param):
     return pytd.Parameter(
-        param, type=pytd.AnythingType(), kind=pytd.ParameterKind.REGULAR,
-        optional=False, mutated_type=None)
-  sig = pytd.Signature(tuple(make_param(param) for param in params),
-                       starargs=None, starstarargs=None,
-                       return_type=pytd.AnythingType(),
-                       exceptions=(), template=())
-  return pytd.Function(name=name,
-                       signatures=(sig,),
-                       kind=pytd.MethodKind.METHOD,
-                       flags=pytd.MethodFlag.NONE)
+        param,
+        type=pytd.AnythingType(),
+        kind=pytd.ParameterKind.REGULAR,
+        optional=False,
+        mutated_type=None,
+    )
+
+  sig = pytd.Signature(
+      tuple(make_param(param) for param in params),
+      starargs=None,
+      starstarargs=None,
+      return_type=pytd.AnythingType(),
+      exceptions=(),
+      template=(),
+  )
+  return pytd.Function(
+      name=name,
+      signatures=(sig,),
+      kind=pytd.MethodKind.METHOD,
+      flags=pytd.MethodFlag.NONE,
+  )
 
 
 def MergeBaseClass(cls, base):
@@ -381,26 +416,31 @@ def MergeBaseClass(cls, base):
   bases = tuple(b for b in cls.bases if b != base)
   bases += tuple(b for b in base.bases if b not in bases)
   method_names = [m.name for m in cls.methods]
-  methods = cls.methods + tuple(m for m in base.methods
-                                if m.name not in method_names)
+  methods = cls.methods + tuple(
+      m for m in base.methods if m.name not in method_names
+  )
   constant_names = [c.name for c in cls.constants]
-  constants = cls.constants + tuple(c for c in base.constants
-                                    if c.name not in constant_names)
+  constants = cls.constants + tuple(
+      c for c in base.constants if c.name not in constant_names
+  )
   class_names = [c.name for c in cls.classes]
-  classes = cls.classes + tuple(c for c in base.classes
-                                if c.name not in class_names)
+  classes = cls.classes + tuple(
+      c for c in base.classes if c.name not in class_names
+  )
   # Keep decorators from the base class only if the derived class has none
   decorators = cls.decorators or base.decorators
   if cls.slots:
     slots = cls.slots + tuple(s for s in base.slots or () if s not in cls.slots)
   else:
     slots = base.slots
-  return pytd.Class(name=cls.name,
-                    keywords=cls.keywords or base.keywords,
-                    bases=bases,
-                    methods=methods,
-                    constants=constants,
-                    classes=classes,
-                    decorators=decorators,
-                    slots=slots,
-                    template=cls.template or base.template)
+  return pytd.Class(
+      name=cls.name,
+      keywords=cls.keywords or base.keywords,
+      bases=bases,
+      methods=methods,
+      constants=constants,
+      classes=classes,
+      decorators=decorators,
+      slots=slots,
+      template=cls.template or base.template,
+  )

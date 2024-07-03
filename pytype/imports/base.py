@@ -14,7 +14,6 @@ subclasses even though they all use ModuleInfo as a common interface.
 import abc
 import dataclasses
 import os
-
 from typing import Optional
 
 from pytype.pytd import pytd
@@ -36,6 +35,7 @@ def internal_stub_filename(filename):
 @dataclasses.dataclass(eq=True, frozen=True)
 class ModuleInfo:
   """A key to retrieve the module from the ModuleLoader."""
+
   module_name: str
   filename: str
   file_exists: bool = True
@@ -45,9 +45,10 @@ class ModuleInfo:
     return cls(module_name, internal_stub_filename(filename))
 
   def is_default_pyi(self):
-    return (self.filename == os.devnull or
-            (DEFAULT_PYI_PATH_SUFFIX and
-             self.filename.endswith(DEFAULT_PYI_PATH_SUFFIX)))
+    return self.filename == os.devnull or (
+        DEFAULT_PYI_PATH_SUFFIX
+        and self.filename.endswith(DEFAULT_PYI_PATH_SUFFIX)
+    )
 
 
 class ModuleLoader(abc.ABC):

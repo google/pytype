@@ -15,12 +15,15 @@ class ClassesTest(test_base.BaseTest):
       X = A("X", (object,), {})
       v = X[0]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A(type):
         def __getitem__(self, i) -> int: ...
       class X(object, metaclass=A): ...
       v = ...  # type: int
-    """)
+    """,
+    )
 
   def test_new_annotated_cls(self):
     ty = self.Infer("""
@@ -29,11 +32,14 @@ class ClassesTest(test_base.BaseTest):
         def __new__(cls: Type[str]):
           return super(Foo, cls).__new__(cls)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class Foo:
         def __new__(cls: Type[str]) -> str: ...
-    """)
+    """,
+    )
 
   def test_recursive_constructor(self):
     self.Check("""
@@ -112,11 +118,14 @@ class ClassesTest(test_base.BaseTest):
       class Foo(List[str]): ...
       v = Foo()[0]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       class Foo(List[str]): ...
       v = ...  # type: str
-    """)
+    """,
+    )
 
   def test_make_generic_class(self):
     ty = self.Infer("""
@@ -125,12 +134,15 @@ class ClassesTest(test_base.BaseTest):
       T2 = TypeVar("T2")
       class Foo(List[Union[T1, T2]]): ...
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, TypeVar, Union
       T1 = TypeVar("T1")
       T2 = TypeVar("T2")
       class Foo(List[Union[T1, T2]]): ...
-    """)
+    """,
+    )
 
   def test_make_generic_class_with_concrete_value(self):
     ty = self.Infer("""
@@ -140,18 +152,22 @@ class ClassesTest(test_base.BaseTest):
       for v in Foo().keys():
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, TypeVar
       V = TypeVar("V")
       class Foo(Dict[str, V]): ...
       v = ...  # type: str
-    """)
+    """,
+    )
 
   def test_generic_reinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> list: ...")
-      self.Check("""
+      self.Check(
+          """
         import foo
         from typing import List
         def a() -> List[str]:
@@ -160,7 +176,9 @@ class ClassesTest(test_base.BaseTest):
           return x
         def b() -> List[int]:
           return [x for x in foo.f()]
-        """, pythonpath=[d.path])
+        """,
+          pythonpath=[d.path],
+      )
 
   def test_base_init(self):
     errors = self.CheckWithErrors("""
@@ -182,16 +200,22 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       class Foo:
         def __init__(self) -> None:
           self.bar = 42
-    """, analyze_annotated=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        analyze_annotated=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         bar: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_generic_super(self):
     self.Check("""
@@ -214,12 +238,15 @@ class ClassesTest(test_base.BaseTest):
       class MyClass(metaclass=MyMetaclass):
         my_object = None  # type: Type['MyClass']
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class MyMetaclass(type): ...
       class MyClass(metaclass=MyMetaclass):
         my_object: Type[MyClass]
-    """)
+    """,
+    )
 
   def test_decorated_class(self):
     self.CheckWithErrors("""
@@ -234,12 +261,16 @@ class ClassesTest(test_base.BaseTest):
 
   def test_callable_attribute(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Callable
         class Foo:
           x: Callable[[int], int]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         from typing import Callable, Tuple
         class Bar:
@@ -249,7 +280,9 @@ class ClassesTest(test_base.BaseTest):
             self.z = z
           def f(self) -> Tuple[int, int, int, int]:
             return self.x(0), self.y(0), self.z(0), foo.Foo().x(0)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_nested_class_init(self):
     ty = self.Infer("""
@@ -258,12 +291,15 @@ class ClassesTest(test_base.BaseTest):
           def __init__(self):
             self.x = 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         class Bar:
           x: int
           def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_new_and_subclass(self):
     ty = self.Infer("""
@@ -273,13 +309,16 @@ class ClassesTest(test_base.BaseTest):
       class Bar(Foo):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar
       _TFoo = TypeVar('_TFoo', bound=Foo)
       class Foo:
         def __new__(cls: type[_TFoo]) -> _TFoo: ...
       class Bar(Foo): ...
-    """)
+    """,
+    )
 
 
 class ClassesTestPython3Feature(test_base.BaseTest):
@@ -292,22 +331,28 @@ class ClassesTestPython3Feature(test_base.BaseTest):
       bases = (Foo, Bar)
       class Baz(*bases): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, Type
       bases: Tuple[Type[Foo], Type[Bar]]
       class Foo: ...
       class Bar: ...
       class Baz(Foo, Bar): ...
-    """)
+    """,
+    )
 
   def test_class_kwargs(self):
     ty = self.Infer("""
       # x, y are passed to type() or the metaclass. We currently ignore them.
       class Thing(x=True, y="foo"): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     class Thing: ...
-    """)
+    """,
+    )
 
   def test_metaclass_kwarg(self):
     self.Check("""
@@ -328,14 +373,21 @@ class ClassesTestPython3Feature(test_base.BaseTest):
 
   def test_build_class_quick(self):
     # A() hits maximum stack depth
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         class A: pass
         return {A: A()}
-    """, quick=True, maximum_depth=1)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        quick=True,
+        maximum_depth=1,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> dict: ...
-    """)
+    """,
+    )
 
   def test_type_change(self):
     ty = self.Infer("""
@@ -344,24 +396,33 @@ class ClassesTestPython3Feature(test_base.BaseTest):
           self.__class__ = int
       x = "" % type(A())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         def __init__(self) -> None: ...
       x = ...  # type: str
-    """)
+    """,
+    )
 
   def test_ambiguous_base_class(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any
         class Foo(Any): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Tuple
         import foo
         def f() -> Tuple[int]:
           return foo.Foo()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_callable_inheritance(self):
     self.Check("""
@@ -384,13 +445,16 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         def fooTest(self):
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import unittest
       class A(unittest.case.TestCase):
           x = ...  # type: int
           def fooTest(self) -> int: ...
           def setUp(self) -> None : ...
-    """)
+    """,
+    )
 
   def test_init_inherited_test_class_in_setup(self):
     ty = self.Infer("""
@@ -402,7 +466,9 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         def fooTest(self):
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import unittest
       class A(unittest.case.TestCase):
           x = ...  # type: int
@@ -410,7 +476,8 @@ class ClassesTestPython3Feature(test_base.BaseTest):
       class B(A):
           x = ...  # type: int
           def fooTest(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_init_test_class_in_init_and_setup(self):
     ty = self.Infer("""
@@ -423,7 +490,9 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         def fooTest(self):
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import unittest
       class A(unittest.case.TestCase):
           x = ...  # type: int
@@ -431,7 +500,8 @@ class ClassesTestPython3Feature(test_base.BaseTest):
           def __init__(self, foo: str) -> NoneType: ...
           def fooTest(self) -> int: ...
           def setUp(self) -> None : ...
-    """)
+    """,
+    )
 
   def test_set_metaclass(self):
     ty = self.Infer("""
@@ -442,14 +512,17 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         pass
       v = X.f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class A(type):
         def f(self) -> float: ...
       class X(metaclass=A):
         pass
       v = ...  # type: float
-    """)
+    """,
+    )
 
   def test_no_metaclass(self):
     # In this case, the metaclass should not actually be set.
@@ -457,20 +530,27 @@ class ClassesTestPython3Feature(test_base.BaseTest):
       class X(metaclass=type):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class X:
         pass
-    """)
+    """,
+    )
 
   def test_metaclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         T = TypeVar("T")
         class MyMeta(type):
           def register(self, cls: type) -> None: ...
         def mymethod(funcobj: T) -> T: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         class X(metaclass=foo.MyMeta):
           @foo.mymethod
@@ -478,14 +558,19 @@ class ClassesTestPython3Feature(test_base.BaseTest):
             return 42
         X.register(tuple)
         v = X().f()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Type
         class X(metaclass=foo.MyMeta):
           def f(self) -> int: ...
         v = ...  # type: int
-      """)
+      """,
+      )
 
   @test_base.skip("Setting metaclass to a function doesn't work yet.")
   def test_function_as_metaclass(self):
@@ -495,12 +580,15 @@ class ClassesTestPython3Feature(test_base.BaseTest):
       class X(metaclass=MyMeta):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def MyMeta(names, bases, members) -> Any: ...
       class X(metaclass=MyMeta):
         pass
-    """)
+    """,
+    )
 
   def test_unknown_metaclass(self):
     self.Check("""
@@ -534,14 +622,20 @@ class ClassesTestPython3Feature(test_base.BaseTest):
 
   def test_new_pyi_no_bases(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo:
           def __new__(cls, x) -> Foo: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.Foo(0)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_type_subclass(self):
     self.Check("""
@@ -575,13 +669,16 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         def __init__(self):
           self.x = 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def decorate(f) -> Any: ...
       class X:
         __init__: Any
         x: int
-    """)
+    """,
+    )
 
   def test_init_subclass_super(self):
     self.Check("""
@@ -600,10 +697,13 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         def __init_subclass__(cls):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __init_subclass__(cls) -> None: ...
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

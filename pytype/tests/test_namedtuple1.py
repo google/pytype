@@ -23,7 +23,9 @@ class NamedtupleTests(test_base.BaseTest):
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       from typing import Any, NamedTuple
 
@@ -32,7 +34,8 @@ class NamedtupleTests(test_base.BaseTest):
       class X(NamedTuple):
           y: Any
           z: Any
-    """)
+    """,
+    )
 
   def test_no_fields(self):
     self.Check("""
@@ -97,8 +100,7 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_class_name(self):
-    self.CheckWithErrors(
-        """
+    self.CheckWithErrors("""
         import collections
         F = collections.namedtuple("S", ['a', 'b', 'c'])
         a = F(1, 2, 3)
@@ -115,16 +117,14 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_instance_types(self):
-    self.Check(
-        """
+    self.Check("""
         import collections
         X = collections.namedtuple("X", "a b c")
         a = X._make((1, 2, 3))
         """)
 
   def test_fields(self):
-    self.Check(
-        """
+    self.Check("""
         import collections
         X = collections.namedtuple("X", "a b c")
 
@@ -136,8 +136,7 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_unpacking(self):
-    self.Check(
-        """
+    self.Check("""
         import collections
         X = collections.namedtuple("X", "a b c")
 
@@ -147,8 +146,7 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_bad_unpacking(self):
-    self.CheckWithErrors(
-        """
+    self.CheckWithErrors("""
         import collections
         X = collections.namedtuple("X", "a b c")
 
@@ -160,8 +158,7 @@ class NamedtupleTests(test_base.BaseTest):
 
   def test_is_tuple_and_superclasses(self):
     """Test that a collections.namedtuple behaves like a tuple typewise."""
-    self.Check(
-        """
+    self.Check("""
         import collections
         from typing import Any, MutableSequence, Sequence, Tuple
         X = collections.namedtuple("X", "a b c")
@@ -179,8 +176,7 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_is_not_incorrect_types(self):
-    self.CheckWithErrors(
-        """
+    self.CheckWithErrors("""
         import collections
         from typing import Any, MutableSequence, Sequence, Tuple
         X = collections.namedtuple("X", "a b c")
@@ -237,44 +233,63 @@ class NamedtupleTests(test_base.BaseTest):
 
   def test_instantiate_pyi_namedtuple(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X(NamedTuple('X', [('y', str), ('z', int)])): ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         foo.X()  # missing-parameter[e1]
         foo.X(0, "")  # wrong-arg-types[e2]
         foo.X(z="", y=0)  # wrong-arg-types[e3]
         foo.X("", 0)
         foo.X(y="", z=0)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(
-          errors, {"e1": r"y", "e2": r"str.*int", "e3": r"str.*int"})
+          errors, {"e1": r"y", "e2": r"str.*int", "e3": r"str.*int"}
+      )
 
   def test_use_pyi_namedtuple(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X(NamedTuple("X", [])): ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         foo.X()._replace()
         foo.X().nonsense  # attribute-error[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"nonsense.*X"})
 
   def test_subclass_pyi_namedtuple(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X(NamedTuple("X", [("y", int)])): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class Y(foo.X):
           def __new__(cls):
             return super(Y, cls).__new__(cls, 0)
         Y()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_varargs(self):
     self.Check("""

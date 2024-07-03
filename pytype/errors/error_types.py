@@ -1,8 +1,7 @@
 """Types for structured errors."""
 
 import dataclasses
-
-from typing import Sequence, Tuple, Optional
+from typing import Optional, Sequence, Tuple
 
 from pytype.types import types
 
@@ -94,10 +93,13 @@ class InvalidParameters(FailedFunctionCall):
   def __init__(self, sig, passed_args, ctx, bad_param=None):
     super().__init__()
     self.name = sig.name
-    passed_args = [(name, ctx.convert.merge_values(arg.data))
-                   for name, arg, _ in sig.iter_args(passed_args)]
-    self.bad_call = BadCall(sig=sig, passed_args=passed_args,
-                            bad_param=bad_param)
+    passed_args = [
+        (name, ctx.convert.merge_values(arg.data))
+        for name, arg, _ in sig.iter_args(passed_args)
+    ]
+    self.bad_call = BadCall(
+        sig=sig, passed_args=passed_args, bad_param=bad_param
+    )
 
 
 class WrongArgTypes(InvalidParameters):
@@ -106,7 +108,8 @@ class WrongArgTypes(InvalidParameters):
   def __init__(self, sig, passed_args, ctx, bad_param):
     if not sig.has_param(bad_param.name):
       sig = sig.insert_varargs_and_kwargs(
-          name for name, *_ in sig.iter_args(passed_args))
+          name for name, *_ in sig.iter_args(passed_args)
+      )
     super().__init__(sig, passed_args, ctx, bad_param)
 
   def __gt__(self, other):
@@ -116,10 +119,13 @@ class WrongArgTypes(InvalidParameters):
       # WrongArgTypes should take precedence over other FailedFunctionCall
       # subclasses but not over unrelated errors like DictKeyMissing.
       return isinstance(other, FailedFunctionCall)
+
     # The signature that has fewer *args/**kwargs tends to be more precise.
     def starcount(err):
-      return (bool(err.bad_call.sig.varargs_name) +
-              bool(err.bad_call.sig.kwargs_name))
+      return bool(err.bad_call.sig.varargs_name) + bool(
+          err.bad_call.sig.kwargs_name
+      )
+
     return starcount(self) < starcount(other)
 
   def __le__(self, other):

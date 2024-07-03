@@ -13,9 +13,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (...) -> int
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x) -> int: ...
-    """)
+    """,
+    )
 
   def test_function_return_space(self):
     ty = self.Infer("""
@@ -24,10 +27,13 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (...) -> Dict[int, int]
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       def foo(x) -> Dict[int, int]: ...
-    """)
+    """,
+    )
 
   def test_function_zero_args(self):
     # Include some stray whitespace.
@@ -36,9 +42,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (  ) -> int
         return 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo() -> int: ...
-    """)
+    """,
+    )
 
   def test_function_one_arg(self):
     # Include some stray whitespace.
@@ -47,9 +56,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: ( int ) -> int
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x: int) -> int: ...
-    """)
+    """,
+    )
 
   def test_function_several_args(self):
     ty = self.Infer("""
@@ -57,9 +69,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (int, str, float) -> None
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x: int, y: str, z: float) -> None: ...
-    """)
+    """,
+    )
 
   def test_function_several_lines(self):
     ty = self.Infer("""
@@ -69,9 +84,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (int, str, float) -> None
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x: int, y: str, z: float) -> None: ...
-    """)
+    """,
+    )
 
   def test_function_comment_on_colon(self):
     self.InferWithErrors("""
@@ -102,9 +120,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (int, str, None) -> None
         return z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x: int, y: str, z: None) -> None: ...
-    """)
+    """,
+    )
 
   def test_self_is_optional(self):
     ty = self.Infer("""
@@ -117,11 +138,14 @@ class FunctionCommentTest(test_base.BaseTest):
           # type: (Foo, int) -> None
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def f(self, x: int) -> None: ...
         def g(self, x: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_cls_is_optional(self):
     ty = self.Infer("""
@@ -136,13 +160,16 @@ class FunctionCommentTest(test_base.BaseTest):
           # type: (Foo, int) -> None
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         @classmethod
         def f(cls, x: int) -> None: ...
         @classmethod
         def g(cls: Foo, x: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_function_stararg(self):
     ty = self.Infer("""
@@ -151,11 +178,14 @@ class FunctionCommentTest(test_base.BaseTest):
           # type: (int) -> None
           self.value = args[0]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         value = ...  # type: int
         def __init__(self, *args: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_function_starstararg(self):
     ty = self.Infer("""
@@ -164,27 +194,34 @@ class FunctionCommentTest(test_base.BaseTest):
           # type: (int) -> None
           self.value = kwargs['x']
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         value = ...  # type: int
         def __init__(self, **kwargs: int) -> None: ...
-    """)
+    """,
+    )
 
   @test_utils.skipFromPy(
       (3, 10),
       "In 3.10+, we can't associate the function type comment to the function "
       "because the function body opcodes have line number 1 instead of 3. "
       "Since function type comments are long-deprecated, we don't bother "
-      "trying to make this work.")
+      "trying to make this work.",
+  )
   def test_function_without_body(self):
     ty = self.Infer("""
       def foo(x, y):
         # type: (int, str) -> None
         '''Docstring but no body.'''
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x: int, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_filter_out_class_constructor(self):
     # We should not associate the typecomment with the function A()
@@ -274,7 +311,8 @@ class FunctionCommentTest(test_base.BaseTest):
       "In 3.10+, we can't associate the function type comment to function g "
       "because the opcodes in the body of g have line number 2 instead of 4. "
       "Since function type comments are long-deprecated, we don't bother "
-      "trying to make this work.")
+      "trying to make this work.",
+  )
   def test_one_line_function(self):
     ty = self.Infer("""
       def f(): return 0
@@ -282,10 +320,13 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: () -> None
         '''Docstring.'''
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
       def g() -> None: ...
-    """)
+    """,
+    )
 
   def test_comment_after_type_comment(self):
     ty = self.Infer("""
@@ -294,9 +335,12 @@ class FunctionCommentTest(test_base.BaseTest):
         # comment comment comment
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> type: ...
-    """)
+    """,
+    )
 
 
 class AssignmentCommentTest(test_base.BaseTest):
@@ -307,10 +351,13 @@ class AssignmentCommentTest(test_base.BaseTest):
       class Foo:
         s = None  # type: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         s = ...  # type: str
-    """)
+    """,
+    )
 
   def test_instance_attribute_comment(self):
     ty = self.Infer("""
@@ -318,29 +365,38 @@ class AssignmentCommentTest(test_base.BaseTest):
         def __init__(self):
           self.s = None  # type: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         s = ...  # type: str
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_global_comment(self):
     ty = self.Infer("""
       X = None  # type: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       X = ...  # type: str
-    """)
+    """,
+    )
 
   def test_global_comment2(self):
     ty = self.Infer("""
       X = None  # type: str
       def f(): global X
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       X = ...  # type: str
       def f() -> None: ...
-    """)
+    """,
+    )
 
   def test_local_comment(self):
     ty = self.Infer("""
@@ -350,10 +406,13 @@ class AssignmentCommentTest(test_base.BaseTest):
         x = X  # type: str
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       X = ...  # type: None
       def foo() -> str: ...
-    """)
+    """,
+    )
 
   def test_cellvar_comment(self):
     """Type comment on an assignment generating the STORE_DEREF opcode."""
@@ -363,10 +422,13 @@ class AssignmentCommentTest(test_base.BaseTest):
         map = dict()  # type: Mapping
         return (map, {x: map.get(y) for x, y in __any_object__})
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Mapping, Tuple
       def f() -> Tuple[Mapping, dict]: ...
-    """)
+    """,
+    )
 
   def test_bad_comment(self):
     ty, errors = self.InferWithErrors("""
@@ -377,20 +439,26 @@ class AssignmentCommentTest(test_base.BaseTest):
     else:
       error_reason = "unexpected EOF"
     self.assertErrorRegexes(errors, {"e": rf"abc def.*{error_reason}"})
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       X = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_conversion_error(self):
     ty, errors = self.InferWithErrors("""
       X = None  # type: 1 if __random__ else 2  # invalid-annotation[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"X.*Must be constant"})
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       X = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_name_error_inside_comment(self):
     _, errors = self.InferWithErrors("""
@@ -414,21 +482,27 @@ class AssignmentCommentTest(test_base.BaseTest):
       a = None  # type: A
       x = a.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
       a = ...  # type: A
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_none_to_none_type(self):
     ty = self.Infer("""
       x = None  # type: None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x = ...  # type: None
-    """)
+    """,
+    )
 
   def test_module_instance_as_bad_type_comment(self):
     _, errors = self.InferWithErrors("""
@@ -447,7 +521,9 @@ class AssignmentCommentTest(test_base.BaseTest):
         def f(self):
           return a.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         x = ...  # type: int
@@ -455,7 +531,8 @@ class AssignmentCommentTest(test_base.BaseTest):
         def f(self) -> int: ...
       a = ...  # type: A
       b = ...  # type: Any
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"Nonexistent"})
 
   def test_class_variable_forward_reference(self):
@@ -465,12 +542,15 @@ class AssignmentCommentTest(test_base.BaseTest):
         def __init__(self):
           self.x = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         a: A
         x: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_use_forward_reference(self):
     ty = self.Infer("""
@@ -480,14 +560,17 @@ class AssignmentCommentTest(test_base.BaseTest):
         def __init__(self):
           self.x = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
       a = ...  # type: A
       x = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_use_class_variable_forward_reference(self):
     # Attribute accesses for A().a all get resolved to Any (b/134706992)
@@ -501,7 +584,9 @@ class AssignmentCommentTest(test_base.BaseTest):
         return A().a
       y = g()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, TypeVar
       _TA = TypeVar('_TA', bound=A)
       class A:
@@ -510,7 +595,8 @@ class AssignmentCommentTest(test_base.BaseTest):
       x: A
       y: A
       def g() -> A: ...
-    """)
+    """,
+    )
 
   def test_class_variable_forward_reference_error(self):
     self.InferWithErrors("""
@@ -528,12 +614,19 @@ class AssignmentCommentTest(test_base.BaseTest):
         }  # type: dict[str, int]  # ignored-type-comment[e2]
       ]  # type: list[dict[str, float]]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v = ...  # type: list[dict[str, float]]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Stray type comment: complex",
-        "e2": r"Stray type comment: dict\[str, int\]"})
+    """,
+    )
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Stray type comment: complex",
+            "e2": r"Stray type comment: dict\[str, int\]",
+        },
+    )
 
   def test_multiline_value_with_blank_lines(self):
     ty = self.Infer("""
@@ -543,9 +636,12 @@ class AssignmentCommentTest(test_base.BaseTest):
 
       ]  # type: list[list[int]]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a = ...  # type: list[list[int]]
-    """)
+    """,
+    )
 
   def test_type_comment_name_error(self):
     _, errors = self.InferWithErrors("""
@@ -569,9 +665,12 @@ class AssignmentCommentTest(test_base.BaseTest):
           # type: () -> str
           return 'hello world'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def hello_world() -> str: ...
-    """)
+    """,
+    )
 
   def test_multiple_type_comments(self):
     """We should not allow multiple type comments on one line."""
@@ -587,13 +686,16 @@ class AssignmentCommentTest(test_base.BaseTest):
         C = A
         x = None  # type: C
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class A: pass
       class B:
         C: Type[A]
         x: A
-      """)
+      """,
+    )
 
   def test_nested_classes_comments(self):
     ty = self.Infer("""
@@ -601,11 +703,14 @@ class AssignmentCommentTest(test_base.BaseTest):
         class B: pass
         x = None  # type: B
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         class B: ...
         x: A.B
-      """)
+      """,
+    )
 
   def test_list_comprehension_comments(self):
     ty, errors = self.InferWithErrors("""
@@ -618,23 +723,30 @@ class AssignmentCommentTest(test_base.BaseTest):
         ys = [f(x) for x in xs]  # type: List[str]  # annotation-type-mismatch[e]
         return ys
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       def f(x: str) -> None: ...
       def g(xs: List[str]) -> List[str]: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"})
+        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"}
+    )
 
   def test_multiple_assignments(self):
     ty = self.Infer("""
       a = 1; b = 2; c = 4  # type: float
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a = ...  # type: int
       b = ...  # type: int
       c = ...  # type: float
-    """)
+    """,
+    )
 
   def test_instantiate_fully_quoted_type(self):
     ty, errors = self.InferWithErrors("""
@@ -644,13 +756,16 @@ class AssignmentCommentTest(test_base.BaseTest):
         a = 0
       y = x.a  # attribute-error[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional
       x: Optional[A]
       class A:
         a: int
       y: int
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"a.*None"})
 
   def test_do_not_resolve_late_type_to_function(self):
@@ -660,11 +775,14 @@ class AssignmentCommentTest(test_base.BaseTest):
         def A(self):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v: A
       class A:
         def A(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_illegal_function_late_type(self):
     self.CheckWithErrors("""
@@ -704,11 +822,14 @@ class AssignmentCommentTest(test_base.BaseTest):
       def g():
         '''Docstring.'''
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> None: ...
       x: int
       def g() -> None: ...
-    """)
+    """,
+    )
 
   def test_type_comment_on_class(self):
     # What error is reported differs depending on whether directors.py is using

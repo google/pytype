@@ -44,11 +44,15 @@ class Overlay(abstract.Module):
     """
     super().__init__(ctx, name, member_map, ast)
     self.real_module = ctx.convert.constant_to_value(
-        ast, subst=datatypes.AliasingDict(), node=ctx.root_node)
+        ast, subst=datatypes.AliasingDict(), node=ctx.root_node
+    )
 
   def _convert_member(
-      self, name: str, member: BuilderType,
-      subst: Optional[Dict[str, cfg.Variable]] = None) -> cfg.Variable:
+      self,
+      name: str,
+      member: BuilderType,
+      subst: Optional[Dict[str, cfg.Variable]] = None,
+  ) -> cfg.Variable:
     val = member(self.ctx, self.name)
     val.module = self.name
     return val.to_variable(self.ctx.root_node)
@@ -62,8 +66,11 @@ class Overlay(abstract.Module):
 
   def items(self):
     items = super().items()
-    items += [(name, item) for name, item in self.real_module.items()
-              if name not in self._member_map]
+    items += [
+        (name, item)
+        for name, item in self.real_module.items()
+        if name not in self._member_map
+    ]
     return items
 
   def maybe_load_member(self, member_name):

@@ -63,10 +63,16 @@ class Unknown(_base.BaseValue):
   @classmethod
   def _make_params(cls, node, args, kwargs):
     """Convert a list of types/variables to pytd parameters."""
+
     def _make_param(name, p):
-      return pytd.Parameter(name, cls._to_pytd(node, p),
-                            kind=pytd.ParameterKind.REGULAR, optional=False,
-                            mutated_type=None)
+      return pytd.Parameter(
+          name,
+          cls._to_pytd(node, p),
+          kind=pytd.ParameterKind.REGULAR,
+          optional=False,
+          mutated_type=None,
+      )
+
     pos_params = tuple(_make_param(f"_{i+1}", p) for i, p in enumerate(args))
     key_params = tuple(_make_param(name, p) for name, p in kwargs.items())
     return pos_params + key_params
@@ -78,20 +84,23 @@ class Unknown(_base.BaseValue):
     if name in self.members:
       return self.members[name]
     new = self.ctx.convert.create_new_unknown(
-        self.ctx.root_node, action="getattr_" + self.name + ":" + name)
+        self.ctx.root_node, action="getattr_" + self.name + ":" + name
+    )
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
     # of this attribute (the one that's not an unknown) gets created, hence
     # we assume it's there since the program start.  If something overwrites it
     # in some later CFG node, that's fine, we'll then work only with the new
     # value, which is more accurate than the "fictional" value we create here.
-    self.ctx.attribute_handler.set_attribute(self.ctx.root_node, self, name,
-                                             new)
+    self.ctx.attribute_handler.set_attribute(
+        self.ctx.root_node, self, name, new
+    )
     return new
 
   def call(self, node, func, args, alias_map=None):
     ret = self.ctx.convert.create_new_unknown(
-        node, source=self.owner, action="call:" + self.name)
+        node, source=self.owner, action="call:" + self.name
+    )
     self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
 
@@ -107,19 +116,29 @@ class Unknown(_base.BaseValue):
 
   def to_structural_def(self, node, class_name):
     """Convert this Unknown to a pytd.Class."""
-    self_param = (pytd.Parameter("self", pytd.AnythingType(),
-                                 pytd.ParameterKind.REGULAR, False, None),)
+    self_param = (
+        pytd.Parameter(
+            "self", pytd.AnythingType(), pytd.ParameterKind.REGULAR, False, None
+        ),
+    )
     starargs = None
     starstarargs = None
+
     def _make_sig(args, kwargs, ret):
-      return pytd.Signature(self_param + self._make_params(node, args, kwargs),
-                            starargs,
-                            starstarargs,
-                            return_type=Unknown._to_pytd(node, ret),
-                            exceptions=(),
-                            template=())
-    calls = tuple(pytd_utils.OrderedSet(
-        _make_sig(args, kwargs, ret) for args, kwargs, ret in self._calls))
+      return pytd.Signature(
+          self_param + self._make_params(node, args, kwargs),
+          starargs,
+          starstarargs,
+          return_type=Unknown._to_pytd(node, ret),
+          exceptions=(),
+          template=(),
+      )
+
+    calls = tuple(
+        pytd_utils.OrderedSet(
+            _make_sig(args, kwargs, ret) for args, kwargs, ret in self._calls
+        )
+    )
     if calls:
       methods = (pytd.Function("__call__", calls, pytd.MethodKind.METHOD),)
     else:
@@ -129,12 +148,15 @@ class Unknown(_base.BaseValue):
         keywords=(),
         bases=(pytd.NamedType("builtins.object"),),
         methods=methods,
-        constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
-                        for name, c in self.members.items()),
+        constants=tuple(
+            pytd.Constant(name, Unknown._to_pytd(node, c))
+            for name, c in self.members.items()
+        ),
         classes=(),
         decorators=(),
         slots=None,
-        template=())
+        template=(),
+    )
 
   def instantiate(self, node, container=None):
     return self.to_variable(node)
@@ -225,6 +247,7 @@ class Unsolvable(Singleton):
   This is typically a singleton. Since unsolvables are indistinguishable, we
   only need one.
   """
+
   IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
 
   # Since an unsolvable gets generated e.g. for every unresolved import, we

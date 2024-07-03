@@ -16,12 +16,15 @@ class SolverTests(test_base.BaseTest):
               for ch in self.children:
                   pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import List, Tuple, Union
     class Node:
       children = ...  # type: Union[List[nothing], Tuple[()]]
       def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_call(self):
     ty = self.Infer("""
@@ -32,10 +35,13 @@ class SolverTests(test_base.BaseTest):
         eval(y)
         return z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_type_parameters(self):
     ty = self.Infer("""
@@ -43,35 +49,47 @@ class SolverTests(test_base.BaseTest):
         A.has_key("foo")
         return [a - 42.0 for a in A.viewvalues()]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
         from typing import List
         def f(A) -> list: ...
-    """)
+    """,
+    )
 
   def test_anything_type_parameters(self):
     ty = self.Infer("""
       def f(x):
         return x.keys()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f(x) -> Any: ...
-    """)
+    """,
+    )
 
   def test_top_level_class(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       import Foo  # bad import
 
       class Bar(Foo):
         pass
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       Foo = ...  # type: Any
 
       class Bar(Any):
         pass
-    """)
+    """,
+    )
 
   def test_dict_with_nothing(self):
     ty = self.Infer("""
@@ -81,9 +99,12 @@ class SolverTests(test_base.BaseTest):
         for name in d:
           len(name)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_optional_params_is_subclass(self):
     ty = self.Infer("""
@@ -93,12 +114,15 @@ class SolverTests(test_base.BaseTest):
         def bar(self, val):
           return issubclass(val, self.types)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     class Foo:
       def __init__(self, *types) -> NoneType: ...
       types = ...  # type: tuple
       def bar(self, val) -> bool: ...
-    """)
+    """,
+    )
 
   def test_optional_params_isinstance(self):
     ty = self.Infer("""
@@ -108,12 +132,15 @@ class SolverTests(test_base.BaseTest):
         def bar(self, val):
           return isinstance(val, self.types)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     class Foo:
       def __init__(self, *types) -> NoneType: ...
       types = ...  # type: tuple
       def bar(self, val) -> bool: ...
-    """)
+    """,
+    )
 
   def test_nested_class(self):
     ty = self.Infer("""
@@ -123,20 +150,26 @@ class SolverTests(test_base.BaseTest):
             pass
           return Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Any
     class Foo:
       def f(self) -> Any: ...
-    """)
+    """,
+    )
 
   def test_empty_tuple_as_arg(self):
     ty = self.Infer("""
       def f():
         return isinstance(1, ())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> bool: ...
-    """)
+    """,
+    )
 
   def test_identity_function(self):
     ty = self.Infer("""
@@ -148,32 +181,41 @@ class SolverTests(test_base.BaseTest):
       d[l[0]] = 3
       f(**d)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, List, TypeVar
       _T0 = TypeVar("_T0")
       def f(x: _T0) -> _T0: ...
 
       d = ...  # type: Dict[str, int]
       l = ...  # type: List[str]
-    """)
+    """,
+    )
 
   def test_call_constructor(self):
     ty = self.Infer("""
       def f(x):
         return int(x, 16)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int: ...
-    """)
+    """,
+    )
 
   def test_call_method(self):
     ty = self.Infer("""
       def f(x):
         return "abc".find(x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int: ...
-    """)
+    """,
+    )
 
   def test_import(self):
     ty = self.Infer("""
@@ -181,11 +223,14 @@ class SolverTests(test_base.BaseTest):
       def every(f, array):
         return all(itertools.chain(f, array))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import itertools
 
       def every(f, array) -> bool: ...
-    """)
+    """,
+    )
 
   def test_nested_list(self):
     ty = self.Infer("""
@@ -201,14 +246,17 @@ class SolverTests(test_base.BaseTest):
         foo[0].append(42)
         f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       foo = ...  # type: List[list[int]]
       bar = ...  # type: List[int]
 
       def f() -> NoneType: ...
       def g() -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_twice_nested_list(self):
     ty = self.Infer("""
@@ -224,14 +272,17 @@ class SolverTests(test_base.BaseTest):
         foo[0][0].append(42)
         f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       foo = ...  # type: List[List[List[int]]]
       bar = ...  # type: List[int]
 
       def f() -> NoneType: ...
       def g() -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_nested_list_in_class(self):
     ty = self.Infer("""
@@ -251,7 +302,9 @@ class SolverTests(test_base.BaseTest):
         container.foo[0].append(42)
         f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       class Container:
         foo = ...  # type: List[List[int]]
@@ -262,24 +315,34 @@ class SolverTests(test_base.BaseTest):
 
       def f() -> NoneType: ...
       def g() -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_match_against_function_without_self(self):
     with test_utils.Tempdir() as d:
-      d.create_file("bad_mod.pyi", """
+      d.create_file(
+          "bad_mod.pyi",
+          """
         class myclass:
           def bad_method() -> bool: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import bad_mod
         def f(date):
           return date.bad_method()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import bad_mod
         from typing import Any
         def f(date) -> Any: ...
-      """)
+      """,
+      )
 
   def test_external_name(self):
     ty = self.Infer("""
@@ -287,10 +350,13 @@ class SolverTests(test_base.BaseTest):
       def bar(l):
           l.append(collections.defaultdict(int, [(0, 0)]))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       def bar(l) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_name_conflict_with_builtin(self):
     ty = self.Infer("""
@@ -299,45 +365,66 @@ class SolverTests(test_base.BaseTest):
       def f(x):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class LookupError(KeyError): ...
       def f(x) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_mutating_type_parameters(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import List
         def f() -> List[int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         def f():
           x = foo.f()
           x.append("str")
           return x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import List, Union
         def f() -> List[Union[int, str]]: ...
-      """)
+      """,
+      )
 
   def test_duplicate_keyword(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import TypeVar
         T = TypeVar("T")
         def f(x, *args, y: T) -> T: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         x = foo.f(1, y=2j)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         x = ...  # type: complex
-      """)
+      """,
+      )
 
   def test_store_name_cfg(self):
     ty = self.Infer("""
@@ -356,10 +443,13 @@ class SolverTests(test_base.BaseTest):
       b = 1 + b
       a = 1 + a
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a = ...  # type: int
       b = ...  # type: int
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

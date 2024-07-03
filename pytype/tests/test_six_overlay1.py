@@ -75,7 +75,9 @@ class SixTests(test_base.BaseTest):
       x1 = Bar.x
       x2 = Bar().x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import six
       class Foo(type):
         x: int
@@ -84,7 +86,8 @@ class SixTests(test_base.BaseTest):
         x: int
       x1: int
       x2: int
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

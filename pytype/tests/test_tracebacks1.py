@@ -31,9 +31,13 @@ class TracebackTest(test_base.BaseTest):
       f("hello")
       f("world")
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Called from.*:\n  line 3, in current file",
-        "e2": r"Called from.*:\n  line 4, in current file"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Called from.*:\n  line 3, in current file",
+            "e2": r"Called from.*:\n  line 4, in current file",
+        },
+    )
 
   def test_comprehension(self):
     _, errors = self.InferWithErrors("""
@@ -41,7 +45,7 @@ class TracebackTest(test_base.BaseTest):
         return {x.upper() for x in range(10)}  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*int$"})
-    error, = errors.errorlog
+    (error,) = errors.errorlog
     self.assertEqual(error.methodname, "f")
 
   def test_comprehension_in_traceback(self):
@@ -72,7 +76,8 @@ class TracebackTest(test_base.BaseTest):
     """)
     # We limit the number of tracebacks shown for the same error.
     self.assertErrorRegexes(
-        errors, {"e1": r"line 3", "e2": r"line 4", "e3": r"line 5"})
+        errors, {"e1": r"line 3", "e2": r"line 4", "e3": r"line 5"}
+    )
 
 
 if __name__ == "__main__":

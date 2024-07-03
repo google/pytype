@@ -87,7 +87,9 @@ class AnnotationContainer(AnnotationClass):
     return f"AnnotationContainer({self.name})"
 
   def _sub_annotation(
-      self, annot: _base.BaseValue, subst: Mapping[str, _base.BaseValue],
+      self,
+      annot: _base.BaseValue,
+      subst: Mapping[str, _base.BaseValue],
       seen: Optional[Set[_base.BaseValue]] = None,
   ) -> _base.BaseValue:
     """Apply type parameter substitutions to an annotation."""
@@ -110,15 +112,20 @@ class AnnotationContainer(AnnotationClass):
       else:
         return self.ctx.convert.unsolvable
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self._sub_annotation(val, subst, seen))
-                     for key, val in annot.get_inner_types()]
+      inner_types = [
+          (key, self._sub_annotation(val, subst, seen))
+          for key, val in annot.get_inner_types()
+      ]
       return annot.replace(inner_types)
     return annot
 
   def _get_value_info(
       self, inner, ellipses, allowed_ellipses=frozenset()
-  ) -> Tuple[Tuple[_Union[int, str], ...], Tuple[_base.BaseValue, ...],
-             Type[_classes.ParameterizedClass]]:
+  ) -> Tuple[
+      Tuple[_Union[int, str], ...],
+      Tuple[_base.BaseValue, ...],
+      Type[_classes.ParameterizedClass],
+  ]:
     """Get information about the container's inner values.
 
     Args:
@@ -132,15 +139,17 @@ class AnnotationContainer(AnnotationClass):
     """
     if self.base_cls.full_name == "typing.Protocol":
       return abstract_utils.build_generic_template(inner, self) + (
-          _classes.ParameterizedClass,)  # pytype: disable=bad-return-type
+          _classes.ParameterizedClass,
+      )  # pytype: disable=bad-return-type
     if isinstance(self.base_cls, _classes.TupleClass):
       template = tuple(range(self.base_cls.tuple_length))
     elif isinstance(self.base_cls, _classes.CallableClass):
       template = tuple(range(self.base_cls.num_args)) + (abstract_utils.RET,)
     else:
       template = tuple(t.name for t in self.base_cls.template)
-    self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames,
-                                       ellipses - allowed_ellipses, self.name)
+    self.ctx.errorlog.invalid_ellipses(
+        self.ctx.vm.frames, ellipses - allowed_ellipses, self.name
+    )
     last_index = len(inner) - 1
     if last_index and last_index in ellipses and len(inner) > len(template):
       # Even if an ellipsis is not allowed at this position, strip it off so
@@ -188,12 +197,14 @@ class AnnotationContainer(AnnotationClass):
 
   def _validate_inner(self, template, inner, raw_inner):
     """Check that the passed inner values are valid for the given template."""
-    if (isinstance(self.base_cls, _classes.ParameterizedClass) and
-        not abstract_utils.is_generic_protocol(self.base_cls)):
+    if isinstance(
+        self.base_cls, _classes.ParameterizedClass
+    ) and not abstract_utils.is_generic_protocol(self.base_cls):
       # For a generic type alias, we check that the number of typevars in the
       # alias matches the number of raw parameters provided.
       template_length = raw_template_length = len(
-          set(self.ctx.annotation_utils.get_type_parameters(self.base_cls)))
+          set(self.ctx.annotation_utils.get_type_parameters(self.base_cls))
+      )
       inner_length = len(raw_inner)
       base_cls = self.base_cls.base_cls
     else:
@@ -207,7 +218,8 @@ class AnnotationContainer(AnnotationClass):
     if inner_length != template_length:
       if not template:
         self.ctx.errorlog.not_indexable(
-            self.ctx.vm.frames, base_cls.name, generic_warning=True)
+            self.ctx.vm.frames, base_cls.name, generic_warning=True
+        )
       else:
         # Use the unprocessed values of `template` and `inner` so that the error
         # message matches what the user sees.
@@ -216,25 +228,33 @@ class AnnotationContainer(AnnotationClass):
         else:
           error_template = (t.name for t in base_cls.template)
         self.ctx.errorlog.wrong_annotation_parameter_count(
-            self.ctx.vm.frames, self.base_cls, raw_inner, raw_template_length,
-            error_template)
+            self.ctx.vm.frames,
+            self.base_cls,
+            raw_inner,
+            raw_template_length,
+            error_template,
+        )
     else:
       if len(inner) == 1:
-        val, = inner
+        (val,) = inner
         # It's a common mistake to index a container class rather than an
         # instance (e.g., list[0]).
         # We only check the "int" case, since string literals are allowed for
         # late annotations.
-        if (isinstance(val, _instance_base.Instance) and
-            val.cls == self.ctx.convert.int_type):
+        if (
+            isinstance(val, _instance_base.Instance)
+            and val.cls == self.ctx.convert.int_type
+        ):
           # Don't report this error again.
           inner = (self.ctx.convert.unsolvable,)
           self.ctx.errorlog.not_indexable(self.ctx.vm.frames, self.name)
       # Check for a misused Final annotation
       if any(isinstance(val, FinalAnnotation) for val in inner):
         self.ctx.errorlog.invalid_final_type(self.ctx.vm.frames)
-        inner = [val.annotation if isinstance(val, FinalAnnotation) else val
-                 for val in inner]
+        inner = [
+            val.annotation if isinstance(val, FinalAnnotation) else val
+            for val in inner
+        ]
     return inner
 
   def _build_value(self, node, inner, ellipses):
@@ -257,12 +277,17 @@ class AnnotationContainer(AnnotationClass):
           added_typing_imports.update(typing_imports)
 
       expr = f"{self.base_cls.expr}[{', '.join(printed_params)}]"
-      annot = LateAnnotation(expr, self.base_cls.stack, self.ctx,
-                             typing_imports=added_typing_imports)
+      annot = LateAnnotation(
+          expr,
+          self.base_cls.stack,
+          self.ctx,
+          typing_imports=added_typing_imports,
+      )
       self.ctx.vm.late_annotations[self.base_cls.expr].append(annot)
       return annot
     template, processed_inner, abstract_class = self._get_value_info(
-        inner, ellipses)
+        inner, ellipses
+    )
     if isinstance(self.base_cls, _classes.ParameterizedClass):
       base_cls = self.base_cls.base_cls
     else:
@@ -273,32 +298,40 @@ class AnnotationContainer(AnnotationClass):
       # Protocol[T, ...] is a shorthand for Protocol, Generic[T, ...].
       template_params = [
           param.with_scope(base_cls.full_name)
-          for param in typing.cast(Tuple[TypeParameter, ...], processed_inner)]
+          for param in typing.cast(Tuple[TypeParameter, ...], processed_inner)
+      ]
     else:
       template_params = None
     processed_inner = self._validate_inner(template, processed_inner, inner)
     params = {
-        name: (processed_inner[i]
-               if i < len(processed_inner) else self.ctx.convert.unsolvable)
+        name: (
+            processed_inner[i]
+            if i < len(processed_inner)
+            else self.ctx.convert.unsolvable
+        )
         for i, name in enumerate(template)
     }
 
     # Check if the concrete types match the type parameters.
     if base_cls.template:
       processed_params = self.ctx.annotation_utils.convert_class_annotations(
-          node, params)
+          node, params
+      )
       for formal_param in base_cls.template:
         root_node = self.ctx.root_node
         param_value = processed_params[formal_param.name]
-        if (isinstance(formal_param, TypeParameter) and
-            not formal_param.is_generic() and
-            isinstance(param_value, TypeParameter)):
+        if (
+            isinstance(formal_param, TypeParameter)
+            and not formal_param.is_generic()
+            and isinstance(param_value, TypeParameter)
+        ):
           if formal_param.name == param_value.name:
             # We don't need to check if a TypeParameter matches itself.
             continue
           else:
             actual = param_value.instantiate(
-                root_node, container=abstract_utils.DUMMY_CONTAINER)
+                root_node, container=abstract_utils.DUMMY_CONTAINER
+            )
         elif param_value.is_concrete and isinstance(param_value.pyval, str):
           expr = param_value.pyval
           annot = LateAnnotation(expr, self.ctx.vm.frames, self.ctx)
@@ -308,7 +341,8 @@ class AnnotationContainer(AnnotationClass):
         else:
           actual = param_value.instantiate(root_node)
         match_result = self.ctx.matcher(node).compute_one_match(
-            actual, formal_param)
+            actual, formal_param
+        )
         if not match_result.success:
           if isinstance(param_value, TypeParameter):
             # bad_matches replaces type parameters in the expected type with
@@ -320,15 +354,18 @@ class AnnotationContainer(AnnotationClass):
               expected = dataclasses.replace(match.expected, typ=formal_param)
               bad.append(dataclasses.replace(match, expected=expected))
             if isinstance(formal_param, TypeParameter):
-              details = (f"TypeVars {formal_param.name} and {param_value.name} "
-                         "have incompatible bounds or constraints.")
+              details = (
+                  f"TypeVars {formal_param.name} and {param_value.name} "
+                  "have incompatible bounds or constraints."
+              )
             else:
               details = None
           else:
             bad = match_result.bad_matches
             details = None
           self.ctx.errorlog.bad_concrete_type(
-              self.ctx.vm.frames, root_node, bad, details)
+              self.ctx.vm.frames, root_node, bad, details
+          )
           return self.ctx.convert.unsolvable
 
     try:
@@ -388,14 +425,16 @@ class _TypeVariable(_base.BaseValue):
 
   _INSTANCE_CLASS: Type[_TypeVariableInstance] = None
 
-  def __init__(self,
-               name,
-               ctx,
-               constraints=(),
-               bound=None,
-               covariant=False,
-               contravariant=False,
-               scope=None):
+  def __init__(
+      self,
+      name,
+      ctx,
+      constraints=(),
+      bound=None,
+      covariant=False,
+      contravariant=False,
+      scope=None,
+  ):
     super().__init__(name, ctx)
     # TODO(b/217789659): PEP-612 does not mention constraints, but ParamSpecs
     # ignore all the extra parameters anyway..
@@ -418,8 +457,15 @@ class _TypeVariable(_base.BaseValue):
     return not self.constraints and not self.bound
 
   def copy(self):
-    return self.__class__(self.name, self.ctx, self.constraints, self.bound,
-                          self.covariant, self.contravariant, self.scope)
+    return self.__class__(
+        self.name,
+        self.ctx,
+        self.constraints,
+        self.bound,
+        self.covariant,
+        self.contravariant,
+        self.scope,
+    )
 
   def with_scope(self, scope):
     res = self.copy()
@@ -428,30 +474,43 @@ class _TypeVariable(_base.BaseValue):
 
   def __eq__(self, other):
     if isinstance(other, type(self)):
-      return (self.name == other.name and
-              self.constraints == other.constraints and
-              self.bound == other.bound and
-              self.covariant == other.covariant and
-              self.contravariant == other.contravariant and
-              self.scope == other.scope)
+      return (
+          self.name == other.name
+          and self.constraints == other.constraints
+          and self.bound == other.bound
+          and self.covariant == other.covariant
+          and self.contravariant == other.contravariant
+          and self.scope == other.scope
+      )
     return NotImplemented
 
   def __ne__(self, other):
     return not self == other
 
   def __hash__(self):
-    return hash((self.name, self.constraints, self.bound, self.covariant,
-                 self.contravariant))
+    return hash((
+        self.name,
+        self.constraints,
+        self.bound,
+        self.covariant,
+        self.contravariant,
+    ))
 
   def __repr__(self):
-    return ("{!s}({!r}, constraints={!r}, bound={!r}, module={!r})"
-            .format(self.__class__.__name__, self.name, self.constraints,
-                    self.bound, self.scope))
+    return "{!s}({!r}, constraints={!r}, bound={!r}, module={!r})".format(
+        self.__class__.__name__,
+        self.name,
+        self.constraints,
+        self.bound,
+        self.scope,
+    )
 
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
-    if container and (not isinstance(container, _instance_base.SimpleValue) or
-                      self.full_name in container.all_template_names):
+    if container and (
+        not isinstance(container, _instance_base.SimpleValue)
+        or self.full_name in container.all_template_names
+    ):
       instance = self._INSTANCE_CLASS(self, container, self.ctx)  # pylint: disable=not-callable
       return instance.to_variable(node)
     else:
@@ -465,8 +524,10 @@ class _TypeVariable(_base.BaseValue):
 
   def update_official_name(self, name):
     if self.name != name:
-      message = (f"TypeVar({self.name!r}) must be stored as {self.name!r}, "
-                 f"not {name!r}")
+      message = (
+          f"TypeVar({self.name!r}) must be stored as {self.name!r}, "
+          f"not {name!r}"
+      )
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, message)
 
   def call(self, node, func, args, alias_map=None):
@@ -595,12 +656,16 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     # Check that we are instantiating all the unbound type parameters
     if num_params != len(slice_content):
       self.ctx.errorlog.wrong_annotation_parameter_count(
-          self.ctx.vm.frames, self, [v.data[0] for v in slice_content],
-          num_params)
+          self.ctx.vm.frames,
+          self,
+          [v.data[0] for v in slice_content],
+          num_params,
+      )
       return node, self.ctx.new_unsolvable(node)
     concrete = (
         var.data[0].instantiate(node, container=abstract_utils.DUMMY_CONTAINER)
-        for var in slice_content)
+        for var in slice_content
+    )
     subst = datatypes.AliasingDict()
     for p in params:
       for k in subst:
@@ -632,8 +697,9 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     return function.call_function(self.ctx, node, var, args)
 
   def get_formal_type_parameter(self, t):
-    new_options = [option.get_formal_type_parameter(t)
-                   for option in self.options]
+    new_options = [
+        option.get_formal_type_parameter(t) for option in self.options
+    ]
     return Union(new_options, self.ctx)
 
   def get_inner_types(self):
@@ -677,9 +743,9 @@ class LateAnnotation:
     # LateAnnotation.__dict__ and self.__dict__. These names are used in
     # __getattribute__ and __setattr__ to determine whether a given get/setattr
     # call should operate on the LateAnnotation itself or its resolved type.
-    self._attribute_names = (
-        set(LateAnnotation.__dict__) |
-        set(super().__getattribute__("__dict__")))
+    self._attribute_names = set(LateAnnotation.__dict__) | set(
+        super().__getattribute__("__dict__")
+    )
 
   def flatten_expr(self):
     """Flattens the expression into a legal variable name if necessary.
@@ -697,7 +763,8 @@ class LateAnnotation:
       # _DOT and _RBAR have no trailing underscore because they precede names
       # that we already prefix an underscore to.
       return "_" + self.expr.replace(".", "_DOT").replace(
-          "[", "_LBAR_").replace("]", "_RBAR").replace(", ", "_COMMA_")
+          "[", "_LBAR_"
+      ).replace("]", "_RBAR").replace(", ", "_COMMA_")
     return self.expr
 
   def unflatten_expr(self):
@@ -706,13 +773,21 @@ class LateAnnotation:
       mod, dot, rest = self.expr.rpartition(".")
       # The [1:] slicing and trailing underscore in _DOT_ are to get rid of
       # leading underscores added when flattening.
-      return mod + dot + rest[1:].replace("_DOT_", ".").replace(
-          "_LBAR_", "[").replace("_RBAR", "]").replace("_COMMA_", ", ")
+      return (
+          mod
+          + dot
+          + rest[1:]
+          .replace("_DOT_", ".")
+          .replace("_LBAR_", "[")
+          .replace("_RBAR", "]")
+          .replace("_COMMA_", ", ")
+      )
     return self.expr
 
   def __repr__(self):
     return "LateAnnotation({!r}, resolved={!r})".format(
-        self.expr, self._type if self.resolved else None)
+        self.expr, self._type if self.resolved else None
+    )
 
   # __hash__ and __eq__ need to be explicitly defined for Python to use them in
   # set/dict comparisons.
@@ -754,12 +829,14 @@ class LateAnnotation:
       for v in self._typing_imports:
         if v not in f_globals.members:
           f_globals.members[v] = overlay.get_module(v).load_lazy_attribute(v)
-    var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
-                                             f_locals, self.expr)
+    var, errorlog = abstract_utils.eval_expr(
+        self.ctx, node, f_globals, f_locals, self.expr
+    )
     if errorlog:
       self.ctx.errorlog.copy_from(errorlog.errors, self.stack)
     self._type = self.ctx.annotation_utils.extract_annotation(
-        node, var, None, self.stack)
+        node, var, None, self.stack
+    )
     if self._type != self.ctx.convert.unsolvable:
       # We may have tried to call __init__ on instances of this annotation.
       # Since the annotation was unresolved at the time, we need to call

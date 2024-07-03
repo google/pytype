@@ -2,7 +2,6 @@
 
 import dataclasses
 import logging
-
 from typing import Optional
 
 from pytype import context
@@ -30,8 +29,13 @@ class Analysis:
   ast_deps: Optional[pytd.TypeDeclUnit]
 
 
-def check_types(src, options, loader, init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                maximum_depth=None):
+def check_types(
+    src,
+    options,
+    loader,
+    init_maximum_depth=INIT_MAXIMUM_DEPTH,
+    maximum_depth=None,
+):
   """Verify the Python code."""
   ctx = context.Context(options, loader, src=src)
   loc, defs = ctx.vm.run_program(src, options.input, init_maximum_depth)
@@ -39,18 +43,21 @@ def check_types(src, options, loader, init_maximum_depth=INIT_MAXIMUM_DEPTH,
   snapshotter.take_snapshot("analyze:check_types:tracer")
   if maximum_depth is None:
     maximum_depth = (
-        QUICK_CHECK_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
+        QUICK_CHECK_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH
+    )
   ctx.vm.analyze(loc, defs, maximum_depth=maximum_depth)
   snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, ctx.program)
   return Analysis(ctx, None, None)
 
 
-def infer_types(src,
-                options,
-                loader,
-                init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                maximum_depth=None):
+def infer_types(
+    src,
+    options,
+    loader,
+    init_maximum_depth=INIT_MAXIMUM_DEPTH,
+    maximum_depth=None,
+):
   """Given Python source return its types.
 
   Args:
@@ -59,6 +66,7 @@ def infer_types(src,
     loader: A load_pytd.Loader instance to load PYI information.
     init_maximum_depth: Depth of analysis during module loading.
     maximum_depth: Depth of the analysis. Default: unlimited.
+
   Returns:
     A tuple of (ast: TypeDeclUnit, builtins: TypeDeclUnit)
   Raises:
@@ -83,7 +91,8 @@ def infer_types(src,
   ast = ctx.vm.compute_types(defs)
   ast = ctx.loader.resolve_ast(ast)
   if ctx.vm.has_unknown_wildcard_imports or any(
-      a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
+      a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS
+  ):
     if "__getattr__" not in ast:
       ast = pytd_utils.Concat(ast, ctx.loader.get_default_ast())
   # If merged with other if statement, triggers a ValueError: Unresolved class
@@ -96,8 +105,9 @@ def infer_types(src,
   # Insert type parameters, where appropriate
   ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
   if options.protocols:
-    log.info("=========== PyTD to solve =============\n%s",
-             pytd_utils.Print(ast))
+    log.info(
+        "=========== PyTD to solve =============\n%s", pytd_utils.Print(ast)
+    )
     ast = convert_structural.convert_pytd(ast, deps_pytd, protocols_pytd)
   else:
     log.info("Solving is turned off. Discarding call traces.")

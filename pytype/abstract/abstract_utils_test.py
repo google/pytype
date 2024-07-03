@@ -16,23 +16,35 @@ class GetViewsTest(test_base.UnitTest):
     self._ctx = test_utils.make_context(options)
 
   def test_basic(self):
-    v1 = self._ctx.program.NewVariable([self._ctx.convert.unsolvable], [],
-                                       self._ctx.root_node)
+    v1 = self._ctx.program.NewVariable(
+        [self._ctx.convert.unsolvable], [], self._ctx.root_node
+    )
     v2 = self._ctx.program.NewVariable(
-        [self._ctx.convert.int_type, self._ctx.convert.str_type], [],
-        self._ctx.root_node)
+        [self._ctx.convert.int_type, self._ctx.convert.str_type],
+        [],
+        self._ctx.root_node,
+    )
     views = list(abstract_utils.get_views([v1, v2], self._ctx.root_node))
-    self.assertCountEqual([{v1: views[0][v1], v2: views[0][v2]},
-                           {v1: views[1][v1], v2: views[1][v2]}],
-                          [{v1: v1.bindings[0], v2: v2.bindings[0]},
-                           {v1: v1.bindings[0], v2: v2.bindings[1]}])
+    self.assertCountEqual(
+        [
+            {v1: views[0][v1], v2: views[0][v2]},
+            {v1: views[1][v1], v2: views[1][v2]},
+        ],
+        [
+            {v1: v1.bindings[0], v2: v2.bindings[0]},
+            {v1: v1.bindings[0], v2: v2.bindings[1]},
+        ],
+    )
 
   def _test_optimized(self, skip_future_value, expected_num_views):
-    v1 = self._ctx.program.NewVariable([self._ctx.convert.unsolvable], [],
-                                       self._ctx.root_node)
+    v1 = self._ctx.program.NewVariable(
+        [self._ctx.convert.unsolvable], [], self._ctx.root_node
+    )
     v2 = self._ctx.program.NewVariable(
-        [self._ctx.convert.int_type, self._ctx.convert.str_type], [],
-        self._ctx.root_node)
+        [self._ctx.convert.int_type, self._ctx.convert.str_type],
+        [],
+        self._ctx.root_node,
+    )
     views = abstract_utils.get_views([v1, v2], self._ctx.root_node)
     skip_future = None
     # To count the number of views. Doesn't matter what we put in here, as long

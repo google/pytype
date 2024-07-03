@@ -19,24 +19,31 @@ class FlowTest(test_base.BaseTest):
       else:
         x = 3.1
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       x = ...  # type: Union[int, float]
-    """)
+    """,
+    )
 
   def test_exception(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         try:
           x = UndefinedName()
         except Exception:
           return 3
       f()
-    """, report_errors=False)
+    """,
+        report_errors=False,
+    )
     self.assertTypesMatchPytd(ty, "def f() -> int | None: ...")
 
   def test_two_except_handlers(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         try:
           x = UndefinedName()
@@ -45,11 +52,14 @@ class FlowTest(test_base.BaseTest):
         except:
           return 3.5
       f()
-    """, report_errors=False)
+    """,
+        report_errors=False,
+    )
     self.assertTypesMatchPytd(ty, "def f() -> int | float | None: ...")
 
   def test_nested_exceptions(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         try:
           try:
@@ -59,7 +69,9 @@ class FlowTest(test_base.BaseTest):
         except:
           return 3.5
       f()
-    """, report_errors=False)
+    """,
+        report_errors=False,
+    )
     self.assertTypesMatchPytd(ty, "def f() -> int | float | None: ...")
 
   def test_raise(self):
@@ -77,18 +89,22 @@ class FlowTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f() -> int | float: ...")
 
   def test_finally(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         try:
           x = RaiseANameError()
         finally:
           return 3
       f()
-    """, report_errors=False)
+    """,
+        report_errors=False,
+    )
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
 
   def test_finally_suffix(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         try:
           x = RaiseANameError()
@@ -96,7 +112,9 @@ class FlowTest(test_base.BaseTest):
           x = 3
         return x
       f()
-    """, report_errors=False)
+    """,
+        report_errors=False,
+    )
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
 
   def test_try_and_loop(self):
@@ -144,9 +162,12 @@ class FlowTest(test_base.BaseTest):
         return len(x)
       f(__any_object__)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int: ...
-    """)
+    """,
+    )
 
   def test_continue_in_with(self):
     ty = self.Infer("""
@@ -235,11 +256,14 @@ class FlowTest(test_base.BaseTest):
           pass
         return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f() -> Any: ...
       def g() -> Any: ...
-    """)
+    """,
+    )
 
   def test_change_boolean(self):
     ty = self.Infer("""
@@ -252,10 +276,13 @@ class FlowTest(test_base.BaseTest):
       expected_return_type = "None"
     else:
       expected_return_type = "Any"
-    self.assertTypesMatchPytd(ty, f"""
+    self.assertTypesMatchPytd(
+        ty,
+        f"""
       from typing import Any
       def f() -> {expected_return_type}: ...
-    """)
+    """,
+    )
 
   def test_independent_calls(self):
     ty = self.Infer("""
@@ -270,13 +297,16 @@ class FlowTest(test_base.BaseTest):
         else:
           stack.append(_Item(stack))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class _Item:
         name = ...  # type: str
         name_list = ...  # type: list
         def __init__(self, stack) -> None: ...
       def foo() -> None: ...
-    """)
+    """,
+    )
 
   def test_duplicate_getproperty(self):
     ty = self.Infer("""
@@ -289,13 +319,16 @@ class FlowTest(test_base.BaseTest):
             'No node with type %s could be extracted.' % self._node)
       Foo().bar()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         _node = ...  # type: Any
         def __init__(self) -> None: ...
         def bar(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_break(self):
     ty = self.Infer("""
@@ -305,9 +338,12 @@ class FlowTest(test_base.BaseTest):
             break
         return 3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def _foo() -> complex: ...
-    """)
+    """,
+    )
 
   def test_continue(self):
     ty = self.Infer("""
@@ -318,19 +354,25 @@ class FlowTest(test_base.BaseTest):
           continue
           return 3  # dead code
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def bar() -> complex: ...
-    """)
+    """,
+    )
 
   def test_loop_over_list_of_lists(self):
     ty = self.Infer("""
     for seq in [[1, 2, 3]]:
         seq.append("foo")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       seq = ...  # type: List[Union[int, str]]
-    """)
+    """,
+    )
 
   def test_call_undefined(self):
     _, errors = self.InferWithErrors("""
@@ -343,7 +385,9 @@ class FlowTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"func"})
 
   def test_nested_break(self):
-    self.assertNoCrash(self.Infer, """
+    self.assertNoCrash(
+        self.Infer,
+        """
       while True:
         try:
           pass
@@ -354,18 +398,24 @@ class FlowTest(test_base.BaseTest):
             pass
           except:
             break
-    """)
+    """,
+    )
 
   def test_nested_break2(self):
-    self.assertNoCrash(self.Infer, """
+    self.assertNoCrash(
+        self.Infer,
+        """
       while True:
         for x in []:
           pass
         break
-    """)
+    """,
+    )
 
   def test_loop_after_break(self):
-    self.assertNoCrash(self.Infer, """
+    self.assertNoCrash(
+        self.Infer,
+        """
       for _ in ():
         break
       else:
@@ -374,7 +424,8 @@ class FlowTest(test_base.BaseTest):
         break
       else:
         raise
-    """)
+    """,
+    )
 
   def test_recursion(self):
     ty = self.Infer("""
@@ -387,11 +438,14 @@ class FlowTest(test_base.BaseTest):
         b = False
         f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       b = ...  # type: bool
       def f() -> None: ...
       def g() -> None: ...
-    """)
+    """,
+    )
 
   def test_deleted(self):
     self.CheckWithErrors("""

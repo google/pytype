@@ -79,7 +79,9 @@ class TestAttributes(test_base.BaseTest):
           # violate the __init__ annotation.
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       class Foo:
         x: List[int]
@@ -87,9 +89,11 @@ class TestAttributes(test_base.BaseTest):
         def f1(self) -> List[str]: ...
         def f2(self) -> None: ...
         def f3(self) -> List[Union[int, str]]: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"})
+        errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"}
+    )
 
   def test_set_attribute_in_other_class(self):
     # Regression test for setting an attribute in a class with a mix of
@@ -113,7 +117,10 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def test_base_class_union(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([
+        (
+            "foo.pyi",
+            """
       class A:
         x: str
       class B:
@@ -123,12 +130,18 @@ class TestAttributes(test_base.BaseTest):
       class C2:
         C: type[B]
       def f() -> C1 | C2: ...
-    """), ("bar.py", """
+    """,
+        ),
+        (
+            "bar.py",
+            """
        import foo
        class Bar(foo.f().C):
          pass
        assert_type(Bar().x, str)
-    """)]):
+    """,
+        ),
+    ]):
       self.Check("""
         import bar
         assert_type(bar.Bar().x, str)
@@ -165,12 +178,15 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
           for _, foo in sorted(d.items()):
             foo.x = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x = ...  # type: int
       class Bar:
         def bar(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_type_parameter_instance(self):
     ty = self.Infer("""
@@ -180,7 +196,9 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
       for x, y in sorted(args.items()):
         z = x.values
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       class A:
         values = ...  # type: int
@@ -188,7 +206,8 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
       x = ...  # type: A
       y = ...  # type: str
       z = ...  # type: int
-    """)
+    """,
+    )
 
   def test_filter_subclass_attribute(self):
     self.Check("""
@@ -263,12 +282,15 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
         def do_something(self, x: str):
           self.x = x  # annotation-type-mismatch
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x: int
         def __init__(self) -> None: ...
         def do_something(self, x: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_inherit_declared_attribute(self):
     ty = self.Infer("""
@@ -278,18 +300,24 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
         def f(self):
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x: int
       class Bar(Foo):
         def f(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_redeclare_inherited_attribute(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
         class Foo:
           x: int
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class Bar(foo.Foo):

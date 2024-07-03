@@ -91,8 +91,8 @@ class _LineSet:
 
     Args:
       line: A line number.
-      membership: If True, lines >= line are included in the set (starting
-        a range), otherwise they are excluded (ending a range).
+      membership: If True, lines >= line are included in the set (starting a
+        range), otherwise they are excluded (ending a range).
 
     Raises:
       ValueError: if line is less than that of a previous call to start_range().
@@ -158,8 +158,9 @@ class _BlockRanges:
       else:
         # Skip nested intervals
         while (
-            1 < i <= num_intervals and
-            self._start_to_end[self._starts[i - 1]] < line):
+            1 < i <= num_intervals
+            and self._start_to_end[self._starts[i - 1]] < line
+        ):
           i -= 1
         start = self._starts[i - 1]
       end = self._start_to_end[start]
@@ -263,25 +264,30 @@ class Director:
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:
         if comment.tool == "type":
-          self._process_type(comment.line, comment.data, comment.open_ended,
-                             line_range)
+          self._process_type(
+              comment.line, comment.data, comment.open_ended, line_range
+          )
         else:
           assert comment.tool == "pytype"
           try:
-            self._process_pytype(comment.line, comment.data, comment.open_ended,
-                                 line_range)
+            self._process_pytype(
+                comment.line, comment.data, comment.open_ended, line_range
+            )
           except _DirectiveError as e:
             self._errorlog.invalid_directive(
-                self._filename, comment.line, str(e))
+                self._filename, comment.line, str(e)
+            )
         # Make sure the function range ends at the last "interesting" line.
-        if (not isinstance(line_range, parser.Call) and
-            self._function_ranges.has_end(line_range.end_line)):
+        if not isinstance(
+            line_range, parser.Call
+        ) and self._function_ranges.has_end(line_range.end_line):
           end = line_range.start_line
           self._function_ranges.adjust_end(line_range.end_line, end)
 
     for annot in visitor.variable_annotations:
       self._variable_annotations.add_annotation(
-          annot.start_line, annot.name, annot.annotation)
+          annot.start_line, annot.name, annot.annotation
+      )
 
     for line, decorators in visitor.decorators.items():
       for decorator_lineno, decorator_name in decorators:
@@ -298,8 +304,8 @@ class Director:
           self._errorlog.late_directive(self._filename, line, name)
 
   def _process_type(
-      self, line: int, data: str, open_ended: bool,
-      line_range: parser.LineRange):
+      self, line: int, data: str, open_ended: bool, line_range: parser.LineRange
+  ):
     """Process a type: comment."""
     is_ignore = parser.IGNORE_RE.match(data)
     if not is_ignore and line != line_range.end_line:
@@ -318,12 +324,13 @@ class Director:
         # If we have multiple type comments on the same line, take the last one,
         # but add an error to the log.
         self._errorlog.invalid_directive(
-            self._filename, line, "Multiple type comments on the same line.")
+            self._filename, line, "Multiple type comments on the same line."
+        )
       self._variable_annotations.add_type_comment(final_line, data)
 
   def _process_pytype(
-      self, line: int, data: str, open_ended: bool,
-      line_range: parser.LineRange):
+      self, line: int, data: str, open_ended: bool, line_range: parser.LineRange
+  ):
     """Process a pytype: comment."""
     if not data:
       raise _DirectiveError("Invalid directive syntax.")
@@ -339,10 +346,12 @@ class Director:
       values = set(values)
       if command == "disable":
         self._process_disable(
-            line, line_range, open_ended, values, disable=True)
+            line, line_range, open_ended, values, disable=True
+        )
       elif command == "enable":
         self._process_disable(
-            line, line_range, open_ended, values, disable=False)
+            line, line_range, open_ended, values, disable=False
+        )
       elif command == "pragma":
         self._process_pragmas(line, line_range, values)
       elif command == "features":
@@ -358,7 +367,8 @@ class Director:
     self.features |= features
 
   def _process_pragmas(
-      self, line: int, line_range: parser.LineRange, pragmas: Set[str]):
+      self, line: int, line_range: parser.LineRange, pragmas: Set[str]
+  ):
     del line_range  # unused
     invalid = pragmas - _PRAGMAS
     if invalid:
@@ -368,8 +378,14 @@ class Director:
       lines.set_line(line, True)
 
   def _process_disable(
-      self, line: int, line_range: parser.LineRange, open_ended: bool,
-      values: Set[str], *, disable: bool):
+      self,
+      line: int,
+      line_range: parser.LineRange,
+      open_ended: bool,
+      values: Set[str],
+      *,
+      disable: bool,
+  ):
     """Process enable/disable directives."""
 
     def keep(error_name):
@@ -380,11 +396,13 @@ class Director:
 
     if not values:
       raise _DirectiveError(
-          "Disable/enable must specify one or more error names.")
+          "Disable/enable must specify one or more error names."
+      )
 
     for error_name in values:
-      if (error_name == _ALL_ERRORS or
-          self._errorlog.is_valid_error_name(error_name)):
+      if error_name == _ALL_ERRORS or self._errorlog.is_valid_error_name(
+          error_name
+      ):
         if not keep(error_name):
           # Skip the directive if we are in a line range that is irrelevant to
           # it. (Every directive is also recorded in a base LineRange that is
@@ -395,7 +413,8 @@ class Director:
           lines.start_range(line, disable)
         else:
           final_line = self._adjust_line_number_for_pytype_directive(
-              line, error_name, line_range)
+              line, error_name, line_range
+          )
           if final_line != line:
             # Set the disable on the original line so that, even if we mess up
             # adjusting the line number, silencing an error by adding a
@@ -404,10 +423,12 @@ class Director:
           lines.set_line(final_line, disable)
       else:
         self._errorlog.invalid_directive(
-            self._filename, line, f"Invalid error name: '{error_name}'")
+            self._filename, line, f"Invalid error name: '{error_name}'"
+        )
 
   def _adjust_line_number_for_pytype_directive(
-      self, line: int, error_class: str, line_range: parser.LineRange):
+      self, line: int, error_class: str, line_range: parser.LineRange
+  ):
     """Adjusts the line number for a pytype directive."""
     if error_class not in _ALL_ADJUSTABLE_ERRORS:
       return line
@@ -428,9 +449,11 @@ class Director:
     # number.
     if error.filename != self._filename or error.line is None:
       return True
-    if (error.name == "bad-return-type" and
-        error.opcode_name in ("RETURN_VALUE", "RETURN_CONST") and
-        error.line not in self.return_lines):
+    if (
+        error.name == "bad-return-type"
+        and error.opcode_name in ("RETURN_VALUE", "RETURN_CONST")
+        and error.line not in self.return_lines
+    ):
       # We have an implicit "return None". Adjust the line number to the last
       # line of the function.
       _, end = self._function_ranges.find_outermost(error.line)
@@ -439,6 +462,8 @@ class Director:
     # Treat line=0 as below the file, so we can filter it.
     line = error.line or sys.maxsize
     # Report the error if it isn't subject to any ignore or disable.
-    return (line not in self._ignore and
-            line not in self._disables[_ALL_ERRORS] and
-            line not in self._disables[error.name])
+    return (
+        line not in self._ignore
+        and line not in self._disables[_ALL_ERRORS]
+        and line not in self._disables[error.name]
+    )

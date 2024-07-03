@@ -17,11 +17,14 @@ class ClosuresTest(test_base.BaseTest):
         return f()()
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def f() -> Callable[[], Any]: ...
       def caller() -> int: ...
-    """)
+    """,
+    )
 
   def test_closure_on_arg(self):
     ty = self.Infer("""
@@ -33,11 +36,14 @@ class ClosuresTest(test_base.BaseTest):
         return f(3)()
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def f(x) -> Callable[[], Any]: ...
       def caller() -> int: ...
-    """)
+    """,
+    )
 
   def test_closure_with_arg(self):
     ty = self.Infer("""
@@ -49,11 +55,14 @@ class ClosuresTest(test_base.BaseTest):
         return f([1.0])(0)
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def f(x) -> Callable[[Any], Any]: ...
       def caller() -> float: ...
-    """)
+    """,
+    )
 
   def test_closure_same_name(self):
     ty = self.Infer("""
@@ -71,11 +80,14 @@ class ClosuresTest(test_base.BaseTest):
         return f()()()
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def f() -> Callable[[], Any]: ...
       def caller() -> str: ...
-    """)
+    """,
+    )
 
   def test_closures_add(self):
     ty = self.Infer("""
@@ -88,11 +100,14 @@ class ClosuresTest(test_base.BaseTest):
         return f(1)(2)
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def caller() -> int: ...
       def f(x) -> Callable[[Any], Any]: ...
-    """)
+    """,
+    )
 
   def test_closures_with_defaults(self):
     self.Check("""
@@ -121,13 +136,16 @@ class ClosuresTest(test_base.BaseTest):
       t2()
       t3()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable
       def f(x, y=..., z=...) -> Callable: ...
       def t1() -> int: ...
       def t2() -> int: ...
       def t3() -> int: ...
-    """)
+    """,
+    )
 
   def test_closure_scope(self):
     ty = self.Infer("""
@@ -147,12 +165,15 @@ class ClosuresTest(test_base.BaseTest):
         return g(f())
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable, List
       def caller() -> List[str]: ...
       def f() -> Callable[[], Any]: ...
       def g(funcptr) -> Any: ...
-    """)
+    """,
+    )
 
   def test_deep_closures(self):
     self.Check("""
@@ -191,11 +212,14 @@ class ClosuresTest(test_base.BaseTest):
         return f1(3)(4)(5)(6)
       caller()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def f1(a) -> Callable[[Any], Any]: ...
       def caller() -> int: ...
-    """)
+    """,
+    )
 
   def test_no_visible_bindings(self):
     # Regression test for a crash; see vm_utils.load_closure_cell.
@@ -275,7 +299,8 @@ class ClosuresTest(test_base.BaseTest):
       """)
 
   def test_closure(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       import ctypes
       f = 0
       def e():
@@ -284,13 +309,18 @@ class ClosuresTest(test_base.BaseTest):
         f = (lambda: ctypes.foo(s))  # ctypes.foo doesn't exist
         return f()
       e()
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import ctypes
       from typing import Any
       def e() -> Any: ...
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_recursion(self):
     self.Check("""
@@ -343,10 +373,13 @@ class ClosuresTestPy3(test_base.BaseTest):
         else:
           return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional
       def f(a: int) -> Optional[str]: ...
-    """)
+    """,
+    )
 
   def test_closures_delete_deref(self):
     err = self.CheckWithErrors("""
@@ -370,9 +403,12 @@ class ClosuresTestPy3(test_base.BaseTest):
         g()
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_nonlocal_delete_deref(self):
     err = self.CheckWithErrors("""
@@ -397,9 +433,12 @@ class ClosuresTestPy3(test_base.BaseTest):
         x = 42
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_closure_annotations(self):
     errors = self.CheckWithErrors("""

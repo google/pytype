@@ -300,8 +300,9 @@ class AliasingDict(Dict[_K, _V]):
       parent_id = lam_dict.aliases.parent[cur_id]
       cur_name = lam_dict.aliases.id2name[cur_id]
       parent_name = lam_dict.aliases.id2name[parent_id]
-      if (self.aliases.find_by_name(cur_name) !=
-          self.aliases.find_by_name(parent_name)):
+      if self.aliases.find_by_name(cur_name) != self.aliases.find_by_name(
+          parent_name
+      ):
         self.add_alias(cur_name, parent_name, op)
 
   def _merge(self, name1, name2, op):

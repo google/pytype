@@ -30,16 +30,17 @@ class TestCachedProperty(test_base.BaseTest):
     """)
 
   def test_reingest(self):
-    with self.DepTree([
-        ("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
             import functools
 
             class A:
               @functools.cached_property
               def f(self):
                 return 42
-         """)
-    ]):
+         """,
+    )]):
       self.Check("""
         import foo
 
@@ -59,15 +60,16 @@ class TestCachedProperty(test_base.BaseTest):
 
   @test_base.skip("Not supported yet")
   def test_pyi(self):
-    with self.DepTree([
-        ("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
             import functools
 
             class A:
               @functools.cached_property
               def f(self) -> int: ...
-         """)
-    ]):
+         """,
+    )]):
       self.Check("""
         import foo
 
@@ -89,10 +91,13 @@ class TestCachedProperty(test_base.BaseTest):
     ty = self.Infer("""
       from functools import cached_property
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import functools
       cached_property: type[functools.cached_property]
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

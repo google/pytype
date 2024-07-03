@@ -103,10 +103,14 @@ class TypegraphEncoder(json.JSONEncoder):
   def _encode_program(self, program: cfg.Program) -> Dict[str, Any]:
     # Surprisingly, program.cfg_nodes and program.variables are not guaranteed
     # to be sorted. Remove this surprise by sorting them here.
-    cfg_nodes = sorted([self._encode_cfgnode(n) for n in program.cfg_nodes],
-                       key=lambda n: n["id"])
-    variables = sorted([self._encode_variable(v) for v in program.variables],
-                       key=lambda v: v["id"])
+    cfg_nodes = sorted(
+        [self._encode_cfgnode(n) for n in program.cfg_nodes],
+        key=lambda n: n["id"],
+    )
+    variables = sorted(
+        [self._encode_variable(v) for v in program.variables],
+        key=lambda v: v["id"],
+    )
     # After visiting every Variable, self._bindings contains every Binding.
     bindings = sorted(self._bindings.values(), key=lambda b: b.id)
     return {
@@ -164,6 +168,7 @@ class TypegraphEncoder(json.JSONEncoder):
 
     Args:
       program: a cfg.Program.
+
     Returns:
       A list of dictionaries that correspond to SerializedQuery.
     """

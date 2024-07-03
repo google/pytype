@@ -48,8 +48,10 @@ class SimpleValue(_base.BaseValue):
     self._cached_changestamps = self._get_changestamps()
 
   def _get_changestamps(self):
-    return (self.members.changestamp,
-            self._instance_type_parameters.changestamp)
+    return (
+        self.members.changestamp,
+        self._instance_type_parameters.changestamp,
+    )
 
   @property
   def instance_type_parameters(self):
@@ -110,7 +112,8 @@ class SimpleValue(_base.BaseValue):
   def _call_helper(self, node, obj, binding, args):
     obj_binding = binding if obj == binding.data else obj.to_binding(node)
     node, var = self.ctx.attribute_handler.get_attribute(
-        node, obj, "__call__", obj_binding)
+        node, obj, "__call__", obj_binding
+    )
     if var is not None and var.bindings:
       return function.call_function(self.ctx, node, var, args, allow_never=True)
     else:
@@ -121,7 +124,8 @@ class SimpleValue(_base.BaseValue):
 
   def argcount(self, node):
     node, var = self.ctx.attribute_handler.get_attribute(
-        node, self, "__call__", self.to_binding(node))
+        node, self, "__call__", self.to_binding(node)
+    )
     if var and var.bindings:
       return min(v.argcount(node) for v in var.data)
     else:
@@ -181,7 +185,8 @@ class SimpleValue(_base.BaseValue):
       components = [type(self), self.cls.get_fullhash(seen), self.full_name]
       for d in (self.members, self._instance_type_parameters):
         components.append(
-            abstract_utils.get_dict_fullhash_component(d, seen=seen))
+            abstract_utils.get_dict_fullhash_component(d, seen=seen)
+        )
       self._fullhash = hash(tuple(components))
     return self._fullhash
 
@@ -224,9 +229,11 @@ class Instance(SimpleValue):
       return
     all_formal_type_parameters = datatypes.AliasingDict()
     abstract_utils.parse_formal_type_parameters(
-        self.cls, None, all_formal_type_parameters, self._container)
+        self.cls, None, all_formal_type_parameters, self._container
+    )
     self._instance_type_parameters = self._instance_type_parameters.copy(
-        aliases=all_formal_type_parameters.aliases)
+        aliases=all_formal_type_parameters.aliases
+    )
     for name, param in all_formal_type_parameters.items():
       if param is None:
         value = self.ctx.program.NewVariable()
@@ -234,7 +241,8 @@ class Instance(SimpleValue):
         self._instance_type_parameters[name] = value
       else:
         self._instance_type_parameters[name] = param.instantiate(
-            self.ctx.root_node, self._container or self)
+            self.ctx.root_node, self._container or self
+        )
     # We purposely set this flag at the very end so that accidentally accessing
     # instance_type_parameters during loading will trigger an obvious crash due
     # to infinite recursion, rather than silently returning an incomplete dict.

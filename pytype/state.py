@@ -48,12 +48,24 @@ class FrameState(utils.ContextWeakrefMixin):
     raise AttributeError("States are immutable.")
 
   def set_why(self, why):
-    return FrameState(self.data_stack, self.block_stack, self.node, self.ctx,
-                      self.exception, why)
+    return FrameState(
+        self.data_stack,
+        self.block_stack,
+        self.node,
+        self.ctx,
+        self.exception,
+        why,
+    )
 
   def set_stack(self, new_stack):
-    return FrameState(new_stack, self.block_stack, self.node, self.ctx,
-                      self.exception, self.why)
+    return FrameState(
+        new_stack,
+        self.block_stack,
+        self.node,
+        self.ctx,
+        self.exception,
+        self.why,
+    )
 
   def push(self, *values):
     """Push value(s) onto the value stack."""
@@ -89,8 +101,10 @@ class FrameState(utils.ContextWeakrefMixin):
       # Not an error: E.g. function calls with no parameters pop zero items
       return self, ()
     if len(self.data_stack) < n:
-      raise IndexError("Trying to pop %d values from stack of size %d" %
-                       (n, len(self.data_stack)))
+      raise IndexError(
+          "Trying to pop %d values from stack of size %d"
+          % (n, len(self.data_stack))
+      )
     values = self.data_stack[-n:]
     return self.set_stack(self.data_stack[:-n]), values
 
@@ -105,8 +119,10 @@ class FrameState(utils.ContextWeakrefMixin):
   def rotn(self, n):
     """Rotate the top n values by one."""
     if len(self.data_stack) < n:
-      raise IndexError("Trying to rotate %d values from stack of size %d" %
-                       (n, len(self.data_stack)))
+      raise IndexError(
+          "Trying to rotate %d values from stack of size %d"
+          % (n, len(self.data_stack))
+      )
     top = self.data_stack[-1]
     rot = self.data_stack[-n:-1]
     return self.set_stack(self.data_stack[:-n] + (top,) + rot)
@@ -114,30 +130,53 @@ class FrameState(utils.ContextWeakrefMixin):
   def swap(self, n):
     """Swap the top of the data stack with the value in position n."""
     if len(self.data_stack) < n:
-      raise IndexError("Trying to swap value %d in stack of size %d" %
-                       (n, len(self.data_stack)))
+      raise IndexError(
+          "Trying to swap value %d in stack of size %d"
+          % (n, len(self.data_stack))
+      )
     top = self.data_stack[-1]
     nth = self.data_stack[-n]
-    in_between = self.data_stack[(-n + 1):-1]
+    in_between = self.data_stack[(-n + 1) : -1]
     rest = self.data_stack[:-n]
     return self.set_stack(rest + (top,) + in_between + (nth,))
 
   def push_block(self, block):
     """Push a block on to the block stack."""
-    return FrameState(self.data_stack, self.block_stack + (block,), self.node,
-                      self.ctx, self.exception, self.why)
+    return FrameState(
+        self.data_stack,
+        self.block_stack + (block,),
+        self.node,
+        self.ctx,
+        self.exception,
+        self.why,
+    )
 
   def pop_block(self):
     """Pop a block from the block stack."""
     block = self.block_stack[-1]
-    return FrameState(self.data_stack, self.block_stack[:-1], self.node,
-                      self.ctx, self.exception, self.why), block
+    return (
+        FrameState(
+            self.data_stack,
+            self.block_stack[:-1],
+            self.node,
+            self.ctx,
+            self.exception,
+            self.why,
+        ),
+        block,
+    )
 
   def change_cfg_node(self, node: cfg.CFGNode) -> "FrameState":
     if self.node is node:
       return self
-    return FrameState(self.data_stack, self.block_stack, node, self.ctx,
-                      self.exception, self.why)
+    return FrameState(
+        self.data_stack,
+        self.block_stack,
+        node,
+        self.ctx,
+        self.exception,
+        self.why,
+    )
 
   def connect_to_cfg_node(self, node):
     self.node.ConnectTo(node)
@@ -163,24 +202,38 @@ class FrameState(utils.ContextWeakrefMixin):
     if other is None:
       return self
     assert len(self.data_stack) == len(other.data_stack), (
-        self.data_stack, other.data_stack)
+        self.data_stack,
+        other.data_stack,
+    )
     assert len(self.block_stack) == len(other.block_stack), (
-        self.block_stack, other.block_stack)
+        self.block_stack,
+        other.block_stack,
+    )
     both = list(zip(self.data_stack, other.data_stack))
     if any(v1 is not v2 for v1, v2 in both):
       for v, o in both:
         o.PasteVariable(v, None)
     if self.node is not other.node:
       self.node.ConnectTo(other.node)
-      return FrameState(other.data_stack, self.block_stack, other.node,
-                        self.ctx, self.exception, self.why)
+      return FrameState(
+          other.data_stack,
+          self.block_stack,
+          other.node,
+          self.ctx,
+          self.exception,
+          self.why,
+      )
     return self
 
   def set_exception(self):
     return FrameState(
-        self.data_stack, self.block_stack,
-        self.ctx.connect_new_cfg_node(self.node, "SetException"), self.ctx,
-        True, self.why)
+        self.data_stack,
+        self.block_stack,
+        self.ctx.connect_new_cfg_node(self.node, "SetException"),
+        self.ctx,
+        True,
+        self.why,
+    )
 
 
 class SimpleFrame:
@@ -233,20 +286,27 @@ class Frame(utils.ContextWeakrefMixin):
   """
 
   def __init__(
-      self, node: cfg.CFGNode, ctx: _ContextType, f_code: blocks.OrderedCode,
-      f_globals: abstract.LazyConcreteDict, f_locals: abstract.LazyConcreteDict,
-      f_back: FrameType, callargs: Dict[str, cfg.Variable],
-      closure: Optional[Tuple[cfg.Variable, ...]], func: Optional[cfg.Binding],
+      self,
+      node: cfg.CFGNode,
+      ctx: _ContextType,
+      f_code: blocks.OrderedCode,
+      f_globals: abstract.LazyConcreteDict,
+      f_locals: abstract.LazyConcreteDict,
+      f_back: FrameType,
+      callargs: Dict[str, cfg.Variable],
+      closure: Optional[Tuple[cfg.Variable, ...]],
+      func: Optional[cfg.Binding],
       first_arg: Optional[cfg.Variable],
-      substs: Collection[Dict[str, cfg.Variable]]):
+      substs: Collection[Dict[str, cfg.Variable]],
+  ):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
       node: The current CFG graph node.
       ctx: The owning abstract context.
       f_code: The code object to execute in this frame.
-      f_globals: The global context to execute in as a SimpleValue as
-        used by TypegraphVirtualMachine.
+      f_globals: The global context to execute in as a SimpleValue as used by
+        TypegraphVirtualMachine.
       f_locals: Local variables. Will be modified if callargs is passed.
       f_back: The frame above this one on the stack.
       callargs: Additional function arguments to store in f_locals.
@@ -255,6 +315,7 @@ class Frame(utils.ContextWeakrefMixin):
       first_arg: First argument to the function.
       substs: Maps from type parameter names in scope for this frame to their
         possible values.
+
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
@@ -270,8 +331,9 @@ class Frame(utils.ContextWeakrefMixin):
       self.f_builtins = f_back.f_builtins
     else:
       _, bltin = self.ctx.attribute_handler.get_attribute(
-          self.ctx.root_node, f_globals, "__builtins__")
-      builtins_pu, = bltin.bindings
+          self.ctx.root_node, f_globals, "__builtins__"
+      )
+      (builtins_pu,) = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.firstlineno
     # The first argument is used to make Python 3 super calls when super is not
@@ -307,7 +369,7 @@ class Frame(utils.ContextWeakrefMixin):
     if self.ctx.python_version < (3, 11):
       cell_names = f_code.cellvars
     elif freevars:
-      cell_names = f_code.localsplus[:-len(freevars)]
+      cell_names = f_code.localsplus[: -len(freevars)]
     else:
       cell_names = f_code.localsplus
     self.cells = [self.ctx.program.NewVariable() for _ in cell_names]
@@ -350,9 +412,11 @@ class Frame(utils.ContextWeakrefMixin):
         str, List[abstract.InterpreterFunction]
     ] = collections.defaultdict(list)
 
-  def __repr__(self):     # pragma: no cover
+  def __repr__(self):  # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
-        id(self), self.f_code.filename, self.f_lineno
+        id(self),
+        self.f_code.filename,
+        self.f_lineno,
     )
 
   def copy_free_vars(self, n):
@@ -444,20 +508,21 @@ def restrict_condition(node, var, condition):
 
 def _is_or_is_not_cmp(left, right, is_not=False):
   """Implementation of 'left is right' amd 'left is not right'."""
-  if (isinstance(left, abstract.PythonConstant) and
-      isinstance(right, abstract.PythonConstant)):
+  if isinstance(left, abstract.PythonConstant) and isinstance(
+      right, abstract.PythonConstant
+  ):
     if left.cls != right.cls:
       return is_not
     return is_not ^ (left.pyval == right.pyval)
-  elif (isinstance(left, abstract.Instance) and
-        isinstance(right, abstract.Instance)):
+  elif isinstance(left, abstract.Instance) and isinstance(
+      right, abstract.Instance
+  ):
     if left.cls != right.cls:
       # If those were the same they could be the same but we can't be sure from
       # comparing types.
       return is_not
     return None
-  elif (isinstance(left, abstract.Class) and
-        isinstance(right, abstract.Class)):
+  elif isinstance(left, abstract.Class) and isinstance(right, abstract.Class):
     # types are singletons. We use the name so that, e.g., two different
     # TupleClass instances compare as identical.
     return is_not ^ (left.full_name == right.full_name)

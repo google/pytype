@@ -20,6 +20,7 @@ _SignatureMapType = Mapping[str, function.Signature]
 @enum.unique
 class SignatureErrorType(enum.Enum):
   """Constants representing various signature mismatch errors."""
+
   NO_ERROR = enum.auto()
   DEFAULT_PARAMETER_MISMATCH = enum.auto()
   DEFAULT_VALUE_MISMATCH = enum.auto()
@@ -49,8 +50,9 @@ def _get_varargs_annotation_type(param_type):
   return param_type.get_formal_type_parameter(abstract_utils.T)
 
 
-def _check_positional_parameter_annotations(method_signature, base_signature,
-                                            is_subtype):
+def _check_positional_parameter_annotations(
+    method_signature, base_signature, is_subtype
+):
   """Checks type annotations for positional parameters of the overriding method.
 
   Args:
@@ -61,8 +63,9 @@ def _check_positional_parameter_annotations(method_signature, base_signature,
   Returns:
     SignatureError if a mismatch is detected. Otherwise returns None.
   """
-  for param_index in range(max(len(base_signature.param_names),
-                               len(method_signature.param_names))):
+  for param_index in range(
+      max(len(base_signature.param_names), len(method_signature.param_names))
+  ):
     if param_index == 0:
       # No type checks for 'self' parameter.
       continue
@@ -89,8 +92,10 @@ def _check_positional_parameter_annotations(method_signature, base_signature,
       # Positional-only parameters should match by position.
       method_param_name = method_signature.param_names[param_index]
     elif param_index < len(method_signature.param_names):
-      if (base_param_name == "_" or
-          method_signature.param_names[param_index] == "_"):
+      if (
+          base_param_name == "_"
+          or method_signature.param_names[param_index] == "_"
+      ):
         # Underscore parameters should match by position.
         method_param_name = method_signature.param_names[param_index]
       else:
@@ -118,7 +123,8 @@ def _check_positional_parameter_annotations(method_signature, base_signature,
     if not is_subtype(base_param_type, method_param_type):
       return SignatureError(
           SignatureErrorType.POSITIONAL_PARAMETER_TYPE_MISMATCH,
-          f"Type mismatch for parameter '{method_param_name}'.")
+          f"Type mismatch for parameter '{method_param_name}'.",
+      )
 
   return None
 
@@ -150,7 +156,8 @@ def _check_positional_parameters(
     if base_param_pos < method_signature.posonly_count:
       return SignatureError(
           SignatureErrorType.POSITIONAL_PARAMETER_COUNT_MISMATCH,
-          "Too many positional-only parameters in overriding method.")
+          "Too many positional-only parameters in overriding method.",
+      )
     elif base_param_pos < len(method_signature.param_names):
       method_param_name = method_signature.param_names[base_param_pos]
     else:
@@ -160,7 +167,8 @@ def _check_positional_parameters(
         break
       return SignatureError(
           SignatureErrorType.POSITIONAL_PARAMETER_COUNT_MISMATCH,
-          "Not enough positional parameters in overriding method.")
+          "Not enough positional parameters in overriding method.",
+      )
 
     # Positional-or-keyword parameters must have the same name or underscore.
     method_param_name = method_signature.param_names[base_param_pos]
@@ -178,8 +186,10 @@ def _check_positional_parameters(
   # Check mappings of remaining positional parameters of the overriding method
   # that don't map to any positional parameters of the overridden method.
   remaining_method_params = (
-      method_signature.param_names[len(base_signature.param_names):]
-      if not base_signature.varargs_name else [])
+      method_signature.param_names[len(base_signature.param_names) :]
+      if not base_signature.varargs_name
+      else []
+  )
   for method_param_name in remaining_method_params:
 
     # Keyword-only can map to remaining positional.
@@ -190,16 +200,19 @@ def _check_positional_parameters(
     if method_param_name not in method_signature.defaults:
       return SignatureError(
           SignatureErrorType.DEFAULT_PARAMETER_MISMATCH,
-          f"Parameter '{method_param_name}' must have a default value.")
+          f"Parameter '{method_param_name}' must have a default value.",
+      )
 
   if not check_types:
     return None
-  return _check_positional_parameter_annotations(method_signature,
-                                                 base_signature, is_subtype)
+  return _check_positional_parameter_annotations(
+      method_signature, base_signature, is_subtype
+  )
 
 
-def _check_keyword_only_parameters(method_signature, base_signature,
-                                   is_subtype):
+def _check_keyword_only_parameters(
+    method_signature, base_signature, is_subtype
+):
   """Checks that the keyword-only parameters of the overriding method match.
 
   Args:
@@ -219,10 +232,12 @@ def _check_keyword_only_parameters(method_signature, base_signature,
     # Keyword-only parameters of the overriding method that don't match any
     # keyword-only parameter of the overridden method must have a default value.
     for method_param_name in method_kwonly_params.difference(
-        base_kwonly_params).difference(method_defaults):
+        base_kwonly_params
+    ).difference(method_defaults):
       return SignatureError(
           SignatureErrorType.DEFAULT_PARAMETER_MISMATCH,
-          f"Parameter '{method_param_name}' must have a default value.")
+          f"Parameter '{method_param_name}' must have a default value.",
+      )
 
   # A keyword-only parameter of the overridden method cannot have the same name
   # as a positional-only parameter of the overriding method.
@@ -233,14 +248,18 @@ def _check_keyword_only_parameters(method_signature, base_signature,
       if not method_signature.kwargs_name:
         return SignatureError(
             SignatureErrorType.KWONLY_PARAMETER_NAME_MISMATCH,
-            f"Parameter '{base_param_name}' not found in overriding method.")
+            f"Parameter '{base_param_name}' not found in overriding method.",
+        )
     else:
       if method_param_index < method_signature.posonly_count:
         return SignatureError(
             SignatureErrorType.KWONLY_PARAMETER_NAME_MISMATCH,
-            (f"Keyword-only parameter '{base_param_name}' of the overridden "
-             "method has the same name as a positional-only parameter"
-             "of the overriding method."))
+            (
+                f"Keyword-only parameter '{base_param_name}' of the overridden "
+                "method has the same name as a positional-only parameter"
+                "of the overriding method."
+            ),
+        )
 
   # Check annotations of keyword-only parameters.
   for base_param_name in base_signature.kwonly_params:
@@ -250,8 +269,10 @@ def _check_keyword_only_parameters(method_signature, base_signature,
       # Parameter not annotated in the overridden method.
       continue
 
-    if (base_param_name in method_kwonly_params or
-        base_param_name in method_signature.param_names):
+    if (
+        base_param_name in method_kwonly_params
+        or base_param_name in method_signature.param_names
+    ):
       method_param_name = base_param_name
     elif method_signature.kwargs_name:
       method_param_name = method_signature.kwargs_name
@@ -269,7 +290,8 @@ def _check_keyword_only_parameters(method_signature, base_signature,
         # If kwargs are annotated with type T in the function definition,
         # the annotation in the signature will be Dict[str, T].
         method_param_type = method_param_type.get_formal_type_parameter(
-            abstract_utils.V)
+            abstract_utils.V
+        )
       else:
         # If the kwargs type is a plain dict, there's nothing to check.
         continue
@@ -279,7 +301,8 @@ def _check_keyword_only_parameters(method_signature, base_signature,
     if not is_subtype(base_param_type, method_param_type):
       return SignatureError(
           SignatureErrorType.KWONLY_PARAMETER_TYPE_MISMATCH,
-          f"Type mismatch for parameter '{base_param_name}'.")
+          f"Type mismatch for parameter '{base_param_name}'.",
+      )
 
   return None
 
@@ -298,8 +321,10 @@ def _check_default_values(method_signature, base_signature):
   for base_param_name, base_default_value in base_signature.defaults.items():
     if base_param_name in base_signature.kwonly_params:
       # The parameter is keyword-only, check match by name.
-      if (base_param_name not in method_signature.kwonly_params and
-          base_param_name not in method_signature.param_names):
+      if (
+          base_param_name not in method_signature.kwonly_params
+          and base_param_name not in method_signature.param_names
+      ):
         continue
       method_param_name = base_param_name
     else:
@@ -314,22 +339,25 @@ def _check_default_values(method_signature, base_signature):
     except KeyError:
       return SignatureError(
           SignatureErrorType.DEFAULT_PARAMETER_MISMATCH,
-          f"Parameter '{method_param_name}' must have a default value.")
+          f"Parameter '{method_param_name}' must have a default value.",
+      )
 
     # Only concrete values can be compared for an exact match.
     try:
       base_default = abstract_utils.get_atomic_python_constant(
-          base_default_value)
+          base_default_value
+      )
       method_default = abstract_utils.get_atomic_python_constant(
-          method_default_value)
+          method_default_value
+      )
     except abstract_utils.ConversionError:
       continue
 
     if base_default != method_default:
       return SignatureError(
           SignatureErrorType.DEFAULT_VALUE_MISMATCH,
-          (f"Parameter '{base_param_name}' must have the same default "
-           "value."))
+          f"Parameter '{base_param_name}' must have the same default value.",
+      )
 
   return None
 
@@ -343,21 +371,24 @@ def _check_return_types(method_signature, base_signature, is_subtype):
     # Return type not annotated in either of the two methods.
     return None
 
-  if (isinstance(base_return_type, abstract.AMBIGUOUS_OR_EMPTY) or
-      isinstance(method_return_type, abstract.AMBIGUOUS_OR_EMPTY)):
+  if isinstance(base_return_type, abstract.AMBIGUOUS_OR_EMPTY) or isinstance(
+      method_return_type, abstract.AMBIGUOUS_OR_EMPTY
+  ):
     return None
 
   # Return type of the overriding method must be a subtype of the
   # return type of the overridden method.
   if not is_subtype(method_return_type, base_return_type):
-    return SignatureError(SignatureErrorType.RETURN_TYPE_MISMATCH,
-                          "Return type mismatch.")
+    return SignatureError(
+        SignatureErrorType.RETURN_TYPE_MISMATCH, "Return type mismatch."
+    )
 
   return None
 
 
-def _check_signature_compatible(method_signature, base_signature,
-                                stack, matcher, ctx):
+def _check_signature_compatible(
+    method_signature, base_signature, stack, matcher, ctx
+):
   """Checks if the signatures match for the overridden and overriding methods.
 
   Adds the first error found to the context's error log.
@@ -415,24 +446,30 @@ def _check_signature_compatible(method_signature, base_signature,
     if this_type == ctx.convert.never:
       return True  # Never is the bottom type, so it matches everything
     this_type_instance = this_type.instantiate(
-        ctx.root_node, container=abstract_utils.DUMMY_CONTAINER)
+        ctx.root_node, container=abstract_utils.DUMMY_CONTAINER
+    )
     return matcher.compute_one_match(this_type_instance, that_type).success
 
   check_result = (
       _check_positional_parameters(
-          method_signature, base_signature, is_subtype, ctx)
-      or _check_keyword_only_parameters(method_signature, base_signature,
-                                        is_subtype) or
-      _check_default_values(method_signature, base_signature) or
-      _check_return_types(method_signature, base_signature, is_subtype))
+          method_signature, base_signature, is_subtype, ctx
+      )
+      or _check_keyword_only_parameters(
+          method_signature, base_signature, is_subtype
+      )
+      or _check_default_values(method_signature, base_signature)
+      or _check_return_types(method_signature, base_signature, is_subtype)
+  )
 
   if check_result:
     ctx.errorlog.overriding_signature_mismatch(
-        stack, base_signature, method_signature, details=check_result.message)
+        stack, base_signature, method_signature, details=check_result.message
+    )
 
 
 def _get_pytd_class_signature_map(
-    cls: abstract.PyTDClass, ctx: _ContextType) -> _SignatureMapType:
+    cls: abstract.PyTDClass, ctx: _ContextType
+) -> _SignatureMapType:
   """Returns a map from method names to their signatures for a PyTDClass."""
   if cls in ctx.method_signature_map:
     return ctx.method_signature_map[cls]
@@ -457,7 +494,8 @@ def _get_pytd_class_signature_map(
 
 
 def _get_parameterized_class_signature_map(
-    cls: abstract.ParameterizedClass, ctx: _ContextType) -> _SignatureMapType:
+    cls: abstract.ParameterizedClass, ctx: _ContextType
+) -> _SignatureMapType:
   """Returns a map from method names to signatures for a ParameterizedClass."""
   if cls in ctx.method_signature_map:
     return ctx.method_signature_map[cls]
@@ -474,9 +512,11 @@ def _get_parameterized_class_signature_map(
   for base_method_name, base_method_signature in base_signature_map.items():
     # Replace formal type parameters with their values.
     annotations = ctx.annotation_utils.sub_annotations_for_parameterized_class(
-        cls, base_method_signature.annotations)
+        cls, base_method_signature.annotations
+    )
     method_signature_map[base_method_name] = base_method_signature._replace(
-        annotations=annotations)
+        annotations=annotations
+    )
 
   ctx.method_signature_map[cls] = method_signature_map
   return method_signature_map
@@ -490,7 +530,8 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
   for member_name, member_value in members.items():
     try:
       atomic_value = abstract_utils.get_atomic_value(
-          member_value, constant_type=abstract.InterpreterFunction)
+          member_value, constant_type=abstract.InterpreterFunction
+      )
     except abstract_utils.ConversionError:
       continue
     method = atomic_value
@@ -526,7 +567,8 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
       base_signature_map = ctx.method_signature_map[base_class]
     elif isinstance(base_class, abstract.ParameterizedClass):
       base_signature_map = _get_parameterized_class_signature_map(
-          base_class, ctx)
+          base_class, ctx
+      )
     elif isinstance(base_class, abstract.PyTDClass):
       base_signature_map = _get_pytd_class_signature_map(base_class, ctx)
     else:
@@ -541,10 +583,13 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
       # class definition.
       method_def_opcode = (
           class_method_map[base_method_name].def_opcode
-          if base_method_name in class_method_map else None)
+          if base_method_name in class_method_map
+          else None
+      )
       stack = ctx.vm.simple_stack(method_def_opcode)
-      _check_signature_compatible(class_method_signature, base_method_signature,
-                                  stack, matcher, ctx)
+      _check_signature_compatible(
+          class_method_signature, base_method_signature, stack, matcher, ctx
+      )
 
     # We filter out any methods inherited from a base class that comes after the
     # next direct base class in the MRO, to avoid checking signature

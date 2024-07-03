@@ -1,7 +1,6 @@
 """Implementation of TypedDict."""
 
 import dataclasses
-
 from typing import Dict, Optional, Set
 
 from pytype.abstract import abstract
@@ -70,9 +69,10 @@ class TypedDictBuilder(abstract.PyTDClass):
     # Signature for the functional constructor
     fn = ctx.loader.lookup_pytd("typing", "_TypedDictFunction")
     fn = fn.Replace(name="typing.TypedDict")
-    sig, = fn.signatures
+    (sig,) = fn.signatures
     self.fn_sig = function.Signature.from_pytd(
-        self.ctx, "typing.TypedDict", sig)
+        self.ctx, "typing.TypedDict", sig
+    )
 
   def call(self, node, func, args, alias_map=None):
     """Call the functional constructor."""
@@ -94,14 +94,17 @@ class TypedDictBuilder(abstract.PyTDClass):
       raise error_types.WrongArgCount(self.fn_sig, args, self.ctx)
     name = self._extract_param(args, 0, "name", str, self.ctx.convert.str_type)
     fields = self._extract_param(
-        args, 1, "fields", dict, self.ctx.convert.dict_type)
+        args, 1, "fields", dict, self.ctx.convert.dict_type
+    )
     if "total" in args.namedargs:
-      total = self._extract_param(args, None, "total", bool,
-                                  self.ctx.convert.bool_type)
+      total = self._extract_param(
+          args, None, "total", bool, self.ctx.convert.bool_type
+      )
     else:
       total = True
     props = TypedDictProperties(
-        name=name, fields={}, required=set(), total=total)
+        name=name, fields={}, required=set(), total=total
+    )
     # Force Required/NotRequired evaluation
     for k, v in fields.items():
       try:
@@ -117,10 +120,12 @@ class TypedDictBuilder(abstract.PyTDClass):
     for base_var in bases:
       for base in base_var.data:
         if not isinstance(base, (TypedDictClass, TypedDictBuilder)):
-          details = (f"TypedDict {cls_name} cannot inherit from "
-                     "a non-TypedDict class.")
+          details = (
+              f"TypedDict {cls_name} cannot inherit from a non-TypedDict class."
+          )
           self.ctx.errorlog.base_class_error(
-              self.ctx.vm.frames, base_var, details)
+              self.ctx.vm.frames, base_var, details
+          )
 
   def _merge_base_class_fields(self, bases, props):
     """Add the merged list of base class fields to the fields dict."""
@@ -135,7 +140,8 @@ class TypedDictBuilder(abstract.PyTDClass):
             classes = f"{base.name} and {provenance[k]}"
             details = f"Duplicate TypedDict key {k} in classes {classes}"
             self.ctx.errorlog.base_class_error(
-                self.ctx.vm.frames, base_var, details)
+                self.ctx.vm.frames, base_var, details
+            )
           else:
             props.add(k, v, base.props.total)
             provenance[k] = base.name
@@ -160,14 +166,16 @@ class TypedDictBuilder(abstract.PyTDClass):
     else:
       total = abstract_utils.get_atomic_python_constant(total, bool)
     props = TypedDictProperties(
-        name=cls_name, fields={}, required=set(), total=total)
+        name=cls_name, fields={}, required=set(), total=total
+    )
 
     # Collect the key types defined in the current class.
     cls_locals = classgen.get_class_locals(
         cls_name,
         allow_methods=False,
         ordering=classgen.Ordering.FIRST_ANNOTATE,
-        ctx=self.ctx)
+        ctx=self.ctx,
+    )
     for k, local in cls_locals.items():
       var = local.typ
       assert var
@@ -197,15 +205,15 @@ class TypedDictBuilder(abstract.PyTDClass):
     else:
       total = True
     props = TypedDictProperties(
-        name=name, fields={}, required=set(), total=total)
+        name=name, fields={}, required=set(), total=total
+    )
 
     for c in pytd_cls.constants:
       typ = self.ctx.convert.constant_to_value(c.type)
       props.add(c.name, typ, total)
 
     # Process base classes and generate the __init__ signature.
-    bases = [self.ctx.convert.constant_to_var(x)
-             for x in pytd_cls.bases]
+    bases = [self.ctx.convert.constant_to_var(x) for x in pytd_cls.bases]
     self._validate_bases(cls_name, bases)
     self._merge_base_class_fields(bases, props)
 
@@ -230,17 +238,20 @@ class TypedDictClass(abstract.PyTDClass):
     # We construct this here and pass it to TypedDictClass because we need
     # access to abstract.SimpleFunction.
     sig = function.Signature.from_param_names(
-        f"{props.name}.__init__", props.fields.keys(),
-        kind=pytd.ParameterKind.KWONLY)
+        f"{props.name}.__init__",
+        props.fields.keys(),
+        kind=pytd.ParameterKind.KWONLY,
+    )
     sig.annotations = dict(props.fields)
-    sig.defaults = {k: self.ctx.new_unsolvable(self.ctx.root_node)
-                    for k in props.optional}
+    sig.defaults = {
+        k: self.ctx.new_unsolvable(self.ctx.root_node) for k in props.optional
+    }
     return abstract.SimpleFunction(sig, self.ctx)
 
   def _new_instance(self, container, node, args):
     self.init_method.match_and_map_args(node, args, None)
     ret = TypedDict(self.props, self.ctx)
-    for (k, v) in args.namedargs.items():
+    for k, v in args.namedargs.items():
       ret.set_str_item(node, k, v)
     ret.cls = self
     return ret
@@ -296,8 +307,12 @@ class TypedDict(abstract.Dict):
     bad = self.ctx.matcher(node).compute_one_match(value_var, typ).bad_matches
     for match in bad:
       self.ctx.errorlog.annotation_type_mismatch(
-          self.ctx.vm.frames, match.expected.typ, match.actual_binding, name,
-          match.error_details, typed_dict=self
+          self.ctx.vm.frames,
+          match.expected.typ,
+          match.actual_binding,
+          name,
+          match.error_details,
+          typed_dict=self,
       )
     return name, value_var
 
@@ -400,14 +415,15 @@ class _TypedDictItemRequiredness(overlay_utils.TypingContainer):
 
   def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
     template, processed_inner, abstract_class = super()._get_value_info(
-        inner, ellipses, allowed_ellipses)
+        inner, ellipses, allowed_ellipses
+    )
     for annotation in processed_inner:
       req = _is_required(annotation)
       if req not in (None, self._REQUIREDNESS):
         error = "Cannot mark a TypedDict item as both Required and NotRequired"
         self.ctx.errorlog.invalid_annotation(
-            stack=self.ctx.vm.frames, annot=self.name,
-            details=error)
+            stack=self.ctx.vm.frames, annot=self.name, details=error
+        )
     return template, processed_inner, abstract_class
 
 

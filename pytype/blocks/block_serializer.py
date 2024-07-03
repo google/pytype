@@ -49,7 +49,7 @@ class BlockGraphEncoder(json.JSONEncoder):
   def _encode_code(self, code: SerializedCode) -> Dict[str, Any]:
     return {
         "_type": "Code",
-        "blocks": [self._encode_block(b) for b in code.blocks]
+        "blocks": [self._encode_block(b) for b in code.blocks],
     }
 
   def _encode_block(self, block: SerializedBlock) -> Dict[str, Any]:

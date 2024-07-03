@@ -17,7 +17,8 @@ class TestAbcHierarchy(unittest.TestCase):
     subclasses = abc_hierarchy.GetSubClasses()
     # Check one entry.
     self.assertSetEqual(
-        set(subclasses['Sized']), {'Set', 'Mapping', 'MappingView', 'Sequence'})
+        set(subclasses['Sized']), {'Set', 'Mapping', 'MappingView', 'Sequence'}
+    )
 
 
 if __name__ == '__main__':

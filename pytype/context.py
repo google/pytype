@@ -100,8 +100,9 @@ class Context:
     self.recursion_allowed = False
     # Map from classes to maps from names of the instance methods
     # of the class to their signatures.
-    self.method_signature_map: Dict[abstract.Class,
-                                    Dict[str, function.Signature]] = {}
+    self.method_signature_map: Dict[
+        abstract.Class, Dict[str, function.Signature]
+    ] = {}
 
   def matcher(self, node):
     return matcher.AbstractMatcher(node, self)
@@ -148,7 +149,8 @@ class Context:
     return vm_utils.make_class(node, props, self)
 
   def check_annotation_type_mismatch(
-      self, node, name, typ, value, stack, allow_none, details=None):
+      self, node, name, typ, value, stack, allow_none, details=None
+  ):
     """Checks for a mismatch between a variable's annotation and value.
 
     Args:
@@ -162,15 +164,24 @@ class Context:
     """
     if not typ or not value:
       return
-    if (value.data == [self.convert.ellipsis] or
-        allow_none and value.data == [self.convert.none]):
+    if (
+        value.data == [self.convert.ellipsis]
+        or allow_none
+        and value.data == [self.convert.none]
+    ):
       return
     contained_type = abstract_utils.match_type_container(
-        typ, ("typing.ClassVar", "dataclasses.InitVar"))
+        typ, ("typing.ClassVar", "dataclasses.InitVar")
+    )
     if contained_type:
       typ = contained_type
     bad = self.matcher(node).compute_one_match(value, typ).bad_matches
     for match in bad:
       self.errorlog.annotation_type_mismatch(
-          stack, match.expected.typ, match.actual_binding, name,
-          match.error_details, details)
+          stack,
+          match.expected.typ,
+          match.actual_binding,
+          name,
+          match.error_details,
+          details,
+      )

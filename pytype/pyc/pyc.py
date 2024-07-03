@@ -3,7 +3,6 @@
 import copy
 
 from pycnite import pyc
-
 from pytype import utils
 from pytype.pyc import compiler
 
@@ -52,13 +51,17 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
     UsageError: If python_exe and python_version are mismatched.
   """
   pyc_data = compiler.compile_src_string_to_pyc_string(
-      src, filename, python_version, python_exe, mode)
+      src, filename, python_version, python_exe, mode
+  )
   code = parse_pyc_string(pyc_data)
   if code.python_version != python_version:
     raise utils.UsageError(
-        "python_exe version %s does not match python version %s" %
-        (utils.format_version(code.python_version),
-         utils.format_version(python_version)))
+        "python_exe version %s does not match python version %s"
+        % (
+            utils.format_version(code.python_version),
+            utils.format_version(python_version),
+        )
+    )
   visit(code, AdjustFilename(filename))
   return code
 

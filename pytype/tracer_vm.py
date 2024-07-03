@@ -8,7 +8,6 @@ import re
 from typing import Any, Dict, Sequence, Tuple, Union
 
 import attrs
-
 from pytype import state as frame_state
 from pytype import vm
 from pytype.abstract import abstract
@@ -30,8 +29,9 @@ log = logging.getLogger(__name__)
 # have names like "<listcomp>" and "<genexpr>".
 _SKIP_FUNCTION_RE = re.compile(r"<(?!lambda)\w+>$")
 
-_InstanceCacheType = Dict[abstract.InterpreterClass,
-                          Dict[Any, Union["_InitClassState", cfg.Variable]]]
+_InstanceCacheType = Dict[
+    abstract.InterpreterClass, Dict[Any, Union["_InitClassState", cfg.Variable]]
+]
 
 _METHOD_TYPES = abstract.INTERPRETER_FUNCTION_TYPES + (
     special_builtins.StaticMethodInstance,
@@ -77,7 +77,8 @@ class CallTracer(vm.VirtualMachine):
   def create_varargs(self, node):
     value = abstract.Instance(self.ctx.convert.tuple_type, self.ctx)
     value.merge_instance_type_parameter(
-        node, abstract_utils.T, self.ctx.convert.create_new_unknown(node))
+        node, abstract_utils.T, self.ctx.convert.create_new_unknown(node)
+    )
     return value.to_variable(node)
 
   def create_kwargs(self, node):
@@ -121,13 +122,16 @@ class CallTracer(vm.VirtualMachine):
         kws[key] = method.kw_defaults[key]
       else:
         kws[key] = self.ctx.convert.create_new_unknown(
-            node, force=not use_defaults)
+            node, force=not use_defaults
+        )
     starargs = self.create_varargs(node) if method.has_varargs() else None
     starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
-    return node, function.Args(posargs=tuple(args),
-                               namedargs=kws,
-                               starargs=starargs,
-                               starstarargs=starstarargs)
+    return node, function.Args(
+        posargs=tuple(args),
+        namedargs=kws,
+        starargs=starargs,
+        starstarargs=starstarargs,
+    )
 
   def call_function_with_args(self, node, val, args):
     """Call a function.
@@ -143,11 +147,13 @@ class CallTracer(vm.VirtualMachine):
     assert isinstance(val.data, abstract.INTERPRETER_FUNCTION_TYPES)
     with val.data.record_calls():
       new_node, ret = self._call_function_in_frame(  # pylint: disable=no-value-for-parameter
-          node, val, *attrs.astuple(args, recurse=False))
+          node, val, *attrs.astuple(args, recurse=False)
+      )
     return new_node, ret
 
-  def _call_function_in_frame(self, node, val, args, kwargs,
-                              starargs, starstarargs):
+  def _call_function_in_frame(
+      self, node, val, args, kwargs, starargs, starstarargs
+  ):
     # Try to get the function opcode with position information to construct the
     # frame, so that we have the data for any error messages raised before we
     # get to func.call().
@@ -164,26 +170,36 @@ class CallTracer(vm.VirtualMachine):
     log.info("Analyzing function: %r", fn.name)
     state = frame_state.FrameState.init(node, self.ctx)
     frame = frame_state.SimpleFrame(
-        node=node, opcode=opcode, f_globals=f_globals)
+        node=node, opcode=opcode, f_globals=f_globals
+    )
     # We only want this frame to show up in errors if it's at the top of the
     # stack (i.e. we haven't started analysing the actual function yet)
     frame.skip_in_tracebacks = True
     self.push_frame(frame)
     try:
       state, ret = self.call_function_with_state(
-          state, val.AssignToNewVariable(node), args, kwargs, starargs,
-          starstarargs)
+          state,
+          val.AssignToNewVariable(node),
+          args,
+          kwargs,
+          starargs,
+          starstarargs,
+      )
     finally:
       self.pop_frame(frame)
     return state.node, ret
 
   def _maybe_fix_classmethod_cls_arg(self, node, cls, func, args):
     sig = func.signature
-    if (args.posargs and sig.param_names and
-        (sig.param_names[0] not in sig.annotations)):
+    if (
+        args.posargs
+        and sig.param_names
+        and (sig.param_names[0] not in sig.annotations)
+    ):
       # fix "cls" parameter
       return args.replace(
-          posargs=(cls.AssignToNewVariable(node),) + args.posargs[1:])
+          posargs=(cls.AssignToNewVariable(node),) + args.posargs[1:]
+      )
     else:
       return args
 
@@ -192,9 +208,11 @@ class CallTracer(vm.VirtualMachine):
     fname = val.data.name
     if isinstance(method, abstract.INTERPRETER_FUNCTION_TYPES):
       self._analyzed_functions.add(method.get_first_opcode())
-      if (not self.ctx.options.analyze_annotated and
-          (method.signature.has_return_annotation or method.has_overloads) and
-          fname.rsplit(".", 1)[-1] not in self._CONSTRUCTORS):
+      if (
+          not self.ctx.options.analyze_annotated
+          and (method.signature.has_return_annotation or method.has_overloads)
+          and fname.rsplit(".", 1)[-1] not in self._CONSTRUCTORS
+      ):
         log.info("%r has annotations, not analyzing further.", fname)
       else:
         for f in method.iter_signature_functions():
@@ -231,7 +249,8 @@ class CallTracer(vm.VirtualMachine):
             node1,
             funcb.AssignToNewVariable(),
             args,
-            fallback_to_unsolvable=False)
+            fallback_to_unsolvable=False,
+        )
         nodes.append(node2)
         rets.append(ret)
 
@@ -247,8 +266,9 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method_var(self, node0, name, var, cls):
     full_name = f"{cls.data.full_name}.{name}"
-    if any(isinstance(v, abstract.INTERPRETER_FUNCTION_TYPES)
-           for v in var.data):
+    if any(
+        isinstance(v, abstract.INTERPRETER_FUNCTION_TYPES) for v in var.data
+    ):
       log.info("Analyzing method: %r", full_name)
       node1 = self.ctx.connect_new_cfg_node(node0, f"Method:{full_name}")
     else:
@@ -265,21 +285,24 @@ class CallTracer(vm.VirtualMachine):
         m = m.func.data[0]
         is_cls = True
       else:
-        is_cls = (isinstance(m, abstract.InterpreterFunction) and
-                  m.is_classmethod)
+        is_cls = (
+            isinstance(m, abstract.InterpreterFunction) and m.is_classmethod
+        )
       bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 
-  def _maybe_instantiate_binding_directly(self, node0, cls, container,
-                                          instantiate_directly):
+  def _maybe_instantiate_binding_directly(
+      self, node0, cls, container, instantiate_directly
+  ):
     node1, new = cls.data.get_own_new(node0, cls)
     if not new:
       instantiate_directly = True
     elif not instantiate_directly:
       # This assumes that any inherited __new__ method defined in a pyi file
       # returns an instance of the current class.
-      instantiate_directly = any(not isinstance(f, abstract.InterpreterFunction)
-                                 for f in new.data)
+      instantiate_directly = any(
+          not isinstance(f, abstract.InterpreterFunction) for f in new.data
+      )
     if instantiate_directly:
       instance = cls.data.instantiate(node0, container=container)
     else:
@@ -289,7 +312,8 @@ class CallTracer(vm.VirtualMachine):
   def _instantiate_binding(self, node0, cls, container, instantiate_directly):
     """Instantiate a class binding."""
     node1, new, maybe_instance = self._maybe_instantiate_binding_directly(
-        node0, cls, container, instantiate_directly)
+        node0, cls, container, instantiate_directly
+    )
     if maybe_instance:
       return node0, maybe_instance
     instance = self.ctx.program.NewVariable()
@@ -299,7 +323,8 @@ class CallTracer(vm.VirtualMachine):
       node2, args = self.create_method_arguments(node1, b.data)
       args = self._maybe_fix_classmethod_cls_arg(node0, cls, b.data, args)
       node3 = self.ctx.connect_new_cfg_node(
-          node2, f"Call:{cls.data.name}.__new__")
+          node2, f"Call:{cls.data.name}.__new__"
+      )
       node4, ret = self.call_function_with_args(node3, b, args)
       instance.PasteVariable(ret)
       nodes.append(node4)
@@ -310,7 +335,8 @@ class CallTracer(vm.VirtualMachine):
     n = self.ctx.program.NewVariable()
     for cls in clsv.Bindings(node):
       node, var = self._instantiate_binding(
-          node, cls, container, instantiate_directly)
+          node, cls, container, instantiate_directly
+      )
       n.PasteVariable(var)
     return node, n
 
@@ -334,7 +360,8 @@ class CallTracer(vm.VirtualMachine):
             values.extend(child.data)
 
   def init_class_and_forward_node(
-      self, node, cls, container=None, extra_key=None):
+      self, node, cls, container=None, extra_key=None
+  ):
     """Instantiate a class, and also call __init__.
 
     Calling __init__ can be expensive, so this method caches its created
@@ -365,13 +392,14 @@ class CallTracer(vm.VirtualMachine):
       # For some reason, checking only `status` leads to attributes set in
       # __init__ not being visible later, so we have to check every instance of
       # this class, ignoring `key`.
-      instantiate_directly = any(v is _InitClassState.INSTANTIATING
-                                 for v in cache.values())
+      instantiate_directly = any(
+          v is _InitClassState.INSTANTIATING for v in cache.values()
+      )
       cache[key] = _InitClassState.INSTANTIATING
       node, instance = self._instantiate_var(
-          node, clsvar, container, instantiate_directly)
-      if (instantiate_directly or
-          status is _InitClassState.INITIALIZING):
+          node, clsvar, container, instantiate_directly
+      )
+      if instantiate_directly or status is _InitClassState.INITIALIZING:
         # We've encountered a recursive pattern in such as
         #   class A:
         #     def __new__(cls) -> "A": ...
@@ -400,13 +428,15 @@ class CallTracer(vm.VirtualMachine):
       return self._bind_method(cur_node, m, valself.AssignToNewVariable())
 
     node, method = self.ctx.attribute_handler.get_attribute(
-        node, obj, method_name, valself)
+        node, obj, method_name, valself
+    )
     if not method:
       return node, None
     cls = valself.data.cls
     bound_method = bind(node, method) if obj == cls else method
-    if (not isinstance(cls, abstract.InterpreterClass) or
-        any(isinstance(m, _METHOD_TYPES) for m in bound_method.data)):
+    if not isinstance(cls, abstract.InterpreterClass) or any(
+        isinstance(m, _METHOD_TYPES) for m in bound_method.data
+    ):
       return node, bound_method
     # If the method is not something that pytype recognizes as a function -
     # which can happen if the method is decorated, for example - then we look up
@@ -419,10 +449,12 @@ class CallTracer(vm.VirtualMachine):
 
   def _call_method(self, node, binding, method_name):
     node, bound_method = self.get_bound_method(
-        node, binding.data.cls, method_name, binding)
+        node, binding.data.cls, method_name, binding
+    )
     if bound_method:
       return self.analyze_method_var(
-          node, method_name, bound_method, binding.data.cls.to_binding(node))
+          node, method_name, bound_method, binding.data.cls.to_binding(node)
+      )
     else:
       return node
 
@@ -476,18 +508,25 @@ class CallTracer(vm.VirtualMachine):
           for m in (v.fget, v.fset, v.fdel):
             if m:
               methods.insert(0, (name, m))
-        if (not cls.is_abstract and isinstance(v, abstract.Function) and
-            v.is_abstract):
+        if (
+            not cls.is_abstract
+            and isinstance(v, abstract.Function)
+            and v.is_abstract
+        ):
           unwrapped = abstract_utils.maybe_unwrap_decorated_function(v)
           name = unwrapped.data[0].name if unwrapped else v.name
           self.ctx.errorlog.ignored_abstractmethod(
-              self.ctx.vm.simple_stack(cls.get_first_opcode()), cls.name, name)
+              self.ctx.vm.simple_stack(cls.get_first_opcode()), cls.name, name
+          )
       is_method_or_nested_class = any(
           isinstance(m, (_METHOD_TYPES, abstract.InterpreterClass))
-          for m in methodvar.data)
-      if (self.ctx.options.bind_decorated_methods and
-          not is_method_or_nested_class and
-          (undecorated_method := cls.get_undecorated_method(name, node))):
+          for m in methodvar.data
+      )
+      if (
+          self.ctx.options.bind_decorated_methods
+          and not is_method_or_nested_class
+          and (undecorated_method := cls.get_undecorated_method(name, node))
+      ):
         methodvar = undecorated_method
       b = self._bind_method(node, methodvar, instance)
       node = self.analyze_method_var(node, name, b, val)
@@ -508,11 +547,13 @@ class CallTracer(vm.VirtualMachine):
     # two ways of recording are equivalent except for closures, which are
     # re-generated when the variables they close over change, but we don't want
     # to re-analyze them.
-    return (isinstance(data, abstract.InterpreterFunction) and
-            not data.is_overload and
-            not data.is_class_builder and
-            data.get_first_opcode() not in self._analyzed_functions and
-            not _SKIP_FUNCTION_RE.search(data.name))
+    return (
+        isinstance(data, abstract.InterpreterFunction)
+        and not data.is_overload
+        and not data.is_class_builder
+        and data.get_first_opcode() not in self._analyzed_functions
+        and not _SKIP_FUNCTION_RE.search(data.name)
+    )
 
   def analyze_toplevel(self, node, defs):
     for name, var in sorted(defs.items()):  # sort, for determinicity
@@ -520,8 +561,10 @@ class CallTracer(vm.VirtualMachine):
         for value in var.bindings:
           if isinstance(value.data, abstract.InterpreterClass):
             new_node = self.analyze_class(node, value)
-          elif (isinstance(value.data, abstract.INTERPRETER_FUNCTION_TYPES) and
-                not value.data.is_overload):
+          elif (
+              isinstance(value.data, abstract.INTERPRETER_FUNCTION_TYPES)
+              and not value.data.is_overload
+          ):
             new_node = self.analyze_function(node, value)
           else:
             continue
@@ -532,8 +575,10 @@ class CallTracer(vm.VirtualMachine):
     # be set for all functions in class.
     for c in self._interpreter_classes:
       for value in c.bindings:
-        if (isinstance(value.data, abstract.InterpreterClass) and
-            value.data not in self._analyzed_classes):
+        if (
+            isinstance(value.data, abstract.InterpreterClass)
+            and value.data not in self._analyzed_classes
+        ):
           node = self.analyze_class(node, value)
     for f in self._interpreter_functions:
       for value in f.bindings:
@@ -541,7 +586,8 @@ class CallTracer(vm.VirtualMachine):
           node = self.analyze_function(node, value)
     for func, opcode in self.functions_type_params_check:
       func.signature.check_type_parameters(
-          self.simple_stack(opcode), opcode, func.is_attribute_of_class)
+          self.simple_stack(opcode), opcode, func.is_attribute_of_class
+      )
     return node
 
   def analyze(self, node, defs, maximum_depth):
@@ -565,8 +611,9 @@ class CallTracer(vm.VirtualMachine):
       namedargs: The keyword arguments, a dict mapping str to cfg.Variable.
       result: A Variable of the possible result values.
     """
-    log.debug("Logging call to %r with %d args, return %r",
-              func, len(posargs), result)
+    log.debug(
+        "Logging call to %r with %d args, return %r", func, len(posargs), result
+    )
     args = tuple(posargs)
     kwargs = tuple((namedargs or {}).items())
     record = _CallRecord(node, func, sigs, args, kwargs, result)
@@ -590,9 +637,11 @@ class CallTracer(vm.VirtualMachine):
     return classes
 
   def _skip_definition_export(self, name, var):
-    return (name in abstract_utils.TOP_LEVEL_IGNORE or
-            self._is_typing_member(name, var) or
-            self._is_future_feature(name, var))
+    return (
+        name in abstract_utils.TOP_LEVEL_IGNORE
+        or self._is_typing_member(name, var)
+        or self._is_future_feature(name, var)
+    )
 
   def pytd_for_types(self, defs):
     # If a variable is annotated, we'll always output that type.
@@ -600,39 +649,47 @@ class CallTracer(vm.VirtualMachine):
     data = []
     annots = abstract_utils.get_annotations_dict(defs)
     for name, t in self.ctx.pytd_convert.annotations_to_instance_types(
-        self.ctx.exitpoint, annots):
+        self.ctx.exitpoint, annots
+    ):
       annotated_names.add(name)
       data.append(pytd.Constant(name, t))
     for name, var in defs.items():
       if name in annotated_names or self._skip_definition_export(name, var):
         continue
       log.info("Generating pytd type for top-level definition: %r", name)
-      if any(v == self.ctx.convert.unsolvable
-             for v in var.Data(self.ctx.exitpoint)):
+      if any(
+          v == self.ctx.convert.unsolvable for v in var.Data(self.ctx.exitpoint)
+      ):
         options = [self.ctx.convert.unsolvable]
       else:
         options = var.FilteredData(self.ctx.exitpoint, strict=False)
-      if (len(options) > 1 and
-          not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
+      if len(options) > 1 and not all(
+          isinstance(o, abstract.FUNCTION_TYPES) for o in options
+      ):
         if all(isinstance(o, abstract.TypeParameter) for o in options):
           pytd_def = pytd_utils.JoinTypes(
-              t.to_pytd_def(self.ctx.exitpoint, name) for t in options)
+              t.to_pytd_def(self.ctx.exitpoint, name) for t in options
+          )
           if isinstance(pytd_def, pytd.TypeParameter):
             data.append(pytd_def)
           else:
             # We have multiple definitions for the same TypeVar name. There's no
             # good way to handle this.
             data.append(pytd.Constant(name, pytd.AnythingType()))
-        elif all(isinstance(o, (abstract.ParameterizedClass, abstract.Union))
-                 for o in options):  # type alias
+        elif all(
+            isinstance(o, (abstract.ParameterizedClass, abstract.Union))
+            for o in options
+        ):  # type alias
           pytd_def = pytd_utils.JoinTypes(
-              t.to_pytd_def(self.ctx.exitpoint, name).type for t in options)
+              t.to_pytd_def(self.ctx.exitpoint, name).type for t in options
+          )
           data.append(pytd.Alias(name, pytd_def))
         else:
           # It's ambiguous whether this is a type, a function or something
           # else, so encode it as a constant.
           combined_types = pytd_utils.JoinTypes(
-              t.to_pytd_type(self.ctx.exitpoint) for t in options)
+              t.to_pytd_type(self.ctx.exitpoint) for t in options
+          )
           data.append(pytd.Constant(name, combined_types))
       elif options:
         for option in options:
@@ -668,11 +725,13 @@ class CallTracer(vm.VirtualMachine):
       return pytd_utils.JoinTypes(a.to_pytd_type(node) for a in arg.data)
 
     for ct in call_traces:
-      log.info("Generating pytd function for call trace: %r",
-               ct.function.data.name)
+      log.info(
+          "Generating pytd function for call trace: %r", ct.function.data.name
+      )
       # The lengths may be different in the presence of optional and kw args.
-      arg_names = max((sig.get_positional_names() for sig in ct.signatures),
-                      key=len)
+      arg_names = max(
+          (sig.get_positional_names() for sig in ct.signatures), key=len
+      )
       for i in range(len(arg_names)):
         if not isinstance(ct.function.data, abstract.BoundFunction) or i > 0:
           arg_names[i] = function.argname(i)
@@ -682,22 +741,35 @@ class CallTracer(vm.VirtualMachine):
       kw_types = []
       for name, arg in ct.keyword_arguments:
         kw_types.append((name, to_pytd_type(ct.node, arg)))
-      ret = pytd_utils.JoinTypes(t.to_pytd_type(ct.node)
-                                 for t in ct.return_value.data)
+      ret = pytd_utils.JoinTypes(
+          t.to_pytd_type(ct.node) for t in ct.return_value.data
+      )
       starargs = None
       starstarargs = None
-      funcs[ct.function.data.name].add(pytd.Signature(
-          tuple(pytd.Parameter(n, t, pytd.ParameterKind.REGULAR, False, None)
-                for n, t in zip(arg_names, arg_types)) +
-          tuple(pytd.Parameter(n, t,
-                               pytd.ParameterKind.REGULAR, False, None)
-                for n, t in kw_types),
-          starargs, starstarargs,
-          ret, exceptions=(), template=()))
+      funcs[ct.function.data.name].add(
+          pytd.Signature(
+              tuple(
+                  pytd.Parameter(n, t, pytd.ParameterKind.REGULAR, False, None)
+                  for n, t in zip(arg_names, arg_types)
+              )
+              + tuple(
+                  pytd.Parameter(n, t, pytd.ParameterKind.REGULAR, False, None)
+                  for n, t in kw_types
+              ),
+              starargs,
+              starstarargs,
+              ret,
+              exceptions=(),
+              template=(),
+          )
+      )
     functions = []
     for name, signatures in funcs.items():
-      functions.append(pytd.Function(name_transform(name), tuple(signatures),
-                                     pytd.MethodKind.METHOD))
+      functions.append(
+          pytd.Function(
+              name_transform(name), tuple(signatures), pytd.MethodKind.METHOD
+          )
+      )
     return functions
 
   def _is_typing_member(self, name, var):
@@ -740,33 +812,40 @@ class CallTracer(vm.VirtualMachine):
     for cls, call_records in class_to_records.items():
       full_name = cls.module + "." + cls.name if cls.module else cls.name
       log.info("Generating pytd class for call trace: %r", full_name)
-      classes.append(pytd.Class(
-          name=escape.pack_partial(full_name),
-          keywords=(),
-          bases=(pytd.NamedType("builtins.object"),),  # not used in solver
-          methods=tuple(self._call_traces_to_function(call_records)),
-          constants=(),
-          classes=(),
-          decorators=(),
-          slots=None,
-          template=(),
-      ))
+      classes.append(
+          pytd.Class(
+              name=escape.pack_partial(full_name),
+              keywords=(),
+              bases=(pytd.NamedType("builtins.object"),),  # not used in solver
+              methods=tuple(self._call_traces_to_function(call_records)),
+              constants=(),
+              classes=(),
+              decorators=(),
+              slots=None,
+              template=(),
+          )
+      )
     return classes
 
   def compute_types(self, defs):
-    classes = (tuple(self.pytd_classes_for_unknowns()) +
-               tuple(self.pytd_classes_for_call_traces()))
+    classes = tuple(self.pytd_classes_for_unknowns()) + tuple(
+        self.pytd_classes_for_call_traces()
+    )
     functions = tuple(self.pytd_functions_for_call_traces())
     aliases = ()  # aliases are instead recorded as constants
     ty = pytd_utils.Concat(
         self.pytd_for_types(defs),
-        pytd_utils.CreateModule("unknowns", classes=classes,
-                                functions=functions, aliases=aliases))
+        pytd_utils.CreateModule(
+            "unknowns", classes=classes, functions=functions, aliases=aliases
+        ),
+    )
     ty = ty.Visit(optimize.CombineReturnsAndExceptions())
     ty = ty.Visit(optimize.PullInMethodClasses())
     ty = ty.Visit(
-        visitors.DefaceUnresolved([ty, self.ctx.loader.concat_all()],
-                                  escape.UNKNOWN))
+        visitors.DefaceUnresolved(
+            [ty, self.ctx.loader.concat_all()], escape.UNKNOWN
+        )
+    )
     return ty.Visit(visitors.AdjustTypeParameters())
 
   def _check_return(self, node, actual, formal):
@@ -779,5 +858,6 @@ class CallTracer(vm.VirtualMachine):
     match_result = self.ctx.matcher(node).compute_one_match(actual, expected)
     if not match_result.success:
       self.ctx.errorlog.bad_return_type(
-          self.frames, node, match_result.bad_matches)
+          self.frames, node, match_result.bad_matches
+      )
     return match_result.success

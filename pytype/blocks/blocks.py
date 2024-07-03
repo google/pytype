@@ -5,7 +5,6 @@ from typing import Any, List, Optional, Tuple, Union, cast
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
-
 from pytype.pyc import opcodes
 from pytype.typegraph import cfg_utils
 
@@ -14,12 +13,10 @@ STORE_OPCODES = (
     opcodes.STORE_FAST,
     opcodes.STORE_ATTR,
     opcodes.STORE_DEREF,
-    opcodes.STORE_GLOBAL)
+    opcodes.STORE_GLOBAL,
+)
 
-_NOOP_OPCODES = (
-    opcodes.NOP,
-    opcodes.PRECALL,
-    opcodes.RESUME)
+_NOOP_OPCODES = (opcodes.NOP, opcodes.PRECALL, opcodes.RESUME)
 
 
 class _Locals311:
@@ -100,8 +97,8 @@ class OrderedCode:
     freevars: Tuple of free variable names
     cellvars: Tuple of cell variable names
     localsplus: Tuple of local variable names in 3.11+
-    order: A list of bytecode blocks, ordered ancestors-first
-      (See cfg_utils.py:order_nodes)
+    order: A list of bytecode blocks, ordered ancestors-first (See
+      cfg_utils.py:order_nodes)
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
     first_opcode: The first opcode in code_iter.
     exception_table: The exception table (for python 3.11+)
@@ -331,8 +328,13 @@ def _split_bytecode(bytecode):
   code = []
   for op in bytecode:
     code.append(op)
-    if (op.no_next() or op.does_jump() or op.pops_block() or
-        op.next is None or op.next in targets):
+    if (
+        op.no_next()
+        or op.does_jump()
+        or op.pops_block()
+        or op.next is None
+        or op.next in targets
+    ):
       blocks.append(Block(code))
       code = []
   return blocks
@@ -386,8 +388,7 @@ def _order_code(dis_code: pycnite.types.DisassembledCode) -> OrderedCode:
 
 
 def _process(
-    dis_code: pycnite.types.DisassembledCode,
-    block_graph: BlockGraph
+    dis_code: pycnite.types.DisassembledCode, block_graph: BlockGraph
 ) -> OrderedCode:
   """Recursively convert code -> OrderedCode, while collecting a blockgraph."""
   ordered_code = _order_code(dis_code)
@@ -406,7 +407,7 @@ def _process(
 
 
 def process_code(
-    code: pycnite.types.CodeTypeBase
+    code: pycnite.types.CodeTypeBase,
 ) -> Tuple[OrderedCode, BlockGraph]:
   dis_code = pyc_bytecode.dis_all(code)
   block_graph = BlockGraph()

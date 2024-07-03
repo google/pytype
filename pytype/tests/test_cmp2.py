@@ -72,10 +72,13 @@ class NotImplementedTest(test_base.BaseTest):
           else:
             return NotImplemented
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __eq__(self, other) -> bool: ...
-    """)
+    """,
+    )
 
 
 class CmpErrorTest(test_base.BaseTest):
@@ -85,10 +88,13 @@ class CmpErrorTest(test_base.BaseTest):
     ty, _ = self.InferWithErrors("""
       res = (1).__class__ < ''.__class__  # unsupported-operands
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       res: Any
-    """)
+    """,
+    )
 
   def test_failed_override(self):
     # Check that we add a return value binding and raise the error.

@@ -40,7 +40,8 @@ class TestFinalDecorator(test_base.BaseTest):
           pass
     """)
     self.assertErrorSequences(
-        err, {"e": ["Class B", "overrides", "final method f", "base class A"]})
+        err, {"e": ["Class B", "overrides", "final method f", "base class A"]}
+    )
 
   def test_override_method_in_mro(self):
     err = self.CheckWithErrors("""
@@ -56,7 +57,8 @@ class TestFinalDecorator(test_base.BaseTest):
           pass
     """)
     self.assertErrorSequences(
-        err, {"e": ["Class C", "overrides", "final method f", "base class A"]})
+        err, {"e": ["Class C", "overrides", "final method f", "base class A"]}
+    )
 
   def test_output_class(self):
     ty = self.Infer("""
@@ -65,11 +67,14 @@ class TestFinalDecorator(test_base.BaseTest):
       class A:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import final
       @final
       class A: ...
-    """)
+    """,
+    )
 
   def test_output_method(self):
     ty = self.Infer("""
@@ -83,7 +88,9 @@ class TestFinalDecorator(test_base.BaseTest):
         def g(cls):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import final, Type
       class A:
         @final
@@ -93,7 +100,8 @@ class TestFinalDecorator(test_base.BaseTest):
         @classmethod
         def g(cls: Type[A]) -> None:
           pass
-    """)
+    """,
+    )
 
   def test_multiple_inheritance(self):
     self.CheckWithErrors("""
@@ -110,10 +118,13 @@ class TestFinalDecorator(test_base.BaseTest):
     """)
 
   def test_multiple_inheritance_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       class B:
         def f(self) -> str: ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         from typing_extensions import final
         import foo
@@ -248,7 +259,8 @@ class TestFinal(test_base.BaseTest):
           self.x = 20  # final-error[e]
     """)
     self.assertErrorSequences(
-        err, {"e": ["attribute", "x", "annotated with Final"]})
+        err, {"e": ["attribute", "x", "annotated with Final"]}
+    )
 
   def test_constructor(self):
     # Should not raise an error when analyzing __init__ multiple times.
@@ -281,8 +293,17 @@ class TestFinal(test_base.BaseTest):
         FOO = 20
     """)
     self.assertErrorSequences(
-        err, {"e": ["Class B", "overrides", "final class attribute", "FOO",
-                    "base class A"]})
+        err,
+        {
+            "e": [
+                "Class B",
+                "overrides",
+                "final class attribute",
+                "FOO",
+                "base class A",
+            ]
+        },
+    )
 
   def test_override_attr_in_mro(self):
     err = self.CheckWithErrors("""
@@ -295,8 +316,17 @@ class TestFinal(test_base.BaseTest):
         FOO = 20
     """)
     self.assertErrorSequences(
-        err, {"e": ["Class C", "overrides", "final class attribute", "FOO",
-                    "base class A"]})
+        err,
+        {
+            "e": [
+                "Class C",
+                "overrides",
+                "final class attribute",
+                "FOO",
+                "base class A",
+            ]
+        },
+    )
 
   def test_cannot_use_in_signature(self):
     err = self.CheckWithErrors("""
@@ -311,7 +341,8 @@ class TestFinal(test_base.BaseTest):
         pass  # bad-return-type  # final-error
     """)
     self.assertErrorSequences(
-        err, {"e": ["only be used", "assignments", "variable annotations"]})
+        err, {"e": ["only be used", "assignments", "variable annotations"]}
+    )
 
   def test_cannot_use_in_type_params(self):
     self.CheckWithErrors("""
@@ -338,7 +369,9 @@ class TestFinal(test_base.BaseTest):
         def __init__(self):
           self.z: Final[int] = 30
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Final
 
       x: Final[int]
@@ -347,7 +380,8 @@ class TestFinal(test_base.BaseTest):
           y: Final[int]
           z: Final[int]
           def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
 
 class TestFinalDecoratorInPyi(test_base.BaseTest):
@@ -408,7 +442,8 @@ class TestFinalDecoratorInPyi(test_base.BaseTest):
             pass
       """)
     self.assertErrorSequences(
-        err, {"e": ["Class B", "overrides", "final method f", "base class A"]})
+        err, {"e": ["Class B", "overrides", "final method f", "base class A"]}
+    )
 
   def test_override_method_in_mro(self):
     with self.DepTree([("foo.pyi", self._FINAL_METHOD)]):
@@ -439,7 +474,8 @@ class TestFinalInPyi(test_base.BaseTest):
         a.x = 10  # final-error[e]
     """)
     self.assertErrorSequences(
-        err, {"e": ["attribute", "x", "annotated with Final"]})
+        err, {"e": ["attribute", "x", "annotated with Final"]}
+    )
 
   def test_override_attr_in_base(self):
     with self.DepTree([("foo.pyi", self._FINAL_ATTR)]):
@@ -449,8 +485,17 @@ class TestFinalInPyi(test_base.BaseTest):
           x = 20
     """)
     self.assertErrorSequences(
-        err, {"e": ["Class B", "overrides", "final class attribute", "x",
-                    "base class A"]})
+        err,
+        {
+            "e": [
+                "Class B",
+                "overrides",
+                "final class attribute",
+                "x",
+                "base class A",
+            ]
+        },
+    )
 
   def test_override_attr_in_mro(self):
     foo = """
@@ -467,8 +512,17 @@ class TestFinalInPyi(test_base.BaseTest):
           x = 20
       """)
     self.assertErrorSequences(
-        err, {"e": ["Class C", "overrides", "final class attribute", "x",
-                    "base class A"]})
+        err,
+        {
+            "e": [
+                "Class C",
+                "overrides",
+                "final class attribute",
+                "x",
+                "base class A",
+            ]
+        },
+    )
 
   def test_match_assignment_against_annotation(self):
     foo = """
@@ -482,7 +536,8 @@ class TestFinalInPyi(test_base.BaseTest):
         y: str = k  # annotation-type-mismatch[e]
       """)
     self.assertErrorSequences(
-        err, {"e": ["annotation for y", "str", "Final[float]"]})
+        err, {"e": ["annotation for y", "str", "Final[float]"]}
+    )
 
   def test_attribute_access(self):
     foo = """
@@ -496,7 +551,8 @@ class TestFinalInPyi(test_base.BaseTest):
         b = k.random()  # attribute-error[e]
       """)
     self.assertErrorSequences(
-        err, {"e": ["No attribute", "random", "Final[List[str]]"]})
+        err, {"e": ["No attribute", "random", "Final[List[str]]"]}
+    )
 
 
 if __name__ == "__main__":

@@ -13,10 +13,13 @@ class AnnotatedTest(test_base.BaseTest):
       i = ... # type: Annotated[int, "foo"]
       s: Annotated[str, "foo", "bar"] = "baz"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       i: int
       s: str
-    """)
+    """,
+    )
 
   def test_nested(self):
     ty = self.Infer("""
@@ -25,11 +28,14 @@ class AnnotatedTest(test_base.BaseTest):
       i = ... # type: Annotated[Annotated[int, "foo"], "bar"]
       strings = ... # type: Annotated[List[str], "bar"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       i: int
       strings: List[str]
-    """)
+    """,
+    )
 
   def test_func(self):
     ty = self.Infer("""
@@ -37,9 +43,12 @@ class AnnotatedTest(test_base.BaseTest):
       def id(x:  Annotated[int, "foo"]):
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def id(x: int) -> int: ...
-    """)
+    """,
+    )
 
   def test_invalid_type(self):
     _, errors = self.InferWithErrors("""
@@ -64,56 +73,83 @@ class AnnotatedTest(test_base.BaseTest):
 
   def test_annotated_in_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Annotated
         class A:
           x: Annotated[int, 'tag'] = ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.A().x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x: int
-      """)
+      """,
+      )
 
   def test_annotated_type_in_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Annotated
         class Foo:
           w: int
         class A:
           x: Annotated[Foo, 'tag'] = ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.A().x.w
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x: int
-      """)
+      """,
+      )
 
   def test_subclass_annotated_in_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Annotated
         class A:
           x: Annotated[int, 'tag1', 'tag2'] = ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         class B(a.A):
           pass
         x = B().x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         class B(a.A): ...
         x: int
-      """)
+      """,
+      )
 
 
 if __name__ == "__main__":

@@ -26,7 +26,8 @@ class AddMetaclassInstance(abstract.BaseValue):
     del func, alias_map  # unused
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
-          f"{self.module}.add_metaclass", ("cls",))
+          f"{self.module}.add_metaclass", ("cls",)
+      )
       raise error_types.WrongArgCount(sig, args, self.ctx)
     cls_var = args.posargs[0]
     for b in cls_var.bindings:
@@ -53,9 +54,11 @@ class AddMetaclass(abstract.PyTDFunction):
     del func, alias_map  # unused
     self.match_args(node, args)
     meta = abstract_utils.get_atomic_value(
-        args.posargs[0], default=self.ctx.convert.unsolvable)
-    return node, AddMetaclassInstance(
-        meta, self.ctx, self.module).to_variable(node)
+        args.posargs[0], default=self.ctx.convert.unsolvable
+    )
+    return node, AddMetaclassInstance(meta, self.ctx, self.module).to_variable(
+        node
+    )
 
 
 class WithMetaclassInstance(abstract.BaseValue, abstract.Class):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
@@ -91,7 +94,8 @@ class WithMetaclass(abstract.PyTDFunction):
     del func, alias_map  # unused
     self.match_args(node, args)
     meta = abstract_utils.get_atomic_value(
-        args.posargs[0], default=self.ctx.convert.unsolvable)
+        args.posargs[0], default=self.ctx.convert.unsolvable
+    )
     bases = args.posargs[1:]
     result = WithMetaclassInstance(self.ctx, meta, bases).to_variable(node)
     return node, result

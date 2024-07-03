@@ -22,9 +22,12 @@ class LogicTest(test_base.BaseTest):
           else:
             assert isinstance(args[k], str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(args_list) -> NoneType: ...
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

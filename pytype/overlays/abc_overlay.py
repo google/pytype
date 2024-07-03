@@ -26,7 +26,8 @@ class ABCOverlay(overlay.Overlay):
         "abstractproperty": AbstractProperty.make,
         "abstractstaticmethod": AbstractStaticMethod.make,
         "ABCMeta": overlay.add_name(
-            "ABCMeta", special_builtins.Type.make_alias),
+            "ABCMeta", special_builtins.Type.make_alias
+        ),
     }
     ast = ctx.loader.import_name("abc")
     super().__init__(ctx, "abc", member_map, ast)
@@ -77,7 +78,8 @@ class AbstractProperty(special_builtins.Property):
         if isinstance(f, abstract.Function):
           f.is_abstract = True
     return node, special_builtins.PropertyInstance(
-        self.ctx, self.name, self, **property_args).to_variable(node)
+        self.ctx, self.name, self, **property_args
+    ).to_variable(node)
 
 
 class AbstractStaticMethod(special_builtins.StaticMethod):

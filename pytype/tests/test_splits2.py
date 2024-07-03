@@ -72,7 +72,9 @@ class SplitTest(test_base.BaseTest):
       def d4(x: Baz): return "y" if hasattr(x, "bar") else 0
       def a1(x): return "y" if hasattr(x, "bar") else 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class Baz(Foo):
         def quux(self) -> None: ...
@@ -83,7 +85,8 @@ class SplitTest(test_base.BaseTest):
       def d3(x: Baz) -> str: ...
       def d4(x: Baz) -> str: ...
       def a1(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_union(self):
     self.Check("""
@@ -274,10 +277,13 @@ class SplitTest(test_base.BaseTest):
       def f(x: Iterable[int]):
         return 0 if x else ''
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterable, Union
       def f(x: Iterable[int]) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_custom_container_truthiness(self):
     ty = self.Infer("""
@@ -288,12 +294,15 @@ class SplitTest(test_base.BaseTest):
       def f(x: MyIterable[int]):
         return 0 if x else ''
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterable, TypeVar, Union
       T = TypeVar('T')
       class MyIterable(Iterable[T]): ...
       def f(x: MyIterable[int]) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_str_none_eq(self):
     self.Check("""
@@ -313,10 +322,13 @@ class SplitTest(test_base.BaseTest):
         else:
           return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Sequence, Union
       def f(x: Union[int, Sequence[int]]) -> int: ...
-    """)
+    """,
+    )
 
   def test_isinstance_tuple(self):
     self.Check("""
@@ -377,11 +389,14 @@ class SplitTestPy3(test_base.BaseTest):
         if isinstance(value, (int, (float, complex))):
           return value
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional, Union
       def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]: ...
       def ReturnIfNumeric(value: Union[str, int]) -> Optional[int]: ...
-    """)
+    """,
+    )
 
   def test_isinstance_aliased(self):
     # Like the previous test, but with isinstance aliased to myisinstance.
@@ -392,11 +407,14 @@ class SplitTestPy3(test_base.BaseTest):
         if myisinstance(value, (bytes, str)):
           return value.upper()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, Optional, Tuple, Union
       def myisinstance(object, class_or_type_or_tuple: Union[Tuple[Union[Tuple[type, ...], type], ...], type]) -> bool: ...
       def UpperIfString(value: Union[bytes, int, str]) -> Optional[Union[bytes, str]]: ...
-    """)
+    """,
+    )
 
   def test_shadow_none(self):
     self.Check("""
@@ -415,12 +433,15 @@ class SplitTestPy3(test_base.BaseTest):
 
       x = A() and True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class A:
         def __bool__(self) -> bool: ...
       x: Union[A, bool]
-    """)
+    """,
+    )
 
   def test_ordered_dict_list_value(self):
     self.Check("""

@@ -24,6 +24,7 @@ if sys.platform == 'win32':
     ctypes.windll.kernel32.GetLongPathNameW(path, buffer, required_size)
 
     return buffer.value
+
 else:
 
   def _short_path_to_long_path(path: str):
@@ -42,6 +43,7 @@ if sys.platform == 'win32':
     path = _replace_driver_code(path)
     path = _short_path_to_long_path(path)
     return path
+
 else:
 
   def standardize_return_path(path):

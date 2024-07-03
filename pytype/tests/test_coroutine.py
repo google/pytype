@@ -39,7 +39,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
         x = await c
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Coroutine
 
       c: Coroutine[Any, Any, int]
@@ -47,7 +49,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
 
       def bar() -> Coroutine[Any, Any, int]: ...
       def f() -> Coroutine[Any, Any, int]: ...
-    """)
+    """,
+    )
 
   def test_native_coroutine_pyi(self):
     ty = self.Infer("""
@@ -61,12 +64,15 @@ class GeneratorFeatureTest(test_base.BaseTest):
         x = await callee()
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Union, Coroutine
 
       def callee() -> Coroutine[Any, Any, Union[int, str]]: ...
       def caller() -> Coroutine[Any, Any, Union[int, str]]: ...
-    """)
+    """,
+    )
 
   def test_native_coroutine_error(self):
     errors = self.CheckWithErrors("""
@@ -88,7 +94,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         f4(await f3())  # wrong-arg-types[e3]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"str.*int", "e2": r"str.*int", "e3": r"str.*int"})
+        errors, {"e1": r"str.*int", "e2": r"str.*int", "e3": r"str.*int"}
+    )
 
   def test_generator_based_coroutine_pyi(self):
     ty = self.Infer("""
@@ -117,7 +124,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
         x = await f3()
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import asyncio
       import types
       from typing import Any, Coroutine, Union
@@ -126,7 +135,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def f1() -> Coroutine[Any, Any, None]: ...
       def f2() -> Coroutine[Any, Any, None]: ...
       def f3() -> Coroutine[Any, Any, Union[int, str]]: ...
-    """)
+    """,
+    )
 
   @test_utils.skipFromPy((3, 11), "asyncio.coroutine was removed in 3.11")
   def test_asyncio_coroutine_inference(self):
@@ -136,11 +146,14 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def f():
         yield from asyncio.sleep(1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import asyncio
       from typing import Any, Coroutine
       def f() -> Coroutine[Any, Any, None]: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 11), "asyncio.coroutine was removed in 3.11")
   def test_asyncio_coroutine_does_not_exist(self):
@@ -174,7 +187,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         f3(x, y)  # wrong-arg-types[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Awaitable.*int", "e2": r"y: str.*y: int"})
+        errors, {"e1": r"Awaitable.*int", "e2": r"y: str.*y: int"}
+    )
 
   def test_generator_based_coroutine_bad_annotation(self):
     self.CheckWithErrors("""
@@ -222,7 +236,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
         await f2(c1())
         await f2(c2())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import types
       from typing import Any, Awaitable, Coroutine, TypeVar
 
@@ -241,7 +257,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def f1() -> Coroutine[Any, Any, None]: ...
       def f2(x: Awaitable[int]) -> Coroutine[Any, Any, int]: ...
       def f3() -> Coroutine[Any, Any, None]: ...
-    """)
+    """,
+    )
 
   def test_invalid_awaitable(self):
     errors = self.CheckWithErrors("""
@@ -276,7 +293,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
           pass
         return res
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Coroutine, List, TypeVar, Union
 
       _TMyIter = TypeVar('_TMyIter', bound=MyIter)
@@ -287,7 +306,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
 
 
       def caller() -> Coroutine[Any, Any, List[Union[int, str]]]: ...
-    """)
+    """,
+    )
 
   def test_async_for_error(self):
     errors = self.CheckWithErrors("""
@@ -336,9 +356,14 @@ class GeneratorFeatureTest(test_base.BaseTest):
           res.append(i)
         return res
     """)
-    self.assertErrorRegexes(errors, {"e1": r"No attribute.*__aiter__",
-                                     "e2": r"No attribute.*__anext__",
-                                     "e3": r"Awaitable.*Union\[int, str\]"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"No attribute.*__aiter__",
+            "e2": r"No attribute.*__anext__",
+            "e3": r"Awaitable.*Union\[int, str\]",
+        },
+    )
 
   def test_async_with_pyi(self):
     ty = self.Infer("""
@@ -364,7 +389,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
           var.func()
           fctx(var)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Coroutine, TypeVar
 
       _T0 = TypeVar('_T0')
@@ -378,7 +405,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def caller() -> Coroutine[Any, Any, None]: ...
       def fctx(x: AsyncCtx) -> None: ...
       def log(s: _T0) -> Coroutine[Any, Any, _T0]: ...
-    """)
+    """,
+    )
 
   def test_async_with_error(self):
     errors = self.CheckWithErrors("""
@@ -399,13 +427,21 @@ class GeneratorFeatureTest(test_base.BaseTest):
           async with ctx2 as var2:  # bad-return-type[e3]  # bad-return-type[e4]>=3.10
             pass  # bad-return-type[e4]<3.10
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"No attribute.*__aexit__", "e2": r"No attribute.*__aenter__",
-        "e3": r"Awaitable.*AsyncCtx2", "e4": r"Awaitable.*str"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"No attribute.*__aexit__",
+            "e2": r"No attribute.*__aenter__",
+            "e3": r"Awaitable.*AsyncCtx2",
+            "e4": r"Awaitable.*str",
+        },
+    )
 
   def test_load_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any, Coroutine, Awaitable, TypeVar
 
         def f1() -> Coroutine[Any, Any, str]: ...
@@ -431,8 +467,10 @@ class GeneratorFeatureTest(test_base.BaseTest):
           def __aenter__(self) -> Coroutine[Any, Any, AsyncCtx]: ...
           def __aexit__(self, exc_type, exc, tb) -> Coroutine[Any, Any, None]: ...
           def func() -> None: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         from typing import Awaitable, Coroutine, Any
 
@@ -465,14 +503,19 @@ class GeneratorFeatureTest(test_base.BaseTest):
         func1(foo.f1())
         func1(foo.f2())
         func2(foo.f1())
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any, Awaitable, Coroutine, List
 
         def func1(x: Awaitable[str]) -> Coroutine[Any, Any, List[str]]: ...
         def func2(x: Coroutine[Any, Any, str]) -> Coroutine[Any, Any, List[str]]: ...
-      """)
+      """,
+      )
 
   def test_await_variable_with_multi_bindings(self):
     ty = self.Infer("""
@@ -489,13 +532,16 @@ class GeneratorFeatureTest(test_base.BaseTest):
           x = f2()
         return await x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Coroutine, Union
 
       def caller() -> Coroutine[Any, Any, Union[int, str]]: ...
       def f1() -> Coroutine[Any, Any, int]: ...
       def f2() -> Coroutine[Any, Any, str]: ...
-    """)
+    """,
+    )
 
   def test_await_generator(self):
     ty = self.Infer("""
@@ -504,13 +550,16 @@ class GeneratorFeatureTest(test_base.BaseTest):
       async def tcp_echo_client(message):
         return await asyncio.open_connection( '127.0.0.1', 8888)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import asyncio
       from typing import Any, Coroutine, Tuple
       def tcp_echo_client(message) -> Coroutine[
         Any, Any,
         Tuple[asyncio.streams.StreamReader, asyncio.streams.StreamWriter]]: ...
-    """)
+    """,
+    )
 
   def test_queue(self):
     ty = self.Infer("""
@@ -523,12 +572,15 @@ class GeneratorFeatureTest(test_base.BaseTest):
         queue = asyncio.Queue()
         worker(queue)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import asyncio
       from typing import Any, Coroutine
       def worker(queue) -> coroutine: ...
       def main() -> Coroutine[Any, Any, None]: ...
-    """)
+    """,
+    )
 
   def test_future(self):
     ty = self.Infer("""
@@ -541,27 +593,39 @@ class GeneratorFeatureTest(test_base.BaseTest):
         for future in asyncio.as_completed([foo()]):
           return await future
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import asyncio
       from typing import Any, Coroutine, Optional
       def foo() -> Coroutine[Any, Any, int]: ...
       def call_foo() -> Coroutine[Any, Any, Optional[int]]: ...
-    """)
+    """,
+    )
 
   def test_pyi_async_def(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         async def f() -> int: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         c = foo.f()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any, Coroutine
         c: Coroutine[Any, Any, int]
-      """)
+      """,
+      )
 
 
 if __name__ == "__main__":

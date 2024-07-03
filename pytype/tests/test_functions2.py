@@ -17,10 +17,13 @@ class PreciseReturnTest(test_base.BaseTest):
         return x
       x = f(0)  # wrong-arg-types[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: str) -> str: ...
       x: str
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_interpreter_unknown_return(self):
@@ -29,11 +32,14 @@ class PreciseReturnTest(test_base.BaseTest):
         return x
       x = f(0)  # wrong-arg-types[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f(x: str) -> str: ...
       x: Any
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_interpreter_overload(self):
@@ -45,12 +51,15 @@ class PreciseReturnTest(test_base.BaseTest):
         return x
       x = f(0)  # wrong-arg-types[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import overload
       @overload
       def f(x: str) -> str: ...
       x: str
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
@@ -93,8 +102,13 @@ class TestCheckDefaults(test_base.BaseTest):
       def f(x: int = '', y: str = 0):  # annotation-type-mismatch[e1]  # annotation-type-mismatch[e2]
         pass
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Annotation: int.*Assignment: str",
-                                     "e2": r"Annotation: str.*Assignment: int"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Annotation: int.*Assignment: str",
+            "e2": r"Annotation: str.*Assignment: int",
+        },
+    )
 
   def test_ellipsis(self):
     self.CheckWithErrors("""
@@ -140,10 +154,13 @@ class TestFunctions(test_base.BaseTest):
           return 42
         return g1, g2
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, Tuple
       def f() -> Tuple[Callable[[int, bool], str], Callable[[], int]]: ...
-    """)
+    """,
+    )
 
   def test_function_to_callable_return_only(self):
     ty = self.Infer("""
@@ -154,10 +171,13 @@ class TestFunctions(test_base.BaseTest):
           return "hello world"
         return g1, g2
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, Tuple
       def f() -> Tuple[Callable[..., int], Callable[..., str]]: ...
-    """)
+    """,
+    )
 
   def test_fake_arguments(self):
     self.Check("""
@@ -179,11 +199,14 @@ class TestFunctions(test_base.BaseTest):
       def g(x: Dict[str, int]):
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       def f(x: Dict[str, int]) -> Dict[str, Union[str, int]]: ...
       def g(x: Dict[str, int]) -> Dict[str, int]: ...
-    """)
+    """,
+    )
 
   def test_argument_type_conflict(self):
     ty, _ = self.InferWithErrors("""
@@ -192,12 +215,15 @@ class TestFunctions(test_base.BaseTest):
         x[""] = ""  # container-type-mismatch
         return x, y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Tuple, Union
       def f(
         x: Dict[str, int], y: Dict[str, int]
       ) -> Tuple[Dict[str, Union[str, int]], Dict[str, int]]: ...
-    """)
+    """,
+    )
 
   def test_typecheck_varargs(self):
     self.CheckWithErrors("""
@@ -237,13 +263,16 @@ class TestFunctions(test_base.BaseTest):
       def cast(typ: Type[T], val: Any) -> T:
         return val
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type, TypeVar
 
       T = TypeVar('T')
 
       def cast(typ: Type[T], val) -> T: ...
-    """)
+    """,
+    )
 
   def test_varargs(self):
     self.Check("""
@@ -270,25 +299,37 @@ class TestFunctions(test_base.BaseTest):
 
   def test_varargs_in_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f(x: int, *args): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         def g(*args):
           foo.f(42, *args)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_varargs_in_pyi_error(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f(x: int, *args): ...
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         import foo
         def g(*args):
           foo.f("", *args)  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_function_type(self):
@@ -350,10 +391,13 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_namedargs_split_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       def f(x): ...
       def g(y): ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def h():
@@ -406,20 +450,21 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def uses_kw_defaults(x, *myargs, y=...) -> Any: ...
       def uses_kwargs(x, **mykwargs) -> Any: ...
     """
-    self.assertTypesMatchPytd(
-        self.Infer(src), output)
-    self.assertTypesMatchPytd(
-        self.Infer(src), output)
+    self.assertTypesMatchPytd(self.Infer(src), output)
+    self.assertTypesMatchPytd(self.Infer(src), output)
 
   def test_make_function2(self):
     ty = self.Infer("""
       def f(x, *myargs, y):
         return __any_object__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f(x, *myargs, y) -> Any: ...
-    """)
+    """,
+    )
 
   def test_make_function3(self):
     ty = self.Infer("""
@@ -431,12 +476,15 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
 
       y = f(2)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
 
       def f(a=..., *args, b: int = ..., **kwargs) -> Callable[Any, int]: ...
       def y(i: int = ...) -> int: ...
-    """)
+    """,
+    )
 
   def test_make_function_deep(self):
     ty = self.Infer("""
@@ -449,12 +497,15 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       y = f(2)
     """)
     # Does not infer a:int when deep=True.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
 
       def f(a = ..., *args, b: int = ..., **kwargs) -> Callable[Any, int]: ...
       def y(i: int = ...) -> int: ...
-    """)
+    """,
+    )
 
   def test_defaults(self):
     ty = self.Infer("""
@@ -462,10 +513,13 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
               u, v, x, y=0, z=0, **mykwargs):
         return 3
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(a, b, c, d=..., e=..., f=..., g=..., *myargs,
               u, v, x, y=..., z=..., **mykwargs) -> int: ...
-    """)
+    """,
+    )
 
   def test_defaults_and_annotations(self):
     ty = self.Infer("""
@@ -473,10 +527,13 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
               u:str, v, x:float=0, y=0, z=0, **mykwargs):
         return 3
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(a, b, c:int, d=..., e=..., f=..., g=..., *myargs,
               u:str, v, x:float=..., y=..., z=..., **mykwargs) -> int: ...
-    """)
+    """,
+    )
 
   def test_namedtuple_defaults(self):
     self.Check("""
@@ -503,7 +560,9 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         def method(self):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterator
       def f() -> int: ...
       class Foo:
@@ -512,7 +571,8 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         def match_pytd_function(self) -> Iterator[nothing]: ...
         def match_bound_pytd_function(self) -> Iterator[nothing]: ...
         def method(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_build_with_unpack(self):
     ty = self.Infer("""
@@ -550,7 +610,9 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       j(**{'a': 1, 'b': 2})  # BUILD_CONST_KEY_MAP
       k(**x, **y, **e)  # BUILD_MAP_UNPACK_WITH_CALL
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, List, Set, Tuple
 
       a = ...  # type: List[int]
@@ -570,7 +632,8 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def h(*args, **kwargs) -> None: ...
       def j(a = ..., b = ..., c = ...) -> None: ...
       def k(a, b, c, d, **kwargs) -> None: ...
-    """)
+    """,
+    )
 
   def test_unpack_str(self):
     ty = self.Infer("""
@@ -578,12 +641,15 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       s2 = "def"
       tup = (*s1, *s2)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple
       s1 = ...  # type: str
       s2 = ...  # type: str
       tup = ...  # type: Tuple[str, str, str, str, str, str]
-    """)
+    """,
+    )
 
   def test_unpack_nonliteral(self):
     ty = self.Infer("""
@@ -592,12 +658,15 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def g(**kwargs):
         return f(x=10, **kwargs)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
 
       def f(x, **kwargs) -> Any: ...
       def g(**kwargs) -> Any: ...
-    """)
+    """,
+    )
 
   def test_unpack_multiple_bindings(self):
     ty = self.Infer("""
@@ -611,13 +680,16 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         y = {'b': b'1', 'd': b'2'}
       z = {**x, **y}
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, TypeVar, Union
 
       x = ...  # type: Dict[str, Union[str, int]]
       y = ...  # type: Dict[str, Union[bytes, int]]
       z = ...  # type: Dict[str, Union[bytes, int, str]]
-    """)
+    """,
+    )
 
   def test_kwonly(self):
     self.Check("""
@@ -677,13 +749,16 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         def __init__(self):
           self.f = f
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable
       def f(x, *, y) -> None: ...
       class Foo:
         f: Callable
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_positional_only_parameter(self):
     ty, errors = self.InferWithErrors("""
@@ -693,42 +768,59 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       f(0, y=1)  # ok
       f(x=0, y=1)  # wrong-keyword-args[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x, /, y) -> None: ...
-    """)
+    """,
+    )
     # TODO(rechen): We currently print "Actually passed: (x, y)", which is
     # confusing. We should somehow indicate that x was passed in by keyword.
-    self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
-                                             "Expected: (x, /, y)"]})
+    self.assertErrorSequences(
+        errors, {"e": ["Invalid keyword argument x", "Expected: (x, /, y)"]}
+    )
 
   def test_positional_only_parameter_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f(x, /, y) -> None: ...
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         import foo
         foo.f(0, 1)  # ok
         foo.f(0, y=1)  # ok
         foo.f(x=0, y=1)  # wrong-keyword-args[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       # TODO(rechen): We currently print "Actually passed: (x, y)", which is
       # confusing. We should somehow indicate that x was passed in by keyword.
-      self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
-                                               "Expected: (x, /, y)"]})
+      self.assertErrorSequences(
+          errors, {"e": ["Invalid keyword argument x", "Expected: (x, /, y)"]}
+      )
 
   def test_positional_and_keyword_arguments(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f(x, /, **kwargs) -> None: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         def f(x, /, **kwargs):
           pass
         foo.f(1, x=1)
         f(1, x=1)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_posonly_starstararg_clash(self):
     self.Check("""
@@ -739,13 +831,19 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
 
   def test_pyi_posonly_starstararg_clash(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f(arg: int, /, **kwargs: str) -> None: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.f(1, arg='text')
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 class DisableTest(test_base.BaseTest):

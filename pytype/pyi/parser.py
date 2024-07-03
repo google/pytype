@@ -27,7 +27,7 @@ from pytype.pytd.codegen import decorate
 # reexport as parser.ParseError
 ParseError = types.ParseError
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # imports
 
 _UNKNOWN_IMPORT = "__unknown_import__"
@@ -49,7 +49,8 @@ def _parseable_name_to_real_name(name):
   m = re.fullmatch(r"__KW_(?P<keyword>.+)__", name)
   return m.group("keyword") if m else name
 
-#------------------------------------------------------
+
+# ------------------------------------------------------
 # typevars
 
 
@@ -88,7 +89,8 @@ class _TypeVariable:
         default = kw.value
     return cls(kind, name.value, bound, constraints, default)
 
-#------------------------------------------------------
+
+# ------------------------------------------------------
 # Main tree visitor and generator code
 
 
@@ -108,8 +110,10 @@ def _attribute_to_name(node: astlib.Attribute) -> astlib.Name:
 
 
 def _read_str_list(name, value):
-  if not (isinstance(value, (list, tuple)) and
-          all(types.Pyval.is_str(x) for x in value)):
+  if not (
+      isinstance(value, (list, tuple))
+      and all(types.Pyval.is_str(x) for x in value)
+  ):
     raise ParseError(f"{name} must be a list of strings")
   return tuple(x.value for x in value)
 
@@ -135,7 +139,8 @@ class _ConvertConstantsVisitor(visitor.BaseVisitor):
     if node.type_comment:
       # Convert the type comment from a raw string to a string constant.
       node.type_comment = types.Pyval(
-          "str", node.type_comment, *types.node_position(node))
+          "str", node.type_comment, *types.node_position(node)
+      )
 
 
 class _AnnotationVisitor(visitor.BaseVisitor):
@@ -205,8 +210,9 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     ret = self._convert_getattr(node)
     if ret:
       return ret
-    raise ParseError("Constructors and function calls in type annotations "
-                     "are not supported.")
+    raise ParseError(
+        "Constructors and function calls in type annotations are not supported."
+    )
 
   def _get_subscript_params(self, node):
     if sys.version_info >= (3, 9):
@@ -390,10 +396,13 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       # Since we can't import other parts of the stdlib in builtins and typing,
       # we treat the abstractmethod and coroutine decorators as pseudo-builtins.
       if self.defs.matches_type(
-          d.name, ("builtins.abstractmethod", "abc.abstractmethod")):
+          d.name, ("builtins.abstractmethod", "abc.abstractmethod")
+      ):
         abstract = True
-      elif self.defs.matches_type(d.name, (
-          "builtins.coroutine", "asyncio.coroutine", "coroutines.coroutine")):
+      elif self.defs.matches_type(
+          d.name,
+          ("builtins.coroutine", "asyncio.coroutine", "coroutines.coroutine"),
+      ):
         coroutine = True
       elif self.defs.matches_type(d.name, "typing.final"):
         final = True
@@ -402,8 +411,12 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       else:
         decorators.append(d)
     return decorators, function.SigProperties(
-        abstract=abstract, coroutine=coroutine, final=final, overload=overload,
-        is_async=isinstance(node, astlib.AsyncFunctionDef))
+        abstract=abstract,
+        coroutine=coroutine,
+        final=final,
+        overload=overload,
+        is_async=isinstance(node, astlib.AsyncFunctionDef),
+    )
 
   def visit_FunctionDef(self, node):
     node.decorator_list, props = self._extract_function_properties(node)
@@ -429,7 +442,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           if isinstance(val.value, float):
             raise ParseError(
                 f"Default value for {name}: Final can only be '...' or a legal "
-                f"Literal parameter, got {val}")
+                f"Literal parameter, got {val}"
+            )
           else:
             typ = val.to_pytd_literal()
             val = None
@@ -442,11 +456,15 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         typ = self.defs.new_type_from_value(val) or val
         val = None
         is_alias = True
-      elif (self.module_name == "typing_extensions" and
-            typ.name == "_SpecialForm"):
+      elif (
+          self.module_name == "typing_extensions" and typ.name == "_SpecialForm"
+      ):
+
         def type_of(n):
           return pytd.GenericType(
-              pytd.NamedType("builtins.type"), (pytd.NamedType(n),))
+              pytd.NamedType("builtins.type"), (pytd.NamedType(n),)
+          )
+
         # We convert known special forms to their corresponding types and
         # otherwise treat them as unknown types.
         if name in {"Final", "Protocol", "Self", "TypeGuard", "TypeIs"}:
@@ -462,7 +480,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       else:
         raise ParseError(
             f"Default value for {name}: {typ.name} can only be '...' or a "
-            f"literal constant, got {val}")
+            f"literal constant, got {val}"
+        )
     if is_alias:
       assert not val
       ret = pytd.Alias(name, typ)
@@ -532,7 +551,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.defs.type_map[full_class_name] = pytd.NamedType(full_class_name)
     defs = _flatten_splices(node.body)
     return self.defs.build_class(
-        full_class_name, node.bases, node.keywords, node.decorator_list, defs)
+        full_class_name, node.bases, node.keywords, node.decorator_list, defs
+    )
 
   def enter_If(self, node):
     # Evaluate the test and preemptively remove the invalid branch so we don't
@@ -601,7 +621,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         raise ParseError(msg)
       name, fields = node.args
       return self.defs.new_named_tuple(
-          name.value, [(n.value, t) for n, t in fields])
+          name.value, [(n.value, t) for n, t in fields]
+      )
     elif self.defs.matches_type(func, "collections.namedtuple"):
       if len(node.args) != 2:
         msg = "Wrong args: expected namedtuple(name, [field, ...])"
@@ -615,7 +636,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         raise ParseError(msg)
       name, fields = node.args
       return self.defs.new_typed_dict(
-          name.value, {n.value: t for n, t in fields.items()}, node.keywords)
+          name.value, {n.value: t for n, t in fields.items()}, node.keywords
+      )
     elif self.defs.matches_type(func, "typing.NewType"):
       if len(node.args) != 2:
         msg = "Wrong args: expected NewType(name, type)"
@@ -642,9 +664,12 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     if isinstance(node.value, self._ANNOT_NODES):
       node.value = self.annotation_visitor.visit(node.value)
     elif isinstance(node.value, (astlib.Tuple, astlib.List)):
-      elts = [self.annotation_visitor.visit(x)
-              if isinstance(x, self._ANNOT_NODES) else x
-              for x in node.value.elts]
+      elts = [
+          self.annotation_visitor.visit(x)
+          if isinstance(x, self._ANNOT_NODES)
+          else x
+          for x in node.value.elts
+      ]
       node.value = type(node.value)(elts)
 
   def enter_Assign(self, node):
@@ -687,8 +712,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def enter_Call(self, node):
     node.func = self.annotation_visitor.visit(node.func)
     func = node.func.name or ""
-    if self.defs.matches_type(func, ("typing.TypeVar", "typing.ParamSpec",
-                                     "typing.TypeVarTuple")):
+    if self.defs.matches_type(
+        func, ("typing.TypeVar", "typing.ParamSpec", "typing.TypeVarTuple")
+    ):
       self._convert_typevar_args(node)
     elif self.defs.matches_type(func, "typing.NamedTuple"):
       self._convert_typing_namedtuple_args(node)
@@ -735,7 +761,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self._convert_decorators(node)
     node.bases = [
         self.annotation_visitor.visit(base)
-        if isinstance(base, self._ANNOT_NODES) else base for base in node.bases]
+        if isinstance(base, self._ANNOT_NODES)
+        else base
+        for base in node.bases
+    ]
     for kw in node.keywords:
       if kw.arg == "metaclass":
         kw.value = self.annotation_visitor.visit(kw.value)
@@ -784,26 +813,32 @@ def _fix_src(src: str) -> str:
   num_tokens = len(tokens)
 
   def _is_classname(i):
-    return i and tokens[i-1].string == "class"
+    return i and tokens[i - 1].string == "class"
 
   def _is_varname(i):
-    if i and tokens[i-1].string.strip():  # not proceeded by whitespace
+    if i and tokens[i - 1].string.strip():  # not proceeded by whitespace
       return False
-    return i < num_tokens - 1 and tokens[i+1].type == tokenize.OP
+    return i < num_tokens - 1 and tokens[i + 1].type == tokenize.OP
 
   lines = src.splitlines()
   for i, token in enumerate(tokens):
-    if (not keyword.iskeyword(token.string) or
-        not _is_classname(i) and not _is_varname(i)):
+    if (
+        not keyword.iskeyword(token.string)
+        or not _is_classname(i)
+        and not _is_varname(i)
+    ):
       continue
     start_line, start_col = token.start
     end_line, end_col = token.end
     if start_line != end_line:
       continue
-    line = lines[start_line-1]
-    new_line = (line[:start_col] + _keyword_to_parseable_name(token.string) +
-                line[end_col:])
-    lines[start_line-1] = new_line
+    line = lines[start_line - 1]
+    new_line = (
+        line[:start_col]
+        + _keyword_to_parseable_name(token.string)
+        + line[end_col:]
+    )
+    lines[start_line - 1] = new_line
   return "\n".join(lines)
 
 

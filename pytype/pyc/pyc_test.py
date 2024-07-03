@@ -28,8 +28,12 @@ class TestPyc(test_base.UnitTest):
   def _compile(self, src, mode="exec"):
     exe = (["python" + ".".join(map(str, self.python_version))], [])
     pyc_data = compiler.compile_src_string_to_pyc_string(
-        src, filename="test_input.py", python_version=self.python_version,
-        python_exe=exe, mode=mode)
+        src,
+        filename="test_input.py",
+        python_version=self.python_version,
+        python_exe=exe,
+        mode=mode,
+    )
     return pyc.parse_pyc_string(pyc_data)
 
   def test_compile(self):
@@ -38,7 +42,7 @@ class TestPyc(test_base.UnitTest):
     self.assertEqual(self.python_version, code.python_version)
 
   def test_compile_utf8(self):
-    src = "foobar = \"abc□def\""
+    src = 'foobar = "abc□def"'
     code = self._compile(src)
     self.assertIn("foobar", code.co_names)
     self.assertEqual(self.python_version, code.python_version)
@@ -51,20 +55,23 @@ class TestPyc(test_base.UnitTest):
     self.assertEqual("invalid syntax", ctx.exception.error)
 
   def test_lineno(self):
-    code = self._compile("a = 1\n"      # line 1
-                         "\n"           # line 2
-                         "a = a + 1\n"  # line 3
-                        )
+    code = self._compile(
+        "a = 1\n"  # line 1
+        "\n"  # line 2
+        "a = a + 1\n"  # line 3
+    )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
-    expected = [("LOAD_CONST", 1),
-                ("STORE_NAME", 1),
-                ("LOAD_NAME", 3),
-                ("LOAD_CONST", 3),
-                ("BINARY_ADD", 3),
-                ("STORE_NAME", 3),
-                ("LOAD_CONST", 3),
-                ("RETURN_VALUE", 3)]
+    expected = [
+        ("LOAD_CONST", 1),
+        ("STORE_NAME", 1),
+        ("LOAD_NAME", 3),
+        ("LOAD_CONST", 3),
+        ("BINARY_ADD", 3),
+        ("STORE_NAME", 3),
+        ("LOAD_CONST", 3),
+        ("RETURN_VALUE", 3),
+    ]
     if self.python_version >= (3, 11):
       expected = [("RESUME", 0)] + expected
       expected[5] = ("BINARY_OP", 3)  # this was BINARY_ADD in 3.10-
@@ -80,29 +87,33 @@ class TestPyc(test_base.UnitTest):
     self.assertEqual(expected, ops)
 
   def test_singlelineno(self):
-    code = self._compile("a = 1\n"      # line 1
-                        )
+    code = self._compile("a = 1\n")  # line 1
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
-    expected = [("LOAD_CONST", 1),
-                ("STORE_NAME", 1),
-                ("LOAD_CONST", 1),
-                ("RETURN_VALUE", 1)]
+    expected = [
+        ("LOAD_CONST", 1),
+        ("STORE_NAME", 1),
+        ("LOAD_CONST", 1),
+        ("RETURN_VALUE", 1),
+    ]
     if self.python_version >= (3, 11):
       expected = [("RESUME", 0)] + expected
     self.assertEqual(expected, op_and_line)
 
   def test_singlelinenowithspace(self):
-    code = self._compile("\n"
-                         "\n"
-                         "a = 1\n"      # line 3
-                        )
+    code = self._compile(
+        "\n"
+        "\n"
+        "a = 1\n"  # line 3
+    )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
-    expected = [("LOAD_CONST", 3),
-                ("STORE_NAME", 3),
-                ("LOAD_CONST", 3),
-                ("RETURN_VALUE", 3)]
+    expected = [
+        ("LOAD_CONST", 3),
+        ("STORE_NAME", 3),
+        ("LOAD_CONST", 3),
+        ("RETURN_VALUE", 3),
+    ]
     if self.python_version >= (3, 11):
       expected = [("RESUME", 0)] + expected
     self.assertEqual(expected, op_and_line)

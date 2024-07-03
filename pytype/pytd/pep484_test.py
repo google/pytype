@@ -13,13 +13,16 @@ class TestPEP484(parser_test_base.ParserTest):
     return pytd_utils.Print(t.Visit(pep484.ConvertTypingToNative(None)))
 
   def test_convert_optional(self):
-    t = pytd.GenericType(pytd.NamedType("typing.Optional"),
-                         (pytd.NamedType("str"),))
+    t = pytd.GenericType(
+        pytd.NamedType("typing.Optional"), (pytd.NamedType("str"),)
+    )
     self.assertEqual(self.convert(t), "Optional[str]")
 
   def test_convert_union(self):
-    t = pytd.GenericType(pytd.NamedType("typing.Union"),
-                         (pytd.NamedType("str"), pytd.NamedType("float")))
+    t = pytd.GenericType(
+        pytd.NamedType("typing.Union"),
+        (pytd.NamedType("str"), pytd.NamedType("float")),
+    )
     self.assertEqual(self.convert(t), "Union[str, float]")
 
   def test_convert_list(self):

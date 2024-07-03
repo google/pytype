@@ -30,7 +30,7 @@ class _ProfileContext:
 
     Args:
       output_path: A pathname for the profiler output.  An empty string
-          indicates that no profiling should be done.
+        indicates that no profiling should be done.
     """
     self._output_path = output_path
     self._profile = cProfile.Profile() if self._output_path else None

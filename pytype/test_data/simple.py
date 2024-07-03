@@ -1,6 +1,5 @@
 """Trivial test program."""
 
-
 hello = []
 
 

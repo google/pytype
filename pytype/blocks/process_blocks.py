@@ -52,11 +52,16 @@ class CollectAnnotationTargetsVisitor:
         if not _is_function_def(fn_code):
           continue
         # First line of code in body.
-        end_line = min(op.line for op in fn_code.code_iter
-                       if not isinstance(op, opcodes.RESUME))
+        end_line = min(
+            op.line
+            for op in fn_code.code_iter
+            if not isinstance(op, opcodes.RESUME)
+        )
         self.make_function_ops[op.line] = (end_line, op)
-      elif (isinstance(op, blocks.STORE_OPCODES) and
-            op.line not in self.make_function_ops):
+      elif (
+          isinstance(op, blocks.STORE_OPCODES)
+          and op.line not in self.make_function_ops
+      ):
         # For type comments attached to multi-opcode lines, we want to mark the
         # latest 'store' opcode and attach the type comment to it.
         self.store_ops[op.line] = op
@@ -106,7 +111,8 @@ def merge_annotations(code, annotations, param_annotations):
 
   # Apply type comments to the MAKE_FUNCTION opcodes
   for start, (end, op) in sorted(
-      visitor.make_function_ops.items(), reverse=True):
+      visitor.make_function_ops.items(), reverse=True
+  ):
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.
       if i in annotations:

@@ -1,4 +1,5 @@
 """An errorful test program."""
+
 # pylint: skip-file
 
 

@@ -4,8 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class InplaceTest(test_base.BaseTest,
-                  test_utils.InplaceTestMixin):
+class InplaceTest(test_base.BaseTest, test_utils.InplaceTestMixin):
   """In-place operator tests."""
 
   def test_iadd(self):
@@ -29,12 +28,15 @@ class InplaceTest(test_base.BaseTest,
     self._check_inplace("&", ["x=1", "y=2"], "int")
 
   def test_frozenset_ops(self):
-    self._check_inplace("&", ["x=frozenset()", "y=frozenset()"],
-                        "frozenset[nothing]")
-    self._check_inplace("-", ["x=frozenset()", "y=frozenset()"],
-                        "frozenset[nothing]")
-    self._check_inplace("|", ["x=frozenset([1.0])", "y=frozenset([2.2])"],
-                        "frozenset[float]")
+    self._check_inplace(
+        "&", ["x=frozenset()", "y=frozenset()"], "frozenset[nothing]"
+    )
+    self._check_inplace(
+        "-", ["x=frozenset()", "y=frozenset()"], "frozenset[nothing]"
+    )
+    self._check_inplace(
+        "|", ["x=frozenset([1.0])", "y=frozenset([2.2])"], "frozenset[float]"
+    )
 
   def test_ifloordiv(self):
     self._check_inplace("//", ["x=1", "y=2"], "int")

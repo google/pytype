@@ -31,7 +31,9 @@ class VirtualMachine:
 
   @classmethod
   def from_source(
-      cls, src: str, ctx: Optional[context.Context] = None,
+      cls,
+      src: str,
+      ctx: Optional[context.Context] = None,
   ) -> 'VirtualMachine':
     ctx = ctx or context.Context(src=src)
     code = _get_bytecode(src, ctx.options)
@@ -40,10 +42,12 @@ class VirtualMachine:
 
   def _run_module(self) -> None:
     assert not self._module_frame
-    initial_global_vars = {name: val.to_variable()
-                           for name, val in self._initial_globals.items()}
+    initial_global_vars = {
+        name: val.to_variable() for name, val in self._initial_globals.items()
+    }
     self._module_frame = frame_lib.Frame.make_module_frame(
-        self._ctx, self._code, initial_global_vars)
+        self._ctx, self._code, initial_global_vars
+    )
     self._module_frame.run()
 
   def analyze_all_defs(self) -> None:
@@ -96,7 +100,8 @@ def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
 
 
 def _collect_classes(
-    frame: frame_lib.Frame) -> Sequence[abstract.InterpreterClass]:
+    frame: frame_lib.Frame,
+) -> Sequence[abstract.InterpreterClass]:
   all_classes = []
   new_classes = list(frame.classes)
   while new_classes:

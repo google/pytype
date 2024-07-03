@@ -51,10 +51,13 @@ class OverloadTest(test_base.BaseTest):
         return x
       v = f(0)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: int) -> float: ...
       v: float
-    """)
+    """,
+    )
 
   def test_multiple_overload(self):
     self.Check("""
@@ -117,23 +120,30 @@ class OverloadTest(test_base.BaseTest):
     """
     ty = self.Infer(src, analyze_annotated=False)
     self.assertTrue(
-        pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True)))
-    self.assertTypesMatchPytd(ty, """
+        pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True))
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable
       @overload
       def f(x: int) -> int: ...
       @overload
       def f(x: str) -> str: ...
       def g() -> Callable: ...
-    """)
+    """,
+    )
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""
+      errors = self.CheckWithErrors(
+          """
         import foo
         foo.f(0)  # ok
         foo.f("")  # ok
         foo.f(0.0)  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
     self.assertErrorRegexes(errors, {"e": r"int.*float"})
 
   def test_method_bad_implementation(self):
@@ -166,14 +176,18 @@ class OverloadTest(test_base.BaseTest):
     """
     ty = self.Infer(src, analyze_annotated=False)
     self.assertTrue(
-        pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True)))
-    self.assertTypesMatchPytd(ty, """
+        pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True))
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         @overload
         def f(self, x: int) -> int: ...
         @overload
         def f(self, x: str) -> str: ...
-    """)
+    """,
+    )
 
   def test_call_overload(self):
     errors = self.CheckWithErrors("""
@@ -195,24 +209,31 @@ class OverloadTest(test_base.BaseTest):
       def f(*args):
         return args[0] if args else 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import overload
       @overload
       def f() -> int: ...
       @overload
       def f(x: float, *args) -> float: ...
-    """)
+    """,
+    )
 
   def test_varargs_and_kwargs(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import overload
         @overload
         def f(x: int) -> int: ...
         @overload
         def f(x: str) -> str: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         def f1(*args):
           return foo.f(*args)
@@ -222,15 +243,20 @@ class OverloadTest(test_base.BaseTest):
           return foo.f(*(0,))
         def f4():
           return foo.f(**{"x": "y"})
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any
         def f1(*args) -> Any: ...
         def f2(**kwargs) -> Any: ...
         def f3() -> int: ...
         def f4() -> str: ...
-      """)
+      """,
+      )
 
   def test_init_kwargs_overloads(self):
     ty = self.Infer("""
@@ -242,17 +268,22 @@ class OverloadTest(test_base.BaseTest):
         def __init__(self, **kw) -> None: ...
         def __init__(self, x: int, **kw): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
         from typing import overload
         class Foo:
           @overload
           def __init__(self, x: int, **kw) -> None: ...
           @overload
           def __init__(self, **kw) -> None: ...
-      """)
+      """,
+    )
 
   def test_use_init_kwargs_overloads(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import overload
       class Foo:
         @overload
@@ -260,7 +291,8 @@ class OverloadTest(test_base.BaseTest):
         @overload
         def __init__(self, **kw) -> None: ...
         def __init__(self, x: int, **kw): pass
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         foo.Foo(0)
@@ -280,13 +312,16 @@ class OverloadTest(test_base.BaseTest):
     """)
 
   def test_multiple_matches_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import overload
       @overload
       def f(x: str) -> str: ...
       @overload
       def f(x: bytes) -> bytes: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import Tuple
@@ -297,24 +332,30 @@ class OverloadTest(test_base.BaseTest):
       """)
 
   def test_generic(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import AnyStr, Generic, overload
       class C(Generic[AnyStr]):
         @overload
         def f(self: C[str], x: str) -> str: ...
         @overload
         def f(self: C[bytes], x: bytes) -> bytes: ...
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import foo
         def f(c: foo.C[str]):
           return filter(c.f, [""])
       """)
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Iterator
         def f(c: foo.C[str]) -> Iterator[str]: ...
-      """)
+      """,
+      )
 
 
 class OverloadTestPy3(test_base.BaseTest):
@@ -330,16 +371,21 @@ class OverloadTestPy3(test_base.BaseTest):
       def f(**kwargs):
         return kwargs['x'] if kwargs else 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import overload
       @overload
       def f() -> int: ...
       @overload
       def f(*, x: float = ..., **kwargs) -> float: ...
-    """)
+    """,
+    )
 
   def test_pyi_overload_alias(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import overload
       @overload
       def f(x: int) -> int: ...
@@ -352,7 +398,8 @@ class OverloadTestPy3(test_base.BaseTest):
         @overload
         def f(self, x: str) -> str: ...
         g = f
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         foo.g(0)  # ok
@@ -379,7 +426,9 @@ class OverloadTestPy3(test_base.BaseTest):
           else:
             return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar, overload
       T = TypeVar('T')
       class C:
@@ -387,7 +436,8 @@ class OverloadTestPy3(test_base.BaseTest):
         def f(self: T, x: str) -> T: ...
         @overload
         def f(self, x: int) -> int: ...
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

@@ -17,7 +17,9 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib(type=int)
         z = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -26,7 +28,8 @@ class TestAttrib(test_base.BaseTest):
         y: int
         z: str
         def __init__(self, x, y: int, z: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_interpreter_class(self):
     ty = self.Infer("""
@@ -36,14 +39,17 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(type=A)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       class A: ...
       @attr.s
       class Foo:
         x: A
         def __init__(self, x: A) -> None: ...
-    """)
+    """,
+    )
 
   def test_typing(self):
     ty = self.Infer("""
@@ -53,14 +59,17 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(type=List[int])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import List
       @attr.s
       class Foo:
         x: List[int]
         def __init__(self, x: List[int]) -> None: ...
-    """)
+    """,
+    )
 
   def test_union_types(self):
     ty = self.Infer("""
@@ -70,14 +79,17 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(type=Union[str, int])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
       class Foo:
         x: Union[str, int]
         def __init__(self, x: Union[str, int]) -> None: ...
-    """)
+    """,
+    )
 
   def test_comment_annotations(self):
     ty = self.Infer("""
@@ -88,7 +100,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib() # type: Union[str, int]
         y = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -96,7 +110,8 @@ class TestAttrib(test_base.BaseTest):
         x: Union[str, int]
         y: str
         def __init__(self, x: Union[str, int], y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_late_annotations(self):
     ty = self.Infer("""
@@ -106,7 +121,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib() # type: 'Foo'
         y = attr.ib() # type: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -114,7 +131,8 @@ class TestAttrib(test_base.BaseTest):
         x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_late_annotation_in_type(self):
     ty = self.Infer("""
@@ -123,13 +141,16 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(type='Foo')
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
         x: Foo
         def __init__(self, x: Foo) -> None: ...
-    """)
+    """,
+    )
 
   def test_classvar(self):
     ty = self.Infer("""
@@ -140,7 +161,9 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib(type=str)
         z = 1 # class var, should not be in __init__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -149,7 +172,8 @@ class TestAttrib(test_base.BaseTest):
         y: str
         z: int
         def __init__(self, x: int, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_type_clash(self):
     self.CheckWithErrors("""
@@ -179,7 +203,9 @@ class TestAttrib(test_base.BaseTest):
         __y = attr.ib(type=int)
         ___z = attr.ib(type=int)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
@@ -187,7 +213,8 @@ class TestAttrib(test_base.BaseTest):
         _Foo__y: int
         _Foo___z: int
         def __init__(self, x: int, Foo__y: int, Foo___z: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_defaults(self):
     ty, err = self.InferWithErrors("""
@@ -199,7 +226,9 @@ class TestAttrib(test_base.BaseTest):
         z = attr.ib(type=str, default=28)  # annotation-type-mismatch[e]
         a = attr.ib(type=str, default=None)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -210,7 +239,8 @@ class TestAttrib(test_base.BaseTest):
         a: str = ...
         def __init__(self, x: int = ..., y: int = ..., z: str = ...,
                      a: str = ...) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(err, {"e": "annotation for z"})
 
   def test_defaults_with_typecomment(self):
@@ -222,7 +252,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(default=42) # type: int
         y = attr.ib(default=42) # type: str  # annotation-type-mismatch[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -230,7 +262,8 @@ class TestAttrib(test_base.BaseTest):
         x: int = ...
         y: str = ...
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(err, {"e": "annotation for y"})
 
   def test_factory_class(self):
@@ -243,7 +276,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(factory=list)
         y = attr.ib(factory=CustomClass)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       class CustomClass: ...
@@ -252,7 +287,8 @@ class TestAttrib(test_base.BaseTest):
         x: list = ...
         y: CustomClass = ...
         def __init__(self, x: list = ..., y: CustomClass = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_factory_function(self):
     ty = self.Infer("""
@@ -266,7 +302,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(factory=locals)
         y = attr.ib(factory=unannotated_func)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, Dict, Union
       class CustomClass: ...
@@ -276,7 +314,8 @@ class TestAttrib(test_base.BaseTest):
         x: Dict[str, Any] = ...
         y: Any = ...  # b/64832148: the return type isn't inferred early enough
         def __init__(self, x: Dict[str, object] = ..., y = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_verbose_factory(self):
     ty = self.Infer("""
@@ -285,14 +324,17 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(default=attr.Factory(list))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
       class Foo:
         x: list = ...
         def __init__(self, x: list = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_bad_factory(self):
     errors = self.CheckWithErrors("""
@@ -302,8 +344,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(default=attr.Factory(42))  # wrong-arg-types[e1]
         y = attr.ib(factory=42)  # wrong-arg-types[e2]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Callable.*int",
-                                     "e2": r"Callable.*int"})
+    self.assertErrorRegexes(
+        errors, {"e1": r"Callable.*int", "e2": r"Callable.*int"}
+    )
 
   def test_default_factory_clash(self):
     errors = self.CheckWithErrors("""
@@ -321,13 +364,16 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(default=attr.Factory(len, takes_self=True))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
         x: int = ...
         def __init__(self, x: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_default_none(self):
     ty = self.Infer("""
@@ -336,14 +382,17 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(default=None)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
       class Foo:
         x: Any = ...
         def __init__(self, x: Any = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_annotation_type(self):
     ty = self.Infer("""
@@ -354,14 +403,17 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(type=List)
       x = Foo([]).x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
         x: list
         def __init__(self, x: list) -> None: ...
       x: list
-    """)
+    """,
+    )
 
   def test_instantiation(self):
     self.Check("""
@@ -400,7 +452,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(init=False, default='')  # type: str
         y = attr.ib()  # type: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -408,7 +462,8 @@ class TestAttrib(test_base.BaseTest):
         x: str = ...
         y: int
         def __init__(self, y: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_init_bad_constant(self):
     err = self.CheckWithErrors("""
@@ -428,11 +483,14 @@ class TestAttrib(test_base.BaseTest):
     """)
 
   def test_class(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       import attr
       class X(attr.make_class('X', {'y': attr.ib(default=None)})):
         pass
-    """)
+    """,
+    )
 
   def test_base_class_attrs(self):
     self.Check("""
@@ -465,7 +523,9 @@ class TestAttrib(test_base.BaseTest):
       class C(A, B):
         c = attr.ib()  # type: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -480,7 +540,8 @@ class TestAttrib(test_base.BaseTest):
       class C(A, B):
         c: int
         def __init__(self, a: int, b: str, c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_base_class_attrs_override_type(self):
     ty = self.Infer("""
@@ -496,7 +557,9 @@ class TestAttrib(test_base.BaseTest):
         a = attr.ib()  # type: str
         c = attr.ib()  # type: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -512,7 +575,8 @@ class TestAttrib(test_base.BaseTest):
         a: str
         c: int
         def __init__(self, b: str, a: str, c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_base_class_attrs_init(self):
     ty = self.Infer("""
@@ -527,7 +591,9 @@ class TestAttrib(test_base.BaseTest):
       class C(A, B):
         c = attr.ib()  # type: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -542,7 +608,8 @@ class TestAttrib(test_base.BaseTest):
       class C(A, B):
         c: int
         def __init__(self, b: str, c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_base_class_attrs_abstract_type(self):
     ty = self.Infer("""
@@ -551,14 +618,17 @@ class TestAttrib(test_base.BaseTest):
       class Foo(__any_object__):
         a = attr.ib()  # type: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
       class Foo(Any):
         a: int
         def __init__(self, a: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_method_decorators(self):
     # Test for:
@@ -587,7 +657,9 @@ class TestAttrib(test_base.BaseTest):
           # type: (...) -> int
           return 10
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, Union
       @attr.s
@@ -600,7 +672,8 @@ class TestAttrib(test_base.BaseTest):
         def default_b(self) -> int: ...
         def default_c(self) -> int: ...
         def validate(self, attribute, value) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(err, {"e": "annotation for c"})
 
   def test_default_decorator_using_self(self):
@@ -626,7 +699,9 @@ class TestAttrib(test_base.BaseTest):
         def default_c(self):
           return self.b
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -637,7 +712,8 @@ class TestAttrib(test_base.BaseTest):
         def __init__(self, a: int = ..., b = ..., c: str = ...) -> None: ...
         def default_b(self) -> int: ...
         def default_c(self) -> Any: ...
-    """)
+    """,
+    )
 
   def test_repeated_default(self):
     # Regression test for a bug where `params` and `calls` shared an underlying
@@ -675,7 +751,9 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(factory=FACTORIES[0])
       Foo(x=0)  # should not be an error
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, List
       FACTORIES: List[nothing]
@@ -683,7 +761,8 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x: Any = ...
         def __init__(self, x = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_empty_tuple_default(self):
     ty = self.Infer("""
@@ -692,13 +771,16 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(default=())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
         x: tuple = ...
         def __init__(self, x: tuple = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_long_alias(self):
     # Tests an [annotation-type-mismatch] bug that appears when the
@@ -794,7 +876,9 @@ class TestAttrs(test_base.BaseTest):
         y = attr.ib(type=int)
         z = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -803,7 +887,8 @@ class TestAttrs(test_base.BaseTest):
         y: int
         z: str
         def __init__(self, x, y: int, z: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_no_init(self):
     ty = self.Infer("""
@@ -814,7 +899,9 @@ class TestAttrs(test_base.BaseTest):
         y = attr.ib(type=int)
         z = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -823,7 +910,8 @@ class TestAttrs(test_base.BaseTest):
         y: int
         z: str
         def __attrs_init__(self, x, y: int, z: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_init_bad_constant(self):
     err = self.CheckWithErrors("""
@@ -843,13 +931,16 @@ class TestAttrs(test_base.BaseTest):
     """)
 
   def test_depth(self):
-    self.Check("""
+    self.Check(
+        """
       import attr
       def f():
         @attr.s
         class Foo:
           pass
-    """, maximum_depth=1)
+    """,
+        maximum_depth=1,
+    )
 
   def test_signature(self):
     self.Check("""
@@ -873,7 +964,8 @@ class TestInheritedAttrib(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import attr
         import foo
         @attr.s()
@@ -884,7 +976,9 @@ class TestInheritedAttrib(test_base.BaseTest):
         b = Foo(10, '10')  # The wrapper returns attr.ib(Any) so y.type is lost
         c = Foo(10, 20, 30)  # wrong-arg-count
         d = Foo('10', 20)  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_attrib_wrapper_kwargs(self):
     foo_ty = self.Infer("""
@@ -894,7 +988,8 @@ class TestInheritedAttrib(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import attr
         import foo
         @attr.s()
@@ -902,7 +997,9 @@ class TestInheritedAttrib(test_base.BaseTest):
           x = foo.kw_attrib(int)
         a = Foo(10)  # missing-parameter
         b = Foo(x=10)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_wrapper_setting_type(self):
     foo_ty = self.Infer("""
@@ -912,13 +1009,16 @@ class TestInheritedAttrib(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import attr
         import foo
         @attr.s()  # invalid-annotation>=3.11
         class Foo:  # invalid-annotation<3.11
           x: int = foo.int_attrib()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_wrapper_setting_default(self):
     foo_ty = self.Infer("""
@@ -928,7 +1028,8 @@ class TestInheritedAttrib(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.Check("""
+      self.Check(
+          """
         import attr
         import foo
         @attr.s()
@@ -936,7 +1037,9 @@ class TestInheritedAttrib(test_base.BaseTest):
           y = attr.ib(default = 10)
           x = foo.default_attrib(int)
         a = Foo()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_override_protected_member(self):
     foo_ty = self.Infer("""
@@ -947,7 +1050,8 @@ class TestInheritedAttrib(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import attr
         import foo
         @attr.s()
@@ -959,7 +1063,9 @@ class TestInheritedAttrib(test_base.BaseTest):
         c = B(10)
         d = B(y=10)
         e = B('10', 10)  # wrong-arg-count
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 if __name__ == "__main__":

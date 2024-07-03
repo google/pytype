@@ -16,13 +16,16 @@ class UnionTest(test_base.BaseTest):
         return id(1 if b else 1.0)
     """)
 
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, TypeVar, Union
       _T0 = TypeVar("_T0")
       def id(x: _T0) ->_T0: ...
 
       def f(b, x, y) -> Union[int, float]: ...
-    """)
+    """,
+    )
 
   def test_call(self):
     ty, errors = self.InferWithErrors("""
@@ -34,9 +37,12 @@ class UnionTest(test_base.BaseTest):
           x.__class__ = str  # not-writable[e2]
         return type(x)()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e1": r"int", "e2": r"int"})
 
   def test_bad_forward_reference(self):
@@ -54,14 +60,17 @@ class UnionTest(test_base.BaseTest):
       Y = X[Optional[T2]]
       Z = Y[str]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional, Union, TypeVar
       T1 = TypeVar('T1')
       T2 = TypeVar('T2')
       X = Union[int, T1]
       Y = Union[int, Optional[T2]]
       Z = Union[int, Optional[str]]
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 10), "New in 3.10")
   def test_isinstance_union(self):
@@ -93,10 +102,13 @@ class UnionOrTest(test_base.BaseTest):
     ty = self.Infer("""
       x: int | str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       x: Union[int, str]
-    """)
+    """,
+    )
 
   def test_chained(self):
     ty = self.Infer("""
@@ -104,21 +116,27 @@ class UnionOrTest(test_base.BaseTest):
       class B: pass
       x: int | str | A | B
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       x: Union[int, str, A, B]
       class A: ...
       class B: ...
-    """)
+    """,
+    )
 
   def test_none(self):
     ty = self.Infer("""
       x: int | str | None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional, Union
       x: Optional[Union[int, str]]
-    """)
+    """,
+    )
 
   def test_mixed(self):
     ty = self.Infer("""
@@ -127,12 +145,15 @@ class UnionOrTest(test_base.BaseTest):
       class B: pass
       x: int | str | Union[A, B]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       x: Union[int, str, A, B]
       class A: ...
       class B: ...
-    """)
+    """,
+    )
 
   def test_forward_ref(self):
     ty = self.Infer("""
@@ -141,12 +162,15 @@ class UnionOrTest(test_base.BaseTest):
       x: 'int | str | A | B'
       class B: pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       x: Union[int, str, A, B]
       class A: ...
       class B: ...
-    """)
+    """,
+    )
 
   def test_non_type(self):
     self.Check("""

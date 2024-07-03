@@ -8,6 +8,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
+
 import unittest
 
 
@@ -27,7 +28,8 @@ class TestOptimize(parser_test_base.ParserTest):
   def setUpClass(cls):
     super().setUpClass()
     cls.loader = load_pytd.Loader(
-        config.Options.create(python_version=cls.python_version))
+        config.Options.create(python_version=cls.python_version)
+    )
     cls.builtins = cls.loader.builtins
     cls.typing = cls.loader.typing
 
@@ -222,8 +224,8 @@ class TestOptimize(parser_test_base.ParserTest):
       c = ...  # type: Union[int, float]
     """)
     self.AssertSourceEquals(
-        self.ApplyVisitorToString(src, optimize.SimplifyUnions()),
-        new_src)
+        self.ApplyVisitorToString(src, optimize.SimplifyUnions()), new_src
+    )
 
   def test_builtin_superclasses(self):
     src = pytd_src("""
@@ -235,7 +237,8 @@ class TestOptimize(parser_test_base.ParserTest):
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     hierarchy.update(self.typing.Visit(visitors.ExtractSuperClassesByName()))
     visitor = optimize.FindCommonSuperClasses(
-        optimize.SuperClassHierarchy(hierarchy))
+        optimize.SuperClassHierarchy(hierarchy)
+    )
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(visitor)
     ast = ast.Visit(visitors.CanonicalOrderingVisitor())
@@ -279,10 +282,10 @@ class TestOptimize(parser_test_base.ParserTest):
         def h(x) -> Any: ...
     """) + class_data
 
-    hierarchy = self.Parse(src).Visit(
-        visitors.ExtractSuperClassesByName())
+    hierarchy = self.Parse(src).Visit(visitors.ExtractSuperClassesByName())
     visitor = optimize.FindCommonSuperClasses(
-        optimize.SuperClassHierarchy(hierarchy))
+        optimize.SuperClassHierarchy(hierarchy)
+    )
     new_src = self.ApplyVisitorToString(src, visitor)
     self.AssertSourceEquals(new_src, expected)
 
@@ -294,11 +297,13 @@ class TestOptimize(parser_test_base.ParserTest):
         x = ...  # type: Union[int, other.Bar]
     """)
     ast = self.Parse(src)
-    ast = ast.Visit(visitors.ReplaceTypesByName(
-        {"other.Bar": pytd.LateType("other.Bar")}))
+    ast = ast.Visit(
+        visitors.ReplaceTypesByName({"other.Bar": pytd.LateType("other.Bar")})
+    )
     hierarchy = ast.Visit(visitors.ExtractSuperClassesByName())
-    ast = ast.Visit(optimize.FindCommonSuperClasses(
-        optimize.SuperClassHierarchy(hierarchy)))
+    ast = ast.Visit(
+        optimize.FindCommonSuperClasses(optimize.SuperClassHierarchy(hierarchy))
+    )
     ast = ast.Visit(visitors.LateTypeToClassType())
     self.AssertSourceEquals(ast, expected)
 
@@ -315,7 +320,8 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     visitor = optimize.SimplifyUnionsWithSuperclasses(
-        optimize.SuperClassHierarchy(hierarchy))
+        optimize.SuperClassHierarchy(hierarchy)
+    )
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
     ast = ast.Visit(visitor)
@@ -331,7 +337,8 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     visitor = optimize.SimplifyUnionsWithSuperclasses(
-        optimize.SuperClassHierarchy(hierarchy))
+        optimize.SuperClassHierarchy(hierarchy)
+    )
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
     ast = ast.Visit(visitor)
@@ -468,8 +475,7 @@ class TestOptimize(parser_test_base.ParserTest):
         class B(Method4):
             pass
     """)
-    new_src = self.ApplyVisitorToString(src,
-                                        optimize.PullInMethodClasses())
+    new_src = self.ApplyVisitorToString(src, optimize.PullInMethodClasses())
     self.AssertSourceEquals(new_src, expected)
 
   def test_add_inherited_methods(self):
@@ -489,8 +495,9 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = visitors.LookupClasses(ast, self.builtins)
     self.assertCountEqual(("g", "h"), [m.name for m in ast.Lookup("B").methods])
     ast = ast.Visit(optimize.AddInheritedMethods())
-    self.assertCountEqual(("f", "g", "h"),
-                          [m.name for m in ast.Lookup("B").methods])
+    self.assertCountEqual(
+        ("f", "g", "h"), [m.name for m in ast.Lookup("B").methods]
+    )
 
   def test_adjust_inherited_method_self(self):
     src = pytd_src("""
@@ -502,11 +509,13 @@ class TestOptimize(parser_test_base.ParserTest):
     ast = self.Parse(src)
     ast = visitors.LookupClasses(ast, self.builtins)
     ast = ast.Visit(optimize.AddInheritedMethods())
-    self.assertMultiLineEqual(pytd_utils.Print(ast.Lookup("B")),
-                              pytd_src("""
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast.Lookup("B")),
+        pytd_src("""
         class B(A):
             def f(self) -> float: ...
-    """).lstrip())
+    """).lstrip(),
+    )
 
   def test_absorb_mutable_parameters(self):
     src = pytd_src("""
@@ -543,8 +552,9 @@ class TestOptimize(parser_test_base.ParserTest):
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
     new_tree = new_tree.Visit(optimize.CombineContainers())
-    self_type = new_tree.Lookup("MyClass").Lookup(
-        "append").signatures[0].params[0].type
+    self_type = (
+        new_tree.Lookup("MyClass").Lookup("append").signatures[0].params[0].type
+    )
     self.assertEqual(pytd_utils.Print(self_type), "MyClass[Union[T, NEW]]")
 
   def test_merge_type_parameters(self):

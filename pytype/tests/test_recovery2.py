@@ -42,28 +42,41 @@ class RecoveryTestsPython3(test_base.BaseTest):
   """Tests for recovering after errors(python3 only)."""
 
   def test_bad_call_parameter(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
           def f():
             return "%s" % chr("foo")
-        """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+        """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
           def f() -> str: ...
-        """)
+        """,
+    )
 
   def test_bad_function(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
         import time
         def f():
           return time.unknown_function(3)
         def g():
           return '%s' % f()
-      """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+      """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
         import time
         from typing import Any
         def f() -> Any: ...
         def g() -> str: ...
-      """)
+      """,
+    )
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -4,9 +4,12 @@
 # pylint: disable=unpacking-non-sequence
 
 import abc
-
 from typing import (
-    Dict as _Dict, Optional as _Optional, Tuple as _Tuple, Type as _Type)
+    Dict as _Dict,
+    Optional as _Optional,
+    Tuple as _Tuple,
+    Type as _Type,
+)
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -55,19 +58,25 @@ class TypingOverlay(overlay.Overlay):
       self,
       name: str,
       member: _Tuple[overlay.BuilderType, _Tuple[int, int]],
-      subst: _Optional[_Dict[str, cfg.Variable]] = None) -> cfg.Variable:
-  # pytype: enable=signature-mismatch  # overriding-parameter-type-checks
+      subst: _Optional[_Dict[str, cfg.Variable]] = None,
+  ) -> cfg.Variable:
+    # pytype: enable=signature-mismatch  # overriding-parameter-type-checks
     builder, lowest_supported_version = member
-    if (lowest_supported_version and
-        self.ctx.python_version < lowest_supported_version and
-        name not in _unsupported_members):
+    if (
+        lowest_supported_version
+        and self.ctx.python_version < lowest_supported_version
+        and name not in _unsupported_members
+    ):
       # For typing constructs that are being imported in a runtime version that
       # does not support them but are supported by pytype, we print a hint to
       # import them from typing_extensions instead.
-      details = (f"Import {name} from typing_extensions in Python versions "
-                 f"before {utils.format_version(lowest_supported_version)}.")
+      details = (
+          f"Import {name} from typing_extensions in Python versions "
+          f"before {utils.format_version(lowest_supported_version)}."
+      )
       return overlay_utils.not_supported_yet(
-          name, self.ctx, self.name, details).to_variable(self.ctx.root_node)
+          name, self.ctx, self.name, details
+      ).to_variable(self.ctx.root_node)
     return super()._convert_member(name, builder, subst)
 
 
@@ -76,8 +85,9 @@ class Redirect(overlay.Overlay):
 
   def __init__(self, module, aliases, ctx):
     assert all(v.startswith("typing.") for v in aliases.values())
-    member_map = {k: _builder_from_name(v[len("typing."):])
-                  for k, v in aliases.items()}
+    member_map = {
+        k: _builder_from_name(v[len("typing.") :]) for k, v in aliases.items()
+    }
     ast = ctx.loader.import_name(module)
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:
       # Any public members that are not explicitly implemented are unsupported.
@@ -90,7 +100,8 @@ class Redirect(overlay.Overlay):
         member_map[name] = _builder_from_name(name)
       elif name not in member_map:
         member_map[name] = overlay.add_name(
-            name, overlay_utils.not_supported_yet)
+            name, overlay_utils.not_supported_yet
+        )
     super().__init__(ctx, module, member_map, ast)
 
 
@@ -102,6 +113,7 @@ def _builder_from_name(name):
       return overlay_utils.TypingContainer(name, ctx)
     pytd_type = pytd.ToType(pytd_val, True, True, True)
     return ctx.convert.constant_to_value(pytd_type)
+
   return resolve
 
 
@@ -156,7 +168,8 @@ class Tuple(overlay_utils.TypingContainer):
       # An ellipsis may appear at the end of the parameter list as long as it is
       # not the only parameter.
       return super()._get_value_info(
-          inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
+          inner, ellipses, allowed_ellipses={len(inner) - 1} - {0}
+      )
     else:
       template = list(range(len(inner))) + [abstract_utils.T]
       inner += (self.ctx.convert.merge_values(inner),)
@@ -172,38 +185,50 @@ class Callable(overlay_utils.TypingContainer):
     args = inner[0]
     if abstract_utils.is_concrete_list(args):
       inner[0], inner_ellipses = self._build_inner(args.pyval)
-      self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, inner_ellipses,
-                                         args.name)
+      self.ctx.errorlog.invalid_ellipses(
+          self.ctx.vm.frames, inner_ellipses, args.name
+      )
     elif not isinstance(args, (abstract.ParamSpec, abstract.Concatenate)):
       if args.cls.full_name == "builtins.list":
         self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, [args])
       elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.ctx.errorlog.invalid_annotation(
-            self.ctx.vm.frames, args,
-            ("First argument to Callable must be a list"
-             " of argument types or ellipsis."))
+            self.ctx.vm.frames,
+            args,
+            (
+                "First argument to Callable must be a list"
+                " of argument types or ellipsis."
+            ),
+        )
       inner[0] = self.ctx.convert.unsolvable
-    if (inner and
-        getattr(inner[-1], "full_name", None) in abstract_utils.TYPE_GUARDS):
+    if (
+        inner
+        and getattr(inner[-1], "full_name", None) in abstract_utils.TYPE_GUARDS
+    ):
       if isinstance(inner[0], list) and len(inner[0]) < 1:
         guard = inner[-1].full_name  # pytype: disable=attribute-error
         self.ctx.errorlog.invalid_annotation(
-            self.ctx.vm.frames, args,
-            f"A {guard} function must have at least one required parameter")
+            self.ctx.vm.frames,
+            args,
+            f"A {guard} function must have at least one required parameter",
+        )
       if not isinstance(inner[-1], abstract.ParameterizedClass):
         self.ctx.errorlog.invalid_annotation(
-            self.ctx.vm.frames, inner[-1], "Expected 1 parameter, got 0")
+            self.ctx.vm.frames, inner[-1], "Expected 1 parameter, got 0"
+        )
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
 
   def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
     if isinstance(inner[0], list):
-      template = (list(range(len(inner[0]))) +
-                  [t.name for t in self.base_cls.template])
+      template = list(range(len(inner[0]))) + [
+          t.name for t in self.base_cls.template
+      ]
       combined_args = self.ctx.convert.merge_values(inner[0])
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
-      self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses,
-                                         self.name)
+      self.ctx.errorlog.invalid_ellipses(
+          self.ctx.vm.frames, ellipses, self.name
+      )
       return template, inner, abstract.CallableClass
     elif isinstance(inner[0], (abstract.ParamSpec, abstract.Concatenate)):
       template = [0] + [t.name for t in self.base_cls.template]
@@ -242,7 +267,8 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
   def _get_annotation(self, node, var, name):
     with self.ctx.errorlog.checkpoint() as record:
       annot = self.ctx.annotation_utils.extract_annotation(
-          node, var, name, self.ctx.vm.simple_stack())
+          node, var, name, self.ctx.vm.simple_stack()
+      )
     if record.errors:
       raise TypeVarError("\n".join(error.message for error in record.errors))
     if annot.formal:
@@ -258,12 +284,14 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed") from e
-    return self._get_constant(args.posargs[0], "name", str,
-                              arg_type_desc="a constant str")
+    return self._get_constant(
+        args.posargs[0], "name", str, arg_type_desc="a constant str"
+    )
 
   def _get_typeparam_args(self, node, args):
     constraints = tuple(
-        self._get_annotation(node, c, "constraint") for c in args.posargs[1:])
+        self._get_annotation(node, c, "constraint") for c in args.posargs[1:]
+    )
     if len(constraints) == 1:
       raise TypeVarError("the number of constraints must be 0 or more than 1")
     bound = self._get_namedarg(node, args, "bound", None)
@@ -317,8 +345,9 @@ class TypeVar(_TypeVariable):
     else:
       ret = self._get_constant(args.namedargs[name], name, bool)
       # This error is logged only if _get_constant succeeds.
-      self.ctx.errorlog.not_supported_yet(self.ctx.vm.frames,
-                                          f"argument \"{name}\" to TypeVar")
+      self.ctx.errorlog.not_supported_yet(
+          self.ctx.vm.frames, f'argument "{name}" to TypeVar'
+      )
       return ret
 
 
@@ -349,7 +378,8 @@ class Cast(abstract.PyTDFunction):
   def call(self, node, func, args, alias_map=None):
     if args.posargs:
       _, value = self.ctx.annotation_utils.extract_and_init_annotation(
-          node, "typing.cast", args.posargs[0])
+          node, "typing.cast", args.posargs[0]
+      )
       return node, value
     return super().call(node, func, args)
 
@@ -392,7 +422,8 @@ class NewType(abstract.PyTDFunction):
       _ = abstract_utils.get_atomic_python_constant(name_arg, str)
     except abstract_utils.ConversionError:
       name_arg = self.ctx.convert.constant_to_var(
-          f"_NewType_Internal_Class_Name_{self.internal_name_counter}_")
+          f"_NewType_Internal_Class_Name_{self.internal_name_counter}_"
+      )
     type_arg = args.namedargs.get(self._type_arg_name) or args.posargs[1]
     try:
       type_value = abstract_utils.get_atomic_value(type_arg)
@@ -403,16 +434,15 @@ class NewType(abstract.PyTDFunction):
     if isinstance(type_value, abstract.AnnotationContainer):
       type_value = type_value.base_cls
     constructor = overlay_utils.make_method(
-        self.ctx,
-        node,
-        name="__init__",
-        params=[Param("val", type_value)])
+        self.ctx, node, name="__init__", params=[Param("val", type_value)]
+    )
     members = abstract.Dict(self.ctx)
     members.set_str_item(node, "__init__", constructor)
     props = class_mixin.ClassBuilderProperties(
         name_var=name_arg,
         bases=[type_arg],
-        class_dict_var=members.to_variable(node))
+        class_dict_var=members.to_variable(node),
+    )
     node, clsvar = self.ctx.make_class(node, props)
     # At runtime, the 'class' created by NewType is simply an identity function,
     # so it ignores abstract-ness.
@@ -498,12 +528,16 @@ class Literal(overlay_utils.TypingContainer):
     for i, param in enumerate(inner):
       # TODO(b/173742489): Once the enum overlay is enabled, we should
       # stop allowing unsolvable and handle enums here.
-      if (param == self.ctx.convert.none or
-          isinstance(param, abstract.LiteralClass) or
-          param == self.ctx.convert.unsolvable and i not in ellipses):
+      if (
+          param == self.ctx.convert.none
+          or isinstance(param, abstract.LiteralClass)
+          or param == self.ctx.convert.unsolvable
+          and i not in ellipses
+      ):
         value = param
-      elif (isinstance(param, abstract.ConcreteValue) and
-            isinstance(param.pyval, (int, str, bytes))):
+      elif isinstance(param, abstract.ConcreteValue) and isinstance(
+          param.pyval, (int, str, bytes)
+      ):
         value = abstract.LiteralClass(param, self.ctx)
       elif isinstance(param, abstract.Instance) and param.cls.is_enum:
         value = abstract.LiteralClass(param, self.ctx)
@@ -517,8 +551,10 @@ class Literal(overlay_utils.TypingContainer):
       values.append(value)
     if errors:
       self.ctx.errorlog.invalid_annotation(
-          self.ctx.vm.frames, self,
-          "\n".join("Bad parameter %r at index %d" % e for e in errors))
+          self.ctx.vm.frames,
+          self,
+          "\n".join("Bad parameter %r at index %d" % e for e in errors),
+      )
     return self.ctx.convert.merge_values(values)
 
 
@@ -542,10 +578,13 @@ class ForwardRef(abstract.PyTDClass):
     #   Class used for internal typing representation of string forward
     #   references. [...] ForwardRef should not be instantiated by a user
     self.ctx.errorlog.not_callable(
-        self.ctx.vm.frames, self,
+        self.ctx.vm.frames,
+        self,
         details=(
             "ForwardRef should never be instantiated by a user: "
-            "https://docs.python.org/3/library/typing.html#typing.ForwardRef"))
+            "https://docs.python.org/3/library/typing.html#typing.ForwardRef"
+        ),
+    )
     return node, self.ctx.new_unsolvable(node)
 
 
@@ -558,7 +597,8 @@ class DataclassTransformBuilder(abstract.PyTDFunction):
     # signature available we might as well check it.
     if args.namedargs:
       self.ctx.errorlog.not_supported_yet(
-          self.ctx.vm.frames, "Arguments to dataclass_transform")
+          self.ctx.vm.frames, "Arguments to dataclass_transform"
+      )
     self.match_args(node, args)
     ret = DataclassTransform(self.ctx)
     return node, ret.to_variable(node)
@@ -605,6 +645,7 @@ def get_re_builder(member):
     del module  # unused
     pyval = ctx.loader.lookup_pytd("re", member)
     return ctx.convert.constant_to_value(pyval)
+
   return build_re_member
 
 
@@ -648,19 +689,27 @@ typing_overlay = {
     "assert_never": (_builder_from_name("assert_never"), (3, 11)),
     "assert_type": (
         overlay.add_name("assert_type", special_builtins.AssertType.make_alias),
-        (3, 11)),
+        (3, 11),
+    ),
     "cast": (overlay.add_name("cast", Cast.make), None),
     "clear_overloads": (_builder_from_name("clear_overloads"), (3, 11)),
-    "dataclass_transform": (overlay.add_name(
-        "dataclass_transform", DataclassTransformBuilder.make), (3, 11)),
+    "dataclass_transform": (
+        overlay.add_name("dataclass_transform", DataclassTransformBuilder.make),
+        (3, 11),
+    ),
     "get_overloads": (_builder_from_name("get_overloads"), (3, 11)),
     "is_typeddict": (
-        overlay.add_name("is_typeddict", typed_dict.IsTypedDict.make), (3, 10)),
+        overlay.add_name("is_typeddict", typed_dict.IsTypedDict.make),
+        (3, 10),
+    ),
     "overload": (overlay.add_name("overload", Overload.make), None),
     "override": (_builder_from_name("override"), (3, 12)),
     "reveal_type": (
         overlay.add_name("reveal_type", special_builtins.RevealType.make_alias),
-        (3, 11)),
-    **{k: (overlay.add_name(k, overlay_utils.not_supported_yet), v)
-       for k, v in _unsupported_members.items()}
+        (3, 11),
+    ),
+    **{
+        k: (overlay.add_name(k, overlay_utils.not_supported_yet), v)
+        for k, v in _unsupported_members.items()
+    },
 }

@@ -102,7 +102,8 @@ class CheckerTest(test_base.BaseTest):
         pass
     """)
     self.assertErrorRegexes(
-        errorlog, {"e1": r"instance of Callable.*x", "e2": r"3.*x"})
+        errorlog, {"e1": r"instance of Callable.*x", "e2": r"3.*x"}
+    )
 
   def test_bad_generator(self):
     errorlog = self.CheckWithErrors("""
@@ -140,8 +141,9 @@ class CheckerTest(test_base.BaseTest):
           # No "z" on Type[Foo]
           self.z = Foo.z  # attribute-error[e2]
     """)
-    self.assertErrorRegexes(errorlog, {"e1": r"y.*List\[Foo\]",
-                                       "e2": r"z.*Type\[Foo\]"})
+    self.assertErrorRegexes(
+        errorlog, {"e1": r"y.*List\[Foo\]", "e2": r"z.*Type\[Foo\]"}
+    )
 
   def test_bad_getitem(self):
     errorlog = self.CheckWithErrors("""
@@ -166,8 +168,10 @@ class CheckerTest(test_base.BaseTest):
       def f() -> int:
         return ''  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errorlog, {
-        "e": r"bad return type.*Expected: int.*Actually returned: str"})
+    self.assertErrorRegexes(
+        errorlog,
+        {"e": r"bad return type.*Expected: int.*Actually returned: str"},
+    )
 
   def test_bad_option_in_return_type(self):
     errorlog = self.CheckWithErrors("""
@@ -175,9 +179,15 @@ class CheckerTest(test_base.BaseTest):
       def f(x: Union[int, str]) -> int:
         return x  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errorlog, {"e": (
-        r"bad option 'str' in return type.*"
-        r"Expected: int.*Actually returned: Union\[int, str\]")})
+    self.assertErrorRegexes(
+        errorlog,
+        {
+            "e": (
+                r"bad option 'str' in return type.*"
+                r"Expected: int.*Actually returned: Union\[int, str\]"
+            )
+        },
+    )
 
 
 if __name__ == "__main__":

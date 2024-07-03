@@ -5,8 +5,7 @@ from pytype.rewrite.tests import test_utils
 import unittest
 
 
-class ConverterTestBase(test_utils.PytdTestBase,
-                        test_utils.ContextfulTestBase):
+class ConverterTestBase(test_utils.PytdTestBase, test_utils.ContextfulTestBase):
 
   def setUp(self):
     super().setUp()
@@ -93,18 +92,24 @@ class PytdClassToValueTest(ConverterTestBase):
     self.assertEqual(nested_class.name, 'D')
 
   def test_bases(self):
-    pytd_cls = self.build_pytd("""
+    pytd_cls = self.build_pytd(
+        """
       class C: ...
       class D(C): ...
-    """, 'D')
+    """,
+        'D',
+    )
     cls = self.conv.pytd_class_to_value(pytd_cls)
     self.assertEqual(cls.bases, (abstract.SimpleClass(self.ctx, 'C', {}),))
 
   def test_metaclass(self):
-    pytd_cls = self.build_pytd("""
+    pytd_cls = self.build_pytd(
+        """
       class Meta(type): ...
       class C(metaclass=Meta): ...
-    """, 'C')
+    """,
+        'C',
+    )
     cls = self.conv.pytd_class_to_value(pytd_cls)
     metaclass = cls.metaclass
     self.assertIsNotNone(metaclass)

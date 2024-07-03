@@ -24,6 +24,7 @@ import os
 import re
 import time
 import types
+
 try:
   import tracemalloc  # pylint: disable=g-import-not-at-top
 except ImportError:
@@ -122,8 +123,9 @@ def get_metric(name, constructor, *args, **kwargs):
 
 def get_report():
   """Return a string listing all metrics, one per line."""
-  lines = [str(_registered_metrics[n]) + "\n"
-           for n in sorted(_registered_metrics)]
+  lines = [
+      str(_registered_metrics[n]) + "\n" for n in sorted(_registered_metrics)
+  ]
   return "".join(lines)
 
 
@@ -265,8 +267,9 @@ class MapCounter(Metric):
     self._total += count
 
   def _summary(self):
-    details = ", ".join(["%s=%d" % (k, self._counts[k])
-                         for k in sorted(self._counts)])
+    details = ", ".join(
+        ["%s=%d" % (k, self._counts[k]) for k in sorted(self._counts)]
+    )
     return "%d {%s}" % (self._total, details)
 
   def _merge(self, other):
@@ -307,18 +310,24 @@ class Distribution(Metric):
 
   def _stdev(self):
     if self._count:
-      variance = ((self._squared * self._count - self._total * self._total) /
-                  (self._count * self._count))
+      variance = (self._squared * self._count - self._total * self._total) / (
+          self._count * self._count
+      )
       if variance < 0.0:
         # This can only happen as the result of rounding error when the actual
         # variance is very, very close to 0.  Assume it is 0.
         return 0.0
-      return  math.sqrt(variance)
+      return math.sqrt(variance)
 
   def _summary(self):
     return "total=%s, count=%d, min=%s, max=%s, mean=%s, stdev=%s" % (
-        self._total, self._count, self._min, self._max, self._mean(),
-        self._stdev())
+        self._total,
+        self._count,
+        self._min,
+        self._max,
+        self._mean(),
+        self._stdev(),
+    )
 
   def _merge(self, other):
     # pylint: disable=protected-access
@@ -339,8 +348,9 @@ class Distribution(Metric):
 class Snapshot(Metric):
   """A metric to track memory usage via tracemalloc snapshots."""
 
-  def __init__(self, name, enabled=False, groupby="lineno",
-               nframes=1, count=10):
+  def __init__(
+      self, name, enabled=False, groupby="lineno", nframes=1, count=10
+  ):
     if enabled and tracemalloc is None:
       raise RuntimeError("tracemalloc module couldn't be imported")
     super().__init__(name)
@@ -381,8 +391,12 @@ class Snapshot(Metric):
     # doesn't take None into account during comparisons, and json will compare
     # it to None when trying to process it, causing an error. So, store it as a
     # string instead.
-    self.snapshots.append("{}:\n{}".format(where, "\n".join(
-        map(str, snap.statistics(self.groupby)[:self.count]))))
+    self.snapshots.append(
+        "{}:\n{}".format(
+            where,
+            "\n".join(map(str, snap.statistics(self.groupby)[: self.count])),
+        )
+    )
 
   def __enter__(self):
     if not self.enabled:
@@ -408,7 +422,7 @@ class MetricsContext:
 
     Args:
       output_path: The path for the metrics data.  If empty, no metrics are
-          collected.
+        collected.
       open_function: A custom file opening function.
     """
     self._output_path = output_path

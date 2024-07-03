@@ -6,6 +6,7 @@ import textwrap
 from pytype.directors import directors
 from pytype.errors import errors
 from pytype.tests import test_utils
+
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -116,16 +117,21 @@ class DirectorTestCase(unittest.TestCase):
     src_tree = directors.parse_src(self.src, self.python_version)
     self._errorlog = errors.VmErrorLog(test_utils.FakePrettyPrinter(), self.src)
     self._director = directors.Director(
-        src_tree, self._errorlog, _TEST_FILENAME, disable)
+        src_tree, self._errorlog, _TEST_FILENAME, disable
+    )
 
-  def _should_report(self, expected, line, error_name="test-error",
-                     filename=_TEST_FILENAME):
+  def _should_report(
+      self, expected, line, error_name="test-error", filename=_TEST_FILENAME
+  ):
     error = errors.Error.for_test(
-        errors.SEVERITY_ERROR, "message", error_name, filename=filename,
-        line=line, src=self.src)
-    self.assertEqual(
-        expected,
-        self._director.filter_error(error))
+        errors.SEVERITY_ERROR,
+        "message",
+        error_name,
+        filename=filename,
+        line=line,
+        src=self.src,
+    )
+    self.assertEqual(expected, self._director.filter_error(error))
 
 
 class DirectorTest(DirectorTestCase):
@@ -310,25 +316,31 @@ class DirectorTest(DirectorTestCase):
       self.assertEqual(1, error.line)
       self.assertRegex(str(error), message_regex)
 
-    check_warning("Unknown pytype directive.*disalbe.*",
-                  "# pytype: disalbe=test-error")
-    check_warning("Invalid error name.*bad-error-name.*",
-                  "# pytype: disable=bad-error-name")
-    check_warning("Invalid directive syntax",
-                  "# pytype: disable")
-    check_warning("Invalid directive syntax",
-                  "# pytype: ")
-    check_warning("Unknown pytype directive.*foo.*",
-                  "# pytype: disable=test-error foo=bar")
+    check_warning(
+        "Unknown pytype directive.*disalbe.*", "# pytype: disalbe=test-error"
+    )
+    check_warning(
+        "Invalid error name.*bad-error-name.*",
+        "# pytype: disable=bad-error-name",
+    )
+    check_warning("Invalid directive syntax", "# pytype: disable")
+    check_warning("Invalid directive syntax", "# pytype: ")
+    check_warning(
+        "Unknown pytype directive.*foo.*",
+        "# pytype: disable=test-error foo=bar",
+    )
     # Spaces aren't allowed in the comma-separated value list.
-    check_warning("Invalid directive syntax",
-                  "# pytype: disable=test-error ,test-other-error")
+    check_warning(
+        "Invalid directive syntax",
+        "# pytype: disable=test-error ,test-other-error",
+    )
     # This will actually result in two warnings: the first because the
     # empty string isn't a valid error name, the second because
     # test-other-error isn't a valid command.  We only verify the first
     # warning.
-    check_warning("Invalid error name",
-                  "# pytype: disable=test-error, test-other-error")
+    check_warning(
+        "Invalid error name", "# pytype: disable=test-error, test-other-error"
+    )
 
   def test_type_comments(self):
     self._create("""
@@ -339,13 +351,16 @@ class DirectorTest(DirectorTestCase):
     # type: (int, float) -> str
     # comment with embedded # type: should-be-discarded
     """)
-    self.assertEqual({
-        2: "int",
-        3: "str",
-        4: "int",
-        5: "int",
-        6: "(int, float) -> str",
-    }, self._director.type_comments)
+    self.assertEqual(
+        {
+            2: "int",
+            3: "str",
+            4: "int",
+            5: "int",
+            6: "(int, float) -> str",
+        },
+        self._director.type_comments,
+    )
 
   def test_strings_that_look_like_directives(self):
     # Line 2 is a string, not a type comment.
@@ -355,10 +370,13 @@ class DirectorTest(DirectorTestCase):
     x = None  # type: float
     y = "# type: int"  # type: str
     """)
-    self.assertEqual({
-        3: "float",
-        4: "str",
-    }, self._director.type_comments)
+    self.assertEqual(
+        {
+            3: "float",
+            4: "str",
+        },
+        self._director.type_comments,
+    )
 
   def test_huge_string(self):
     # Tests that the director doesn't choke on this huge, repetitive file.
@@ -377,18 +395,22 @@ class DirectorTest(DirectorTestCase):
       else:
         x = None  # type: float
     """)
-    self.assertEqual({
-        3: "int",
-        5: "str",
-        7: "float",
-    }, self._director.type_comments)
+    self.assertEqual(
+        {
+            3: "int",
+            5: "str",
+            7: "float",
+        },
+        self._director.type_comments,
+    )
 
 
 class VariableAnnotationsTest(DirectorTestCase):
 
   def assertAnnotations(self, expected):
-    actual = {k: (v.name, v.annotation)
-              for k, v in self._director.annotations.items()}
+    actual = {
+        k: (v.name, v.annotation) for k, v in self._director.annotations.items()
+    }
     self.assertEqual(expected, actual)
 
   def test_annotations(self):
@@ -502,10 +524,7 @@ class LineNumbersTest(DirectorTestCase):
         ],  # some comment
       ]  # type: dict
     """)
-    self.assertEqual({
-        2: "dict",
-        7: "dict"
-    }, self._director.type_comments)
+    self.assertEqual({2: "dict", 7: "dict"}, self._director.type_comments)
 
   def test_decorators(self):
     self._create("""
@@ -525,7 +544,8 @@ class LineNumbersTest(DirectorTestCase):
           pass
     """)
     self.assertEqual(
-        self._director.decorators, {7: ["real_decorator"], 14: ["decorator"]})
+        self._director.decorators, {7: ["real_decorator"], 14: ["decorator"]}
+    )
     self.assertEqual(self._director.decorated_functions, {6: 7, 10: 14})
 
   def test_stacked_decorators(self):
@@ -556,7 +576,8 @@ class LineNumbersTest(DirectorTestCase):
         return 0 if x is None else x
     """)
     self.assertEqual(
-        self._director.decorators, {5: ["overload"], 8: ["overload"]})
+        self._director.decorators, {5: ["overload"], 8: ["overload"]}
+    )
     self.assertEqual(self._director.decorated_functions, {4: 5, 7: 8})
 
 
@@ -567,7 +588,7 @@ class DisableDirectivesTest(DirectorTestCase):
     error_class = error_class or "wrong-arg-types"
     disables = disables or self._director._disables[error_class]
     for i in range(self.num_lines):
-      lineno = i+1
+      lineno = i + 1
       if lineno in disable_lines:
         self.assertIn(lineno, disables)
       else:
@@ -893,9 +914,11 @@ class GlobalDirectivesTest(DirectorTestCase):
   def test_skip_file(self):
     self.assertRaises(
         directors.SkipFileError,
-        self._create, """
+        self._create,
+        """
           # pytype: skip-file
-        """)
+        """,
+    )
 
   def test_features(self):
     self._create("""

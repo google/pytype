@@ -33,7 +33,6 @@ import sys
 from typing import Iterable, Optional, Tuple, TypeVar, Union
 
 import msgspec
-
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
 
@@ -53,6 +52,7 @@ class LoadPickleError(Exception):
     msg = f"Error loading pickle file: {self.filename}"
     super().__init__(msg)
 
+
 Encoder = msgspec.msgpack.Encoder(order="deterministic")
 AstDecoder = msgspec.msgpack.Decoder(type=serialize_ast.SerializableAst)
 BuiltinsDecoder = msgspec.msgpack.Decoder(type=serialize_ast.ModuleBundle)
@@ -65,7 +65,9 @@ _Serializable = Union[serialize_ast.SerializableAst, serialize_ast.ModuleBundle]
 
 
 def _Load(
-    dec: "_Dec[_DecT]", filename: Path, compress: bool = False,
+    dec: "_Dec[_DecT]",
+    filename: Path,
+    compress: bool = False,
     open_function=open,
 ) -> _DecT:
   """Loads a serialized file.
@@ -170,7 +172,7 @@ def SerializeAndSave(
 
 
 def PrepareModuleBundle(
-    modules: Iterable[Tuple[str, str, pytd.TypeDeclUnit]]
+    modules: Iterable[Tuple[str, str, pytd.TypeDeclUnit]],
 ) -> serialize_ast.ModuleBundle:
   raw = lambda ast, filename: msgspec.Raw(Serialize(ast, src_path=filename))
   return tuple(

@@ -1,4 +1,5 @@
 """Test pyc/generate_opcode_diffs.py."""
+
 import json
 import subprocess
 import textwrap
@@ -6,6 +7,7 @@ import types
 from unittest import mock
 
 from pytype.pyc import generate_opcode_diffs
+
 import unittest
 
 
@@ -59,21 +61,29 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
           'HAS_NAME': [5, 7],
           'HAS_JREL': [8],
       })
-      mock_run.side_effect = [types.SimpleNamespace(stdout=mapping_38),
-                              types.SimpleNamespace(stdout=mapping_39)]
+      mock_run.side_effect = [
+          types.SimpleNamespace(stdout=mapping_38),
+          types.SimpleNamespace(stdout=mapping_39),
+      ]
       return generate_opcode_diffs.generate_diffs(['3.8', '3.9'])
 
   def test_classes(self):
     classes, _, _, _, _ = self._generate_diffs()
     i_move, do_that, do_that_too, do_nine, jump = classes
-    self.assertMultiLineEqual('\n'.join(i_move), textwrap.dedent("""
+    self.assertMultiLineEqual(
+        '\n'.join(i_move),
+        textwrap.dedent("""
       class I_MOVE(Opcode):
         __slots__ = ()
-    """).strip())
-    self.assertMultiLineEqual('\n'.join(do_that), textwrap.dedent("""
+    """).strip(),
+    )
+    self.assertMultiLineEqual(
+        '\n'.join(do_that),
+        textwrap.dedent("""
       class DO_THAT(Opcode):
         __slots__ = ()
-    """).strip())
+    """).strip(),
+    )
     self.assertMultiLineEqual(
         '\n'.join(do_that_too),
         textwrap.dedent("""
@@ -102,21 +112,30 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
   def test_stubs(self):
     _, stubs, _, _, _ = self._generate_diffs()
     do_that, do_that_too, do_nine = stubs
-    self.assertMultiLineEqual('\n'.join(do_that), textwrap.dedent("""
+    self.assertMultiLineEqual(
+        '\n'.join(do_that),
+        textwrap.dedent("""
       def byte_DO_THAT(self, state, op):
         del op
         return state
-    """).strip())
-    self.assertMultiLineEqual('\n'.join(do_that_too), textwrap.dedent("""
+    """).strip(),
+    )
+    self.assertMultiLineEqual(
+        '\n'.join(do_that_too),
+        textwrap.dedent("""
       def byte_DO_THAT_TOO(self, state, op):
         del op
         return state
-    """).strip())
-    self.assertMultiLineEqual('\n'.join(do_nine), textwrap.dedent("""
+    """).strip(),
+    )
+    self.assertMultiLineEqual(
+        '\n'.join(do_nine),
+        textwrap.dedent("""
       def byte_DO_NINE(self, state, op):
         del op
         return state
-    """).strip())
+    """).strip(),
+    )
 
   def test_impl_changed(self):
     _, _, impl_changed, _, _ = self._generate_diffs()

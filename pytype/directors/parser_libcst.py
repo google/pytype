@@ -43,8 +43,9 @@ class _StructuredComment:
     tool: The tool label, e.g., "type" for "# type: int".
     data: The data, e.g., "int" for "# type: int".
     open_ended: True if the comment appears on a line by itself (i.e., it is
-     open-ended rather than attached to a line of code).
+      open-ended rather than attached to a line of code).
   """
+
   line: int
   tool: str
   data: str
@@ -108,8 +109,10 @@ class _ParseVisitor(libcst.CSTVisitor):
       appears, if any.
   """
 
-  METADATA_DEPENDENCIES = (libcst.metadata.PositionProvider,
-                           libcst.metadata.ParentNodeProvider,)
+  METADATA_DEPENDENCIES = (
+      libcst.metadata.PositionProvider,
+      libcst.metadata.ParentNodeProvider,
+  )
 
   def __init__(self):
     self.structured_comment_groups = collections.OrderedDict()
@@ -129,11 +132,14 @@ class _ParseVisitor(libcst.CSTVisitor):
     # also keep the groups ordered. So we do a reverse search and stop as soon
     # as we hit a statement that does not overlap with our given range.
     for line_range, group in reversed(self.structured_comment_groups.items()):
-      if (line_range.start_line <= start_line and
-          end_line <= line_range.end_line):
+      if (
+          line_range.start_line <= start_line
+          and end_line <= line_range.end_line
+      ):
         yield (line_range, group)
-      elif (not isinstance(line_range, Call) and
-            line_range.end_line < start_line):
+      elif (
+          not isinstance(line_range, Call) and line_range.end_line < start_line
+      ):
         return
 
   def _has_containing_group(self, start_line, end_line=None):
@@ -153,9 +159,11 @@ class _ParseVisitor(libcst.CSTVisitor):
     keys_to_absorb = []
     keys_to_move = []
     for line_range in reversed(self.structured_comment_groups):
-      if (cls is LineRange and
-          start_line <= line_range.start_line and
-          line_range.end_line <= end_line):
+      if (
+          cls is LineRange
+          and start_line <= line_range.start_line
+          and line_range.end_line <= end_line
+      ):
         if type(line_range) is LineRange:  # pylint: disable=unidiomatic-typecheck
           keys_to_absorb.append(line_range)
         else:
@@ -194,13 +202,16 @@ class _ParseVisitor(libcst.CSTVisitor):
           group.append(structured_comment)
           break
         elif not open_ended and (
-            tool == "pytype" or (tool == "type" and IGNORE_RE.match(data))):
+            tool == "pytype" or (tool == "type" and IGNORE_RE.match(data))
+        ):
           # A "type: ignore" or "pytype:" comment can additionally belong to any
           # number of overlapping function calls.
           group.append(structured_comment)
       else:
-        raise AssertionError("Could not find a line range for comment "
-                             f"{structured_comment} on line {line}")
+        raise AssertionError(
+            "Could not find a line range for comment "
+            f"{structured_comment} on line {line}"
+        )
 
   def _get_position(self, node):
     return self.get_metadata(libcst.metadata.PositionProvider, node)
@@ -272,14 +283,15 @@ class _ParseVisitor(libcst.CSTVisitor):
     pos = self._get_position(node)
     # Gets a string representation of the annotation.
     annotation = re.sub(
-        r"\s*(#.*)?\n\s*", "",
-        libcst.Module([node.annotation.annotation]).code)
+        r"\s*(#.*)?\n\s*", "", libcst.Module([node.annotation.annotation]).code
+    )
     if isinstance(node.target, libcst.Name):
       name = node.target.value
     else:
       name = None
     self.variable_annotations.append(
-        _VariableAnnotation(pos.start.line, pos.end.line, name, annotation))
+        _VariableAnnotation(pos.start.line, pos.end.line, name, annotation)
+    )
 
   def visit_Return(self, node):
     self.block_returns.add_return(self._get_position(node))
@@ -308,7 +320,8 @@ class _ParseVisitor(libcst.CSTVisitor):
     pos = self._get_position(node)
     self._add_structured_comment_group(
         pos.start.line,
-        self._get_position(node.whitespace_before_colon).end.line)
+        self._get_position(node.whitespace_before_colon).end.line,
+    )
     self._visit_decorators(node)
     self._visit_def(node)
     self.function_ranges[pos.start.line] = pos.end.line
@@ -337,7 +350,9 @@ def visit_src_tree(src_tree):
   try:
     src_tree.visit(visitor)
   except RecursionError:
-    log.warning("File parsing failed. Comment directives and some variable "
-                "annotations will be ignored.")
+    log.warning(
+        "File parsing failed. Comment directives and some variable "
+        "annotations will be ignored."
+    )
     return None
   return visitor

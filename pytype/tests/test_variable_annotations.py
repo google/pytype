@@ -9,15 +9,19 @@ class VariableAnnotationsBasicTest(test_base.BaseTest):
 
   def test_pyi_annotations(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import List
         x: int
         y: List[int]
         class A:
           a: int
           b: str
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         import foo
         def f(x: int) -> None:
           pass
@@ -26,7 +30,9 @@ class VariableAnnotationsBasicTest(test_base.BaseTest):
         f(foo.y)  # wrong-arg-types[e1]
         f(obj.a)
         f(obj.b)  # wrong-arg-types[e2]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e1": r"int.*List", "e2": r"int.*str"})
 
   def test_typevar_annot_with_subclass(self):
@@ -59,7 +65,9 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         a: int = 1
         b = 2
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
 
       lst: List[int]
@@ -69,7 +77,8 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
       class A:
           a: int
           b: int
-    """)
+    """,
+    )
 
   def test_illegal_annotations(self):
     _, errors = self.InferWithErrors("""
@@ -83,9 +92,15 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
       d: List[T] = []  # invalid-annotation[e3]
       e: int if __random__ else str = 123  # invalid-annotation[e4]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
-        "e3": r"'T' not in scope", "e4": r"Must be constant"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Name \'abc\' is not defined",
+            "e2": r"Not a type",
+            "e3": r"'T' not in scope",
+            "e4": r"Must be constant",
+        },
+    )
 
   def test_never(self):
     errors = self.CheckWithErrors("""
@@ -93,7 +108,8 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
       x: NoReturn = 0  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Annotation: Never", "Assignment: int"]})
+        errors, {"e": ["Annotation: Never", "Assignment: int"]}
+    )
 
   def test_uninitialized_class_annotation(self):
     ty = self.Infer("""
@@ -102,21 +118,27 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         def baz(self):
           return self.bar
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         bar: int
         def baz(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_uninitialized_module_annotation(self):
     ty = self.Infer("""
       foo: int
       bar = foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       foo: int
       bar: int
-    """)
+    """,
+    )
 
   def test_overwrite_annotations_dict(self):
     errors = self.CheckWithErrors("""
@@ -129,9 +151,12 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
     ty = self.Infer("""
       v: int = None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v: int
-    """)
+    """,
+    )
 
   def test_overwrite_annotation(self):
     ty, errors = self.InferWithErrors("""
@@ -147,10 +172,13 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         x: int
         x = ""  # annotation-type-mismatch[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x: int
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 
   def test_class_variable_forward_reference(self):
@@ -159,11 +187,14 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         a: 'A' = ...
         x = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         a: A
         x: int
-    """)
+    """,
+    )
 
   def test_callable_forward_reference(self):
     # Callable[['A']...] creates an instance of A during output generation,
@@ -174,12 +205,15 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         def __init__(self, fn: Callable[['A'], bool]):
           self.fn = fn
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable
       class A:
         fn: Callable[[A], bool]
         def __init__(self, fn: Callable[[A], bool]) -> None: ...
-    """)
+    """,
+    )
 
   def test_multiple_forward_reference(self):
     ty = self.Infer("""
@@ -189,12 +223,15 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
       class B:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       class A:
         x: Dict[A, B]
       class B: ...
-    """)
+    """,
+    )
 
   def test_non_annotations_dict(self):
     # Regression test to make sure `x` isn't confused with `__annotations__`.
@@ -230,10 +267,13 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         else: v = __any_object__
         return v
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_multi_line_assignment(self):
     ty = self.Infer("""
@@ -256,10 +296,13 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         }
         return column_map
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       def f() -> Dict[str, Dict[str, bool]]: ...
-    """)
+    """,
+    )
 
   def test_none_or_ellipsis_assignment(self):
     self.Check("""
@@ -303,10 +346,13 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
           print(v.whatever)
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict
       def f() -> Dict[str, Any]: ...
-    """)
+    """,
+    )
 
   def test_function_parameter(self):
     self.Check("""
@@ -372,8 +418,13 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
       foo.x(None, 'hello world')  # wrong-arg-types[e1]
       foo.f()('oops', 4.2)  # wrong-arg-types[e2]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Expected.*int.*Actual.*None",
-                                     "e2": r"Expected.*int.*Actual.*str"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Expected.*int.*Actual.*None",
+            "e2": r"Expected.*int.*Actual.*str",
+        },
+    )
 
   def test_invalid_callable_parameter(self):
     # Do not allow TypeVars that appear only once in a Callable signature.

@@ -20,7 +20,9 @@ class SliceTest(test_base.BaseTest):
       f = x[1::3]
       g = x[1:2:]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar
       _T0 = TypeVar('_T0')
       class Foo:
@@ -33,7 +35,8 @@ class SliceTest(test_base.BaseTest):
       e: slice
       f: slice
       g: slice
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

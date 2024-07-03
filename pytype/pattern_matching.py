@@ -3,7 +3,6 @@
 import collections
 import dataclasses
 import enum
-
 from typing import Dict, List, Optional, Set, Union, cast
 
 from pytype.abstract import abstract
@@ -56,12 +55,15 @@ def _is_enum_match(
     match_val = abstract_utils.get_atomic_value(match_var)
   except abstract_utils.ConversionError:
     return False
-  if not (isinstance(match_val, abstract.Instance) and
-          isinstance(match_val.cls, abstract.Class) and
-          match_val.cls.is_enum):
+  if not (
+      isinstance(match_val, abstract.Instance)
+      and isinstance(match_val.cls, abstract.Class)
+      and match_val.cls.is_enum
+  ):
     return False
-  if not (isinstance(case_val, abstract.Instance) and
-          case_val.cls == match_val.cls):
+  if not (
+      isinstance(case_val, abstract.Instance) and case_val.cls == match_val.cls
+  ):
     return False
   return True
 
@@ -81,7 +83,7 @@ class _Option:
 
   @property
   def is_empty(self) -> bool:
-    return not(self.values or self.indefinite)
+    return not (self.values or self.indefinite)
 
   def __repr__(self):
     indef = "*" if self.indefinite else ""
@@ -139,9 +141,11 @@ class _OptionSet:
       opt.values.remove(val)
       return [val]
     else:
-      if (not cls.is_enum and
-          not isinstance(val, abstract.ConcreteValue) and
-          opt.values):
+      if (
+          not cls.is_enum
+          and not isinstance(val, abstract.ConcreteValue)
+          and opt.values
+      ):
         # We have passed in an indefinite value to a match var with concrete
         # values; we can no longer be sure which values of the type are covered.
         opt.indefinite = True
@@ -253,7 +257,7 @@ class _MatchTypes(enum.Enum):
   @classmethod
   def make(cls, op: opcodes.Opcode):
     if op.name.startswith("MATCH_"):
-      return cls[op.name[len("MATCH_"):]]
+      return cls[op.name[len("MATCH_") :]]
     else:
       return cls.CMP
 
@@ -299,6 +303,7 @@ class _Matches:
 @dataclasses.dataclass
 class IncompleteMatch:
   """A list of uncovered cases, for error reporting."""
+
   line: int
   cases: Set[str]
 
@@ -309,9 +314,11 @@ class BranchTracker:
   def __init__(self, ast_matches, ctx):
     self.matches = _Matches(ast_matches)
     self._option_tracker: Dict[int, Dict[int, _OptionTracker]] = (
-        collections.defaultdict(dict))
-    self._match_types: Dict[int, Set[_MatchTypes]] = (
-        collections.defaultdict(set))
+        collections.defaultdict(dict)
+    )
+    self._match_types: Dict[int, Set[_MatchTypes]] = collections.defaultdict(
+        set
+    )
     self._active_ends = set()
     self.ctx = ctx
 
@@ -319,10 +326,13 @@ class BranchTracker:
       self, match_var: cfg.Variable, match_line: int
   ) -> _OptionTracker:
     """Get the option tracker for a match line."""
-    if (match_line not in self._option_tracker or
-        match_var.id not in self._option_tracker[match_line]):
-      self._option_tracker[match_line][match_var.id] = (
-          _OptionTracker(match_var, self.ctx))
+    if (
+        match_line not in self._option_tracker
+        or match_var.id not in self._option_tracker[match_line]
+    ):
+      self._option_tracker[match_line][match_var.id] = _OptionTracker(
+          match_var, self.ctx
+      )
       self._active_ends.add(self.matches.start_to_end[match_line])
     return self._option_tracker[match_line][match_var.id]
 
@@ -401,7 +411,7 @@ class BranchTracker:
       op: opcodes.OpcodeWithArg,
       cmp_type: int,
       match_var: cfg.Variable,
-      case_var: cfg.Variable
+      case_var: cfg.Variable,
   ) -> _MatchSuccessType:
     """Add a compare-based match case branch to the tracker."""
     match_line = self._register_case_branch(op)
@@ -450,8 +460,9 @@ class BranchTracker:
     else:
       return False
 
-  def add_class_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
-                       case_var: cfg.Variable) -> _MatchSuccessType:
+  def add_class_branch(
+      self, op: opcodes.Opcode, match_var: cfg.Variable, case_var: cfg.Variable
+  ) -> _MatchSuccessType:
     """Add a class-based match case branch to the tracker."""
     match_line = self._register_case_branch(op)
     if not match_line:
@@ -473,9 +484,7 @@ class BranchTracker:
     return True
 
   def check_ending(
-      self,
-      op: opcodes.Opcode,
-      implicit_return: bool = False
+      self, op: opcodes.Opcode, implicit_return: bool = False
   ) -> List[IncompleteMatch]:
     """Check if we have ended a match statement with leftover cases."""
     line = op.line

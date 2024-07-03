@@ -15,17 +15,17 @@ def make_parser():
 
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      '--config', dest='config', type=str, action='store', default='')
+      '--config', dest='config', type=str, action='store', default=''
+  )
   # Add options from pytype-single.
   wrapper = datatypes.ParserWrapper(parser)
   wrapper.add_argument('input', nargs='*')
   wrapper.add_argument(
-      '-v', '--verbosity', dest='verbosity', type=int,
-      action='store', default=1)
+      '-v', '--verbosity', dest='verbosity', type=int, action='store', default=1
+  )
   pytype_config.add_basic_options(wrapper)
 
-  return arg_parser.Parser(
-      parser, pytype_single_args=wrapper.actions)
+  return arg_parser.Parser(parser, pytype_single_args=wrapper.actions)
 
 
 class TestParser(unittest.TestCase):
@@ -68,12 +68,14 @@ class TestParser(unittest.TestCase):
   def test_override(self):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--config', dest='config', type=str, action='store', default='')
+        '--config', dest='config', type=str, action='store', default=''
+    )
     # Add option from pytype-single.
     wrapper = datatypes.ParserWrapper(parser)
     pytype_config.add_basic_options(wrapper)
     parser = arg_parser.Parser(
-        parser, pytype_single_args=wrapper.actions, overrides=['platform'])
+        parser, pytype_single_args=wrapper.actions, overrides=['platform']
+    )
     args = parser.parse_args(['--platform', 'plan9', '--disable', 'foo,bar'])
     self.assertEqual(args.tool_args.platform, 'plan9')
     self.assertEqual(args.pytype_opts.platform, sys.platform)

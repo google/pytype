@@ -4,16 +4,14 @@ import re
 from typing import Any
 
 import msgspec
-
 from pytype.pytd import pytd
 from pytype.typegraph import cfg_utils
 
 # A convenient value for unchecked_node_classnames if a visitor wants to
 # use unchecked nodes everywhere.
 ALL_NODE_NAMES = type(
-    "contains_everything",
-    (),
-    {"__contains__": lambda *args: True})()
+    "contains_everything", (), {"__contains__": lambda *args: True}
+)()
 
 
 class _NodeClassInfo:
@@ -31,9 +29,12 @@ def _FindNodeClasses():
   """Yields _NodeClassInfo objects for each node found in pytd."""
   for name in dir(pytd):
     value = getattr(pytd, name)
-    if (isinstance(value, type) and
-        issubclass(value, pytd.Node) and
-        value is not pytd.Node and value is not pytd.Type):
+    if (
+        isinstance(value, type)
+        and issubclass(value, pytd.Node)
+        and value is not pytd.Node
+        and value is not pytd.Type
+    ):
       yield _NodeClassInfo(value)
 
 
@@ -87,7 +88,8 @@ def _GetAncestorMap():
         elif allowed.__module__ == "pytype.pytd.pytd":
           # All subclasses of the type are allowed.
           info.outgoing.update(
-              [i for i in node_classes.values() if issubclass(i.cls, allowed)])
+              [i for i in node_classes.values() if issubclass(i.cls, allowed)]
+          )
         else:
           # This means we have a child type that is unknown. If it is a node
           # then make sure _FindNodeClasses() can discover it. If it is not a
@@ -110,20 +112,21 @@ class Visitor:
   Attributes:
     visits_all_node_types: Whether the visitor can visit every node type.
     unchecked_node_names: Contains the names of node classes that are unchecked
-      when constructing a new node from visited children.  This is useful
-      if a visitor returns data in part or all of its walk that would violate
-      node preconditions.
-    enter_functions: A dictionary mapping node class names to the
-      corresponding Enter functions.
-    visit_functions: A dictionary mapping node class names to the
-      corresponding Visit functions.
-    leave_functions: A dictionary mapping node class names to the
-      corresponding Leave functions.
+      when constructing a new node from visited children.  This is useful if a
+      visitor returns data in part or all of its walk that would violate node
+      preconditions.
+    enter_functions: A dictionary mapping node class names to the corresponding
+      Enter functions.
+    visit_functions: A dictionary mapping node class names to the corresponding
+      Visit functions.
+    leave_functions: A dictionary mapping node class names to the corresponding
+      Leave functions.
     visit_class_names: A set of node class names that must be visited.  This is
-      constructed based on the enter/visit/leave functions and precondition
-      data about legal ASTs.  As an optimization, the visitor will only visit
-      nodes under which some actionable node can appear.
+      constructed based on the enter/visit/leave functions and precondition data
+      about legal ASTs.  As an optimization, the visitor will only visit nodes
+      under which some actionable node can appear.
   """
+
   # The old_node attribute contains a copy of the node before its children were
   # visited. It has the same type as the node currently being visited.
   old_node: Any
@@ -140,7 +143,8 @@ class Visitor:
     # be fixed. Therefore this introspection can be cached.
     if cls in Visitor._visitor_functions_cache:
       enter_fns, visit_fns, leave_fns, visit_class_names = (
-          Visitor._visitor_functions_cache[cls])
+          Visitor._visitor_functions_cache[cls]
+      )
     else:
       enter_fns = {}
       enter_prefix = "Enter"
@@ -165,9 +169,11 @@ class Visitor:
       ancestors = _GetAncestorMap()
       visit_class_names = set()
       # A custom Enter/Visit/Leave requires visiting all types of nodes.
-      visit_all = (cls.Enter != Visitor.Enter or
-                   cls.Visit != Visitor.Visit or
-                   cls.Leave != Visitor.Leave)
+      visit_all = (
+          cls.Enter != Visitor.Enter
+          or cls.Visit != Visitor.Visit
+          or cls.Leave != Visitor.Leave
+      )
       for node in set(enter_fns) | set(visit_fns) | set(leave_fns):
         if node in ancestors:
           visit_class_names.update(ancestors[node])
@@ -179,8 +185,9 @@ class Visitor:
             # StrictType node, and pytd.printer.PrintVisitor has a visitor to
             # handle it.
             visit_all = True
-          elif (cls.__module__ == "__main__" or
-                re.fullmatch(r".*(_test|test_[^\.]+)", cls.__module__)):
+          elif cls.__module__ == "__main__" or re.fullmatch(
+              r".*(_test|test_[^\.]+)", cls.__module__
+          ):
             # We are running test code or something else that is defining its
             # own pytd nodes directly in a top-level python file.
             visit_all = True
@@ -189,7 +196,11 @@ class Visitor:
       if visit_all:
         visit_class_names = ALL_NODE_NAMES
       Visitor._visitor_functions_cache[cls] = (
-          enter_fns, visit_fns, leave_fns, visit_class_names)
+          enter_fns,
+          visit_fns,
+          leave_fns,
+          visit_class_names,
+      )
 
     self.enter_functions = enter_fns
     self.visit_functions = visit_fns
@@ -198,11 +209,13 @@ class Visitor:
 
   def Enter(self, node, *args, **kwargs):
     return self.enter_functions[node.__class__.__name__](
-        self, node, *args, **kwargs)
+        self, node, *args, **kwargs
+    )
 
   def Visit(self, node, *args, **kwargs):
     return self.visit_functions[node.__class__.__name__](
-        self, node, *args, **kwargs)
+        self, node, *args, **kwargs
+    )
 
   def Leave(self, node, *args, **kwargs):
     self.leave_functions[node.__class__.__name__](self, node, *args, **kwargs)

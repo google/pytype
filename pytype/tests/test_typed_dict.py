@@ -19,10 +19,13 @@ class TypedDictTest(test_base.BaseTest):
       d = A(y='1')  # missing-parameter
       e = A(1, '2')  # missing-parameter
     """)
-    self.assertErrorSequences(err, {
-        "e1": ["Expected", "(*, x, y: str)", "Actual", "(x, y: int)"],
-        "e2": ["Expected", "(*, x, y)", "Actual", "(x)"]
-    })
+    self.assertErrorSequences(
+        err,
+        {
+            "e1": ["Expected", "(*, x, y: str)", "Actual", "(x, y: int)"],
+            "e2": ["Expected", "(*, x, y)", "Actual", "(x)"],
+        },
+    )
 
   def test_key_error(self):
     # TODO(b/63407497): Enabling --strict-parameter-checks leads to an extra
@@ -39,10 +42,13 @@ class TypedDictTest(test_base.BaseTest):
       b = a["z"]  # typed-dict-error
       del a["z"]  # typed-dict-error
     """)
-    self.assertErrorSequences(err, {
-        "e1": ["TypedDict A", "key z"],
-        "e2": ["TypedDict A", "requires all keys", "strings"],
-    })
+    self.assertErrorSequences(
+        err,
+        {
+            "e1": ["TypedDict A", "key z"],
+            "e2": ["TypedDict A", "requires all keys", "strings"],
+        },
+    )
 
   def test_value_error(self):
     err = self.CheckWithErrors("""
@@ -53,10 +59,18 @@ class TypedDictTest(test_base.BaseTest):
       a = A(x=1, y="2")
       a["x"] = "10"  # annotation-type-mismatch[e]
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Type annotation", "key x", "TypedDict A",
-        "Annotation: int", "Assignment: str"
-    ]})
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "Type annotation",
+                "key x",
+                "TypedDict A",
+                "Annotation: int",
+                "Assignment: str",
+            ]
+        },
+    )
 
   def test_union_type(self):
     err = self.CheckWithErrors("""
@@ -69,10 +83,18 @@ class TypedDictTest(test_base.BaseTest):
       a["x"] = "10"
       a["y"] = []  # annotation-type-mismatch[e]
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Type annotation", "key y", "TypedDict A",
-        "Annotation: Union[int, str]", "Assignment: List[nothing]"
-    ]})
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "Type annotation",
+                "key y",
+                "TypedDict A",
+                "Annotation: Union[int, str]",
+                "Assignment: List[nothing]",
+            ]
+        },
+    )
 
   def test_bad_base_class(self):
     err = self.CheckWithErrors("""
@@ -81,9 +103,10 @@ class TypedDictTest(test_base.BaseTest):
       class Bar(TypedDict, Foo):  # base-class-error[e]
         x: int
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Invalid base class", "Foo", "TypedDict Bar", "cannot inherit"
-    ]})
+    self.assertErrorSequences(
+        err,
+        {"e": ["Invalid base class", "Foo", "TypedDict Bar", "cannot inherit"]},
+    )
 
   def test_inheritance(self):
     self.CheckWithErrors("""
@@ -111,9 +134,7 @@ class TypedDictTest(test_base.BaseTest):
       class Baz(Foo, Bar):  # base-class-error[e]
         x: bool
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Duplicate", "key x", "Foo", "Baz"
-    ]})
+    self.assertErrorSequences(err, {"e": ["Duplicate", "key x", "Foo", "Baz"]})
 
   def test_annotation(self):
     err = self.CheckWithErrors("""
@@ -123,11 +144,20 @@ class TypedDictTest(test_base.BaseTest):
         y: str
       a: A = {'x': '10', 'z': 20}  # annotation-type-mismatch[e]
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Annotation: A",
-        "extra keys", "z",
-        "type errors", "{'x': ...}", "expected int", "got str"
-    ]})
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "Annotation: A",
+                "extra keys",
+                "z",
+                "type errors",
+                "{'x': ...}",
+                "expected int",
+                "got str",
+            ]
+        },
+    )
 
   def test_annotated_global_var(self):
     ty = self.Infer("""
@@ -136,14 +166,17 @@ class TypedDictTest(test_base.BaseTest):
         x: int
       a: A = {'x': 10}
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
 
       class A(TypedDict):
         x: int
 
       a: A
-    """)
+    """,
+    )
 
   def test_annotated_local_var(self):
     ty = self.Infer("""
@@ -154,14 +187,17 @@ class TypedDictTest(test_base.BaseTest):
         a: A = {'x': 10}
         return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
 
       class A(TypedDict):
         x: int
 
       def f() -> A: ...
-    """)
+    """,
+    )
 
   def test_return_type(self):
     err = self.CheckWithErrors("""
@@ -172,11 +208,20 @@ class TypedDictTest(test_base.BaseTest):
       def f() -> A:
         return {'x': '10', 'z': 20}  # bad-return-type[e]
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Expected: A",
-        "extra keys", "z",
-        "type errors", "{'x': ...}", "expected int", "got str"
-    ]})
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "Expected: A",
+                "extra keys",
+                "z",
+                "type errors",
+                "{'x': ...}",
+                "expected int",
+                "got str",
+            ]
+        },
+    )
 
   def test_total_with_constructor(self):
     self.CheckWithErrors("""
@@ -211,10 +256,13 @@ class TypedDictTest(test_base.BaseTest):
       c: Baz = {'w': 1, 'y': '2', 'z': False, 'a': 2}  # annotation-type-mismatch[e1]
       d: Baz = {'w': 1, 'x': 1, 'y': '2', 'b': False, 'a': 2}  # annotation-type-mismatch[e2]
     """)
-    self.assertErrorSequences(err, {
-        "e1": ["missing keys", "x"],
-        "e2": ["extra keys", "b"],
-    })
+    self.assertErrorSequences(
+        err,
+        {
+            "e1": ["missing keys", "x"],
+            "e2": ["extra keys", "b"],
+        },
+    )
 
   def test_function_arg_matching(self):
     err = self.CheckWithErrors("""
@@ -268,7 +316,9 @@ class TypedDictTest(test_base.BaseTest):
 
       foo = Foo(x=1, y="2")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
 
       foo: Foo
@@ -278,7 +328,8 @@ class TypedDictTest(test_base.BaseTest):
         y: str
 
       def f(x: Foo) -> None: ...
-    """)
+    """,
+    )
 
   def test_instantiate(self):
     self.Check("""
@@ -368,14 +419,17 @@ class TypedDictTest(test_base.BaseTest):
     """)
 
   def test_iterable_generic_class_and_recursive_type_interaction(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Any, Generic, Iterable, TypeVar, Union
       _ShapeType = TypeVar('_ShapeType')
       _DType = TypeVar('_DType')
       class ndarray(Generic[_ShapeType, _DType]):
         def __iter__(self) -> Any: ...
       ArrayTree = Union[Iterable[ArrayTree], ndarray]
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing_extensions import TypedDict
@@ -415,10 +469,13 @@ class TypedDictFunctionalTest(test_base.BaseTest):
       d = A(y='1')  # missing-parameter
       e = A(1, '2')  # missing-parameter
     """)
-    self.assertErrorSequences(err, {
-        "e1": ["Expected", "(*, x, y: str)", "Actual", "(x, y: int)"],
-        "e2": ["Expected", "(*, x, y)", "Actual", "(x)"]
-    })
+    self.assertErrorSequences(
+        err,
+        {
+            "e1": ["Expected", "(*, x, y: str)", "Actual", "(x, y: int)"],
+            "e2": ["Expected", "(*, x, y)", "Actual", "(x)"],
+        },
+    )
 
   def test_annotation(self):
     err = self.CheckWithErrors("""
@@ -426,17 +483,29 @@ class TypedDictFunctionalTest(test_base.BaseTest):
       A = TypedDict("A", {"x": int, "y": str})
       a: A = {'x': '10', 'z': 20}  # annotation-type-mismatch[e]
     """)
-    self.assertErrorSequences(err, {"e": [
-        "Annotation: A",
-        "extra keys", "z",
-        "type errors", "{'x': ...}", "expected int", "got str"
-    ]})
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "Annotation: A",
+                "extra keys",
+                "z",
+                "type errors",
+                "{'x': ...}",
+                "expected int",
+                "got str",
+            ]
+        },
+    )
 
   def test_keyword_field_name(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import TypedDict
       A = TypedDict("A", {"in": int})
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         a: foo.A
@@ -444,10 +513,13 @@ class TypedDictFunctionalTest(test_base.BaseTest):
       """)
 
   def test_colon_field_name(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import TypedDict
       XMLDict = TypedDict("XMLDict", {"xml:name": str})
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         d: foo.XMLDict
@@ -460,11 +532,14 @@ class TypedDictFunctionalTest(test_base.BaseTest):
       X = TypedDict('X', {'name': str}, total=False)
       X()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict, total=False):
         name: str
-    """)
+    """,
+    )
 
   def test_ambiguous_field_type(self):
     self.CheckWithErrors("""
@@ -550,11 +625,14 @@ class PyiTypedDictTest(test_base.BaseTest):
   def test_multi_module_pyi_inheritance(self):
     with self.DepTree([
         ("foo.pyi", _MULTIPLE),
-        ("bar.pyi", """
+        (
+            "bar.pyi",
+            """
          from foo import B
          class C(B):
            w: int
-         """)
+         """,
+        ),
     ]):
       self.CheckWithErrors("""
         from bar import C
@@ -564,14 +642,15 @@ class PyiTypedDictTest(test_base.BaseTest):
       """)
 
   def test_typing_extensions_import(self):
-    with self.DepTree([
-        ("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
          from typing_extensions import TypedDict
          class A(TypedDict):
            x: int
            y: str
-         """)
-    ]):
+         """,
+    )]):
       self.CheckWithErrors("""
         from foo import A
         a = A(x=1, y='2')
@@ -592,19 +671,28 @@ class PyiTypedDictTest(test_base.BaseTest):
         a = g()
         f(a)  # wrong-arg-types[e]
       """)
-      self.assertErrorSequences(err, {"e": [
-          "Expected", "x: A", "Actual", "x: foo.A"
-      ]})
+      self.assertErrorSequences(
+          err, {"e": ["Expected", "x: A", "Actual", "x: foo.A"]}
+      )
 
   def test_setitem(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([
+        (
+            "foo.pyi",
+            """
       from typing import TypedDict
       class Foo(TypedDict):
         x: int
-    """), ("bar.pyi", """
+    """,
+        ),
+        (
+            "bar.pyi",
+            """
       import foo
       def f() -> foo.Foo: ...
-    """)]):
+    """,
+        ),
+    ]):
       self.Check("""
         import bar
         foo = bar.f()
@@ -612,25 +700,31 @@ class PyiTypedDictTest(test_base.BaseTest):
       """)
 
   def test_match(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypedDict
       class Foo(TypedDict):
         x: int
       def f(x: Foo) -> None: ...
       def g() -> Foo: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         foo.f(foo.g())
       """)
 
   def test_nested(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import TypedDict
       class Foo:
         class Bar(TypedDict):
           x: str
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         foo.Foo.Bar(x='')  # ok
@@ -638,21 +732,27 @@ class PyiTypedDictTest(test_base.BaseTest):
       """)
 
   def test_imported_and_nested(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import TypedDict
       class Foo(TypedDict):
         x: str
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import foo
         class Bar:
           Foo = foo.Foo
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       class Bar:
         Foo: type[foo.Foo]
-    """)
+    """,
+    )
 
   def test_nested_alias(self):
     ty = self.Infer("""
@@ -662,26 +762,38 @@ class PyiTypedDictTest(test_base.BaseTest):
       class Bar:
         Foo = Foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class Foo(TypedDict):
         x: str
       class Bar:
         Foo: type[Foo]
-    """)
+    """,
+    )
 
   def test_total_false(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([
+        (
+            "foo.py",
+            """
       from typing_extensions import TypedDict
       class Foo(TypedDict, total=False):
         x: str
         y: int
-    """), ("bar.pyi", """
+    """,
+        ),
+        (
+            "bar.pyi",
+            """
       from typing import TypedDict
       class Bar(TypedDict, total=False):
         x: str
         y: int
-    """)]):
+    """,
+        ),
+    ]):
       self.Check("""
         import foo
         import bar
@@ -690,7 +802,9 @@ class PyiTypedDictTest(test_base.BaseTest):
       """)
 
   def test_total_inheritance(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypedDict
       class Parent1(TypedDict, total=True):
         x: str
@@ -700,7 +814,8 @@ class PyiTypedDictTest(test_base.BaseTest):
         x: str
       class Child2(Parent2, total=True):
         y: int
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         foo.Child1(x='')
@@ -734,7 +849,9 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         Y_is_not_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
@@ -742,16 +859,20 @@ class IsTypedDictTest(test_base.BaseTest):
         y: int
       X_is_typeddict: bool
       Y_is_not_typeddict: bool
-    """)
+    """,
+    )
 
   def test_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
       class Y:
         y: int
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import foo
         from typing_extensions import is_typeddict
@@ -764,11 +885,14 @@ class IsTypedDictTest(test_base.BaseTest):
         else:
           Y_is_not_typeddict = True
       """)
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         X_is_typeddict: bool
         Y_is_not_typeddict: bool
-      """)
+      """,
+      )
 
   @test_utils.skipBeforePy((3, 10), "is_typeddict is new in Python 3.10.")
   def test_from_typing(self):
@@ -787,7 +911,9 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         Y_is_not_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
@@ -795,7 +921,8 @@ class IsTypedDictTest(test_base.BaseTest):
         y: int
       X_is_typeddict: bool
       Y_is_not_typeddict: bool
-    """)
+    """,
+    )
 
   def test_union(self):
     ty = self.Infer("""
@@ -816,7 +943,9 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         XZ_is_not_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
@@ -826,7 +955,8 @@ class IsTypedDictTest(test_base.BaseTest):
         z: bytes
       XY_is_typeddict: bool
       XZ_is_not_typeddict: bool
-    """)
+    """,
+    )
 
   def test_split(self):
     ty = self.Infer("""
@@ -841,7 +971,9 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         XY_may_not_be_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
@@ -850,7 +982,8 @@ class IsTypedDictTest(test_base.BaseTest):
       cls: type[X | Y]
       XY_may_be_typeddict: bool
       XY_may_not_be_typeddict: bool
-    """)
+    """,
+    )
 
   def test_namedarg(self):
     ty = self.Infer("""
@@ -868,7 +1001,9 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         Y_is_not_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
@@ -876,7 +1011,8 @@ class IsTypedDictTest(test_base.BaseTest):
         y: int
       X_is_typeddict: bool
       Y_is_not_typeddict: bool
-    """)
+    """,
+    )
 
   def test_ambiguous(self):
     ty = self.Infer("""
@@ -886,10 +1022,13 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         ambiguous_may_not_be_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       ambiguous_may_be_typeddict: bool
       ambiguous_may_not_be_typeddict: bool
-    """)
+    """,
+    )
 
   def test_subclass(self):
     ty = self.Infer("""
@@ -903,14 +1042,17 @@ class IsTypedDictTest(test_base.BaseTest):
       else:
         Y_is_not_typeddict = True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypedDict
       class X(TypedDict):
         x: str
       class Y(TypedDict):
         x: str
       Y_is_typeddict: bool
-    """)
+    """,
+    )
 
   def test_bad_args(self):
     self.CheckWithErrors("""
@@ -1003,12 +1145,15 @@ class ItemRequirednessTest(test_base.BaseTest):
     """)
 
   def test_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import NotRequired, Required, TypedDict
       class X(TypedDict):
         k1: Required[str]
         k2: NotRequired[int]
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         x1: foo.X = {'k1': 'ok'}
@@ -1026,7 +1171,9 @@ class ItemRequirednessTest(test_base.BaseTest):
         k1: Required[str]
         k2: NotRequired[int]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import NotRequired, Required, TypedDict
       class X1(TypedDict):
         k1: str
@@ -1034,7 +1181,8 @@ class ItemRequirednessTest(test_base.BaseTest):
       class X2(TypedDict, total=False):
         k1: Required[str]
         k2: int
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

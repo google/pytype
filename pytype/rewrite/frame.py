@@ -156,7 +156,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._current_state = None
     self.final_locals = datatypes.immutabledict({
         name: abstract.join_values(self._ctx, var.values)
-        for name, var in self._final_locals.items()})
+        for name, var in self._final_locals.items()
+    })
 
   def _log_stack(self):
     log.debug('stack: %r', self._stack)
@@ -242,7 +243,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   ) -> 'Frame':
     if self._final_locals:
       current_locals = {
-          name: val.to_variable() for name, val in self.final_locals.items()}
+          name: val.to_variable() for name, val in self.final_locals.items()
+      }
     else:
       current_locals = self._current_state.get_locals()
     initial_enclosing = {}
@@ -295,8 +297,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       if store_on_target:
         value = abstract.join_values(self._ctx, var.values)
         for target in target_var.values:
-          log.info('Storing attribute on %r: %s -> %r',
-                   target, attr_name, value)
+          log.info(
+              'Storing attribute on %r: %s -> %r', target, attr_name, value
+          )
           target.set_attribute(attr_name, value)
       else:
         frame.store_local(name, var)
@@ -328,10 +331,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       else:
         raise NotImplementedError('CALL not fully implemented')
     self._stack.push(
-        variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
+        variables.Variable(tuple(variables.Binding(v) for v in ret_values))
+    )
 
-  def load_attr(
-      self, target_var: _Var, attr_name: str) -> _Var:
+  def load_attr(self, target_var: _Var, attr_name: str) -> _Var:
     if target_var.name:
       name = f'{target_var.name}.{attr_name}'
     else:
@@ -360,7 +363,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._merge_state_into(nojump_state, opcode.next.index)
 
   def _replace_atomic_stack_value(
-      self, n, new_value: abstract.BaseValue) -> None:
+      self, n, new_value: abstract.BaseValue
+  ) -> None:
     cur_var = self._stack.peek(n)
     self._stack.replace(n, cur_var.with_value(new_value))
 
@@ -428,8 +432,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       assert not double_num_annots % 2
       annot = {}
       for i in range(double_num_annots // 2):
-        name = abstract.get_atomic_constant(annot_seq[i*2], str)
-        annot[name] = annot_seq[i*2 + 1]
+        name = abstract.get_atomic_constant(annot_seq[i * 2], str)
+        annot[name] = annot_seq[i * 2 + 1]
     else:
       # Pre-3.10, packed_annot was a name->param_type dictionary.
       annot = abstract.get_atomic_constant(packed_annot, dict)
@@ -468,11 +472,15 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Make function
     del annot, pos_defaults, kw_defaults  # TODO(b/241479600): Use these
     func = abstract.InterpreterFunction(
-        self._ctx, name, code, enclosing_scope, self)
+        self._ctx, name, code, enclosing_scope, self
+    )
     log.info('Created function: %s', func.name)
-    if not (self._stack and
-            self._stack.top().has_atomic_value(
-                self._ctx.consts.singles['__build_class__'])):
+    if not (
+        self._stack
+        and self._stack.top().has_atomic_value(
+            self._ctx.consts.singles['__build_class__']
+        )
+    ):
       # Class building makes and immediately calls a function that creates the
       # class body; we don't need to store this function for later analysis.
       self._functions.append(func)
@@ -540,8 +548,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       self._ctx.errorlog.import_error(self.stack, module_name)
       module = self._ctx.consts.Any
-    if (full_name != module_name and
-        not self._ctx.pytd_loader.import_name(full_name)):
+    if full_name != module_name and not self._ctx.pytd_loader.import_name(
+        full_name
+    ):
       # Even if we're only importing "a", make sure "a.b.c" is valid.
       self._ctx.errorlog.import_error(self.stack, full_name)
     self._stack.push(module.to_variable())
@@ -581,8 +590,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     kwnames_var = self._stack.pop()
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
-    kwnames = [abstract.get_atomic_constant(key, str)
-               for key in abstract.get_atomic_constant(kwnames_var, tuple)]
+    kwnames = [
+        abstract.get_atomic_constant(key, str)
+        for key in abstract.get_atomic_constant(kwnames_var, tuple)
+    ]
     self._call_helper.set_kw_names(kwnames)
     callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
@@ -777,9 +788,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # Build and extend collections
 
   def _build_collection_from_stack(
-      self, opcode,
+      self,
+      opcode,
       typ: Type[Any],
-      factory: Type[abstract.PythonConstant] = abstract.PythonConstant
+      factory: Type[abstract.PythonConstant] = abstract.PythonConstant,
   ) -> None:
     """Pop elements off the stack and build a python constant."""
     count = opcode.arg
@@ -850,12 +862,14 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     except ValueError:
       # This list has multiple possible values, so it is no longer a constant.
       return abstract.List(
-          self._ctx, [abstract.Splat.any(self._ctx).to_variable()])
+          self._ctx, [abstract.Splat.any(self._ctx).to_variable()]
+      )
     if isinstance(val, abstract.List):
       return val
     else:
       return abstract.List(
-          self._ctx, [abstract.Splat(self._ctx, val).to_variable()])
+          self._ctx, [abstract.Splat(self._ctx, val).to_variable()]
+      )
 
   def byte_LIST_EXTEND(self, opcode):
     count = opcode.arg
@@ -865,9 +879,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.extend(update))
 
-  def _unpack_dict_update(
-      self, var: _Var
-  ) -> Optional[abstract.Dict]:
+  def _unpack_dict_update(self, var: _Var) -> Optional[abstract.Dict]:
     try:
       val = var.get_atomic_value()
     except ValueError:

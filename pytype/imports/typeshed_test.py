@@ -31,13 +31,15 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
   def test_get_typeshed_file(self):
     filename, data = self.ts.get_module_file(
-        "stdlib", "errno", self.python_version)
+        "stdlib", "errno", self.python_version
+    )
     self.assertEqual("errno.pyi", path_utils.basename(filename))
     self.assertIn("errorcode", data)
 
   def test_get_typeshed_dir(self):
     filename, data = self.ts.get_module_file(
-        "stdlib", "logging", self.python_version)
+        "stdlib", "logging", self.python_version
+    )
     self.assertEqual("__init__.pyi", path_utils.basename(filename))
     self.assertIn("LogRecord", data)
 
@@ -52,7 +54,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       return  # nothing to test
     self.assertIn(path_utils.join("stdlib", "pytypecanary"), self.ts.missing)
     _, data = self.ts.get_module_file(
-        "stdlib", "pytypecanary", self.python_version)
+        "stdlib", "pytypecanary", self.python_version
+    )
     self.assertEqual(data, builtin_stubs.DEFAULT_SRC)
 
   def test_get_google_only_module_names(self):
@@ -80,17 +83,20 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
           for p in self.ts.get_pytd_paths()
       }
       self.assertSetEqual(
-          paths, {
+          paths,
+          {
               file_utils.replace_separator("stubs/builtins"),
-              file_utils.replace_separator("stubs/stdlib")
-          })
+              file_utils.replace_separator("stubs/stdlib"),
+          },
+      )
     finally:
       os.environ = old_env
 
   def test_read_blacklist(self):
     for filename in self.ts.read_blacklist():
-      self.assertTrue(filename.startswith("stdlib") or
-                      filename.startswith("stubs"))
+      self.assertTrue(
+          filename.startswith("stdlib") or filename.startswith("stubs")
+      )
 
   def test_blacklisted_modules(self):
     for module_name in self.ts.blacklisted_modules():
@@ -100,7 +106,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.ts._stdlib_versions["foo"] = ((3, 8), None)
     with test_utils.Tempdir() as d:
       d.create_file(
-          file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
+          file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n"
+      )
       self.ts._store = TypeshedTestFs(d.path)
       _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
     self.assertEqual(src, "x: int\n")

@@ -12,7 +12,8 @@ from pytype.tools import runner
 def check_pytype_or_die():
   if not runner.can_run("pytype", "-h"):
     logging.critical(
-        "Cannot run pytype. Check that it is installed and in your path")
+        "Cannot run pytype. Check that it is installed and in your path"
+    )
     sys.exit(1)
 
 
@@ -46,7 +47,9 @@ def check_python_exe_or_die(required) -> List[str]:
       error.append(out)
   logging.critical(
       "Could not find a valid python%s interpreter in path (found %s)",
-      required, ", ".join(sorted(set(error))))
+      required,
+      ", ".join(sorted(set(error))),
+  )
   sys.exit(1)
 
 

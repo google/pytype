@@ -28,6 +28,7 @@ AttributeKinds = class_mixin.AttributeKinds
 # Probably should make this an enum.Enum at some point.
 class Ordering:
   """Possible orderings for get_class_locals."""
+
   # Order by each variable's first annotation. For example, for
   #   class Foo:
   #     x: int
@@ -87,7 +88,8 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
           self._current_args[k] = abstract_utils.get_atomic_python_constant(v)
         except abstract_utils.ConversionError:
           self.ctx.errorlog.not_supported_yet(
-              self.ctx.vm.frames, f"Non-constant argument to decorator: {k!r}")
+              self.ctx.vm.frames, f"Non-constant argument to decorator: {k!r}"
+          )
 
   def set_current_args(self, kwargs):
     """Set current_args when constructing a class directly."""
@@ -109,10 +111,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
       # call self.init_name in case the name differs from the field name -
       # e.g. attrs removes leading underscores from attrib names when
       # generating kwargs for __init__.
-      param = Param(
-          name=self.init_name(attr),
-          typ=typ,
-          default=attr.default)
+      param = Param(name=self.init_name(attr), typ=typ, default=attr.default)
 
       # kw_only=False in a field does not override kw_only=True in the class.
       if all_kwonly or attr.kw_only:
@@ -120,8 +119,9 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
       else:
         pos_params.append(param)
 
-    return overlay_utils.make_method(self.ctx, node, init_method_name,
-                                     pos_params, 0, kwonly_params)
+    return overlay_utils.make_method(
+        self.ctx, node, init_method_name, pos_params, 0, kwonly_params
+    )
 
   def call(self, node, func, args, alias_map=None):
     """Construct a decorator, and call it on the class."""
@@ -159,7 +159,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
     cls_var = args.posargs[0]
     # We should only have a single binding here
-    cls, = cls_var.data
+    (cls,) = cls_var.data
 
     if not isinstance(cls, abstract.Class):
       # There are other valid types like abstract.Unsolvable that we don't need
@@ -184,8 +184,9 @@ class FieldConstructor(abstract.PyTDFunction):
     try:
       return abstract_utils.get_atomic_python_constant(args.namedargs[name])
     except abstract_utils.ConversionError:
-      self.ctx.errorlog.not_supported_yet(self.ctx.vm.frames,
-                                          f"Non-constant argument {name!r}")
+      self.ctx.errorlog.not_supported_yet(
+          self.ctx.vm.frames, f"Non-constant argument {name!r}"
+      )
 
   def get_positional_names(self):
     # TODO(mdemello): We currently assume all field constructors are called with
@@ -197,12 +198,15 @@ class FieldConstructor(abstract.PyTDFunction):
 def is_method(var):
   if var is None:
     return False
-  return isinstance(var.data[0], (
-      abstract.INTERPRETER_FUNCTION_TYPES,
-      special_builtins.ClassMethodInstance,
-      special_builtins.PropertyInstance,
-      special_builtins.StaticMethodInstance
-  ))
+  return isinstance(
+      var.data[0],
+      (
+          abstract.INTERPRETER_FUNCTION_TYPES,
+          special_builtins.ClassMethodInstance,
+          special_builtins.PropertyInstance,
+          special_builtins.StaticMethodInstance,
+      ),
+  )
 
 
 def is_dunder(name):
@@ -221,8 +225,11 @@ def add_member(node, cls, name, typ):
   cls.members[name] = instance
 
 
-def is_relevant_class_local(class_local: abstract_utils.Local,
-                            class_local_name: str, allow_methods: bool):
+def is_relevant_class_local(
+    class_local: abstract_utils.Local,
+    class_local_name: str,
+    allow_methods: bool,
+):
   """Tests whether the current class local could be relevant for type checking.
 
   For example, this doesn't match __dunder__ class locals.
@@ -342,6 +349,7 @@ class ClassProperties:
 
 
 def make_annotations_dict(fields, node, ctx):
-  locals_ = {f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
-             for f in fields}
+  locals_ = {
+      f.name: abstract_utils.Local(node, None, f.typ, None, ctx) for f in fields
+  }
   return abstract.AnnotationsDict(locals_, ctx).to_variable(node)

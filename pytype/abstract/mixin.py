@@ -48,6 +48,7 @@ class MixinMeta(type):
 
     Args:
       method: The method in the mix-in.
+
     Returns:
       The method overloaded by 'method'.
     """
@@ -58,8 +59,10 @@ class MixinMeta(type):
     for supercls in method_cls.__mro__:
       # Fetch from __dict__ rather than using getattr() because we only want
       # to consider methods defined on supercls itself (not on a base).
-      if ("__mixin_overloads__" in supercls.__dict__ and
-          supercls.__mixin_overloads__.get(method.__name__) is cls):
+      if (
+          "__mixin_overloads__" in supercls.__dict__
+          and supercls.__mixin_overloads__.get(method.__name__) is cls
+      ):
         method_cls = supercls
         break
     return getattr(super(method_cls, method.__self__), method.__name__)
@@ -87,8 +90,8 @@ class PythonConstant(types.PythonConstant, metaclass=MixinMeta):
     """Get a string representation of this constant.
 
     Args:
-      printer: A BaseValue -> str function that will be used to
-        print abstract values.
+      printer: A BaseValue -> str function that will be used to print abstract
+        values.
 
     Returns:
       A string of self.pyval.
@@ -127,7 +130,8 @@ class HasSlots(metaclass=MixinMeta):
     # can trigger a recursion error, so use only the base class.
     base = self.base_cls if _isinstance(self, "ParameterizedClass") else self
     _, attr = self.ctx.attribute_handler.get_attribute(
-        self.ctx.root_node, base, name, base.to_binding(self.ctx.root_node))
+        self.ctx.root_node, base, name, base.to_binding(self.ctx.root_node)
+    )
     self._super[name] = attr
     self._slots[name] = slot
 
@@ -142,7 +146,8 @@ class HasSlots(metaclass=MixinMeta):
         node,
         self._super[name],
         function.Args(args),
-        fallback_to_unsolvable=False)
+        fallback_to_unsolvable=False,
+    )
 
   def get_special_attribute(self, node, name, valself):
     if name not in self._slots:
@@ -238,9 +243,13 @@ class LazyMembers(metaclass=MixinMeta):
     assert isinstance(variable, cfg.Variable)
     # 'subst' can vary between attribute accesses, so it's not safe to store the
     # attribute value in 'members' if it uses any of the subst keys.
-    if store and not (isinstance(member, pytd.Node) and subst and
-                      any(t.full_name in subst
-                          for t in pytd_utils.GetTypeParameters(member))):
+    if store and not (
+        isinstance(member, pytd.Node)
+        and subst
+        and any(
+            t.full_name in subst for t in pytd_utils.GetTypeParameters(member)
+        )
+    ):
       self.members[name] = variable
     return variable
 
@@ -250,6 +259,7 @@ class PythonDict(PythonConstant):
 
   Not all dict methods are implemented, such as methods for modifying the dict.
   """
+
   # This was derived from pytd_utils.WrapsDict, which used `exec` to generate
   # a custom base class. Only the base methods from WrapsDict are implemented
   # here, because those are the only ones that were being used.

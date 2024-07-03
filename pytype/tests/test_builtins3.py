@@ -15,9 +15,12 @@ class BuiltinTests3(test_base.BaseTest):
     ty = self.Infer("""
       x = super.__name__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x = ...  # type: str
-    """)
+    """,
+    )
 
   def test_slice(self):
     ty = self.Infer("""
@@ -26,13 +29,16 @@ class BuiltinTests3(test_base.BaseTest):
       x3 = [1,2,3][None:None]
       x4 = [1,2,3][1:3:None]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       x1 = ...  # type: List[int]
       x2 = ...  # type: List[int]
       x3 = ...  # type: List[int]
       x4 = ...  # type: List[int]
-    """)
+    """,
+    )
 
   def test_slice_attributes(self):
     ty = self.Infer("""
@@ -42,14 +48,17 @@ class BuiltinTests3(test_base.BaseTest):
       step = v.step
       indices = v.indices(0)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional, Tuple
       v = ...  # type: slice
       start = ...  # type: Optional[int]
       stop = ...  # type: Optional[int]
       step = ...  # type: Optional[int]
       indices = ...  # type: Tuple[int, int, int]
-    """)
+    """,
+    )
 
   def test_next_function(self):
     ty = self.Infer("""
@@ -57,21 +66,27 @@ class BuiltinTests3(test_base.BaseTest):
       b = next(iter([1, 2, 3]), default = 4)
       c = next(iter([1, 2, 3]), "hello")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       a = ...  # type: int
       b = ...  # type: int
       c = ...  # type: Union[int, str]
-    """)
+    """,
+    )
 
   def test_implicit_typevar_import(self):
     ty, _ = self.InferWithErrors(f"""
       v = {abstract_utils.T}  # name-error
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       v = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_explicit_typevar_import(self):
     self.Check("""
@@ -83,10 +98,13 @@ class BuiltinTests3(test_base.BaseTest):
     ty = self.Infer("""
       v = int.__class__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       v = ...  # type: Type[type]
-    """)
+    """,
+    )
 
   @test_base.skip("broken")
   def test_clear(self):
@@ -96,29 +114,38 @@ class BuiltinTests3(test_base.BaseTest):
       y = {"foo": 1}
       y.clear()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Set
       x = ...  # type: Set[nothing]
       y = ...  # type: Dict[nothing, nothing]
-    """)
+    """,
+    )
 
   def test_cmp(self):
     ty = self.Infer("""
       if not cmp(4, 4):
         x = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_repr(self):
     ty = self.Infer("""
       if repr("hello world"):
         x = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_int_init(self):
     _, errors = self.InferWithErrors("""
@@ -134,11 +161,14 @@ class BuiltinTests3(test_base.BaseTest):
 
   def test_newlines(self):
     with test_utils.Tempdir() as d:
-      d.create_file("newlines.txt", """
+      d.create_file(
+          "newlines.txt",
+          """
           1
           2
           3
-          """)
+          """,
+      )
       self.Check("""
           l = []
           with open("newlines.txt", "rU") as f:
@@ -183,7 +213,9 @@ class BuiltinTests3(test_base.BaseTest):
       j = (2j).real
       k = (2j).imag
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a = ...  # type: int
       b = ...  # type: int
       c = ...  # type: int
@@ -195,7 +227,8 @@ class BuiltinTests3(test_base.BaseTest):
       i = ...  # type: complex
       j = ...  # type: float
       k = ...  # type: float
-    """)
+    """,
+    )
 
   def test_builtins(self):
     # This module doesn't exist, on Python 2. However, it exists in typeshed, so
@@ -222,7 +255,9 @@ class BuiltinTests3(test_base.BaseTest):
       x.append(2)
       c, d, e = x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       x = ...  # type: List[Union[int, str]]
       a = ...  # type: int
@@ -230,7 +265,8 @@ class BuiltinTests3(test_base.BaseTest):
       c = ...  # type: Union[int, str]
       d = ...  # type: Union[int, str]
       e = ...  # type: Union[int, str]
-    """)
+    """,
+    )
 
   def test_bytearray_setitem(self):
     self.Check("""
@@ -271,10 +307,13 @@ class BuiltinTests3(test_base.BaseTest):
       f = float.fromhex("feed")
       b = bytearray.fromhex("beef")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       f = ...  # type: float
       b = ...  # type: bytearray
-    """)
+    """,
+    )
 
   def test_none_length(self):
     errors = self.CheckWithErrors("len(None)  # wrong-arg-types[e]")
@@ -302,11 +341,14 @@ class BuiltinTests3(test_base.BaseTest):
       d1 = {}  # type: Dict[str, type]
       d2 = {}  # type: Dict[str, Type[Any]]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       d1 = ...  # type: Dict[str, type]
       d2 = ...  # type: Dict[str, type]
-    """)
+    """,
+    )
 
   def test_get_function_attr(self):
     self.Check("getattr(lambda: None, '__defaults__')")
@@ -330,10 +372,13 @@ class BuiltinTests3(test_base.BaseTest):
   def test_path(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo/__init__.py")
-      self.Check("""
+      self.Check(
+          """
         import foo
         __path__, foo.__path__
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_del_byte_array_slice(self):
     self.Check("""
@@ -353,12 +398,15 @@ class BuiltinTests3(test_base.BaseTest):
       y = x.setdefault()  # wrong-arg-count[e1]
       z = x.setdefault(1, 2, 3, *[])  # wrong-arg-count[e2]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict
       x = ...  # type: Dict[nothing, nothing]
       y = ...  # type: Any
       z = ...  # type: Any
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e1": r"2.*0", "e2": r"2.*3"})
 
   def test_tuple(self):
@@ -370,17 +418,21 @@ class BuiltinTests3(test_base.BaseTest):
         return f(3, *args)
       g()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, TypeVar
       _T1 = TypeVar("_T1")
       def f(x, y: _T1) -> _T1: ...
       def g() -> int: ...
-    """)
+    """,
+    )
 
   def test_str_join_error(self):
     errors = self.CheckWithErrors("', '.join([1, 2, 3])  # wrong-arg-types[e]")
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*Iterable\[str\].*Actual.*List\[int\]"})
+        errors, {"e": r"Expected.*Iterable\[str\].*Actual.*List\[int\]"}
+    )
 
   def test_int_protocols(self):
     self.Check("""
@@ -404,11 +456,14 @@ class BuiltinTests3(test_base.BaseTest):
       a = True ** True
       b = True ** 1.0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a: int
       b: float
       x: bool
-    """)
+    """,
+    )
 
   def test_delattr(self):
     self.Check("""

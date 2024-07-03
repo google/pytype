@@ -4,7 +4,6 @@ import collections
 import dataclasses
 import logging
 import os
-
 from typing import Dict, Iterable, List, Optional, Set
 
 from pytype import file_utils
@@ -35,7 +34,8 @@ def create_loader(options, missing_modules=()):
   """Create a pytd loader."""
   if options.precompiled_builtins:
     return PickledPyiLoader.load_from_pickle(
-        options.precompiled_builtins, options, missing_modules)
+        options.precompiled_builtins, options, missing_modules
+    )
   elif options.use_pickled_files:
     return PickledPyiLoader(options, missing_modules=missing_modules)
   else:
@@ -52,11 +52,12 @@ def _is_package(filename):
     return base == "__init__"
   return False
 
+
 _ModuleNameType = _AliasNameType = _NameType = str
 
 
 def _merge_aliases(
-    aliases: Dict[_ModuleNameType, Dict[_AliasNameType, _NameType]]
+    aliases: Dict[_ModuleNameType, Dict[_AliasNameType, _NameType]],
 ) -> Dict[_AliasNameType, _NameType]:
   all_aliases = {}
   for mod_aliases in aliases.values():
@@ -91,14 +92,22 @@ class Module:
   """
 
   # pylint: disable=redefined-outer-name
-  def __init__(self, module_name, filename, ast, metadata=None, pickle=None,
-               has_unresolved_pointers=True):
+  def __init__(
+      self,
+      module_name,
+      filename,
+      ast,
+      metadata=None,
+      pickle=None,
+      has_unresolved_pointers=True,
+  ):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
     self.pickle = pickle
     self.has_unresolved_pointers = has_unresolved_pointers
     self.metadata = metadata or []
+
   # pylint: enable=redefined-outer-name
 
   def needs_unpickling(self):
@@ -109,8 +118,12 @@ class Module:
 
   @classmethod
   def resolved_internal_stub(cls, name, mod_ast):
-    return cls(name, imports_base.internal_stub_filename(name), mod_ast,
-               has_unresolved_pointers=False)
+    return cls(
+        name,
+        imports_base.internal_stub_filename(name),
+        mod_ast,
+        has_unresolved_pointers=False,
+    )
 
 
 class BadDependencyError(Exception):
@@ -171,8 +184,9 @@ class _ModuleMap:
 
   def get_module_map(self) -> Dict[str, _AST]:
     """Get a {name: ast} map of all modules with a filled-in ast."""
-    return {name: module.ast for name, module in self._modules.items()
-            if module.ast}
+    return {
+        name: module.ast for name, module in self._modules.items() if module.ast
+    }
 
   def get_resolved_modules(self) -> Dict[str, ResolvedModule]:
     """Get a {name: ResolvedModule} map of all resolved modules."""
@@ -180,12 +194,14 @@ class _ModuleMap:
     for name, mod in self._modules.items():
       if not mod.has_unresolved_pointers:
         resolved_modules[name] = ResolvedModule(
-            mod.module_name, mod.filename, mod.ast, mod.metadata)
+            mod.module_name, mod.filename, mod.ast, mod.metadata
+        )
     return resolved_modules
 
   def _base_modules(self):
     bltins, typing = builtin_stubs.GetBuiltinsAndTyping(
-        parser.PyiOptions.from_toplevel_options(self.options))
+        parser.PyiOptions.from_toplevel_options(self.options)
+    )
     return {
         "builtins": Module.resolved_internal_stub("builtins", bltins),
         "typing": Module.resolved_internal_stub("typing", typing),
@@ -227,7 +243,8 @@ class _ModuleMap:
           m.filename = path_utils.join(base, init_file)
         else:
           m.filename = imports_base.internal_stub_filename(
-              path_utils.join(m.module_name, init_file))
+              path_utils.join(m.module_name, init_file)
+          )
       m.pickle = None
     module_map = self.get_module_map()
     for loaded_ast in newly_loaded_asts:
@@ -262,8 +279,10 @@ class _Resolver:
 
   def resolve_builtin_types(self, mod_ast, *, lookup_ast=None):
     bltn_lookup = visitors.LookupBuiltins(
-        self.builtins_ast, full_names=False,
-        allow_singletons=self.allow_singletons)
+        self.builtins_ast,
+        full_names=False,
+        allow_singletons=self.allow_singletons,
+    )
     mod_ast = self._lookup(bltn_lookup, mod_ast, lookup_ast)
     return mod_ast
 
@@ -271,8 +290,11 @@ class _Resolver:
     """Resolves external types in mod_ast."""
     name = mod_name or mod_ast.name
     try:
-      return mod_ast.Visit(visitors.LookupExternalTypes(
-          module_map, self_name=name, module_alias_map=aliases[name]))
+      return mod_ast.Visit(
+          visitors.LookupExternalTypes(
+              module_map, self_name=name, module_alias_map=aliases[name]
+          )
+      )
     except KeyError as e:
       key_error = e
     all_aliases = _merge_aliases(aliases)
@@ -282,15 +304,19 @@ class _Resolver:
         break
       new_aliases[key_error.module] = all_aliases[key_error.module]
       try:
-        return mod_ast.Visit(visitors.LookupExternalTypes(
-            module_map, self_name=name, module_alias_map=new_aliases))
+        return mod_ast.Visit(
+            visitors.LookupExternalTypes(
+                module_map, self_name=name, module_alias_map=new_aliases
+            )
+        )
       except KeyError as e:
         key_error = e
     key = "".join(str(arg) for arg in key_error.args)
     raise BadDependencyError(key, name) from key_error
 
-  def resolve_module_alias(self, name, *, lookup_ast=None,
-                           lookup_ast_name=None):
+  def resolve_module_alias(
+      self, name, *, lookup_ast=None, lookup_ast_name=None
+  ):
     """Check if a given name is an alias and resolve it if so."""
     # name is bare, but aliases are stored as "ast_name.alias".
     if lookup_ast is None:
@@ -302,7 +328,7 @@ class _Resolver:
       key = f"{ast_name}.{cur_name}"
       value = aliases.get(key)
       if isinstance(value, pytd.Module):
-        return value.module_name + name[len(cur_name):]
+        return value.module_name + name[len(cur_name) :]
       cur_name, _, _ = cur_name.rpartition(".")
     return name
 
@@ -321,8 +347,11 @@ class _Resolver:
     deps = visitors.CollectDependencies()
     mod_ast.Visit(deps)
     if isinstance(mod_ast, (pytd.TypeDeclUnit, pytd.Class)):
-      return {k: v for k, v in deps.dependencies.items()
-              if not isinstance(mod_ast.Get(k), (pytd.Class, pytd.ParamSpec))}
+      return {
+          k: v
+          for k, v in deps.dependencies.items()
+          if not isinstance(mod_ast.Get(k), (pytd.Class, pytd.ParamSpec))
+      }
     else:
       return deps.dependencies
 
@@ -337,10 +366,10 @@ class _LateTypeLoader:
   def _load_late_type_module(self, late_type: pytd.LateType):
     """Load the module of a late type from the qualified name."""
     parts = late_type.name.split(".")
-    for i in range(len(parts)-1):
-      module_parts = module_utils.strip_init_suffix(parts[:-(i+1)])
+    for i in range(len(parts) - 1):
+      module_parts = module_utils.strip_init_suffix(parts[: -(i + 1)])
       if ast := self._loader.import_name(".".join(module_parts)):
-        return ast, ".".join(parts[-(i+1):])
+        return ast, ".".join(parts[-(i + 1) :])
     return None, late_type.name
 
   def _load_late_type(self, late_type: pytd.LateType):
@@ -393,7 +422,8 @@ class Loader:
     pyi_options = parser.PyiOptions.from_toplevel_options(options)
     self._builtin_loader = builtin_stubs.BuiltinLoader(pyi_options)
     self._typeshed_loader = typeshed.TypeshedLoader(
-        pyi_options, missing_modules)
+        pyi_options, missing_modules
+    )
     self._resolver = _Resolver(self.builtins)
     self._late_type_loader = _LateTypeLoader(self)
     self._import_name_cache = {}  # performance cache
@@ -405,7 +435,8 @@ class Loader:
 
   def get_default_ast(self):
     return builtin_stubs.GetDefaultAst(
-        parser.PyiOptions.from_toplevel_options(self.options))
+        parser.PyiOptions.from_toplevel_options(self.options)
+    )
 
   def save_to_pickle(self, filename):
     """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
@@ -427,14 +458,14 @@ class Loader:
     if dependencies:
       lookup_ast = lookup_ast or mod_ast
       self._load_ast_dependencies(dependencies, lookup_ast)
-      mod_ast = self._resolve_external_types(
-          mod_ast, lookup_ast=lookup_ast)
+      mod_ast = self._resolve_external_types(mod_ast, lookup_ast=lookup_ast)
     mod_ast = self._resolver.resolve_local_types(mod_ast, lookup_ast=lookup_ast)
     return mod_ast
 
   def _create_empty(self, mod_info):
     return self.load_module(
-        mod_info, mod_ast=pytd_utils.CreateModule(mod_info.module_name))
+        mod_info, mod_ast=pytd_utils.CreateModule(mod_info.module_name)
+    )
 
   def load_file(self, module_name, filename, mod_ast=None):
     """Load a module from a filename."""
@@ -512,13 +543,15 @@ class Loader:
         return ast
     return None
 
-  def _load_ast_dependencies(self, dependencies, lookup_ast,
-                             lookup_ast_name=None):
+  def _load_ast_dependencies(
+      self, dependencies, lookup_ast, lookup_ast_name=None
+  ):
     """Fill in all ClassType.cls pointers and load reexported modules."""
     ast_name = lookup_ast_name or lookup_ast.name
     for dep_name in dependencies:
       name = self._resolver.resolve_module_alias(
-          dep_name, lookup_ast=lookup_ast, lookup_ast_name=lookup_ast_name)
+          dep_name, lookup_ast=lookup_ast, lookup_ast_name=lookup_ast_name
+      )
       if dep_name != name:
         # We have an alias. Store it in the aliases map.
         self._aliases[ast_name][dep_name] = name
@@ -539,7 +572,8 @@ class Loader:
               pytd.LookupItemRecursive(lookup_ast, name)
             except KeyError as e:
               raise BadDependencyError(
-                  f"Can't find pyi for {name!r}", ast_name) from e
+                  f"Can't find pyi for {name!r}", ast_name
+              ) from e
             # This is a dotted local reference, not an external reference.
             continue
       # If `name` is a package, try to load any base names not defined in
@@ -561,13 +595,16 @@ class Loader:
           # sqlite3.dbapi2 imports local names from the sqlite3 namespace to
           # avoid name collisions.
           maybe_star_import = dep_ast.Get(f"{name}.{ast_name}.*")
-          if (isinstance(maybe_star_import, pytd.Alias) and
-              maybe_star_import.type.name == f"{ast_name}.*"):
+          if (
+              isinstance(maybe_star_import, pytd.Alias)
+              and maybe_star_import.type.name == f"{ast_name}.*"
+          ):
             attr = lookup_ast.Get(f"{ast_name}.{base_name}")
         # 'from . import submodule as submodule' produces
         # Alias(submodule, NamedType(submodule)).
         if attr is None or (
-            isinstance(attr, pytd.Alias) and attr.name == attr.type.name):
+            isinstance(attr, pytd.Alias) and attr.name == attr.type.name
+        ):
           if not self._import_module_by_name(full_name):
             # Add logging to make debugging easier but otherwise ignore the
             # result - resolve_external_types will raise a better error.
@@ -579,7 +616,8 @@ class Loader:
     if mod_name and mod_name not in module_map:
       module_map[mod_name] = lookup_ast
     mod_ast = self._resolver.resolve_external_types(
-        mod_ast, module_map, self._aliases, mod_name=mod_name)
+        mod_ast, module_map, self._aliases, mod_name=mod_name
+    )
     return mod_ast
 
   def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None):
@@ -591,9 +629,11 @@ class Loader:
     """Resolve and verify pytd value, using the given ast for local lookup."""
     # NOTE: Modules of dependencies will be loaded into the cache
     pytd_node = self._resolver.resolve_builtin_types(
-        pytd_node, lookup_ast=lookup_ast)
+        pytd_node, lookup_ast=lookup_ast
+    )
     pytd_node = self._resolve_external_and_local_types(
-        pytd_node, lookup_ast=lookup_ast)
+        pytd_node, lookup_ast=lookup_ast
+    )
     self._resolve_classtype_pointers_for_all_modules()
     self._resolve_classtype_pointers(pytd_node, lookup_ast=lookup_ast)
     self._resolver.verify(pytd_node, mod_name=lookup_ast.name)
@@ -685,7 +725,8 @@ class Loader:
                 BadDependencyError(f"Can't find pyi for {k!r}", mod_ast.name)
             ) from e
           self._modules[k].ast = self._resolve_external_types(
-              self._modules[k].ast)
+              self._modules[k].ast
+          )
         mod_ast = self._resolve_external_types(mod_ast)
         self._resolver.verify(mod_ast)
     return mod_ast
@@ -828,14 +869,21 @@ class PickledPyiLoader(Loader):
     loaded_ast = self._module_loader.load_ast(mod_info)
     # At this point ast.name and module_name could be different.
     # They are later synced in ProcessAst.
-    dependencies = {d: names for d, names in loaded_ast.dependencies
-                    if d != loaded_ast.ast.name}
+    dependencies = {
+        d: names
+        for d, names in loaded_ast.dependencies
+        if d != loaded_ast.ast.name
+    }
     loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name, fix=True)
     self._modules[module_name] = Module(
-        module_name, mod_info.filename, loaded_ast.ast,
-        metadata=loaded_ast.metadata)
-    self._load_ast_dependencies(dependencies, lookup_ast=mod_ast,
-                                lookup_ast_name=module_name)
+        module_name,
+        mod_info.filename,
+        loaded_ast.ast,
+        metadata=loaded_ast.metadata,
+    )
+    self._load_ast_dependencies(
+        dependencies, lookup_ast=mod_ast, lookup_ast_name=module_name
+    )
     try:
       ast = serialize_ast.ProcessAst(loaded_ast, self._modules.get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:

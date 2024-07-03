@@ -4,6 +4,7 @@ import textwrap
 
 from pytype.tests import test_utils
 from pytype.tools import config
+
 import unittest
 
 
@@ -63,26 +64,33 @@ class TestIniConfigSection(unittest.TestCase):
 
   def test_items(self):
     with test_utils.Tempdir() as d:
-      f = d.create_file('setup.cfg', textwrap.dedent('''
+      f = d.create_file(
+          'setup.cfg',
+          textwrap.dedent("""
         [test]
         k1 = v1
         k2 = v2
-      '''))
+      """),
+      )
       section = config.IniConfigSection.create_from_file(f, 'test')
     self.assertSequenceEqual(section.items(), [('k1', 'v1'), ('k2', 'v2')])
 
   def test_empty(self):
     with test_utils.Tempdir() as d:
-      f = d.create_file('setup.cfg', textwrap.dedent('''
+      f = d.create_file(
+          'setup.cfg',
+          textwrap.dedent("""
         [test]
         k =
-      '''))
+      """),
+      )
       section = config.IniConfigSection.create_from_file(f, 'test')
       self.assertSequenceEqual(section.items(), [('k', '')])
 
   def test_no_file(self):
-    self.assertIsNone(config.IniConfigSection.create_from_file(
-        '/does/not/exist.cfg', 'test'))
+    self.assertIsNone(
+        config.IniConfigSection.create_from_file('/does/not/exist.cfg', 'test')
+    )
 
   def test_malformed_file(self):
     with test_utils.Tempdir() as d:
@@ -99,15 +107,19 @@ class TestTomlConfigSection(unittest.TestCase):
 
   def test_items(self):
     with test_utils.Tempdir() as d:
-      f = d.create_file('pyproject.toml', textwrap.dedent('''
+      f = d.create_file(
+          'pyproject.toml',
+          textwrap.dedent("""
         [tool.test]
         k1 = 'v1'
         k2 = true
         k3 = [3, 4]
-      '''))
+      """),
+      )
       section = config.TomlConfigSection.create_from_file(f, 'test')
-    self.assertSequenceEqual(list(section.items()), [
-        ('k1', 'v1'), ('k2', 'True'), ('k3', '3 4')])
+    self.assertSequenceEqual(
+        list(section.items()), [('k1', 'v1'), ('k2', 'True'), ('k3', '3 4')]
+    )
 
   def test_malformed_file(self):
     with test_utils.Tempdir() as d:

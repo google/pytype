@@ -33,17 +33,21 @@ class LoadBuiltinTest(test_utils.ContextfulTestBase):
     self.assertEqual(ellipsis.constant, Ellipsis)
 
   def test_none(self):
-    self.assertIs(self.ctx.abstract_loader.load_builtin('None'),
-                  self.ctx.consts[None])
-    self.assertIs(self.ctx.abstract_loader.load_builtin('NoneType'),
-                  self.ctx.consts[None])
+    self.assertIs(
+        self.ctx.abstract_loader.load_builtin('None'), self.ctx.consts[None]
+    )
+    self.assertIs(
+        self.ctx.abstract_loader.load_builtin('NoneType'), self.ctx.consts[None]
+    )
 
 
 class LoadValueTest(test_utils.ContextfulTestBase):
 
   def test_builtin(self):
-    self.assertIs(self.ctx.abstract_loader.load_value('builtins', 'None'),
-                  self.ctx.consts[None])
+    self.assertIs(
+        self.ctx.abstract_loader.load_value('builtins', 'None'),
+        self.ctx.consts[None],
+    )
 
   def test_stdlib(self):
     name = self.ctx.abstract_loader.load_value('os', 'name')

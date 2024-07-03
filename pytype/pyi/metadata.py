@@ -53,8 +53,12 @@ class Call:
     return out
 
   def to_call_dict(self):
-    return {"tag": "call", "fn": self.fn, "posargs": self.posargs,
-            "kwargs": self.kwargs}
+    return {
+        "tag": "call",
+        "fn": self.fn,
+        "posargs": self.posargs,
+        "kwargs": self.kwargs,
+    }
 
   def to_pytd(self):
     posargs = ", ".join(map(repr, self.posargs))
@@ -67,9 +71,7 @@ class Call:
 
 # Convert some callables to their own specific metadata dicts.
 # {fn: (posarg_names, kwarg_names)}
-_CALLABLES = {
-    "Deprecated": (["reason"], [])
-}
+_CALLABLES = {"Deprecated": (["reason"], [])}
 
 
 def to_string(val: Any):

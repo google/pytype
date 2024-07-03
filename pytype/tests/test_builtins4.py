@@ -11,10 +11,13 @@ class MapTest(test_base.BaseTest):
     ty = self.Infer("""
       v = map(int, ("0",))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterator
       v : Iterator[int]
-    """)
+    """,
+    )
 
   def test_lambda(self):
     ty = self.Infer("""
@@ -24,13 +27,16 @@ class MapTest(test_base.BaseTest):
       def f():
         return map(lambda x: x, [Foo()])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterator
       class Foo:
         pass
 
       def f() -> Iterator: ...
-    """)
+    """,
+    )
 
   def test_join(self):
     ty = self.Infer("""
@@ -45,12 +51,15 @@ class MapTest(test_base.BaseTest):
       lst2 = [x for x in lst1]
       lst3 = map(str, lst2)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List, Iterator
       lst1 : List[nothing]
       lst2 : List[nothing]
       lst3 : Iterator[nothing]
-    """)
+    """,
+    )
 
   def test_heterogeneous(self):
     self.Check("""
@@ -79,7 +88,8 @@ class MapTest(test_base.BaseTest):
       map(func, ['str'])  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]})
+        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]}
+    )
 
   def test_abspath(self):
     self.Check("""
@@ -106,10 +116,13 @@ class BuiltinTests(test_base.BaseTest):
       def g() -> bool:
         return f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> bool: ...
       def g() -> bool: ...
-    """)
+    """,
+    )
 
   def test_sum_return(self):
     self.Check("""
@@ -150,12 +163,16 @@ class BuiltinTests(test_base.BaseTest):
 
   def test_super(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Type
         def f(x: type): ...
         def g(x: Type[super]): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         from typing import Any, Type
         import foo
         def f(x): ...
@@ -171,8 +188,12 @@ class BuiltinTests(test_base.BaseTest):
         foo.f(super)
         foo.g(super)
         v = super
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any, Type
         def f(x) -> None: ...
@@ -181,7 +202,8 @@ class BuiltinTests(test_base.BaseTest):
         def i(x: type) -> None: ...
         def j(x: Type[super]) -> None: ...
         v : Type[super]
-      """)
+      """,
+      )
 
   def test_bytearray_slice(self):
     self.Check("""
@@ -222,14 +244,17 @@ class BuiltinTests(test_base.BaseTest):
       def f2(x: 'collections.OrderedDict[int, str]'):
         return x.copy()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       from typing import Dict, OrderedDict
       def f1(x: Dict[int, str]) -> Dict[int, str]: ...
       def f2(
           x: OrderedDict[int, str]
       ) -> OrderedDict[int, str]: ...
-    """)
+    """,
+    )
 
   def test_format_self(self):
     self.Check("""
@@ -298,14 +323,17 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       g = ",".join([u"foo", "bar"])
       h = u",".join([u"foo", "bar"])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       b : str
       d : str
       e : str
       f : str
       g : str
       h : str
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 9), "removeprefix and removesuffix new in 3.9")
   def test_str_remove_prefix_suffix(self):
@@ -314,11 +342,14 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       b = a.removeprefix("prefix_")
       c = a.removesuffix("_suffix")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a : str
       b : str
       c : str
-    """)
+    """,
+    )
 
   def test_str_is_hashable(self):
     self.Check("""
@@ -333,10 +364,13 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       b = bytearray()
       x2 = b.join([b"x"])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       b : bytearray
       x2 : bytearray
-    """)
+    """,
+    )
 
   def test_iter1(self):
     ty = self.Infer("""
@@ -344,12 +378,15 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       b = next(iter([1, 2, 3]), default = 4)
       c = next(iter([1, 2, 3]), "hello")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       a : int
       b : int
       c : Union[int, str]
-    """)
+    """,
+    )
 
   def test_dict_keys(self):
     ty = self.Infer("""
@@ -359,14 +396,17 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       c = m.keys() | {1, 2, 3}
       d = m.keys() ^ {1, 2, 3}
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Set, Union
       m : Dict[str, None]
       a : Set[str]
       b : Set[str]
       c : Set[Union[int, str]]
       d : Set[Union[int, str]]
-    """)
+    """,
+    )
 
   def test_open(self):
     ty = self.Infer("""
@@ -386,7 +426,9 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     # non-constant instance of the Literal's type does not, so in the first
     # case, multiple signatures match and pytype falls back to Any, whereas in
     # the second, only the fallback signature matches.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, BinaryIO, IO, TextIO, Tuple, Union
       f1: TextIO
       f2: BinaryIO
@@ -394,18 +436,22 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v2: bytes
       def open_file1(mode) -> Tuple[Any, Any]: ...
       def open_file2(mode: str) -> Tuple[IO[Union[bytes, str]], Union[bytes, str]]: ...
-    """)
+    """,
+    )
 
   def test_open_extended_file_modes(self):
     ty = self.Infer("""
       f1 = open("f1", "rb+")
       f2 = open("f2", "w+t")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import BinaryIO, TextIO
       f1: BinaryIO
       f2: TextIO
-    """)
+    """,
+    )
 
   def test_filter(self):
     ty = self.Infer("""
@@ -419,7 +465,9 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       x5 = filter(None, {1: None}.keys())
       x6 = filter(re.compile("").search, ("",))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import re
       from typing import Iterator
       def f(x: int) -> None: ...
@@ -429,7 +477,8 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       x4 : Iterator[int]
       x5 : Iterator[int]
       x6 : Iterator[str]
-      """)
+      """,
+    )
 
   def test_filter_types(self):
     self.Check("""
@@ -449,14 +498,17 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       e = zip((1j, 2j), (1, 2))
       assert zip([], [], [])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterator, Tuple, Union
       a: zip[nothing]
       b: zip[Tuple[Union[int, complex]]]
       c: zip[nothing]
       d: zip[nothing]
       e: zip[Tuple[complex, int]]
-      """)
+      """,
+    )
 
   def test_dict(self):
     self.Check("""
@@ -477,31 +529,40 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       l3 = list({"a": 1}.keys())
       l4 = list({"a": 1}.values())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       l3 : List[str]
       l4 : List[int]
-    """)
+    """,
+    )
 
   def test_tuple_init(self):
     ty = self.Infer("""
       t3 = tuple({"a": 1}.keys())
       t4 = tuple({"a": 1}.values())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple
       t3 : Tuple[str, ...]
       t4 : Tuple[int, ...]
-    """)
+    """,
+    )
 
   def test_items(self):
     ty = self.Infer("""
       lst = list({"a": 1}.items())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Tuple
       lst : List[Tuple[str, int]]
-    """)
+    """,
+    )
 
   def test_int_init(self):
     _, errors = self.InferWithErrors("""
@@ -523,12 +584,15 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v[:]
       x, y, z = v.start, v.stop, v.step
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v: range
       x: int
       y: int
       z: int
-    """)
+    """,
+    )
 
   def test_create_str(self):
     self.Check("""
@@ -569,13 +633,16 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v3 = v1.tolist()
       v4 = v1.hex()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       v1: memoryview
       v2: bytes
       v3: List[int]
       v4: str
-    """)
+    """,
+    )
 
   def test_bytes_hex(self):
     self.Check("""
@@ -592,9 +659,12 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       with memoryview(b'abc') as v:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v : memoryview
-    """)
+    """,
+    )
 
   def test_array_tobytes(self):
     ty = self.Infer("""
@@ -602,21 +672,27 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       def t_testTobytes():
         return array.array('B').tobytes()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import array
       def t_testTobytes() -> bytes: ...
-    """)
+    """,
+    )
 
   def test_iterator_builtins(self):
     ty = self.Infer("""
       v1 = map(int, ["0"])
       v2 = zip([0], [1])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterator, Tuple
       v1 : Iterator[int]
       v2 : zip[Tuple[int, int]]
-    """)
+    """,
+    )
 
   def test_next(self):
     ty = self.Infer("""
@@ -624,11 +700,14 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v1 = itr.__next__()
       v2 = next(itr)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       itr : tupleiterator[int]
       v1 : int
       v2 : int
-    """)
+    """,
+    )
 
   def test_aliased_error(self):
     # In Python 3, EnvironmentError and IOError became aliases for OSError.
@@ -678,20 +757,26 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v1 = round(4.2)
       v2 = round(4.2, 1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v1: int
       v2: float
-    """)
+    """,
+    )
 
   def test_int_bytes_conversion(self):
     ty = self.Infer("""
       bytes_obj = (42).to_bytes(1, "little")
       int_obj = int.from_bytes(b"*", "little")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       bytes_obj: bytes
       int_obj: int
-    """)
+    """,
+    )
 
   def test_unicode_error(self):
     self.Check("""
@@ -708,13 +793,16 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
     # TODO(rechen): The types of x2 and y2 should be str, but we're not able to
     # type an optional argument as a typevar.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       x1 : int
       x2 : Any
       y1 : int
       y2 : Any
-    """)
+    """,
+    )
 
   def test_str_is_not_int(self):
     self.CheckWithErrors("""

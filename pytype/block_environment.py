@@ -1,6 +1,6 @@
 """Track python variables in relation to the block graph."""
 
-from typing import Set, Dict, List
+from typing import Dict, List, Set
 
 from pytype.blocks import blocks
 from pytype.typegraph import cfg
@@ -29,8 +29,10 @@ class Environment:
     local = {}
     self.block_locals[block] = local
     incoming = [
-        b for b in block.incoming
-        if b in self.block_locals and b != block and b not in self._dead_ends]
+        b
+        for b in block.incoming
+        if b in self.block_locals and b != block and b not in self._dead_ends
+    ]
     n_inc = len(incoming)
     if n_inc == 0:
       try:
@@ -40,7 +42,7 @@ class Environment:
       frame_locals = {k: [v] for k, v in f_locals}
       local.update(frame_locals)
     elif n_inc == 1:
-      inc, = incoming
+      (inc,) = incoming
       local.update(self.block_locals[inc])
     else:
       keys = None

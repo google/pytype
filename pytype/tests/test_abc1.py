@@ -9,16 +9,22 @@ class AbstractMethodTests(test_base.BaseTest):
 
   def test_instantiate_pyi_abstract_class(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import abc
         class Example(metaclass=abc.ABCMeta):
           @abc.abstractmethod
           def foo(self) -> None: ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         foo.Example()  # not-instantiable[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"foo\.Example.*foo"})
 
   def test_stray_abstractmethod(self):
@@ -33,7 +39,9 @@ class AbstractMethodTests(test_base.BaseTest):
 
   def test_multiple_inheritance_implementation_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import abc
         class Interface(metaclass=abc.ABCMeta):
           @abc.abstractmethod
@@ -42,36 +50,50 @@ class AbstractMethodTests(test_base.BaseTest):
         class Implementation(Interface):
           def foo(self) -> int: ...
         class Foo(X, Implementation): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.Foo().foo()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_multiple_inheritance_error_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import abc
         class X: ...
         class Interface(metaclass=abc.ABCMeta):
           @abc.abstractmethod
           def foo(self): ...
         class Foo(X, Interface): ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         foo.Foo().foo()  # not-instantiable[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
   def test_abc_metaclass_from_decorator(self):
     with test_utils.Tempdir() as d:
-      d.create_file("six.pyi", """
+      d.create_file(
+          "six.pyi",
+          """
         from typing import TypeVar, Callable
         T = TypeVar('T')
         def add_metaclass(metaclass: type) -> Callable[[T], T]: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import abc
         import six
         @six.add_metaclass(abc.ABCMeta)
@@ -79,16 +101,22 @@ class AbstractMethodTests(test_base.BaseTest):
           @abc.abstractmethod
           def foo(self):
             pass
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_abc_child_metaclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("six.pyi", """
+      d.create_file(
+          "six.pyi",
+          """
         from typing import TypeVar, Callable
         T = TypeVar('T')
         def add_metaclass(metaclass: type) -> Callable[[T], T]: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import abc
         import six
         class ABCChild(abc.ABCMeta):
@@ -98,7 +126,9 @@ class AbstractMethodTests(test_base.BaseTest):
           @abc.abstractmethod
           def foo(self):
             pass
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_misplaced_abstractproperty(self):
     _, errors = self.InferWithErrors("""

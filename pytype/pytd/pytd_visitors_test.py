@@ -31,8 +31,9 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
           pass
     """
     ast = self.Parse(src, name=module_name)
-    new_ast = ast.Visit(pytd_visitors.RenameModuleVisitor(module_name,
-                                                          "other.name"))
+    new_ast = ast.Visit(
+        pytd_visitors.RenameModuleVisitor(module_name, "other.name")
+    )
 
     self.assertEqual("other.name", new_ast.name)
     self.assertTrue(new_ast.Lookup("other.name.SomeClass"))
@@ -54,15 +55,16 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
           pass
     """
     ast = self.Parse(src, name=module_name)
-    new_ast = ast.Visit(pytd_visitors.RenameModuleVisitor(module_name,
-                                                          "other.name"))
+    new_ast = ast.Visit(
+        pytd_visitors.RenameModuleVisitor(module_name, "other.name")
+    )
 
     some_class = new_ast.Lookup("other.name.SomeClass")
     self.assertTrue(some_class)
     init_function = some_class.Lookup("__init__")
     self.assertTrue(init_function)
     self.assertEqual(len(init_function.signatures), 1)
-    signature, = init_function.signatures
+    (signature,) = init_function.signatures
     _, param2 = signature.params
     self.assertEqual(param2.type.scope, "other.name.SomeClass")
 
@@ -100,8 +102,10 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     tree2 = self.Parse(src2)
     tree2 = tree2.Visit(pytd_visitors.CanonicalOrderingVisitor())
     self.AssertSourceEquals(tree1, tree2)
-    self.assertEqual(tree1.Lookup("f").signatures[0].template,
-                     tree2.Lookup("f").signatures[0].template)
+    self.assertEqual(
+        tree1.Lookup("f").signatures[0].template,
+        tree2.Lookup("f").signatures[0].template,
+    )
 
   def test_superclasses(self):
     src = textwrap.dedent("""
@@ -124,8 +128,9 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     self.assertCountEqual(["object"], [t.name for t in data[ast.Lookup("B")]])
     self.assertCountEqual(["A"], [t.name for t in data[ast.Lookup("C")]])
     self.assertCountEqual(["A", "B"], [t.name for t in data[ast.Lookup("D")]])
-    self.assertCountEqual(["C", "D", "A"],
-                          [t.name for t in data[ast.Lookup("E")]])
+    self.assertCountEqual(
+        ["C", "D", "A"], [t.name for t in data[ast.Lookup("E")]]
+    )
 
 
 if __name__ == "__main__":

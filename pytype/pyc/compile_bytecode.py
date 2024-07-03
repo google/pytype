@@ -18,11 +18,11 @@ def is_comment_only(line):
 
 
 def _write32(f, w):
-  f.write(bytearray([
-      (w >> 0) & 0xff,
-      (w >> 8) & 0xff,
-      (w >> 16) & 0xff,
-      (w >> 24) & 0xff]))
+  f.write(
+      bytearray(
+          [(w >> 0) & 0xFF, (w >> 8) & 0xFF, (w >> 16) & 0xFF, (w >> 24) & 0xFF]
+      )
+  )
 
 
 def write_pyc(f, codeobject, source_size=0, timestamp=0):
@@ -75,8 +75,12 @@ def main():
   if len(sys.argv) != 4:
     sys.exit(1)
   output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout
-  compile_to_pyc(data_file=sys.argv[1], filename=sys.argv[2],
-                 output=output, mode=sys.argv[3])
+  compile_to_pyc(
+      data_file=sys.argv[1],
+      filename=sys.argv[2],
+      output=output,
+      mode=sys.argv[3],
+  )
 
 
 if __name__ == "__main__":

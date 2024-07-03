@@ -3,6 +3,7 @@
 import itertools
 
 from pytype.pytd import pytd
+
 import unittest
 
 
@@ -47,12 +48,14 @@ class TestPytd(unittest.TestCase):
   def test_order(self):
     # pytd types' primary sort key is the class name, second sort key is
     # the contents when interpreted as a (named)tuple.
-    nodes = [pytd.AnythingType(),
-             pytd.GenericType(self.list, (self.int,)),
-             pytd.NamedType("int"),
-             pytd.NothingType(),
-             pytd.UnionType((self.float,)),
-             pytd.UnionType((self.int,))]
+    nodes = [
+        pytd.AnythingType(),
+        pytd.GenericType(self.list, (self.int,)),
+        pytd.NamedType("int"),
+        pytd.NothingType(),
+        pytd.UnionType((self.float,)),
+        pytd.UnionType((self.int,)),
+    ]
     for n1, n2 in zip(nodes[:-1], nodes[1:]):
       self.assertLess(n1, n2)
       self.assertLessEqual(n1, n2)

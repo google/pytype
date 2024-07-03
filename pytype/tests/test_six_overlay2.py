@@ -16,10 +16,13 @@ class SixTests(test_base.BaseTest):
       else:
         v = None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import six
       v = ...  # type: str
-    """)
+    """,
+    )
 
   def test_string_types(self):
     ty = self.Infer("""
@@ -32,13 +35,16 @@ class SixTests(test_base.BaseTest):
       if isinstance(b, six.string_types):
         c = len(b)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       import six
       a: List[str]
       b: str
       c: int
-    """)
+    """,
+    )
 
   def test_integer_types(self):
     self.Check("""

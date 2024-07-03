@@ -35,16 +35,18 @@ def _convert(node):
   elif node.__class__.__name__ == "NamedType" and node.name == "None":
     # We convert None to pytd.NamedType('None') in types.Pyval
     return None
-  elif (isinstance(node, astlib.UnaryOp) and
-        isinstance(node.op, (astlib.UAdd, astlib.USub))):
+  elif isinstance(node, astlib.UnaryOp) and isinstance(
+      node.op, (astlib.UAdd, astlib.USub)
+  ):
     operand = _convert(node.operand)
     if isinstance(operand, _NUM_TYPES):
       if isinstance(node.op, astlib.UAdd):
         return operand
       else:
         return -operand
-  elif (isinstance(node, astlib.BinOp) and
-        isinstance(node.op, (astlib.Add, astlib.Sub))):
+  elif isinstance(node, astlib.BinOp) and isinstance(
+      node.op, (astlib.Add, astlib.Sub)
+  ):
     left = _convert(node.left)
     right = _convert(node.right)
     if isinstance(left, _NUM_TYPES) and isinstance(right, _NUM_TYPES):
@@ -53,6 +55,8 @@ def _convert(node):
       else:
         return left - right
   raise ValueError("Cannot evaluate node: " + repr(node))
+
+
 # pylint: enable=invalid-unary-operand-type
 
 

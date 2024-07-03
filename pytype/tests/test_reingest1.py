@@ -18,11 +18,14 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      self.Check("""
+      self.Check(
+          """
         # u.py
         from foo import A
         A().Add()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_union(self):
     ty = self.Infer("""
@@ -32,9 +35,12 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      self.Check("""
+      self.Check(
+          """
         from foo import Union
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_identity_decorators(self):
     foo = self.Infer("""
@@ -43,19 +49,25 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         @foo.decorate
         def f():
           return 3
         def g():
           return f()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         def f() -> int: ...
         def g() -> int: ...
-      """)
+      """,
+      )
 
   @test_base.skip("Needs better handling of Union[Callable, f] in output.py.")
   def test_maybe_identity_decorators(self):
@@ -65,19 +77,25 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         @foo.maybe_decorate
         def f():
           return 3
         def g():
           return f()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         def f() -> int: ...
         def g() -> int: ...
-      """)
+      """,
+      )
 
   def test_namedtuple(self):
     foo = self.Infer("""
@@ -86,11 +104,14 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         foo.X(0, 0)
         foo.X(a=0, b=0)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_new_chain(self):
     foo = self.Infer("""
@@ -100,7 +121,8 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         class Y(foo.X):
           def __new__(cls, x):
@@ -108,7 +130,9 @@ class ReingestTest(test_base.BaseTest):
           def __init__(self, x):
             self.x = x
         Y("x").x
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_namedtuple_subclass(self):
     foo = self.Infer("""
@@ -120,11 +144,14 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      _, errors = self.InferWithErrors("""
+      _, errors = self.InferWithErrors(
+          """
         import foo
         foo.X("hello", "world")
         foo.X(42)  # missing-parameter[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"b.*__new__"})
 
   def test_alias(self):
@@ -136,10 +163,13 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         foo.Foo("hello world")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_dynamic_attributes(self):
     foo1 = self.Infer("""
@@ -151,11 +181,15 @@ class ReingestTest(test_base.BaseTest):
     with test_utils.Tempdir() as d:
       d.create_file("foo1.pyi", pytd_utils.Print(foo1))
       d.create_file("foo2.pyi", pytd_utils.Print(foo2))
-      d.create_file("bar.pyi", """
+      d.create_file(
+          "bar.pyi",
+          """
         from foo1 import xyz
         from foo2 import zyx
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo1
         import foo2
         import bar
@@ -163,7 +197,9 @@ class ReingestTest(test_base.BaseTest):
         foo2.abc
         bar.xyz
         bar.zyx
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_inherited_mutation(self):
     foo = self.Infer("""
@@ -172,16 +208,22 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         lst = foo.MyList()
         lst.write(42)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       # MyList is not parameterized because it inherits from List[Any].
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         lst = ...  # type: foo.MyList
-      """)
+      """,
+      )
 
   @test_base.skip("Need to give MyList.write the right self mutation.")
   def test_inherited_mutation_in_generic_class(self):
@@ -193,15 +235,21 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         lst = foo.MyList()
         lst.write(42)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         lst = ...  # type: foo.MyList[int]
-      """)
+      """,
+      )
 
   def test_instantiate_imported_generic(self):
     foo = self.Infer("""
@@ -213,14 +261,20 @@ class ReingestTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         x = foo.Foo[int]()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         x: foo.Foo[int]
-      """)
+      """,
+      )
 
 
 class StrictNoneTest(test_base.BaseTest):
@@ -238,11 +292,14 @@ class StrictNoneTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         def g():
           return foo.f().upper()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pyi_yield_constant(self):
     foo = self.Infer("""
@@ -252,11 +309,14 @@ class StrictNoneTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         def g():
           return [v.upper() for v in foo.f()]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pyi_return_contained_constant(self):
     foo = self.Infer("""
@@ -266,11 +326,14 @@ class StrictNoneTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         def g():
           return [v.upper() for v in foo.f()]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pyi_return_attribute(self):
     foo = self.Infer("""
@@ -281,11 +344,14 @@ class StrictNoneTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         def g():
           return foo.f().upper()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_no_return(self):
     foo = self.Infer("""
@@ -294,14 +360,17 @@ class StrictNoneTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         def g():
           x = "hello" if __random__ else None
           if x is None:
             foo.fail()
           return x.upper()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_context_manager_subclass(self):
     foo = self.Infer("""
@@ -313,13 +382,16 @@ class StrictNoneTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
-      self.Check("""
+      self.Check(
+          """
         import foo
         class Bar(foo.Foo):
           x = None
         with Bar() as bar:
           bar.x
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 if __name__ == "__main__":

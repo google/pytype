@@ -15,11 +15,14 @@ class DictTest(test_base.BaseTest):
         if x is not None:
           return MAP[x]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Optional, Union
       MAP = ...  # type: Dict[int, str]
       def foo(x: Union[int, None]) -> Optional[str]: ...
-    """)
+    """,
+    )
 
   def test_object_in_dict(self):
     self.CheckWithErrors("""
@@ -97,14 +100,17 @@ class DictTest(test_base.BaseTest):
       e = {}
       e |= [(1, 2), (3, '4')]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       a: Dict[str, int]
       b: Dict[Union[str, int], Union[str, int]]
       c: Dict[str, int]
       d: Dict[str, str]
       e: Dict[int, Union[int, str]]
-    """)
+    """,
+    )
 
   def test_reverse_views(self):
     self.Check("""

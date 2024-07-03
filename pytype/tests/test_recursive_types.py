@@ -82,8 +82,9 @@ class MatchTest(test_base.BaseTest):
       bad1: X = [0]  # annotation-type-mismatch[e]
       bad2: X = [[0]]  # annotation-type-mismatch
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Annotation", "List[X]", "Assignment", "List[int]"]})
+    self.assertErrorSequences(
+        errors, {"e": ["Annotation", "List[X]", "Assignment", "List[int]"]}
+    )
 
   def test_value(self):
     errors = self.CheckWithErrors("""
@@ -94,8 +95,9 @@ class MatchTest(test_base.BaseTest):
       ok2: List[X] = x
       bad: List[int] = x  # annotation-type-mismatch[e]
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Annotation", "List[int]", "Assignment", "List[X]"]})
+    self.assertErrorSequences(
+        errors, {"e": ["Annotation", "List[int]", "Assignment", "List[X]"]}
+    )
 
   def test_value_and_type(self):
     errors = self.CheckWithErrors("""
@@ -108,8 +110,9 @@ class MatchTest(test_base.BaseTest):
       ok2: X2 = x  # ok because X1 and X2 are structurally equivalent
       bad: Bad = x  # annotation-type-mismatch[e]
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Annotation", "Set[Bad]", "Assignment", "List[X1]"]})
+    self.assertErrorSequences(
+        errors, {"e": ["Annotation", "Set[Bad]", "Assignment", "List[X1]"]}
+    )
 
   def test_union_as_type(self):
     errors = self.CheckWithErrors("""
@@ -122,9 +125,12 @@ class MatchTest(test_base.BaseTest):
       bad2: X = [0]  # annotation-type-mismatch
       bad3: X = [[0]]  # annotation-type-mismatch
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Annotation", "Union[List[X], str]", "Assignment", "int"],
-    })
+    self.assertErrorSequences(
+        errors,
+        {
+            "e": ["Annotation", "Union[List[X], str]", "Assignment", "int"],
+        },
+    )
 
   def test_union_as_value(self):
     errors = self.CheckWithErrors("""
@@ -135,9 +141,17 @@ class MatchTest(test_base.BaseTest):
       bad1: Union[int, List[Any]] = x  # annotation-type-mismatch[e]
       bad2: Union[str, List[int]] = x  # annotation-type-mismatch
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Annotation", "Union[int, list]",
-              "Assignment", "Union[List[X], str]"]})
+    self.assertErrorSequences(
+        errors,
+        {
+            "e": [
+                "Annotation",
+                "Union[int, list]",
+                "Assignment",
+                "Union[List[X], str]",
+            ]
+        },
+    )
 
   def test_union_as_value_and_type(self):
     errors = self.CheckWithErrors("""
@@ -156,11 +170,19 @@ class MatchTest(test_base.BaseTest):
       bad2: Bad2 = x  # annotation-type-mismatch  # annotation-type-mismatch
       bad3: Bad3 = x  # annotation-type-mismatch  # annotation-type-mismatch
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Annotation", "Union[Set[Bad1], str]",
-              "Assignment", "List[X1]",
-              "In assignment", "Union[List[X1], str]"],
-    })
+    self.assertErrorSequences(
+        errors,
+        {
+            "e": [
+                "Annotation",
+                "Union[Set[Bad1], str]",
+                "Assignment",
+                "List[X1]",
+                "In assignment",
+                "Union[List[X1], str]",
+            ],
+        },
+    )
 
   def test_contained_union(self):
     self.CheckWithErrors("""
@@ -216,10 +238,13 @@ class InferenceTest(test_base.BaseTest):
       from typing import List
       Foo = List['Foo']
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       Foo = List[Foo]
-    """)
+    """,
+    )
 
   def test_mutual_recursion(self):
     ty = self.Infer("""
@@ -227,11 +252,14 @@ class InferenceTest(test_base.BaseTest):
       X = List['Y']
       Y = List['X']
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       X = List[Y]
       Y = List[List[Y]]
-    """)
+    """,
+    )
 
   def test_parameterization(self):
     ty = self.Infer("""
@@ -240,13 +268,16 @@ class InferenceTest(test_base.BaseTest):
       X = List['Y[int]']
       Y = Union[T, List['Y']]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
       X = List[_Y_LBAR_int_RBAR]
       Y = Union[T, List[Y]]
       _Y_LBAR_int_RBAR = Union[int, List[_Y_LBAR_int_RBAR]]
-    """)
+    """,
+    )
 
   def test_parameterization_with_inner_parameter(self):
     ty = self.Infer("""
@@ -255,7 +286,9 @@ class InferenceTest(test_base.BaseTest):
       X = Union[T, List['X[T]']]
       Y = List[X[int]]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
       X = Union[T, List[_X_LBAR_T_RBAR]]
@@ -263,7 +296,8 @@ class InferenceTest(test_base.BaseTest):
       _X_LBAR_T_RBAR = Union[T, List[_X_LBAR_T_RBAR]]
       _X_LBAR_T_RBAR_LBAR_int_RBAR = Union[int, List[
           _X_LBAR_T_RBAR_LBAR_int_RBAR]]
-    """)
+    """,
+    )
 
   def test_branching(self):
     ty = self.Infer("""
@@ -279,7 +313,9 @@ class InferenceTest(test_base.BaseTest):
       except TypeError:
         Structure = Union[Mapping[str, 'Structure[V]'], V]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Mapping, TypeVar, Union
 
       K = TypeVar('K')
@@ -301,7 +337,8 @@ class InferenceTest(test_base.BaseTest):
       _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR = Union[Mapping[
           str, _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR], V]
       _Structure_LBAR_V_RBAR = Union[Mapping[str, _Structure_LBAR_V_RBAR], V]
-    """)
+    """,
+    )
 
 
 class PyiTest(test_base.BaseTest):
@@ -313,10 +350,13 @@ class PyiTest(test_base.BaseTest):
     return super().DepTree([d + ({"pickle": self.pickle},) for d in deps])
 
   def test_basic(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import List
       X = List['X']
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         from typing import Any, Set, List
@@ -328,25 +368,34 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_reingest(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import List, Union
       X = Union[int, List['X']]
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import foo
         X = foo.X
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import List, Union
       X = Union[int, List[foo.X]]
-    """)
+    """,
+    )
 
   def test_reingest_and_use(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import List, Union
       X = Union[int, List['X']]
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         from typing import Any, List, Set, Union
@@ -362,15 +411,21 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_reingest_n_times(self):
-    deps = [("foo1.py", """
+    deps = [(
+        "foo1.py",
+        """
       from typing import List
       X = List['X']
-    """)]
+    """,
+    )]
     for i in range(3):
-      deps.append((f"foo{i+2}.py", f"""
+      deps.append((
+          f"foo{i+2}.py",
+          f"""
         import foo{i+1}
         X = foo{i+1}.X
-      """))
+      """,
+      ))
     with self.DepTree(deps):
       self.CheckWithErrors("""
         import foo2
@@ -396,11 +451,14 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_mutually_recursive(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import List
       X = List['Y']
       Y = List[X]
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         from typing import Any, List
@@ -418,8 +476,9 @@ class PyiTest(test_base.BaseTest):
     """
     for inner_parameter in ("", "[T]"):
       with self.subTest(inner_parameter=inner_parameter):
-        with self.DepTree([
-            ("foo.py", foo_src.format(inner_parameter=inner_parameter))]):
+        with self.DepTree(
+            [("foo.py", foo_src.format(inner_parameter=inner_parameter))]
+        ):
           errors = self.CheckWithErrors("""
             import foo
             ok1: foo.X[str] = ['']
@@ -427,26 +486,44 @@ class PyiTest(test_base.BaseTest):
             bad1: foo.X[str] = [0]  # annotation-type-mismatch
             bad2: foo.Y = ['']  # annotation-type-mismatch[e]
           """)
-          self.assertErrorRegexes(errors, {
-              "e": (r"Annotation: Union\[List\[foo.X(\[T\])?\[int\]\], int\].*"
-                    r"Assignment: List\[str\]")})
+          self.assertErrorRegexes(
+              errors,
+              {
+                  "e": (
+                      r"Annotation: Union\[List\[foo.X(\[T\])?\[int\]\],"
+                      r" int\].*"
+                      r"Assignment: List\[str\]"
+                  )
+              },
+          )
 
   def test_parameterize_and_forward(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([
+        (
+            "foo.py",
+            """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
       X = Union[T, List['X[T]']]
-    """), ("bar.py", """
+    """,
+        ),
+        (
+            "bar.py",
+            """
       import foo
       Y = foo.X[str]
-    """)]):
+    """,
+        ),
+    ]):
       self.Check("""
         import bar
         assert_type(bar.Y, "Type[Union[List[bar.foo.X[T][str]], str]]")
       """)
 
   def test_dataclass(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import dataclasses
       from typing import Dict, List, Optional, Union
       X = Union[List[str], 'X']
@@ -454,7 +531,8 @@ class PyiTest(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo:
         y: Optional[Y] = None
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(x: foo.Foo):
@@ -462,17 +540,30 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_import_multiple_aliases(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([
+        (
+            "foo.py",
+            """
       from typing import List, Union, TypeVar
       T = TypeVar('T')
       X = Union[T, List['X[T]']]
-    """), ("bar.py", """
+    """,
+        ),
+        (
+            "bar.py",
+            """
       import foo
       BarX = foo.X
-    """), ("baz.py", """
+    """,
+        ),
+        (
+            "baz.py",
+            """
       import foo
       BazX = foo.X
-    """)]):
+    """,
+        ),
+    ]):
       self.Check("""
         import bar
         import baz
@@ -485,11 +576,14 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_formal_alias(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import List, Union, TypeVar
       T = TypeVar('T')
       X = Union[T, List['X[T]']]
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import TypeVar
@@ -499,7 +593,9 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_use_branched_alias(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import Mapping, Sequence, TypeVar, Union
       K = TypeVar('K')
       V = TypeVar('V')
@@ -513,7 +609,8 @@ class PyiTest(test_base.BaseTest):
       except TypeError:
         Structure = Union[
             Sequence['Structure[V]'], Mapping[int, 'Structure[V]'], V]
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import Any
@@ -524,14 +621,17 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_use_in_custom_generic_class(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Any, Generic, Iterable, TypeVar, Union
       _ShapeType = TypeVar('_ShapeType')
       _DType = TypeVar('_DType')
       class ndarray(Generic[_ShapeType, _DType]):
         def __iter__(self) -> Any: ...
       ArrayTree = Union[Iterable[ArrayTree], ndarray]
-    """)]):
+    """,
+    )]):
       self.Check("""
         from typing import Generic, TypeVar
         import foo
@@ -543,13 +643,16 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_callable(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Callable, Sequence, TypeVar
       T = TypeVar('T')
       X = T | Sequence[X[T]]
       class C:
         f: Callable[..., X]
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class C(foo.C):

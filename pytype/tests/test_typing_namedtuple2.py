@@ -48,8 +48,9 @@ class NamedTupleTest(test_base.BaseTest):
       def foo(x: X):
         return x.f
     """)
-    self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
-                              "def foo(x: X) -> Callable: ...")
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ty.Lookup("foo")), "def foo(x: X) -> Callable: ..."
+    )
 
   def test_bare_union_attribute(self):
     ty, errors = self.InferWithErrors("""
@@ -58,36 +59,45 @@ class NamedTupleTest(test_base.BaseTest):
       def foo(x: X):
         return x.x
     """)
-    self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
-                              "def foo(x: X) -> Any: ...")
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ty.Lookup("foo")), "def foo(x: X) -> Any: ..."
+    )
     self.assertErrorRegexes(errors, {"e": r"Union.*x"})
 
   def test_reingest_functional_form(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import NamedTuple
       Foo = NamedTuple('Foo', [('name', str)])
       Bar = NamedTuple('Bar', [('name', str)])
       Baz = NamedTuple('Baz', [('foos', list[Foo]), ('bars', list[Bar])])
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         foo.Baz([foo.Foo('')], [foo.Bar('')])
       """)
 
   def test_kwargs(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import NamedTuple
       class Foo(NamedTuple):
         def replace(self, *args, **kwargs):
           pass
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         foo.Foo().replace(x=0)
       """)
 
   def test_property(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import NamedTuple
       class Foo(NamedTuple):
         x: int
@@ -97,7 +107,8 @@ class NamedTupleTest(test_base.BaseTest):
         @property
         def z(self) -> int:
           return self.x + 1
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         nt = foo.Foo(0)
@@ -106,11 +117,14 @@ class NamedTupleTest(test_base.BaseTest):
       """)
 
   def test_pyi_error(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import NamedTuple
       class Foo(NamedTuple):
         x: int
-    """)]):
+    """,
+    )]):
       errors = self.CheckWithErrors("""
         import foo
         foo.Foo()  # missing-parameter[e]
@@ -118,13 +132,22 @@ class NamedTupleTest(test_base.BaseTest):
       self.assertErrorSequences(errors, {"e": "function foo.Foo.__new__"})
 
   def test_star_import(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([
+        (
+            "foo.pyi",
+            """
       from typing import NamedTuple
       class Foo(NamedTuple): ...
       def f(x: Foo): ...
-    """), ("bar.py", """
+    """,
+        ),
+        (
+            "bar.py",
+            """
       from foo import *
-    """)]):
+    """,
+        ),
+    ]):
       self.Check("""
         import foo
         import bar
@@ -140,13 +163,16 @@ class NamedTupleTest(test_base.BaseTest):
       class Bar(NamedTuple):
         x: Foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, NamedTuple, Protocol
       class Foo(Protocol):
         def __call__(self, x) -> Any: ...
       class Bar(NamedTuple):
         x: Foo
-    """)
+    """,
+    )
 
   def test_custom_new_with_subclasses(self):
     ty = self.Infer("""
@@ -159,7 +185,9 @@ class NamedTupleTest(test_base.BaseTest):
       class Baz(Foo):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import NamedTuple, Type, TypeVar
       _TFoo = TypeVar('_TFoo', bound=Foo)
       class Foo(NamedTuple):
@@ -167,15 +195,19 @@ class NamedTupleTest(test_base.BaseTest):
         def __new__(cls: Type[_TFoo], x: str = ...) -> _TFoo: ...
       class Bar(Foo): ...
       class Baz(Foo): ...
-    """)
+    """,
+    )
 
   def test_defaults(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import NamedTuple
       class X(NamedTuple):
         a: int
         b: str = ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         foo.X()  # missing-parameter
@@ -185,13 +217,16 @@ class NamedTupleTest(test_base.BaseTest):
       """)
 
   def test_override_defaults(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import NamedTuple
       class X(NamedTuple):
         a: int
         b: str
       X.__new__.__defaults__ = ('',)
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         foo.X()  # missing-parameter
@@ -223,7 +258,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
         class X(NamedTuple):
           a: int
           b: str
-        """)
+        """,
+    )
 
   def test_union_attribute(self):
     ty = self.Infer("""
@@ -232,8 +268,10 @@ class NamedTupleTestPy3(test_base.BaseTest):
       def foo(x: X):
         return x.x
     """)
-    self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
-                              "def foo(x: X) -> Union[bytes, str]: ...")
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ty.Lookup("foo")),
+        "def foo(x: X) -> Union[bytes, str]: ...",
+    )
 
   def test_bad_call(self):
     _, errorlog = self.InferWithErrors("""
@@ -241,9 +279,13 @@ class NamedTupleTestPy3(test_base.BaseTest):
         E2 = NamedTuple('Employee2', [('name', str), ('id', int)],  # invalid-namedtuple-arg[e1]  # wrong-keyword-args[e2]
                         birth=str, gender=bool)
     """)
-    self.assertErrorRegexes(errorlog, {
-        "e1": r"Either list of fields or keywords.*",
-        "e2": r".*(birth, gender).*NamedTuple"})
+    self.assertErrorRegexes(
+        errorlog,
+        {
+            "e1": r"Either list of fields or keywords.*",
+            "e2": r".*(birth, gender).*NamedTuple",
+        },
+    )
 
   def test_bad_attribute(self):
     _, errorlog = self.InferWithErrors("""
@@ -323,7 +365,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
         class baseClass:
             x = ...  # type: int
             y = ...  # type: int
-        """)
+        """,
+    )
 
   def test_fields(self):
     self.Check("""
@@ -350,35 +393,48 @@ class NamedTupleTestPy3(test_base.BaseTest):
 
   def test_unpacking(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import NamedTuple
         class X(NamedTuple):
           a: str
           b: int
-      """)
-      ty, unused_errorlog = self.InferWithErrors("""
+      """,
+      )
+      ty, unused_errorlog = self.InferWithErrors(
+          """
         import foo
         v = None  # type: foo.X
         a, b = v
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Union
         v = ...  # type: foo.X
         a = ...  # type: str
         b = ...  # type: int
-      """)
+      """,
+      )
 
   def test_bad_unpacking(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import NamedTuple
         class X(NamedTuple):
           a: str
           b: int
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         v = None  # type: foo.X
         _, _, too_many = v  # bad-unpacking
@@ -386,7 +442,9 @@ class NamedTupleTestPy3(test_base.BaseTest):
         a: float
         b: str
         a, b = v  # annotation-type-mismatch # annotation-type-mismatch
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_is_tuple_type_and_superclasses(self):
     """Test that a NamedTuple (function syntax) behaves like a tuple."""
@@ -481,14 +539,16 @@ class NamedTupleTestPy3(test_base.BaseTest):
         a: int
         b: str
       """)
-    self.assertTypesMatchPytd(ty, (
-        """
+    self.assertTypesMatchPytd(
+        ty,
+        ("""
         from typing import NamedTuple
 
         class X(NamedTuple):
             a: int
             b: str
-        """))
+        """),
+    )
 
   def test_namedtuple_with_defaults(self):
     ty = self.Infer("""
@@ -539,7 +599,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
             def func() -> None: ...
 
         def f() -> None: ...
-        """)
+        """,
+    )
 
   def test_bad_default(self):
     errors = self.CheckWithErrors("""
@@ -551,7 +612,9 @@ class NamedTupleTestPy3(test_base.BaseTest):
 
   def test_nested_namedtuple(self):
     # Guard against a crash when hitting max depth (b/162619036)
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       from typing import NamedTuple
 
       def foo() -> None:
@@ -560,7 +623,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
 
       def bar():
         foo()
-    """)
+    """,
+    )
 
   def test_generic_namedtuple(self):
     ty = self.Infer("""
@@ -599,7 +663,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
         class Foo(NamedTuple, Generic[T]):
           x: T
           y: Callable[[T], T]
-      """)
+      """,
+    )
 
   def test_bad_typevar(self):
     self.CheckWithErrors("""
@@ -629,11 +694,14 @@ class NamedTupleTestPy3(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.Check("""
+      self.Check(
+          """
         import foo
         assert_type(foo.Foo(x=0).x, int)
         assert_type(foo.Bar(x=__any_object__).x(0), int)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_recursive_tuple(self):
     """Regression test for a recursive tuple containing a namedtuple."""

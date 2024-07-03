@@ -12,21 +12,30 @@ class TypeVarTest(test_base.BaseTest):
       from typing import TypeVar
       T = TypeVar("T")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar
       T = TypeVar("T")
-    """)
+    """,
+    )
 
   def test_import_typevar(self):
     with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         from a import T
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import TypeVar
         T = TypeVar("T")
-      """)
+      """,
+      )
 
   def test_invalid_typevar(self):
     ty, errors = self.InferWithErrors("""
@@ -44,17 +53,26 @@ class TypeVarTest(test_base.BaseTest):
       T = typevar("T", covariant=False)  # duplicate ok
       # pytype: enable=not-supported-yet
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar
       typevar = ...  # type: type
       S = TypeVar("S")
       T = TypeVar("T")
-    """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"wrong arguments", "e2": r"Expected.*str.*Actual.*int",
-        "e3": r"constant str", "e4": r"constraint.*Must be constant",
-        "e5": r"Expected.*_1:.*type.*Actual.*_1: int", "e6": r"0 or more than 1"
-    })
+    """,
+    )
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"wrong arguments",
+            "e2": r"Expected.*str.*Actual.*int",
+            "e3": r"constant str",
+            "e4": r"constraint.*Must be constant",
+            "e5": r"Expected.*_1:.*type.*Actual.*_1: int",
+            "e6": r"0 or more than 1",
+        },
+    )
 
   def test_print_constraints(self):
     ty = self.Infer("""
@@ -64,12 +82,15 @@ class TypeVarTest(test_base.BaseTest):
       U = TypeVar("U", List[int], List[float])
     """)
     # The "covariant" keyword is ignored for now.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, TypeVar
       S = TypeVar("S", int, float)
       T = TypeVar("T", int, float)
       U = TypeVar("U", List[int], List[float])
-    """)
+    """,
+    )
 
   def test_infer_typevars(self):
     ty = self.Infer("""
@@ -84,7 +105,9 @@ class TypeVarTest(test_base.BaseTest):
       def return_second(x, y):
         return y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, List, Tuple, Union
       _T0 = TypeVar("_T0")
       _T1 = TypeVar("_T1")
@@ -93,7 +116,8 @@ class TypeVarTest(test_base.BaseTest):
       def wrap_list(x: _T0, y: _T1) -> List[Union[_T0, _T1]]: ...
       def wrap_dict(x: _T0, y: _T1) -> Dict[_T0, _T1]: ...
       def return_second(x, y: _T1) -> _T1: ...
-    """)
+    """,
+    )
 
   def test_infer_union(self):
     ty = self.Infer("""
@@ -102,13 +126,16 @@ class TypeVarTest(test_base.BaseTest):
       def return_arg_or_42(x):
         return x or 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       _T0 = TypeVar("_T0")
       _T1 = TypeVar("_T1")
       def return_either(x: _T0, y: _T1) -> Union[_T0, _T1]: ...
       def return_arg_or_42(x: _T0) -> Union[_T0, int]: ...
-    """)
+    """,
+    )
 
   def test_typevar_in_type_comment(self):
     self.InferWithErrors("""
@@ -124,11 +151,14 @@ class TypeVarTest(test_base.BaseTest):
       T = TypeVar("T")
       class A(List[T]): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, TypeVar
       T = TypeVar("T")
       class A(List[T]): ...
-    """)
+    """,
+    )
 
   def test_overwrite_base_class_with_typevar(self):
     self.Check("""
@@ -156,7 +186,8 @@ class TypeVarTest(test_base.BaseTest):
       U = TypeVar("U", covariant=True if __random__ else False)  # invalid-typevar[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
+        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"}
+    )
 
   def test_contravariant(self):
     _, errors = self.InferWithErrors("""
@@ -166,58 +197,79 @@ class TypeVarTest(test_base.BaseTest):
       U = TypeVar("U", contravariant=True if __random__ else False)  # invalid-typevar[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"})
+        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"}
+    )
 
   def test_dont_propagate_pyval(self):
     # in functions like f(x: T) -> T, if T has constraints we should not copy
     # the value of constant types between instances of the typevar.
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import TypeVar
         AnyInt = TypeVar('AnyInt', int)
         def f(x: AnyInt) -> AnyInt: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         if a.f(0):
           x = 3
         if a.f(1):
           y = 3
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x = ...  # type: int
         y = ...  # type: int
-      """)
+      """,
+      )
 
   def test_property_type_param(self):
     # We should allow property signatures of the form f(self: T) -> X[T]
     # without complaining about the class not being parametrised over T
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
       from typing import TypeVar, List
       T = TypeVar('T')
       class A:
           @property
           def foo(self: T) -> List[T]: ...
       class B(A): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.A().foo
         y = a.B().foo
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import List
         x = ...  # type: List[a.A]
         y = ...  # type: List[a.B]
-      """)
+      """,
+      )
 
   def test_property_type_param2(self):
     # Test for classes inheriting from Generic[X]
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
       from typing import TypeVar, List, Generic
       T = TypeVar('T')
       U = TypeVar('U')
@@ -227,25 +279,34 @@ class TypeVarTest(test_base.BaseTest):
       class B(A, Generic[U]): ...
       def make_A() -> A[int]: ...
       def make_B() -> B[int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.make_A().foo
         y = a.make_B().foo
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import List
         x = ...  # type: List[a.A[int]]
         y = ...  # type: List[a.B[int]]
-      """)
+      """,
+      )
 
   # Skipping due to b/66005735
   @test_base.skip("Type parameter bug")
   def test_property_type_param3(self):
     # Don't mix up the class parameter and the property parameter
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
       from typing import TypeVar, List, Generic
       T = TypeVar('T')
       U = TypeVar('U')
@@ -253,20 +314,29 @@ class TypeVarTest(test_base.BaseTest):
           @property
           def foo(self: T) -> List[U]: ...
       def make_A() -> A[int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.make_A().foo
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x = ...  # type: List[int]
-      """)
+      """,
+      )
 
   def test_property_type_param_with_constraints(self):
     # Test setting self to a constrained type
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
       from typing import TypeVar, List, Generic
       T = TypeVar('T')
       U = TypeVar('U', int, str)
@@ -275,46 +345,64 @@ class TypeVarTest(test_base.BaseTest):
           @property
           def foo(self: A[X]) -> List[X]: ...
       def make_A() -> A[int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.make_A().foo
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import List
         x = ...  # type: List[int]
-      """)
+      """,
+      )
 
   def test_classmethod_type_param(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
       from typing import TypeVar, List, Type
       T = TypeVar('T')
       class A:
           @classmethod
           def foo(self: Type[T]) -> List[T]: ...
       class B(A): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         v = a.A.foo()
         w = a.B.foo()
         x = a.A().foo()
         y = a.B().foo()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import List
         v = ...  # type: List[a.A]
         w = ...  # type: List[a.B]
         x = ...  # type: List[a.A]
         y = ...  # type: List[a.B]
-      """)
+      """,
+      )
 
   def test_metaclass_property_type_param(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
       from typing import TypeVar, Type, List
       T = TypeVar('T')
       class Meta():
@@ -323,16 +411,23 @@ class TypeVarTest(test_base.BaseTest):
 
       class A(metaclass=Meta):
         pass
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.A.foo
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import List
         x = ...  # type: List[a.A]
-      """)
+      """,
+      )
 
   def test_top_level_union(self):
     ty = self.Infer("""
@@ -342,10 +437,13 @@ class TypeVarTest(test_base.BaseTest):
       else:
         T = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       T = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_store_typevar_in_dict(self):
     ty = self.Infer("""
@@ -353,11 +451,14 @@ class TypeVarTest(test_base.BaseTest):
       T = TypeVar("T")
       a = {'key': T}
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, TypeVar
       a = ...  # type: Dict[str, nothing]
       T = TypeVar('T')
-    """)
+    """,
+    )
 
   def test_late_bound(self):
     _, errors = self.InferWithErrors("""
@@ -371,9 +472,15 @@ class TypeVarTest(test_base.BaseTest):
       class Foo:
         pass
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"mutually exclusive", "e2": r"empty string",
-        "e3": r"Must be constant", "e4": r"Name.*Bar"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"mutually exclusive",
+            "e2": r"empty string",
+            "e3": r"Must be constant",
+            "e4": r"Name.*Bar",
+        },
+    )
 
   def test_late_constraints(self):
     ty = self.Infer("""
@@ -385,7 +492,9 @@ class TypeVarTest(test_base.BaseTest):
       class Foo:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, TypeVar
       S = TypeVar("S", int, float)
       T = TypeVar("T", int, float)
@@ -393,7 +502,8 @@ class TypeVarTest(test_base.BaseTest):
       V = TypeVar("V", Foo, List[Foo])
       class Foo:
         pass
-    """)
+    """,
+    )
 
   def test_typevar_in_alias(self):
     ty = self.Infer("""
@@ -402,12 +512,15 @@ class TypeVarTest(test_base.BaseTest):
       Num = Union[T, complex]
       x = 10  # type: Num[int]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar, Union
       T = TypeVar("T", int, float)
       Num = Union[T, complex]
       x: Union[int, complex]
-    """)
+    """,
+    )
 
   def test_type_of_typevar(self):
     self.Check("""
@@ -440,14 +553,17 @@ class TypeVarTest(test_base.BaseTest):
           # type: (T) -> T
           return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, TypeVar
       T = TypeVar('T')
       class Foo:
         f1: Callable[[T], T]
         def __init__(self) -> None: ...
         def f2(self, x: T) -> T: ...
-    """)
+    """,
+    )
 
   def test_extra_arguments(self):
     _, errors = self.InferWithErrors("""
@@ -456,8 +572,9 @@ class TypeVarTest(test_base.BaseTest):
       S = TypeVar("S", *__any_object__)  # invalid-typevar[e2]
       U = TypeVar("U", **__any_object__)  # invalid-typevar[e3]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"extra_arg", "e2": r"\*args", "e3": r"\*\*kwargs"})
+    self.assertErrorRegexes(
+        errors, {"e1": r"extra_arg", "e2": r"\*args", "e3": r"\*\*kwargs"}
+    )
 
   def test_simplify_args_and_kwargs(self):
     ty = self.Infer("""
@@ -466,16 +583,21 @@ class TypeVarTest(test_base.BaseTest):
       kwargs = {"covariant": True}
       T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Tuple, Type, TypeVar
       T = TypeVar("T", int, str)
       constraints = ...  # type: Tuple[Type[int], Type[str]]
       kwargs = ...  # type: Dict[str, bool]
-    """)
+    """,
+    )
 
   def test_typevar_starargs(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Generic, TypeVar, Union
         T = TypeVar('T')
         S = TypeVar('S')
@@ -483,13 +605,17 @@ class TypeVarTest(test_base.BaseTest):
         class A(Generic[T]):
           def __init__(self, x: T, *args: S, **kwargs: SS):
             self = A[Union[T, S, SS]]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import a
         a.A(1)
         a.A(1, 2, 3)
         a.A(1, 2, 3, a=1, b=2)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_cast_generic_callable(self):
     errors = self.CheckWithErrors("""

@@ -7,7 +7,6 @@ import re
 import subprocess
 import sys
 import tempfile
-
 from typing import Iterable, List, Optional, Tuple
 
 from pytype import pytype_source_utils
@@ -50,7 +49,8 @@ class CompileError(Exception):
 
 
 def compile_src_string_to_pyc_string(
-    src, filename, python_version, python_exe: List[str], mode="exec"):
+    src, filename, python_version, python_exe: List[str], mode="exec"
+):
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -62,9 +62,9 @@ def compile_src_string_to_pyc_string(
     filename: Name of the source file. For error messages.
     python_version: Python version, (major, minor).
     python_exe: A path to a Python interpreter.
-    mode: Same as builtins.compile: "exec" if source consists of a
-      sequence of statements, "eval" if it consists of a single expression,
-      or "single" if it consists of a single interactive statement.
+    mode: Same as builtins.compile: "exec" if source consists of a sequence of
+      statements, "eval" if it consists of a single expression, or "single" if
+      it consists of a single interactive statement.
 
   Returns:
     The compiled pyc file as a binary string.
@@ -93,7 +93,8 @@ def compile_src_string_to_pyc_string(
       compile_script_src = pytype_source_utils.load_binary_file(_COMPILE_SCRIPT)
 
       with subprocess.Popen(
-          cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
+          cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+      ) as p:
         bytecode, _ = p.communicate(compile_script_src)
         assert p.poll() == 0, "Child process failed"
     finally:
@@ -147,6 +148,7 @@ def _get_python_exes(python_version) -> Iterable[List[str]]:
 
   Arguments:
     python_version: the version tuple (e.g. (3, 7))
+
   Yields:
     The path to the executable
   """
@@ -166,12 +168,14 @@ def _get_python_exe_version(python_exe: List[str]):
 
   Arguments:
     python_exe: absolute path to the Python executable
+
   Returns:
     Version as (major, minor) tuple, or None if it could not be determined.
   """
   try:
     python_exe_version = subprocess.check_output(
-        python_exe + ["-V"], stderr=subprocess.STDOUT).decode()
+        python_exe + ["-V"], stderr=subprocess.STDOUT
+    ).decode()
   except (subprocess.CalledProcessError, FileNotFoundError):
     return None
 
@@ -183,6 +187,7 @@ def _parse_exe_version_string(version_str):
 
   Arguments:
     version_str: Version string as emitted by running `PYTHON_EXE -V`
+
   Returns:
     Version as (major, minor) tuple, or None if it could not be determined.
   """

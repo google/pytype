@@ -23,9 +23,7 @@ class MetricsTest(test_base.BaseTest):
           return x + 1
         a = foo(1)
     """
-    ctx = context.Context(
-        options=self.options, loader=self.loader, src=src
-    )
+    ctx = context.Context(options=self.options, loader=self.loader, src=src)
     self.run_program(src, ctx)
     metrics = ctx.program.calculate_metrics()
     # No specific numbers are used to prevent this from being a change detector.

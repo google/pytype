@@ -17,7 +17,9 @@ class TestUnpack(test_base.BaseTest):
       d = {*a, *b, 1}
       e = (*a, *b, 1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, List, Set, Tuple, Union
 
       class A: ...
@@ -26,7 +28,8 @@ class TestUnpack(test_base.BaseTest):
       c = ...  # type: List[Union[A, str, int]]
       d = ...  # type: Set[Union[A, str, int]]
       e = ...  # type: Tuple[Union[A, str, int], ...]
-    """)
+    """,
+    )
 
   def test_empty(self):
     ty, err = self.InferWithErrors("""
@@ -35,7 +38,9 @@ class TestUnpack(test_base.BaseTest):
       *e, f = [2]
       g, *h, i = [1, 2]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List
       a: Any
       b: List[nothing]
@@ -46,37 +51,51 @@ class TestUnpack(test_base.BaseTest):
       g: int
       h: List[nothing]
       i: int
-    """)
+    """,
+    )
     self.assertErrorSequences(err, {"e": ["0 values", "1 variable"]})
 
   def test_unpack_indefinite_from_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Tuple
         a: Tuple[int, ...]
         b: Tuple[str, ...]
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         c = (*foo.a, *foo.b)
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import Tuple, Union
       c: Tuple[Union[int, str], ...]
-    """)
+    """,
+    )
 
   def test_unpack_in_function_args(self):
     # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
     # wrong-arg-types error on line 6.
     self.options.tweak(strict_parameter_checks=False)
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Tuple
         a: Tuple[int, ...]
         b: Tuple[str, ...]
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         import foo
         class A: pass
         def f(w: A, x: int, y: str, z: str):
@@ -85,7 +104,9 @@ class TestUnpack(test_base.BaseTest):
         f(A(), *c, "hello")
         f(A(), *c)
         f(*c, "hello")  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"w: A.*w: Union.int,.str."})
 
   def test_unpack_concrete_in_function_args(self):
@@ -99,18 +120,24 @@ class TestUnpack(test_base.BaseTest):
 
   def test_match_typed_starargs(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any
         def f(x:int, *args: str): ...
         a: list
         b: Any
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.f(1, *foo.a)
         foo.f(1, *foo.b)
         foo.f(*foo.a)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_path_join(self):
     self.Check("""
@@ -121,7 +148,9 @@ class TestUnpack(test_base.BaseTest):
 
   def test_overloaded_function(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any
         @overload
         def f(x:int, *args: str): ...
@@ -129,29 +158,39 @@ class TestUnpack(test_base.BaseTest):
         def f(x:str, *args: str): ...
         a: list
         b: Any
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.f(1, *foo.a)
         foo.f(1, *foo.b)
         foo.f(*foo.a)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_unpack_kwargs_without_starargs(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any, Dict, Optional
         def f(x: int, y: str, z: bool = True, a: Optional[object] = None ): ...
         a: Dict[str, Any]
         b: dict
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.f(1, 'a', **foo.a)
         foo.f(1, 'a', **foo.b)
         def g(x: int, y: str, **kwargs):
           foo.f(x, y, **kwargs)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_set_length_one_nondeterministic_unpacking(self):
     self.Check("""
@@ -175,7 +214,9 @@ class TestUnpack(test_base.BaseTest):
 
   def test_str(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Optional, Text
         class A: ...
         def f(
@@ -185,13 +226,17 @@ class TestUnpack(test_base.BaseTest):
             l: Optional[Text] = ...,
             m: Optional[A] = ...,
         ) -> None: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         from typing import Text
         def g(self, x: str, **kwargs) -> None:
           foo.f(x, 1, **kwargs)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_unknown_length_tuple(self):
     self.Check("""
@@ -219,12 +264,16 @@ class TestUnpack(test_base.BaseTest):
   def test_erroneous_splat(self):
     # Don't crash on an unnecessary splat.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any, Sequence
         def f(x: Sequence[Any], y: str): ...
         def g(x: Sequence[Any], y: Sequence[str]): ...
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import itertools
         from typing import List
         import foo
@@ -234,14 +283,20 @@ class TestUnpack(test_base.BaseTest):
         foo.f(*x, *y)  # wrong-arg-types
         foo.g(*x, *y)  # wrong-arg-types
         a = itertools.product(*x, *y)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_unpack_namedtuple(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f(a, b, c, d, e, f): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import collections
         import foo
         X = collections.namedtuple('X', ('a', 'b', 'c'))
@@ -252,7 +307,9 @@ class TestUnpack(test_base.BaseTest):
         p = X(*g())
         q = X(*g())
         f = X(*(x - y for x, y in zip(p, q)))
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_posargs_and_namedargs(self):
     self.Check("""
@@ -284,7 +341,9 @@ class TestUnpack(test_base.BaseTest):
       x = [('a', 1), ('c', 3j), (2, 3)]
       y = [C(*a).q for a in x]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List, Tuple, Union
       class C:
         p: Any
@@ -292,7 +351,8 @@ class TestUnpack(test_base.BaseTest):
         def __init__(self, p, q): ...
       x: List[Tuple[Union[int, str], Union[complex, int]]]
       y: List[Union[complex, int]]
-    """)
+    """,
+    )
 
   def test_type_parameter_instance(self):
     ty = self.Infer("""
@@ -310,22 +370,28 @@ class TestUnpack(test_base.BaseTest):
           ret.append(key)
         return ret
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, List, Tuple
 
       class Key: ...
       class Value: ...
 
       def foo(x: Dict[Tuple[Key, Value], str]) -> List[Key]: ...
-    """)
+    """,
+    )
 
   def test_unpack_any_subclass_instance(self):
     # Test for a corner case in b/261564270
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Any
 
       Base: Any
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class A(foo.Base):

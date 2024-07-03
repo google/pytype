@@ -159,19 +159,26 @@ class SuperTest(test_base.BaseTest):
         pass
       x = super(type, A)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         pass
       x = ...  # type: super
-    """)
+    """,
+    )
 
   def test_super_with_ambiguous_base(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Grandparent:
           def f(self) -> int: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         class Parent(foo.Grandparent):
           pass
@@ -179,15 +186,20 @@ class SuperTest(test_base.BaseTest):
         class Child(OtherParent, Parent):
           def f(self):
             return super(Parent, self).f()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any
         class Parent(foo.Grandparent): ...
         OtherParent = ...  # type: Any
         class Child(Any, Parent):
           def f(self) -> int: ...
-      """)
+      """,
+      )
 
   def test_super_with_any(self):
     self.Check("""
@@ -208,12 +220,17 @@ class SuperTest(test_base.BaseTest):
       sup.__new__(object)  # wrong-arg-types[e2]
       v = sup.__new__(super)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       sup = ...  # type: super
       v = ...  # type: super
-    """)
-    self.assertErrorRegexes(errors, {"e1": r"'foo' on super",
-                                     "e2": r"Type\[super\].*Type\[object\]"})
+    """,
+    )
+    self.assertErrorRegexes(
+        errors,
+        {"e1": r"'foo' on super", "e2": r"Type\[super\].*Type\[object\]"},
+    )
 
   def test_super_under_decorator(self):
     self.Check("""
@@ -247,15 +264,21 @@ class SuperTest(test_base.BaseTest):
 
   def test_super_nothing_set_attr(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo(nothing): ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         class Bar(foo.Foo):
           def __init__(self):
             super(foo.Foo, self).foo = 42  # not-writable[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"super"})
 
   def test_super_any_set_attr(self):

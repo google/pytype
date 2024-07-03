@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 
 # Make this false if you need to run the debugger inside a test.
-CAPTURE_STDOUT = ("-s" not in sys.argv)
+CAPTURE_STDOUT = "-s" not in sys.argv
 
 
 # For ease of importing, re-export some googletest methods. Tweak the names to
@@ -45,8 +45,9 @@ def _MatchLoaderConfig(options, loader):
   if not loader:
     return False
   assert isinstance(loader, load_pytd.Loader)
-  if (options.use_pickled_files !=
-      isinstance(loader, load_pytd.PickledPyiLoader)):
+  if options.use_pickled_files != isinstance(
+      loader, load_pytd.PickledPyiLoader
+  ):
     return False
   return options == loader.options
 
@@ -109,8 +110,9 @@ class BaseTest(unittest.TestCase):
     return rewrite_analyze if self.options.use_rewrite else analyze
 
   def ConfigureOptions(self, **kwargs):
-    assert "python_version" not in kwargs, (
-        "Individual tests cannot set the python_version of the config options.")
+    assert (
+        "python_version" not in kwargs
+    ), "Individual tests cannot set the python_version of the config options."
     self.options.tweak(**kwargs)
 
   def _GetPythonpathArgs(self, pythonpath, imports_map):
@@ -128,18 +130,29 @@ class BaseTest(unittest.TestCase):
 
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
-  def Check(self, code, pythonpath=(), skip_repeat_calls=True,
-            report_errors=True, quick=False, imports_map=None, **kwargs):
+  def Check(
+      self,
+      code,
+      pythonpath=(),
+      skip_repeat_calls=True,
+      report_errors=True,
+      quick=False,
+      imports_map=None,
+      **kwargs,
+  ):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(
-        skip_repeat_calls=skip_repeat_calls, quick=quick,
-        **self._GetPythonpathArgs(pythonpath, imports_map))
+        skip_repeat_calls=skip_repeat_calls,
+        quick=quick,
+        **self._GetPythonpathArgs(pythonpath, imports_map),
+    )
     try:
       src = _Format(code)
       if test_utils.ErrorMatcher(code).expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
       ret = self.analyze_lib.check_types(
-          src, loader=self.loader, options=self.options, **kwargs)
+          src, loader=self.loader, options=self.options, **kwargs
+      )
       errorlog = ret.context.errorlog
     except directors.SkipFileError:
       errorlog = None
@@ -150,38 +163,67 @@ class BaseTest(unittest.TestCase):
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
 
-  def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick,
-                          imports_map):
+  def _SetUpErrorHandling(
+      self, code, pythonpath, analyze_annotated, quick, imports_map
+  ):
     code = _Format(code)
     self.ConfigureOptions(
-        analyze_annotated=analyze_annotated, quick=quick,
-        **self._GetPythonpathArgs(pythonpath, imports_map))
+        analyze_annotated=analyze_annotated,
+        quick=quick,
+        **self._GetPythonpathArgs(pythonpath, imports_map),
+    )
     return {"src": code, "options": self.options, "loader": self.loader}
 
-  def InferWithErrors(self, code, pythonpath=(), module_name=None,
-                      analyze_annotated=True, quick=False, imports_map=None,
-                      **kwargs):
+  def InferWithErrors(
+      self,
+      code,
+      pythonpath=(),
+      module_name=None,
+      analyze_annotated=True,
+      quick=False,
+      imports_map=None,
+      **kwargs,
+  ):
     """Runs inference on code expected to have type errors."""
-    kwargs.update(self._SetUpErrorHandling(
-        code, pythonpath, analyze_annotated, quick, imports_map))
+    kwargs.update(
+        self._SetUpErrorHandling(
+            code, pythonpath, analyze_annotated, quick, imports_map
+        )
+    )
     self.ConfigureOptions(module_name=module_name)
     ret = self.analyze_lib.infer_types(**kwargs)
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
-    unit = optimize.Optimize(unit, ret.ast_deps, lossy=False, use_abcs=False,
-                             max_union=7, remove_mutable=False)
+    unit = optimize.Optimize(
+        unit,
+        ret.ast_deps,
+        lossy=False,
+        use_abcs=False,
+        max_union=7,
+        remove_mutable=False,
+    )
     errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
     matcher.assert_errors_match_expected(errorlog)
     return pytd_utils.CanonicalOrdering(unit), matcher
 
-  def CheckWithErrors(self, code, pythonpath=(), analyze_annotated=True,
-                      quick=False, imports_map=None, **kwargs):
+  def CheckWithErrors(
+      self,
+      code,
+      pythonpath=(),
+      analyze_annotated=True,
+      quick=False,
+      imports_map=None,
+      **kwargs,
+  ):
     """Check and match errors."""
-    kwargs.update(self._SetUpErrorHandling(
-        code, pythonpath, analyze_annotated, quick, imports_map))
+    kwargs.update(
+        self._SetUpErrorHandling(
+            code, pythonpath, analyze_annotated, quick, imports_map
+        )
+    )
     ret = self.analyze_lib.check_types(**kwargs)
     errorlog = ret.context.errorlog
     src = kwargs["src"]
@@ -195,13 +237,16 @@ class BaseTest(unittest.TestCase):
       code = fi.read()
       if test_utils.ErrorMatcher(code).expected:
         self.fail(
-            "Cannot assert errors with InferFromFile(); use InferWithErrors()")
+            "Cannot assert errors with InferFromFile(); use InferWithErrors()"
+        )
       self.ConfigureOptions(
           input=filename,
           module_name=module_utils.get_module_name(filename, pythonpath),
-          pythonpath=pythonpath)
+          pythonpath=pythonpath,
+      )
       ret = self.analyze_lib.infer_types(
-          code, options=self.options, loader=self.loader)
+          code, options=self.options, loader=self.loader
+      )
       unit = ret.ast
       assert unit is not None
       unit.Visit(visitors.VerifyVisitor())
@@ -226,18 +271,37 @@ class BaseTest(unittest.TestCase):
 
   def _PickleSource(self, src, module_name):
     ast = serialize_ast.SourceToExportableAst(
-        module_name, textwrap.dedent(src), self.loader)
+        module_name, textwrap.dedent(src), self.loader
+    )
     return pickle_utils.Serialize(ast)
 
-  def Infer(self, srccode, pythonpath=(), report_errors=True,
-            analyze_annotated=True, pickle=False, module_name=None, **kwargs):
+  def Infer(
+      self,
+      srccode,
+      pythonpath=(),
+      report_errors=True,
+      analyze_annotated=True,
+      pickle=False,
+      module_name=None,
+      **kwargs,
+  ):
     """Runs inference on srccode."""
     types, deps = self._InferAndVerify(
-        _Format(srccode), pythonpath=pythonpath,
-        analyze_annotated=analyze_annotated, module_name=module_name,
-        report_errors=report_errors, **kwargs)
-    types = optimize.Optimize(types, deps, lossy=False, use_abcs=False,
-                              max_union=7, remove_mutable=False)
+        _Format(srccode),
+        pythonpath=pythonpath,
+        analyze_annotated=analyze_annotated,
+        module_name=module_name,
+        report_errors=report_errors,
+        **kwargs,
+    )
+    types = optimize.Optimize(
+        types,
+        deps,
+        lossy=False,
+        use_abcs=False,
+        max_union=7,
+        remove_mutable=False,
+    )
     types = pytd_utils.CanonicalOrdering(types)
     if pickle:
       return self._PickleAst(types, module_name)
@@ -245,8 +309,16 @@ class BaseTest(unittest.TestCase):
       return types
 
   def _InferAndVerify(
-      self, src, pythonpath, module_name, report_errors, analyze_annotated,
-      imports_map=None, quick=False, **kwargs):
+      self,
+      src,
+      pythonpath,
+      module_name,
+      report_errors,
+      analyze_annotated,
+      imports_map=None,
+      quick=False,
+      **kwargs,
+  ):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -268,33 +340,37 @@ class BaseTest(unittest.TestCase):
       A pytd.TypeDeclUnit
     """
     self.ConfigureOptions(
-        module_name=module_name, quick=quick, use_pickled_files=True,
+        module_name=module_name,
+        quick=quick,
+        use_pickled_files=True,
         analyze_annotated=analyze_annotated,
-        **self._GetPythonpathArgs(pythonpath, imports_map))
+        **self._GetPythonpathArgs(pythonpath, imports_map),
+    )
     if test_utils.ErrorMatcher(src).expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
     ret = self.analyze_lib.infer_types(
-        src, options=self.options, loader=self.loader, **kwargs)
+        src, options=self.options, loader=self.loader, **kwargs
+    )
     errorlog = ret.context.errorlog
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
     if report_errors and errorlog:
       errorlog.print_to_stderr()
-      self.fail(
-          f"Inferencer found {len(errorlog)} errors:\n{errorlog}")
+      self.fail(f"Inferencer found {len(errorlog)} errors:\n{errorlog}")
     return unit, ret.ast_deps
 
   def assertTypesMatchPytd(self, ty, pytd_src):
     """Parses pytd_src and compares with ty."""
     pytd_tree = parser.parse_string(
         textwrap.dedent(pytd_src),
-        options=parser.PyiOptions(python_version=self.python_version))
-    pytd_tree = pytd_tree.Visit(visitors.LookupBuiltins(
-        self.loader.builtins, full_names=False))
-    pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())
+        options=parser.PyiOptions(python_version=self.python_version),
+    )
     pytd_tree = pytd_tree.Visit(
-        visitors.ClassTypeToNamedType())
+        visitors.LookupBuiltins(self.loader.builtins, full_names=False)
+    )
+    pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())
+    pytd_tree = pytd_tree.Visit(visitors.ClassTypeToNamedType())
     pytd_tree = pytd_tree.Visit(visitors.CanonicalOrderingVisitor())
     pytd_tree.Visit(visitors.VerifyVisitor())
     ty = ty.Visit(visitors.ClassTypeToNamedType())
@@ -350,9 +426,11 @@ class BaseTest(unittest.TestCase):
         self.options.use_pickled_files = use_pickled_files
         yield d
     finally:
-      self.ConfigureOptions(pythonpath=old_pythonpath,
-                            imports_map=old_imports_map,
-                            use_pickled_files=old_use_pickled_files)
+      self.ConfigureOptions(
+          pythonpath=old_pythonpath,
+          imports_map=old_imports_map,
+          use_pickled_files=old_use_pickled_files,
+      )
 
 
 def _PrintErrorDebug(descr, value):

@@ -1,4 +1,5 @@
 """Abstract attribute handling."""
+
 import logging
 from typing import Optional, Tuple, Union
 
@@ -58,7 +59,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       return self._get_class_attribute(node, obj, name, valself)
     elif isinstance(obj, overlay.Overlay):
       return self._get_module_attribute(
-          node, obj.get_module(name), name, valself)
+          node, obj.get_module(name), name, valself
+      )
     elif isinstance(obj, abstract.Module):
       return self._get_module_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.SimpleValue):
@@ -81,8 +83,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     elif isinstance(obj, special_builtins.SuperInstance):
       return self._get_attribute_from_super_instance(node, obj, name, valself)
     elif isinstance(obj, special_builtins.Super):
-      return self.get_attribute(node, self.ctx.convert.super_type, name,
-                                valself)
+      return self.get_attribute(
+          node, self.ctx.convert.super_type, name, valself
+      )
     elif isinstance(obj, (abstract.StaticMethod, abstract.ClassMethod)):
       return self.get_attribute(node, obj.method, name, valself)
     elif isinstance(obj, abstract.BoundFunction):
@@ -121,8 +124,12 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       return node, None
 
   def set_attribute(
-      self, node: cfg.CFGNode, obj: abstract.BaseValue, name: str,
-      value: cfg.Variable) -> cfg.CFGNode:
+      self,
+      node: cfg.CFGNode,
+      obj: abstract.BaseValue,
+      name: str,
+      value: cfg.Variable,
+  ) -> cfg.CFGNode:
     """Set an attribute on an object.
 
     The attribute might already have a Variable in it and in that case we cannot
@@ -134,6 +141,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       obj: The object.
       name: The name of the attribute to set.
       value: The Variable to store in it.
+
     Returns:
       A (possibly changed) CFG node.
     Raises:
@@ -190,8 +198,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         # It's not possible to set an attribute on object itself.
         # (object has __setattr__, but that honors __slots__.)
         continue
-      if (isinstance(baseclass, abstract.SimpleValue) and
-          ("__setattr__" in baseclass or name in baseclass)):
+      if isinstance(baseclass, abstract.SimpleValue) and (
+          "__setattr__" in baseclass or name in baseclass
+      ):
         return True  # This is a programmatic attribute.
       if baseclass.slots is None or name in baseclass.slots:
         return True  # Found a slot declaration; this is an instance attribute
@@ -199,7 +208,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return False
 
   def _should_look_for_submodule(
-      self, module: abstract.Module, attr_var: Optional[cfg.Variable]):
+      self, module: abstract.Module, attr_var: Optional[cfg.Variable]
+  ):
     # Given a module and an attribute looked up from its contents, determine
     # whether a possible submodule with the same name as the attribute should
     # take precedence over the attribute.
@@ -207,12 +217,15 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       return True
     attr_cls = self.ctx.convert.merge_classes(attr_var.data)
     if attr_cls == self.ctx.convert.module_type and not any(
-        isinstance(attr, abstract.Module) for attr in attr_var.data):
+        isinstance(attr, abstract.Module) for attr in attr_var.data
+    ):
       # The attribute is an abstract.Instance(module), which returns Any for all
       # attribute accesses, so we should try to find the actual submodule.
       return True
-    if (f"{module.name}.__init__" == self.ctx.options.module_name and
-        attr_var.data == [self.ctx.convert.unsolvable]):
+    if (
+        f"{module.name}.__init__" == self.ctx.options.module_name
+        and attr_var.data == [self.ctx.convert.unsolvable]
+    ):
       # There's no reason for a module's __init__ file to look up attributes in
       # itself, so attr_var is a submodule whose type was inferred as Any during
       # a first-pass analysis with incomplete type information.
@@ -221,8 +234,12 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return False
 
   def _get_module_attribute(
-      self, node: cfg.CFGNode, module: abstract.Module, name: str,
-      valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
+      self,
+      node: cfg.CFGNode,
+      module: abstract.Module,
+      name: str,
+      valself: Optional[cfg.Binding] = None,
+  ) -> _NodeAndMaybeVarType:
     """Get an attribute from a module."""
     try:
       node, var = self._get_instance_attribute(node, module, name, valself)
@@ -237,11 +254,18 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return node, module.get_submodule(node, name) or var
 
   def _get_class_attribute(
-      self, node: cfg.CFGNode, cls: abstract.Class, name: str,
-      valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
+      self,
+      node: cfg.CFGNode,
+      cls: abstract.Class,
+      name: str,
+      valself: Optional[cfg.Binding] = None,
+  ) -> _NodeAndMaybeVarType:
     """Get an attribute from a class."""
-    if (not valself or not abstract_utils.equivalent_to(valself, cls) or
-        cls == self.ctx.convert.type_type):
+    if (
+        not valself
+        or not abstract_utils.equivalent_to(valself, cls)
+        or cls == self.ctx.convert.type_type
+    ):
       # Since type(type) == type, the type_type check prevents an infinite loop.
       meta = None
     else:
@@ -254,8 +278,12 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return self._get_attribute(node, cls, meta, name, valself)
 
   def _get_instance_attribute(
-      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str,
-      valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
+      self,
+      node: cfg.CFGNode,
+      obj: abstract.SimpleValue,
+      name: str,
+      valself: Optional[cfg.Binding] = None,
+  ) -> _NodeAndMaybeVarType:
     """Get an attribute from an instance."""
     cls = None if obj.cls.full_name == "builtins.type" else obj.cls
     try:
@@ -268,7 +296,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       # exception.
       # See tests/test_generic2: test_invalid_mutation
       self.ctx.errorlog.invalid_signature_mutation(
-          self.ctx.vm.frames, f"{obj.name}.{name}", e.pytd_sig)
+          self.ctx.vm.frames, f"{obj.name}.{name}", e.pytd_sig
+      )
       return node, self.ctx.new_unsolvable(node)
 
   def _get_attribute(self, node, obj, cls, name, valself):
@@ -292,7 +321,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     if cls:
       # A __getattribute__ on the class controls all attribute access.
       node, attr = self._get_attribute_computed(
-          node, cls, name, valself, compute_function="__getattribute__")
+          node, cls, name, valself, compute_function="__getattribute__"
+      )
     else:
       attr = None
     if attr is None:
@@ -300,7 +330,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       if isinstance(obj, abstract.Class):
         # A class is an instance of its metaclass.
         node, attr = self._lookup_from_mro_and_handle_descriptors(
-            node, obj, name, valself, skip=())
+            node, obj, name, valself, skip=()
+        )
       else:
         node, attr = self._get_member(node, obj, name, valself)
     # If the VM hit maximum depth while initializing this instance, it may have
@@ -322,7 +353,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       elif not is_unknown_instance_attribute:
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(
-            node, cls, name, valself, compute_function="__getattr__")
+            node, cls, name, valself, compute_function="__getattr__"
+        )
     if is_unknown_instance_attribute:
       attr = self.ctx.new_unsolvable(node)
     if attr is not None:
@@ -330,7 +362,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return node, attr
 
   def _get_attribute_from_super_instance(
-      self, node, obj: special_builtins.SuperInstance, name, valself):
+      self, node, obj: special_builtins.SuperInstance, name, valself
+  ):
     """Get an attribute from a super instance."""
     # A SuperInstance has `super_cls` and `super_obj` attributes recording the
     # arguments that super was (explicitly or implicitly) called with. For
@@ -349,9 +382,11 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       #      super().__init__()  # line 6
       # if we're looking up super.__init__ in line 6 as part of analyzing the
       # super call in line 3, then starting_cls=Foo, current_cls=Bar.
-      if (obj.super_obj.cls.full_name == "builtins.type" or
-          isinstance(obj.super_obj.cls, abstract.AMBIGUOUS_OR_EMPTY) or
-          isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)):
+      if (
+          obj.super_obj.cls.full_name == "builtins.type"
+          or isinstance(obj.super_obj.cls, abstract.AMBIGUOUS_OR_EMPTY)
+          or isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)
+      ):
         # Setting starting_cls to the current class when either of them is
         # ambiguous is technically incorrect but behaves correctly in the common
         # case of there being only a single super call.
@@ -374,10 +409,12 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       starting_cls = self.ctx.convert.super_type
       skip = ()
     return self._lookup_from_mro_and_handle_descriptors(
-        node, starting_cls, name, valself, skip)
+        node, starting_cls, name, valself, skip
+    )
 
   def _lookup_from_mro_and_handle_descriptors(
-      self, node, cls, name, valself, skip):
+      self, node, cls, name, valself, skip
+  ):
     attr = self._lookup_from_mro(node, cls, name, valself, skip)
     if not attr.bindings:
       return node, None
@@ -387,8 +424,11 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       # Deal with descriptors as a potential additional level of indirection.
       for v in attr.bindings:
         value = v.data
-        if (isinstance(value, special_builtins.PropertyInstance) and valself and
-            valself.data == cls):
+        if (
+            isinstance(value, special_builtins.PropertyInstance)
+            and valself
+            and valself.data == cls
+        ):
           node2, getter = node, None
         else:
           node2, getter = self.get_attribute(node, value, "__get__", v)
@@ -400,7 +440,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             posargs.append(self.ctx.convert.none.to_variable(node))
           posargs.append(cls.to_variable(node))
           node2, get_result = function.call_function(
-              self.ctx, node2, getter, function.Args(tuple(posargs)))
+              self.ctx, node2, getter, function.Args(tuple(posargs))
+          )
           result.PasteVariable(get_result)
         else:
           result.PasteBinding(v, node2)
@@ -413,22 +454,31 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return not (name.startswith("__") and name.endswith("__"))
 
   def _get_attribute_computed(
-      self, node: cfg.CFGNode,
-      cls: Union[abstract.Class, abstract.AmbiguousOrEmptyType], name: str,
-      valself: cfg.Binding, compute_function: str) -> _NodeAndMaybeVarType:
+      self,
+      node: cfg.CFGNode,
+      cls: Union[abstract.Class, abstract.AmbiguousOrEmptyType],
+      name: str,
+      valself: cfg.Binding,
+      compute_function: str,
+  ) -> _NodeAndMaybeVarType:
     """Call compute_function (if defined) to compute an attribute."""
-    if (valself and not isinstance(valself.data, abstract.Module) and
-        self._computable(name)):
+    if (
+        valself
+        and not isinstance(valself.data, abstract.Module)
+        and self._computable(name)
+    ):
       attr_var = self._lookup_from_mro(
           node,
           cls,
           compute_function,
           valself,
-          skip={self.ctx.convert.object_type})
+          skip={self.ctx.convert.object_type},
+      )
       if attr_var and attr_var.bindings:
         name_var = self.ctx.convert.constant_to_var(name, node=node)
-        return function.call_function(self.ctx, node, attr_var,
-                                      function.Args((name_var,)))
+        return function.call_function(
+            self.ctx, node, attr_var, function.Args((name_var,))
+        )
     return node, None
 
   def _lookup_variable_annotation(self, node, base, name, valself):
@@ -446,12 +496,15 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     # attribute is otherwise defined.
     if isinstance(base, abstract.ParameterizedClass):
       typ = self.ctx.annotation_utils.sub_annotations_for_parameterized_class(
-          base, {name: typ})[name]
+          base, {name: typ}
+      )[name]
     elif valself:
       subst = abstract_utils.get_type_parameter_substitutions(
-          valself.data, self.ctx.annotation_utils.get_type_parameters(typ))
+          valself.data, self.ctx.annotation_utils.get_type_parameters(typ)
+      )
       typ = self.ctx.annotation_utils.sub_one_annotation(
-          node, typ, [subst], instantiate_unbound=False)
+          node, typ, [subst], instantiate_unbound=False
+      )
     else:
       return typ, None
     if typ.formal and valself:
@@ -460,7 +513,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       else:
         self_var = valself.AssignToNewVariable(node)
       typ = self.ctx.annotation_utils.sub_one_annotation(
-          node, typ, [{"typing.Self": self_var}], instantiate_unbound=False)
+          node, typ, [{"typing.Self": self_var}], instantiate_unbound=False
+      )
     _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
     return typ, attr
 
@@ -505,13 +559,15 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           # Check if we got a PyTDFunction from an InterpreterClass. If so,
           # then we must have aliased an imported function inside a class, so
           # we shouldn't bind the function to the class.
-          if (not isinstance(value, abstract.PyTDFunction) or
-              not isinstance(base, abstract.InterpreterClass)):
+          if not isinstance(value, abstract.PyTDFunction) or not isinstance(
+              base, abstract.InterpreterClass
+          ):
             # See BaseValue.property_get for an explanation of the
             # parameters we're passing here.
             value = value.property_get(
                 valself.AssignToNewVariable(node),
-                abstract_utils.is_subclass(valself.data, cls))
+                abstract_utils.is_subclass(valself.data, cls),
+            )
           if isinstance(value, abstract.Property):
             try:
               node, value = value.call(node, None, None)
@@ -519,7 +575,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
               # In normal circumstances, property calls should not fail. But in
               # case one ever does, handle the failure gracefully.
               self.ctx.errorlog.invalid_function_call(
-                  self.ctx.vm.stack(value), error)
+                  self.ctx.vm.stack(value), error
+              )
               value = self.ctx.new_unsolvable(node)
             final_values = value.data
           else:
@@ -555,11 +612,13 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         # We need to rebind the parameter values at the root because that's the
         # node at which load_lazy_attribute() converts pyvals.
         subst = datatypes.AliasingDict(
-            aliases=valself.data.instance_type_parameters.aliases)
+            aliases=valself.data.instance_type_parameters.aliases
+        )
         for k, v in valself.data.instance_type_parameters.items():
           if v.bindings:
             subst[k] = self.ctx.program.NewVariable(
-                v.data, [], self.ctx.root_node)
+                v.data, [], self.ctx.root_node
+            )
           else:
             # An empty instance parameter means that the instance's class
             # inherits from a generic class without filling in parameter values:
@@ -569,8 +628,11 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             subst[k] = self.ctx.new_unsolvable(self.ctx.root_node)
         subst[f"{obj.full_name}.Self"] = valself.AssignToNewVariable()
       elif isinstance(valself.data, abstract.Class):
-        subst = {f"{obj.full_name}.Self":
-                 valself.data.instantiate(self.ctx.root_node)}
+        subst = {
+            f"{obj.full_name}.Self": valself.data.instantiate(
+                self.ctx.root_node
+            )
+        }
         if isinstance(valself.data, abstract.ParameterizedClass):
           for k, v in valself.data.formal_type_parameters.items():
             subst[f"{valself.data.full_name}.{k}"] = v.instantiate(node)
@@ -607,6 +669,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     Args:
       node: The current node.
       var: A variable to filter.
+
     Returns:
       The filtered variable.
     """
@@ -617,7 +680,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     if not bindings:
       return None
     if len(bindings) == len(var.bindings) and not any(
-        isinstance(b.data, abstract.TypeParameterInstance) for b in bindings):
+        isinstance(b.data, abstract.TypeParameterInstance) for b in bindings
+    ):
       return var
     ret = self.ctx.program.NewVariable()
     for binding in bindings:
@@ -644,7 +708,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       return None
 
   def _maybe_load_as_instance_attribute(
-      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str) -> None:
+      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str
+  ) -> None:
     if not isinstance(obj.cls, abstract.Class):
       return
     for base in obj.cls.mro:
@@ -660,8 +725,12 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           return
 
   def _set_member(
-      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str,
-      var: cfg.Variable) -> cfg.CFGNode:
+      self,
+      node: cfg.CFGNode,
+      obj: abstract.SimpleValue,
+      name: str,
+      var: cfg.Variable,
+  ) -> cfg.CFGNode:
     """Set a member on an object."""
     if isinstance(obj, mixin.LazyMembers):
       obj.load_lazy_attribute(name)
@@ -669,26 +738,32 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     if name == "__class__":
       return obj.set_class(node, var)
 
-    if (isinstance(obj, (abstract.PyTDFunction, abstract.SignedFunction)) and
-        name == "__defaults__"):
+    if (
+        isinstance(obj, (abstract.PyTDFunction, abstract.SignedFunction))
+        and name == "__defaults__"
+    ):
       log.info("Setting defaults for %s to %r", obj.name, var)
       obj.set_function_defaults(node, var)
       return node
 
     def should_convert_to_func(v):
-      return (not v.from_annotation and
-              isinstance(v.cls, abstract.CallableClass) and
-              v.cls.num_args >= 1)
+      return (
+          not v.from_annotation
+          and isinstance(v.cls, abstract.CallableClass)
+          and v.cls.num_args >= 1
+      )
 
     if isinstance(obj, abstract.Instance) and name not in obj.members:
       # The previous value needs to be loaded at the root node so that
       # (1) it is overwritten by the current value and (2) it is still
       # visible on branches where the current value is not
       self._maybe_load_as_instance_attribute(self.ctx.root_node, obj, name)
-    elif (self.ctx.vm.frame.func and
-          self.ctx.vm.frame.func.data.is_class_builder and
-          obj is self.ctx.vm.frame.f_locals and
-          any(should_convert_to_func(v) for v in var.data)):
+    elif (
+        self.ctx.vm.frame.func
+        and self.ctx.vm.frame.func.data.is_class_builder
+        and obj is self.ctx.vm.frame.f_locals
+        and any(should_convert_to_func(v) for v in var.data)
+    ):
       # If we are setting a class attribute to a Callable whose type does not
       # come from a user-provided annotation, we convert the Callable to a
       # SimpleFunction, so "self" is accounted for correctly in bound and
@@ -714,11 +789,16 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     if variable:
       old_len = len(variable.bindings)
       variable.PasteVariable(var, node)
-      log.debug("Adding choice(s) to %s: %d new values (%d total)", name,
-                len(variable.bindings) - old_len, len(variable.bindings))
+      log.debug(
+          "Adding choice(s) to %s: %d new values (%d total)",
+          name,
+          len(variable.bindings) - old_len,
+          len(variable.bindings),
+      )
     else:
-      log.debug("Setting %s to the %d values in %r",
-                name, len(var.bindings), var)
+      log.debug(
+          "Setting %s to the %d values in %r", name, len(var.bindings), var
+      )
       variable = var.AssignToNewVariable(node)
       obj.members[name] = variable
     return node

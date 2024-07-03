@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import enum
 import itertools
-
 from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 from pytype.pytd.parse import node
@@ -42,6 +41,7 @@ class TypeDeclUnit(Node, eq=False):
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
   """
+
   name: str
   constants: Tuple[Constant, ...]
   type_params: Tuple[TypeParameterU, ...]
@@ -123,12 +123,14 @@ class Alias(Node):
   type. It's generated, among others, from imports - e.g. "from x import y as z"
   will create a local alias "z" for "x.y".
   """
+
   name: str
   type: Union[TypeU, Constant, Function, Module]
 
 
 class Module(Node):
   """A module imported into the current module, possibly with an alias."""
+
   name: str
   module_name: str
 
@@ -141,13 +143,14 @@ class Class(Node):
   Attributes:
     name: Class name (string)
     bases: The super classes of this class (instances of pytd.Type).
-    methods: Tuple of methods, classmethods, staticmethods
-      (instances of pytd.Function).
+    methods: Tuple of methods, classmethods, staticmethods (instances of
+      pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
     classes: Tuple of nested classes.
     slots: A.k.a. __slots__, declaring which instance attributes are writable.
     template: Tuple of pytd.TemplateItem instances.
   """
+
   name: str
   keywords: Tuple[Tuple[str, TypeU], ...]
   bases: Tuple[Union[Class, TypeU], ...]
@@ -251,6 +254,7 @@ class Function(Node):
     kind: The kind of function (e.g., MethodKind.STATICMETHOD).
     flags: A bitfield of flags like is_abstract
   """
+
   name: str
   signatures: Tuple[Signature, ...]
   kind: MethodKind
@@ -290,6 +294,7 @@ class Signature(Node):
     exceptions: List of exceptions for this function definition.
     template: names for bindings for bounded types in params/return_type
   """
+
   params: Tuple[Parameter, ...]
   starargs: Optional[Parameter]
   starstarargs: Optional[Parameter]
@@ -319,6 +324,7 @@ class Parameter(Node):
     mutated_type: The type the parameter will have after the function is called
       if the type is mutated, None otherwise.
   """
+
   name: str
   type: TypeU
   kind: ParameterKind
@@ -338,9 +344,10 @@ class TypeParameter(Type):
     name: Name of the parameter. E.g. "T".
     constraints: The valid types for the TypeParameter. Exclusive with bound.
     bound: The upper bound for the TypeParameter. Exclusive with constraints.
-    scope: Fully-qualified name of the class or function this parameter is
-      bound to. E.g. "mymodule.MyClass.mymethod", or None.
+    scope: Fully-qualified name of the class or function this parameter is bound
+      to. E.g. "mymodule.MyClass.mymethod", or None.
   """
+
   name: str
   constraints: Tuple[TypeU, ...] = ()
   bound: Optional[TypeU] = None
@@ -388,11 +395,13 @@ class ParamSpec(TypeParameter):
 
 class ParamSpecArgs(Node):
   """ParamSpec.args special form."""
+
   name: str
 
 
 class ParamSpecKwargs(Node):
   """ParamSpec.kwargs special form."""
+
   name: str
 
 
@@ -411,6 +420,7 @@ class TemplateItem(Node):
     type_param: the TypeParameter instance used. This is the actual instance
       that's used wherever this type parameter appears, e.g. within a class.
   """
+
   type_param: TypeParameterU
 
   @property
@@ -441,6 +451,7 @@ class TemplateItem(Node):
 
 class NamedType(Type):
   """A type specified by name and, optionally, the module it is in."""
+
   name: str
 
   def __str__(self):
@@ -449,6 +460,7 @@ class NamedType(Type):
 
 class ClassType(Type, frozen=False, eq=False):
   """A type specified through an existing class node."""
+
   # This type is different from normal nodes:
   # (a) It's mutable, and there are functions
   #     (parse/visitors.py:FillInLocalPointers) that modify a tree in place.
@@ -469,7 +481,7 @@ class ClassType(Type, frozen=False, eq=False):
     yield 'name', self.name
 
   def __eq__(self, other):
-    return (self.__class__ == other.__class__ and self.name == other.name)
+    return self.__class__ == other.__class__ and self.name == other.name
 
   def __ne__(self, other):
     return not self == other
@@ -482,12 +494,15 @@ class ClassType(Type, frozen=False, eq=False):
 
   def __repr__(self):
     return '{type}{cls}({name})'.format(
-        type=type(self).__name__, name=self.name,
-        cls='<unresolved>' if self.cls is None else '')
+        type=type(self).__name__,
+        name=self.name,
+        cls='<unresolved>' if self.cls is None else '',
+    )
 
 
 class LateType(Type):
   """A type we have yet to resolve."""
+
   name: str
   recursive: bool = False
 
@@ -517,8 +532,8 @@ def _FlattenTypes(type_list) -> Tuple[Type, ...]:
   """Helper function for _SetOfTypes initialization."""
   assert type_list  # Disallow empty sets. Use NothingType for these.
   flattened = itertools.chain.from_iterable(
-      t.type_list if isinstance(t, _SetOfTypes) else [t]
-      for t in type_list)
+      t.type_list if isinstance(t, _SetOfTypes) else [t] for t in type_list
+  )
   # Remove duplicates, preserving order
   unique = tuple(dict.fromkeys(flattened))
   return unique
@@ -526,6 +541,7 @@ def _FlattenTypes(type_list) -> Tuple[Type, ...]:
 
 class _SetOfTypes(Type, frozen=False, eq=False):
   """Super class for shared behavior of UnionType and IntersectionType."""
+
   # NOTE: This class is not frozen so that we can flatten types after
   # initialization. It should still be treated as a frozen type.
   # NOTE: type_list is kept as a tuple, to preserve the original order
@@ -569,6 +585,7 @@ class GenericType(Type):
     base_type: The base type. Instance of Type.
     parameters: Type parameters. Tuple of instances of Type.
   """
+
   base_type: Union[NamedType, ClassType, LateType]
   parameters: Tuple[TypeU, ...]
 
@@ -579,7 +596,7 @@ class GenericType(Type):
   @property
   def element_type(self):
     """Type of the contained type, assuming we only have one type parameter."""
-    element_type, = self.parameters
+    (element_type,) = self.parameters
     return element_type
 
 
@@ -667,7 +684,6 @@ TypeU = Union[
     TypeParameterU,
     SetOfTypesU,
     GenericTypeU,
-
     # TODO(tsudol): There's something weird going on here where msgspec cannot
     # see that Parameter.type can be ParamSpecArg or ParamSpecKwargs when it's
     # in the annotation, e.g.:
@@ -688,8 +704,11 @@ def IsContainer(t: Class) -> bool:
       base = p.base_type
       # We consider a LateType a container, since we don't have enough
       # information to determine whether it is one or not.
-      if (isinstance(base, ClassType) and IsContainer(base.cls) or
-          isinstance(base, LateType)):
+      if (
+          isinstance(base, ClassType)
+          and IsContainer(base.cls)
+          or isinstance(base, LateType)
+      ):
         return True
   return False
 
@@ -699,8 +718,9 @@ def IsContainer(t: Class) -> bool:
 SINGLETON_TYPES = frozenset({'Ellipsis', 'builtins.Ellipsis'})
 
 
-def ToType(item, allow_constants=False, allow_functions=False,
-           allow_singletons=False):
+def ToType(
+    item, allow_constants=False, allow_functions=False, allow_singletons=False
+):
   """Convert a pytd AST item into a type.
 
   Takes an AST item representing the definition of a type and returns an item
@@ -740,8 +760,10 @@ def ToType(item, allow_constants=False, allow_functions=False,
         return item.type.parameters[0]
       else:
         return AnythingType()
-    elif (isinstance(item.type, AnythingType) or
-          item.name == 'typing_extensions.TypedDict'):
+    elif (
+        isinstance(item.type, AnythingType)
+        or item.name == 'typing_extensions.TypedDict'
+    ):
       # A constant with type Any may be a type, and TypedDict is a class that
       # looks like a constant:
       #   https://github.com/python/typeshed/blob/8cad322a8ccf4b104cafbac2c798413edaa4f327/third_party/2and3/typing_extensions.pyi#L68
@@ -778,10 +800,14 @@ def AliasMethod(func, from_constant):
   # first parameter ('self' or 'cls') is dropped.
   new_func = func.Replace(kind=MethodKind.METHOD)
   if func.kind == MethodKind.STATICMETHOD or (
-      func.kind == MethodKind.METHOD and not from_constant):
+      func.kind == MethodKind.METHOD and not from_constant
+  ):
     return new_func
-  return new_func.Replace(signatures=tuple(
-      s.Replace(params=s.params[1:]) for s in new_func.signatures))
+  return new_func.Replace(
+      signatures=tuple(
+          s.Replace(params=s.params[1:]) for s in new_func.signatures
+      )
+  )
 
 
 def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
@@ -829,8 +855,11 @@ def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
     found = Lookup(item, lookup_name, part)
     if found:
       seen = {found}
-      while (isinstance(found, Alias) and isinstance(found.type, NamedType) and
-             found.type.name.startswith(f'{item.name}.')):
+      while (
+          isinstance(found, Alias)
+          and isinstance(found.type, NamedType)
+          and found.type.name.startswith(f'{item.name}.')
+      ):
         resolved = Lookup(item, found.type.name)
         if resolved and resolved not in seen:
           found = resolved

@@ -8,7 +8,6 @@ import logging
 from typing import Any, Dict, Optional, Tuple, TypeVar, cast
 
 import attrs
-
 from pytype import datatypes
 from pytype import pretty_printer_base as pp
 from pytype.abstract import _base
@@ -58,12 +57,18 @@ def get_signatures(func):
   else:
     unwrapped = abstract_utils.maybe_unwrap_decorated_function(func)
     if unwrapped:
-      return list(itertools.chain.from_iterable(
-          get_signatures(f) for f in unwrapped.data))
+      return list(
+          itertools.chain.from_iterable(
+              get_signatures(f) for f in unwrapped.data
+          )
+      )
     if _isinstance(func, "Instance"):
       _, call_var = func.ctx.attribute_handler.get_attribute(
-          func.ctx.root_node, func, "__call__",
-          func.to_binding(func.ctx.root_node))
+          func.ctx.root_node,
+          func,
+          "__call__",
+          func.to_binding(func.ctx.root_node),
+      )
       if call_var and len(call_var.data) == 1:
         return get_signatures(call_var.data[0])
     raise NotImplementedError(func.__class__.__name__)
@@ -71,6 +76,7 @@ def get_signatures(func):
 
 def _print(t):
   return pytd_utils.Print(t.to_pytd_type_of_instance())
+
 
 _SigT = TypeVar("_SigT", bound="Signature")
 
@@ -84,9 +90,9 @@ class Signature(types.Signature):
       positional-only parameters and does NOT include keyword-only parameters.
     posonly_count: Number of positional-only parameters. (Python 3.8)
     varargs_name: Name of the varargs parameter. (The "args" in *args)
-    kwonly_params: Tuple of keyword-only parameters. (Python 3)
-      E.g. ("x", "y") for "def f(a, *, x, y=2)". These do NOT appear in
-      param_names. Ordered like in the source file.
+    kwonly_params: Tuple of keyword-only parameters. (Python 3) E.g. ("x", "y")
+      for "def f(a, *, x, y=2)". These do NOT appear in param_names. Ordered
+      like in the source file.
     kwargs_name: Name of the kwargs parameter. (The "kwargs" in **kwargs)
     defaults: Dictionary, name to value, for all parameters with default values.
     annotations: A dictionary of type annotations. (string to type)
@@ -111,8 +117,14 @@ class Signature(types.Signature):
       annotations: Dict[str, _base.BaseValue],
       postprocess_annotations: bool = True,
   ) -> None:
-    super().__init__(name, param_names, posonly_count, varargs_name,
-                     kwonly_params, kwargs_name)
+    super().__init__(
+        name,
+        param_names,
+        posonly_count,
+        varargs_name,
+        kwonly_params,
+        kwargs_name,
+    )
     self.defaults = defaults
     self.annotations = annotations
     self.excluded_types = set()
@@ -122,7 +134,8 @@ class Signature(types.Signature):
     self.type_params = set()
     for annot in self.annotations.values():
       self.type_params.update(
-          p.name for p in annot.ctx.annotation_utils.get_type_parameters(annot))
+          p.name for p in annot.ctx.annotation_utils.get_type_parameters(annot)
+      )
 
   @property
   def has_return_annotation(self):
@@ -140,18 +153,25 @@ class Signature(types.Signature):
     annotations = {}
     for key, val in self.annotations.items():
       annotations[key] = val.ctx.annotation_utils.add_scope(
-          val, self.excluded_types, cls)
+          val, self.excluded_types, cls
+      )
     self.annotations = annotations
 
   def _postprocess_annotation(self, name, annotation):
     """Postprocess the given annotation."""
     ctx = annotation.ctx
     if name == self.varargs_name:
-      return _make("ParameterizedClass",
-                   ctx.convert.tuple_type, {abstract_utils.T: annotation}, ctx)
+      return _make(
+          "ParameterizedClass",
+          ctx.convert.tuple_type,
+          {abstract_utils.T: annotation},
+          ctx,
+      )
     elif name == self.kwargs_name:
-      params = {abstract_utils.K: ctx.convert.str_type,
-                abstract_utils.V: annotation}
+      params = {
+          abstract_utils.K: ctx.convert.str_type,
+          abstract_utils.V: annotation,
+      }
       return _make("ParameterizedClass", ctx.convert.dict_type, params, ctx)
     else:
       return annotation
@@ -194,16 +214,26 @@ class Signature(types.Signature):
       if param.full_name == "typing.Self":
         if not is_attribute_of_class and not self.name.endswith(".__new__"):
           ctx.errorlog.invalid_annotation(
-              stack, param, "Cannot use 'typing.Self' outside of a class")
+              stack, param, "Cannot use 'typing.Self' outside of a class"
+          )
         continue
-      if count == 1 and not (param.constraints or param.bound or
-                             param.covariant or param.contravariant):
+      if count == 1 and not (
+          param.constraints
+          or param.bound
+          or param.covariant
+          or param.contravariant
+      ):
         if param.name in bare_aliases:
           bare_alias_errors.add(bare_aliases[param.name])
         else:
           ctx.errorlog.invalid_annotation(
-              stack, param, (f"TypeVar {param.name!r} appears only once in the "
-                             "function signature"))
+              stack,
+              param,
+              (
+                  f"TypeVar {param.name!r} appears only once in the "
+                  "function signature"
+              ),
+          )
       for var_name in bare_alias_errors:
         annot = src_annots[var_name]
         params = ", ".join(p.name for p in bare_alias_params[var_name])
@@ -255,16 +285,17 @@ class Signature(types.Signature):
         # The existing first parameter actually represents a variable number of
         # parameters. Ignore `name` and add in the new type.
         return self._replace(
-            annotations={**self.annotations, param_name: concatenated_type})
+            annotations={**self.annotations, param_name: concatenated_type}
+        )
     param_names = (name,) + self.param_names
     annots = {**self.annotations, name: typ}
     return self._replace(param_names=param_names, annotations=annots)
 
   def mandatory_param_count(self):
-    num = len([name
-               for name in self.param_names if name not in self.defaults])
-    num += len([name
-                for name in self.kwonly_params if name not in self.defaults])
+    num = len([name for name in self.param_names if name not in self.defaults])
+    num += len(
+        [name for name in self.kwonly_params if name not in self.defaults]
+    )
     return num
 
   def maximum_param_count(self):
@@ -275,13 +306,17 @@ class Signature(types.Signature):
   @classmethod
   def from_pytd(cls, ctx, name, sig):
     """Construct an abstract signature from a pytd signature."""
-    pytd_annotations = [(p.name, p.type)
-                        for p in sig.params + (sig.starargs, sig.starstarargs)
-                        if p is not None]
+    pytd_annotations = [
+        (p.name, p.type)
+        for p in sig.params + (sig.starargs, sig.starstarargs)
+        if p is not None
+    ]
     pytd_annotations.append(("return", sig.return_type))
+
     def param_to_var(p):
       return ctx.convert.constant_to_var(
-          p.type, subst=datatypes.AliasingDict(), node=ctx.root_node)
+          p.type, subst=datatypes.AliasingDict(), node=ctx.root_node
+      )
 
     param_names = []
     posonly_count = 0
@@ -302,7 +337,8 @@ class Signature(types.Signature):
         defaults={p.name: param_to_var(p) for p in sig.params if p.optional},
         annotations={
             name: ctx.convert.constant_to_value(
-                typ, subst=datatypes.AliasingDict(), node=ctx.root_node)
+                typ, subst=datatypes.AliasingDict(), node=ctx.root_node
+            )
             for name, typ in pytd_annotations
         },
         postprocess_annotations=False,
@@ -310,8 +346,9 @@ class Signature(types.Signature):
 
   @classmethod
   def from_callable(cls, val):
-    annotations = {argname(i): val.formal_type_parameters[i]
-                   for i in range(val.num_args)}
+    annotations = {
+        argname(i): val.formal_type_parameters[i] for i in range(val.num_args)
+    }
     param_names = tuple(sorted(annotations))
     annotations["return"] = val.formal_type_parameters[abstract_utils.RET]
     return cls(
@@ -368,8 +405,11 @@ class Signature(types.Signature):
     )
 
   def has_param(self, name):
-    return name in self.param_names or name in self.kwonly_params or (
-        name == self.varargs_name or name == self.kwargs_name)
+    return (
+        name in self.param_names
+        or name in self.kwonly_params
+        or (name == self.varargs_name or name == self.kwargs_name)
+    )
 
   def insert_varargs_and_kwargs(self, args):
     """Insert varargs and kwargs from args into the signature.
@@ -389,13 +429,16 @@ class Signature(types.Signature):
         varargs_names.append(name)
       else:
         kwargs_names.append(name)
-    new_param_names = (self.param_names + tuple(sorted(varargs_names)) +
-                       tuple(sorted(kwargs_names)))
+    new_param_names = (
+        self.param_names
+        + tuple(sorted(varargs_names))
+        + tuple(sorted(kwargs_names))
+    )
     return self._replace(param_names=new_param_names)
 
-  _ATTRIBUTES = (
-      set(__init__.__code__.co_varnames[:__init__.__code__.co_argcount]) -
-      {"self", "postprocess_annotations"})
+  _ATTRIBUTES = set(
+      __init__.__code__.co_varnames[: __init__.__code__.co_argcount]
+  ) - {"self", "postprocess_annotations"}
 
   def _replace(self, **kwargs):
     """Returns a copy of the signature with the specified values replaced."""
@@ -420,7 +463,7 @@ class Signature(types.Signature):
         yield (argname(i), posarg, None)
     for name in sorted(args.namedargs):
       namedarg = args.namedargs[name]
-      if name in self.param_names[:self.posonly_count]:
+      if name in self.param_names[: self.posonly_count]:
         formal = None
       else:
         formal = self.annotations.get(name)
@@ -430,11 +473,17 @@ class Signature(types.Signature):
           formal = kwargs_type.ctx.convert.get_element_type(kwargs_type)
       yield (name, namedarg, formal)
     if self.varargs_name is not None and args.starargs is not None:
-      yield (self.varargs_name, args.starargs,
-             self.annotations.get(self.varargs_name))
+      yield (
+          self.varargs_name,
+          args.starargs,
+          self.annotations.get(self.varargs_name),
+      )
     if self.kwargs_name is not None and args.starstarargs is not None:
-      yield (self.kwargs_name, args.starstarargs,
-             self.annotations.get(self.kwargs_name))
+      yield (
+          self.kwargs_name,
+          args.starstarargs,
+          self.annotations.get(self.kwargs_name),
+      )
 
   def check_defaults(self, ctx):
     """Raises an error if a non-default param follows a default."""
@@ -443,8 +492,10 @@ class Signature(types.Signature):
       if name in self.defaults:
         has_default = True
       elif has_default:
-        msg = (f"In method {self.name}, non-default argument {name} "
-               "follows default argument")
+        msg = (
+            f"In method {self.name}, non-default argument {name} "
+            "follows default argument"
+        )
         ctx.errorlog.invalid_function_definition(ctx.vm.stack(), msg)
         return
 
@@ -463,7 +514,8 @@ class Signature(types.Signature):
       annot = self._print_annot(base_name)
       default = self._print_default(base_name)
       yield name + (": " + annot if annot else "") + (
-          " = " + default if default else "")
+          " = " + default if default else ""
+      )
 
   def _print_annot(self, name):
     return _print(self.annotations[name]) if name in self.annotations else None
@@ -481,7 +533,7 @@ class Signature(types.Signature):
   def __repr__(self):
     args = list(self._yield_arguments())
     if self.posonly_count:
-      args = args[:self.posonly_count] + ["/"] + args[self.posonly_count:]
+      args = args[: self.posonly_count] + ["/"] + args[self.posonly_count :]
     args = ", ".join(args)
     ret = self._print_annot("return")
     return f"def {self.name}({args}) -> {ret if ret else 'Any'}"
@@ -532,12 +584,12 @@ class Args:
       cfg.Variable.
     starargs: The *args parameter, or None.
     starstarargs: The **kwargs parameter, or None.
-
   """
 
   posargs: Tuple[cfg.Variable, ...]
-  namedargs: Dict[str, cfg.Variable] = attrs.field(converter=_convert_namedargs,
-                                                   default=None)
+  namedargs: Dict[str, cfg.Variable] = attrs.field(
+      converter=_convert_namedargs, default=None
+  )
   starargs: Optional[cfg.Variable] = None
   starstarargs: Optional[cfg.Variable] = None
 
@@ -553,14 +605,16 @@ class Args:
   def starargs_as_tuple(self, node, ctx):
     try:
       args = self.starargs and abstract_utils.get_atomic_python_constant(
-          self.starargs, tuple)
+          self.starargs, tuple
+      )
     except abstract_utils.ConversionError:
       args = None
     if not args:
       return args
     return tuple(
         var if var.bindings else ctx.convert.empty.to_variable(node)
-        for var in args)
+        for var in args
+    )
 
   def starstarargs_as_dict(self):
     """Return **args as a python dict."""
@@ -568,7 +622,7 @@ class Args:
     # could have is_concrete=False.
     if not self.starstarargs or len(self.starstarargs.data) != 1:
       return None
-    kwdict, = self.starstarargs.data
+    (kwdict,) = self.starstarargs.data
     if not _isinstance(kwdict, "Dict"):
       return None
     return kwdict.pyval
@@ -634,7 +688,8 @@ class Args:
       for var in all_args[n_params:]:
         if abstract_utils.is_var_splat(var):
           star.append(
-              abstract_utils.merged_type_parameter(node, var, abstract_utils.T))
+              abstract_utils.merged_type_parameter(node, var, abstract_utils.T)
+          )
         else:
           star.append(var)
       if star:
@@ -688,7 +743,8 @@ class Args:
           # parameterize it now to preserve them.
           params = {
               name: ctx.convert.merge_classes(
-                  kwdict.get_instance_type_parameter(name, node).data)
+                  kwdict.get_instance_type_parameter(name, node).data
+              )
               for name in (abstract_utils.K, abstract_utils.V)
           }
           cls = _make("ParameterizedClass", ctx.convert.dict_type, params, ctx)
@@ -698,11 +754,12 @@ class Args:
     starargs_as_tuple = self.starargs_as_tuple(node, ctx)
     if starargs_as_tuple is not None:
       if match_signature:
-        posargs, starargs = self._unpack_and_match_args(node, ctx,
-                                                        match_signature,
-                                                        starargs_as_tuple)
-      elif (starargs_as_tuple and
-            abstract_utils.is_var_splat(starargs_as_tuple[-1])):
+        posargs, starargs = self._unpack_and_match_args(
+            node, ctx, match_signature, starargs_as_tuple
+        )
+      elif starargs_as_tuple and abstract_utils.is_var_splat(
+          starargs_as_tuple[-1]
+      ):
         # If the last arg is an indefinite iterable keep it in starargs. Convert
         # any other splats to Any.
         # TODO(mdemello): If there are multiple splats should we just fall
@@ -716,9 +773,12 @@ class Args:
         posargs = self.posargs + _splats_to_any(starargs_as_tuple, ctx)
         starargs = None
     simplify = lambda var: abstract_utils.simplify_variable(var, node, ctx)
-    return Args(tuple(simplify(posarg) for posarg in posargs),
-                {k: simplify(namedarg) for k, namedarg in namedargs.items()},
-                simplify(starargs), simplify(starstarargs))
+    return Args(
+        tuple(simplify(posarg) for posarg in posargs),
+        {k: simplify(namedarg) for k, namedarg in namedargs.items()},
+        simplify(starargs),
+        simplify(starstarargs),
+    )
 
   def get_variables(self):
     variables = list(self.posargs) + list(self.namedargs.values())
@@ -729,7 +789,7 @@ class Args:
     return variables
 
   def replace_posarg(self, pos, val):
-    new_posargs = self.posargs[:pos] + (val,) + self.posargs[pos + 1:]
+    new_posargs = self.posargs[:pos] + (val,) + self.posargs[pos + 1 :]
     return self.replace(posargs=new_posargs)
 
   def replace_namedarg(self, name, val):
@@ -745,8 +805,10 @@ class Args:
     return attrs.evolve(self, **kwargs)
 
   def has_opaque_starargs_or_starstarargs(self):
-    return any(arg and not _isinstance(arg, "PythonConstant")
-               for arg in (self.starargs, self.starstarargs))
+    return any(
+        arg and not _isinstance(arg, "PythonConstant")
+        for arg in (self.starargs, self.starstarargs)
+    )
 
 
 class ParamSpecMatch(_base.BaseValue):
@@ -776,9 +838,11 @@ class Mutation:
   value: cfg.Variable
 
   def __eq__(self, other):
-    return (self.instance == other.instance and
-            self.name == other.name and
-            frozenset(self.value.data) == frozenset(other.value.data))
+    return (
+        self.instance == other.instance
+        and self.name == other.name
+        and frozenset(self.value.data) == frozenset(other.value.data)
+    )
 
   def __hash__(self):
     return hash((self.instance, self.name, frozenset(self.value.data)))
@@ -853,16 +917,19 @@ class PyTDReturnType(_ReturnType):
           abstract_utils.AsReturnValue(self._type),
           self._subst,
           node,
-          source_sets=[self._sources])
+          source_sets=[self._sources],
+      )
     except self._ctx.convert.TypeParameterError:
       # The return type contains a type parameter without a substitution.
       subst = abstract_utils.with_empty_substitutions(
-          self._subst, self._type, node, self._ctx)
+          self._subst, self._type, node, self._ctx
+      )
       return node, self._ctx.convert.constant_to_var(
           abstract_utils.AsReturnValue(self._type),
           subst,
           node,
-          source_sets=[self._sources])
+          source_sets=[self._sources],
+      )
     if not ret.bindings and isinstance(self._type, pytd.TypeParameter):
       ret.AddBinding(self._ctx.convert.empty, [], node)
     return node, ret
@@ -875,12 +942,19 @@ class PyTDReturnType(_ReturnType):
 def _splats_to_any(seq, ctx):
   return tuple(
       ctx.new_unsolvable(ctx.root_node) if abstract_utils.is_var_splat(v) else v
-      for v in seq)
+      for v in seq
+  )
 
 
 def call_function(
-    ctx, node, func_var, args, fallback_to_unsolvable=True,
-    allow_never=False, strict_filter=True):
+    ctx,
+    node,
+    func_var,
+    args,
+    fallback_to_unsolvable=True,
+    allow_never=False,
+    strict_filter=True,
+):
   """Call a function.
 
   Args:
@@ -891,6 +965,7 @@ def call_function(
     fallback_to_unsolvable: If the function call fails, create an unknown.
     allow_never: Whether typing.Never is allowed in the return type.
     strict_filter: Whether function bindings should be strictly filtered.
+
   Returns:
     A tuple (CFGNode, Variable). The Variable is the return value.
   Raises:
@@ -909,8 +984,10 @@ def call_function(
     try:
       new_node, one_result = func.call(node, funcb, args)
     except (error_types.DictKeyMissing, error_types.FailedFunctionCall) as e:
-      if e > error and ((not strict_filter and len(func_var.bindings) == 1) or
-                        funcb.IsVisible(node)):
+      if e > error and (
+          (not strict_filter and len(func_var.bindings) == 1)
+          or funcb.IsVisible(node)
+      ):
         error = e
     else:
       if ctx.convert.never in one_result.data:
@@ -930,8 +1007,9 @@ def call_function(
     if not result.bindings:
       v = ctx.convert.never if has_never else ctx.convert.unsolvable
       result.AddBinding(v, [], node)
-  elif (isinstance(error, error_types.FailedFunctionCall) and
-        all(func.name.endswith(".__init__") for func in func_var.data)):
+  elif isinstance(error, error_types.FailedFunctionCall) and all(
+      func.name.endswith(".__init__") for func in func_var.data
+  ):
     # If the function failed with a FailedFunctionCall exception, try calling
     # it again with fake arguments. This allows for calls to __init__ to
     # always succeed, ensuring pytype has a full view of the class and its
@@ -939,14 +1017,17 @@ def call_function(
     # abstract.Unsolvable.
     node, result = ctx.vm.call_with_fake_args(node, func_var)
   elif ctx.options.precise_return and len(func_var.bindings) == 1:
-    funcb, = func_var.bindings
+    (funcb,) = func_var.bindings
     func = funcb.data
     if _isinstance(func, "BoundFunction"):
       func = func.underlying
     if _isinstance(func, "PyTDFunction"):
       node, result = PyTDReturnType(
-          func.signatures[0].pytd_sig.return_type, datatypes.HashableDict(),
-          [funcb], ctx).instantiate(node)
+          func.signatures[0].pytd_sig.return_type,
+          datatypes.HashableDict(),
+          [funcb],
+          ctx,
+      ).instantiate(node)
     elif _isinstance(func, "InterpreterFunction"):
       sig = func.signature_functions()[0].signature
       ret = sig.annotations.get("return", ctx.convert.unsolvable)
@@ -955,8 +1036,9 @@ def call_function(
       result = ctx.new_unsolvable(node)
   else:
     result = ctx.new_unsolvable(node)
-  ctx.vm.trace_opcode(None, func_var.data[0].name.rpartition(".")[-1],
-                      (func_var, result))
+  ctx.vm.trace_opcode(
+      None, func_var.data[0].name.rpartition(".")[-1], (func_var, result)
+  )
   if (nodes and not ctx.options.strict_parameter_checks) or not error:
     return node, result
   elif fallback_to_unsolvable:
@@ -1001,7 +1083,8 @@ def match_all_args(ctx, node, func, args):
       elif isinstance(e, error_types.MissingParameter):
         errors.append((e, e.missing_parameter, None))
         args = args.replace_namedarg(
-            e.missing_parameter, ctx.new_unsolvable(node))
+            e.missing_parameter, ctx.new_unsolvable(node)
+        )
       elif isinstance(e, error_types.WrongArgTypes):
         arg_name = e.bad_call.bad_param.name
         for name, value in e.bad_call.passed_args:
@@ -1055,7 +1138,8 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
     return None  # no need to apply the type guard if we're in a dummy frame
   if ret.name == "typing.TypeIs":
     match_result = ctx.matcher(node).compute_one_match(
-        first_arg, ret.get_parameter(node, abstract_utils.T))
+        first_arg, ret.get_parameter(node, abstract_utils.T)
+    )
     matched = [m.view[first_arg] for m in match_result.good_matches]
     unmatched = [m.view[first_arg] for m in match_result.bad_matches]
   elif ret.name == "typing.TypeGuard":
@@ -1080,8 +1164,10 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
   if not target_name:
     desc = f" function {func_name!r}" if func_name else ""
     ctx.errorlog.not_supported_yet(
-        ctx.vm.frames, f"Calling {ret.name}{desc} with an arbitrary expression",
-        "Please assign the expression to a local variable.")
+        ctx.vm.frames,
+        f"Calling {ret.name}{desc} with an arbitrary expression",
+        "Please assign the expression to a local variable.",
+    )
     return None
   target = frame.lookup_name(target_name)
   # Forward all the target's bindings to the current node, so we don't have
@@ -1123,5 +1209,6 @@ def build_paramspec_signature(pspec_match, r_args, return_value, ctx):
   # All params need to be in the annotations dict or output.py crashes
   sig.populate_annotation_dict(ann, ctx, param_names)
   posonly_count = max(sig.posonly_count + len(r_args) - l_nargs, 0)
-  return sig._replace(param_names=param_names, annotations=ann,
-                      posonly_count=posonly_count)
+  return sig._replace(
+      param_names=param_names, annotations=ann, posonly_count=posonly_count
+  )

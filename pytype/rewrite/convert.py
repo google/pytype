@@ -37,7 +37,8 @@ class AbstractConverter:
         members=members,
         bases=(),
         keywords=keywords,
-        module=module or None)
+        module=module or None,
+    )
     # Cache the class early so that references to it in its members and bases
     # don't cause infinite recursion.
     self._cache.classes[cls] = abstract_class
@@ -50,8 +51,9 @@ class AbstractConverter:
       constant_type = self.pytd_type_to_value(constant.type)
       abstract_class.members[constant.name] = constant_type.instantiate()
     for nested_class in cls.classes:
-      abstract_class.members[nested_class.name] = (
-          self.pytd_class_to_value(nested_class))
+      abstract_class.members[nested_class.name] = self.pytd_class_to_value(
+          nested_class
+      )
     bases = []
     for base in cls.bases:
       if isinstance(base, pytd.GenericType):
@@ -70,7 +72,9 @@ class AbstractConverter:
     return abstract_class
 
   def pytd_function_to_value(
-      self, func: pytd.Function, func_name: Optional[Tuple[str, str]] = None,
+      self,
+      func: pytd.Function,
+      func_name: Optional[Tuple[str, str]] = None,
   ) -> abstract.PytdFunction:
     """Converts a pytd function to an abstract function."""
     if func in self._cache.funcs:
@@ -81,7 +85,8 @@ class AbstractConverter:
       module, _, name = func.name.rpartition('.')
     signatures = tuple(
         abstract.Signature.from_pytd(self._ctx, name, pytd_sig)
-        for pytd_sig in func.signatures)
+        for pytd_sig in func.signatures
+    )
     builder = overlays.FUNCTIONS.get((module, name), abstract.PytdFunction)
     abstract_func = builder(
         ctx=self._ctx,
@@ -117,7 +122,8 @@ class AbstractConverter:
       return self._ctx.consts.singles['Never']
     elif isinstance(typ, pytd.UnionType):
       return abstract.Union(
-          self._ctx, tuple(self._pytd_type_to_value(t) for t in typ.type_list))
+          self._ctx, tuple(self._pytd_type_to_value(t) for t in typ.type_list)
+      )
     # TODO(b/324464265): Everything from this point onward is a dummy
     # implementation that needs to be replaced by a real one.
     elif isinstance(typ, pytd.GenericType):
@@ -133,7 +139,8 @@ class AbstractConverter:
       return self._pytd_type_to_value(typ.base_type)
     elif isinstance(typ, (pytd.LateType, pytd.IntersectionType)):
       raise NotImplementedError(
-          f'Abstract conversion not yet implemented for {typ}')
+          f'Abstract conversion not yet implemented for {typ}'
+      )
     else:
       raise ValueError(f'Cannot convert {typ} to an abstract value')
 
@@ -141,4 +148,5 @@ class AbstractConverter:
     if isinstance(alias.type, pytd.Module):
       return abstract.Module(self._ctx, alias.type.module_name)
     raise NotImplementedError(
-        f'Abstract conversion not yet implemented for {alias}')
+        f'Abstract conversion not yet implemented for {alias}'
+    )

@@ -16,7 +16,9 @@ class TestDataclass(test_base.BaseTest):
         y: int
         z: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -25,7 +27,8 @@ class TestDataclass(test_base.BaseTest):
         y: int
         z: str
         def __init__(self, x: bool, y: int, z: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_late_annotations(self):
     ty = self.Infer("""
@@ -35,7 +38,9 @@ class TestDataclass(test_base.BaseTest):
         x: 'Foo'
         y: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -43,7 +48,8 @@ class TestDataclass(test_base.BaseTest):
         x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_redefine(self):
     """The first annotation should determine the order."""
@@ -56,7 +62,9 @@ class TestDataclass(test_base.BaseTest):
         x: str = 'hello'
         y = 10
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -64,7 +72,8 @@ class TestDataclass(test_base.BaseTest):
         x: str = ...
         y: int = ...
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_redefine_as_method(self):
     ty, errors = self.InferWithErrors("""
@@ -76,7 +85,9 @@ class TestDataclass(test_base.BaseTest):
         def x(self):  # annotation-type-mismatch[e]
           return 10
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -84,9 +95,11 @@ class TestDataclass(test_base.BaseTest):
         x: str = ...
         y: int = ...
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: str.*Assignment: Callable"})
+        errors, {"e": r"Annotation: str.*Assignment: Callable"}
+    )
 
   def test_no_init(self):
     ty = self.Infer("""
@@ -97,7 +110,9 @@ class TestDataclass(test_base.BaseTest):
         y: int
         z: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -105,7 +120,8 @@ class TestDataclass(test_base.BaseTest):
         x: bool
         y: int
         z: str
-    """)
+    """,
+    )
 
   def test_explicit_init(self):
     ty = self.Infer("""
@@ -118,7 +134,9 @@ class TestDataclass(test_base.BaseTest):
           self.x = a
           self.y = 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
       @dataclasses.dataclass
@@ -126,7 +144,8 @@ class TestDataclass(test_base.BaseTest):
         x: bool
         y: int
         def __init__(self, a: bool) -> None: ...
-    """)
+    """,
+    )
 
   def test_field(self):
     ty = self.Infer("""
@@ -137,7 +156,9 @@ class TestDataclass(test_base.BaseTest):
         x: bool = dataclasses.field(default=True)
         y: List[int] = dataclasses.field(default_factory=list)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, List, Union
       @dataclasses.dataclass
@@ -145,7 +166,8 @@ class TestDataclass(test_base.BaseTest):
         x: bool = ...
         y: List[int] = ...
         def __init__(self, x: bool = ..., y: List[int] = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_type_mismatch(self):
     self.CheckWithErrors("""
@@ -202,7 +224,9 @@ class TestDataclass(test_base.BaseTest):
         x: bool = dataclasses.field(default=True)
         y: int = dataclasses.field(init=False)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
       @dataclasses.dataclass
@@ -210,7 +234,8 @@ class TestDataclass(test_base.BaseTest):
         x: bool = ...
         y: int
         def __init__(self, x: bool = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_field_init_no_default(self):
     ty = self.Infer("""
@@ -220,7 +245,9 @@ class TestDataclass(test_base.BaseTest):
         x: bool = dataclasses.field()
         y: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
       @dataclasses.dataclass
@@ -228,7 +255,8 @@ class TestDataclass(test_base.BaseTest):
         x: bool
         y: int
         def __init__(self, x: bool, y: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_bad_default_param_order(self):
     self.CheckWithErrors("""
@@ -275,7 +303,9 @@ class TestDataclass(test_base.BaseTest):
         def get_y(self):
           return self.y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -288,7 +318,8 @@ class TestDataclass(test_base.BaseTest):
         def get_w(self) -> float: ...
         def get_x(self) -> bool : ...
         def get_y(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_subclass_override(self):
     ty = self.Infer("""
@@ -303,7 +334,9 @@ class TestDataclass(test_base.BaseTest):
         w: int
         z: bool = dataclasses.field(default=True)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -317,7 +350,8 @@ class TestDataclass(test_base.BaseTest):
         w: int
         z: bool = ...
         def __init__(self, w: int, x: bool = ..., z: bool = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_multiple_inheritance(self):
     ty = self.Infer("""
@@ -332,7 +366,9 @@ class TestDataclass(test_base.BaseTest):
       class C(B, A):
         c: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -347,7 +383,8 @@ class TestDataclass(test_base.BaseTest):
       class C(B, A):
         c: int
         def __init__(self, a: int, b: str, c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_use_late_annotation(self):
     self.Check("""
@@ -415,7 +452,9 @@ class TestDataclass(test_base.BaseTest):
       Node = Union[Tree, IntLeaf, StrLeaf]
     """)
 
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Optional, Union
 
       import dataclasses
@@ -443,7 +482,8 @@ class TestDataclass(test_base.BaseTest):
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
 
       def get_value(x: Root) -> Optional[Union[int, str]]: ...
-    """)
+    """,
+    )
 
   def test_reuse_attribute_name(self):
     self.Check("""
@@ -468,14 +508,17 @@ class TestDataclass(test_base.BaseTest):
         x: dataclasses.InitVar[str]
         y: int = 10
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
       class A:
         y: int = ...
         def __init__(self, x: str, y: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_initvar_default(self):
     ty = self.Infer("""
@@ -486,7 +529,9 @@ class TestDataclass(test_base.BaseTest):
         x: dataclasses.InitVar[str] = 'hello'
         y: int = 10
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -494,7 +539,8 @@ class TestDataclass(test_base.BaseTest):
         x: dataclasses.InitVar[str] = ...
         y: int = ...
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_initvar_late(self):
     ty = self.Infer("""
@@ -509,7 +555,9 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -519,7 +567,8 @@ class TestDataclass(test_base.BaseTest):
         def __init__(self, w: Foo, x: str = ..., y: int = ...) -> None: ...
 
       class Foo: ...
-    """)
+    """,
+    )
 
   def test_initvar_inheritance(self):
     ty = self.Infer("""
@@ -534,7 +583,9 @@ class TestDataclass(test_base.BaseTest):
       class B(A):
         z: dataclasses.InitVar[int] = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Union
       @dataclasses.dataclass
@@ -546,7 +597,8 @@ class TestDataclass(test_base.BaseTest):
       class B(A):
         z: dataclasses.InitVar[int] = ...
         def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_classvar(self):
     ty = self.Infer("""
@@ -558,7 +610,9 @@ class TestDataclass(test_base.BaseTest):
         x: ClassVar[int] = 10
         y: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import ClassVar, Dict
       @dataclasses.dataclass
@@ -566,7 +620,8 @@ class TestDataclass(test_base.BaseTest):
         y: str = ...
         x: ClassVar[int]
         def __init__(self, y: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_duplicate_inner_class(self):
     ty = self.Infer("""
@@ -582,7 +637,9 @@ class TestDataclass(test_base.BaseTest):
       Inner1 = Foo.Inner
       Inner2 = Bar.Inner
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
       class Foo:
@@ -597,7 +654,8 @@ class TestDataclass(test_base.BaseTest):
           def __init__(self, b: str) -> None: ...
       Inner1 = Foo.Inner
       Inner2 = Bar.Inner
-    """)
+    """,
+    )
 
   def test_check_field_against_container(self):
     self.Check("""
@@ -619,7 +677,9 @@ class TestDataclass(test_base.BaseTest):
         x: int = dataclasses.field(default=0)
         y: int = field_wrapper(default=1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Any, Dict
       def field_wrapper(**kwargs) -> Any: ...
@@ -628,7 +688,8 @@ class TestDataclass(test_base.BaseTest):
         x: int = ...
         y: int = ...
         def __init__(self, x: int = ..., y: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_property(self):
     ty = self.Infer("""
@@ -641,7 +702,9 @@ class TestDataclass(test_base.BaseTest):
         def z(self) -> str:
           return "hello world"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Annotated, Dict
       @dataclasses.dataclass
@@ -650,7 +713,8 @@ class TestDataclass(test_base.BaseTest):
         y: int
         z: Annotated[str, 'property']
         def __init__(self, x: bool, y: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_generic(self):
     ty = self.Infer("""
@@ -665,7 +729,9 @@ class TestDataclass(test_base.BaseTest):
       foo2 = Foo[str](x=__any_object__)
       x2 = foo2.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict, Generic, TypeVar
       T = TypeVar('T')
@@ -678,7 +744,8 @@ class TestDataclass(test_base.BaseTest):
       x1: int
       foo2: Foo[str]
       x2: str
-    """)
+    """,
+    )
 
   def test_dataclass_attribute_with_getattr(self):
     # Tests that the type of the 'x' attribute is correct in Child.__init__
@@ -749,7 +816,9 @@ class TestDataclass(test_base.BaseTest):
         a2: int = dataclasses.field(default_factory=lambda: 0)
         a3: int = dataclasses.field(kw_only=False)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
 
       @dataclasses.dataclass
@@ -759,7 +828,8 @@ class TestDataclass(test_base.BaseTest):
         a3: int
         _: dataclasses.KW_ONLY
         def __init__(self, a1: int, a3: int, *, a2: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 10), "KW_ONLY is new in 3.10")
   def test_kwonly_and_nonfield_default(self):
@@ -771,7 +841,9 @@ class TestDataclass(test_base.BaseTest):
         x: int = 0
         y: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       @dataclasses.dataclass
       class C:
@@ -779,7 +851,8 @@ class TestDataclass(test_base.BaseTest):
         y: str
         _: dataclasses.KW_ONLY
         def __init__(self, *, x: int = ..., y: str) -> None: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 10), "KW_ONLY is new in 3.10")
   def test_kwonly_and_kwargs(self):
@@ -794,9 +867,12 @@ class TestDataclass(test_base.BaseTest):
     """)
 
   def test_star_import(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import dataclasses
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import dataclasses
         from foo import *
@@ -805,14 +881,17 @@ class TestDataclass(test_base.BaseTest):
           b: int
           a: str = ...
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       @dataclasses.dataclass
       class X:
         b: int
         a: str = ...
         def __init__(self, b: int, a: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_replace_wrong_keyword_args(self):
     self.CheckWithErrors("""
@@ -885,8 +964,9 @@ class TestDataclass(test_base.BaseTest):
         name: str
       dataclasses.replace(C('x'), name=42)  # wrong-arg-types[e]
     """)
-    self.assertErrorSequences(errors, {
-        "e": ["Expected", "str", "Actual", "int"]})
+    self.assertErrorSequences(
+        errors, {"e": ["Expected", "str", "Actual", "int"]}
+    )
 
 
 class TestPyiDataclass(test_base.BaseTest):
@@ -894,65 +974,91 @@ class TestPyiDataclass(test_base.BaseTest):
 
   def test_basic(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
           x: int
           y: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         x = foo.A(10, 'hello')
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_protocol(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
           x: int
           y: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         import dataclasses
         x = foo.A(10, 'hello')
         y = dataclasses.fields(x)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_type_mismatch(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
           x: int
           y: str
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         x = foo.A(10, 20)  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_subclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
           x: bool
           y: int
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class Foo(foo.A):
           z: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Dict, Union
@@ -960,11 +1066,14 @@ class TestPyiDataclass(test_base.BaseTest):
         class Foo(foo.A):
           z: str = ...
           def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_subclass_from_same_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
@@ -974,15 +1083,21 @@ class TestPyiDataclass(test_base.BaseTest):
         @dataclass
         class B(A):
           z: str
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Dict, Union
@@ -990,32 +1105,44 @@ class TestPyiDataclass(test_base.BaseTest):
         class Foo(foo.B):
           a: str = ...
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_subclass_from_different_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("bar.pyi", """
+      d.create_file(
+          "bar.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
           x: bool
           y: int
-      """)
-      d.create_file("foo.pyi", """
+      """,
+      )
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         import bar
         @dataclass
         class B(bar.A):
           z: str
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Dict, Union
@@ -1023,32 +1150,44 @@ class TestPyiDataclass(test_base.BaseTest):
         class Foo(foo.B):
           a: str = ...
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_default_params(self):
     with test_utils.Tempdir() as d:
-      d.create_file("bar.pyi", """
+      d.create_file(
+          "bar.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
           x: bool
           y: int = ...
-      """)
-      d.create_file("foo.pyi", """
+      """,
+      )
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         import bar
         @dataclass
         class B(bar.A):
           z: str = ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Dict, Union
@@ -1056,26 +1195,35 @@ class TestPyiDataclass(test_base.BaseTest):
         class Foo(foo.B):
           a: str = ...
           def __init__(self, x: bool, y: int = ..., z: str = ..., a: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_subclass_classvar(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import ClassVar
         from dataclasses import dataclass
         @dataclass
         class A:
           x: ClassVar[bool]
           y: int
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class Foo(foo.A):
           z: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Dict, Union
@@ -1083,11 +1231,14 @@ class TestPyiDataclass(test_base.BaseTest):
         class Foo(foo.A):
           z: str = ...
           def __init__(self, y: int, z: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_properties_from_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from dataclasses import dataclass
         @dataclass
         class A:
@@ -1095,8 +1246,10 @@ class TestPyiDataclass(test_base.BaseTest):
           y: int
           @property
           def z(self) -> int: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
@@ -1105,8 +1258,12 @@ class TestPyiDataclass(test_base.BaseTest):
           @property
           def b(self) -> int:
             return 42
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Annotated, Dict, Union
@@ -1115,11 +1272,14 @@ class TestPyiDataclass(test_base.BaseTest):
           a: str = ...
           b: Annotated[int, 'property']
           def __init__(self, x: bool, y: int, a: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_recursion(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import dataclasses
         from typing import Callable, Optional, List
         @dataclasses.dataclass
@@ -1127,16 +1287,22 @@ class TestPyiDataclass(test_base.BaseTest):
           x: Optional[A]
           y: str
           z: List[A]
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         x = foo.A(None, 'hello', [])
         y = foo.A(x, "world", [x])
         a = y.x
         b = y.y
         c = y.z
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any, Optional, List
         x: foo.A
@@ -1144,11 +1310,14 @@ class TestPyiDataclass(test_base.BaseTest):
         a: Optional[foo.A]
         b: str
         c: List[foo.A]
-      """)
+      """,
+      )
 
   def test_recursion_with_subclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import dataclasses
         from typing import Callable, Optional, List
         @dataclasses.dataclass
@@ -1156,15 +1325,21 @@ class TestPyiDataclass(test_base.BaseTest):
           x: Optional[A]
           y: str
           z: List[A]
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class B(foo.A):
           w: int
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Any, Dict, List, Union
@@ -1172,11 +1347,14 @@ class TestPyiDataclass(test_base.BaseTest):
         class B(foo.A):
           w: int
           def __init__(self, x, y: str, z: list, w: int) -> None: ...
-      """)
+      """,
+      )
 
   def test_multi_step_recursion(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import dataclasses
         @dataclasses.dataclass
         class A:
@@ -1184,15 +1362,21 @@ class TestPyiDataclass(test_base.BaseTest):
 
         class B(A):
           y: int
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import dataclasses
         import foo
         @dataclasses.dataclass
         class C(foo.A):
           w: int
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import dataclasses
         import foo
         from typing import Any, Dict, List, Union
@@ -1200,7 +1384,8 @@ class TestPyiDataclass(test_base.BaseTest):
         class C(foo.A):
           w: int
           def __init__(self, x: foo.B, w: int) -> None: ...
-      """)
+      """,
+      )
 
   def test_parameterized_generic(self):
     ty = self.Infer("""
@@ -1212,7 +1397,9 @@ class TestPyiDataclass(test_base.BaseTest):
         x: str
         y: T
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Generic, TypeVar, Union
       import dataclasses
       T = TypeVar('T')
@@ -1222,7 +1409,8 @@ class TestPyiDataclass(test_base.BaseTest):
         y: T
         def __init__(self, x: str, y: T) -> None:
             self = Foo[T]
-    """)
+    """,
+    )
 
   def test_parameterized_subclass(self):
     ty = self.Infer("""
@@ -1237,7 +1425,9 @@ class TestPyiDataclass(test_base.BaseTest):
       class Bar(Foo[int]):
         z: float
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Generic, TypeVar, Union
       import dataclasses
       T = TypeVar('T')
@@ -1251,7 +1441,8 @@ class TestPyiDataclass(test_base.BaseTest):
       class Bar(Foo[int]):
         z: float
         def __init__(self, x: str, y: int, z: float) -> None: ...
-    """)
+    """,
+    )
 
   def test_parameterized_subclass_error_count(self):
     self.CheckWithErrors("""
@@ -1293,7 +1484,9 @@ class TestPyiDataclass(test_base.BaseTest):
         a1: int
         a2: int = dataclasses.field(default_factory=lambda: 0)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
 
@@ -1302,7 +1495,8 @@ class TestPyiDataclass(test_base.BaseTest):
           a1: int
           a2: int = ...
           def __init__(self, *, a1: int, a2: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   @test_base.skip("Doesn't work due to b/268530497")
   @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
@@ -1319,7 +1513,9 @@ class TestPyiDataclass(test_base.BaseTest):
       class B(A):
         b1: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
 
@@ -1333,7 +1529,8 @@ class TestPyiDataclass(test_base.BaseTest):
       class B(A):
           b1: int
           def __init__(self, b1: int, *, a1: int, a2: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
   def test_kwonly(self):
@@ -1349,7 +1546,9 @@ class TestPyiDataclass(test_base.BaseTest):
       class B(A):
         b1: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import Dict
 
@@ -1363,11 +1562,14 @@ class TestPyiDataclass(test_base.BaseTest):
       class B(A):
           b1: int
           def __init__(self, a1: int, b1: int, *, a2: int = ...) -> None: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
   def test_sticky_kwonly(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import dataclasses
 
       @dataclasses.dataclass
@@ -1375,7 +1577,8 @@ class TestPyiDataclass(test_base.BaseTest):
         a1: int
         _: dataclasses.KW_ONLY
         a2: int = ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import dataclasses
         import foo
@@ -1388,13 +1591,16 @@ class TestPyiDataclass(test_base.BaseTest):
       """)
 
   def test_replace_wrong_keyword_args(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
         import dataclasses
         @dataclasses.dataclass
         class Test:
             x: int
             def __init__(self, x: int) -> None: ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import dataclasses
         import foo
@@ -1407,7 +1613,9 @@ class TestPyiDataclass(test_base.BaseTest):
     # PytdClass._init_attr_metadata_from_pytd by replacing "x" with "_x" when
     # reconstructing the class's attr metadata.
     # However, dataclasses does *not* do this name mangling.
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import dataclasses
       from typing import Annotated
       @dataclasses.dataclass
@@ -1415,7 +1623,8 @@ class TestPyiDataclass(test_base.BaseTest):
           x: int
           _x: Annotated[int, 'property']
           def __init__(self, x: int) -> None: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import dataclasses
         import foo
@@ -1423,13 +1632,16 @@ class TestPyiDataclass(test_base.BaseTest):
       """)
 
   def test_dataclass_protocol(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import dataclasses
       from typing import Protocol
       @dataclasses.dataclass
       class Foo(Protocol):
         x: str
-    """)]):
+    """,
+    )]):
       self.Check("""
         import dataclasses
         import foo
@@ -1463,13 +1675,16 @@ class TestPatternMatch(test_base.BaseTest):
     """)
 
   def test_match_with_pyi_dataclass(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import dataclasses
       @dataclasses.dataclass
       class Point:
         x: float
         y: float
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(x, y):
@@ -1482,13 +1697,16 @@ class TestPatternMatch(test_base.BaseTest):
       """)
 
   def test_reingest(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import dataclasses
       @dataclasses.dataclass
       class Point:
         x: float
         y: float
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(x, y):

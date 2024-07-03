@@ -18,9 +18,8 @@ class BinaryRun:
       self.results = (0, b"", b"")
     else:
       self.proc = subprocess.Popen(  # pylint: disable=consider-using-with
-          self.args,
-          stdout=subprocess.PIPE,
-          stderr=subprocess.PIPE)
+          self.args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+      )
 
   def communicate(self):
     if self.results:

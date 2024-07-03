@@ -63,7 +63,9 @@ class TestDataclassConfig(test_base.BaseTest):
   def test_pyi(self):
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),
-        ("foo.pyi", f"""
+        (
+            "foo.pyi",
+            f"""
             import dataclasses
             import fiddle
 
@@ -73,7 +75,9 @@ class TestDataclassConfig(test_base.BaseTest):
               y: str
 
             a: fiddle.{self.buildable_type_name}[Simple]
-         """)]):
+         """,
+        ),
+    ]):
       self.CheckWithErrors("""
         import foo
         a = foo.a
@@ -220,13 +224,16 @@ class TestDataclassConfig(test_base.BaseTest):
   def test_pyi_underlying_class(self):
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),
-        ("foo.pyi", """
+        (
+            "foo.pyi",
+            """
         import dataclasses
         @dataclasses.dataclass
         class Simple:
           x: int
           y: str
-         """),
+         """,
+        ),
     ]):
       self.CheckWithErrors(f"""
         import fiddle
@@ -244,7 +251,9 @@ class TestDataclassConfig(test_base.BaseTest):
   def test_explicit_init(self):
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),
-        ("foo.pyi", """
+        (
+            "foo.pyi",
+            """
         import dataclasses
         @dataclasses.dataclass
         class Simple:
@@ -252,7 +261,8 @@ class TestDataclassConfig(test_base.BaseTest):
           y: str
 
           def __init__(self: Simple, x: int, y: str): ...
-         """),
+         """,
+        ),
     ]):
       self.CheckWithErrors(f"""
         import fiddle
@@ -291,14 +301,17 @@ class TestDataclassConfig(test_base.BaseTest):
   def test_pyi_typevar(self):
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),
-        ("foo.pyi", f"""
+        (
+            "foo.pyi",
+            f"""
           import fiddle
           from typing import TypeVar
 
           _T = TypeVar('_T')
 
           def build(buildable: fiddle.{self.buildable_type_name}[_T]) -> _T: ...
-         """),
+         """,
+        ),
     ]):
       self.Check(f"""
         import dataclasses
@@ -339,10 +352,13 @@ class TestDataclassConfig(test_base.BaseTest):
 
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),
-        ("foo.pyi", f"""
+        (
+            "foo.pyi",
+            f"""
          import fiddle
          def f(x: fiddle.{self.buildable_type_name}): ...
-         """),
+         """,
+        ),
     ]):
       self.Check(f"""
         import dataclasses
@@ -394,14 +410,20 @@ class TestDataclassConfig(test_base.BaseTest):
       """)
 
   def test_dataclass_error_detection_pyi(self):
-    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI), ("foo.pyi", """
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        (
+            "foo.pyi",
+            """
       import dataclasses
       @dataclasses.dataclass
       class Foo:
         x: int
         y: str
         def __init__(self, x: int, y: str) -> None: ...
-    """)]):
+    """,
+        ),
+    ]):
       self.CheckWithErrors(f"""
         import fiddle
         import foo
@@ -411,21 +433,28 @@ class TestDataclassConfig(test_base.BaseTest):
       """)
 
   def test_imported_dataclass(self):
-    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI), ("foo.pyi", """
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        (
+            "foo.pyi",
+            """
       import dataclasses
       @dataclasses.dataclass
       class Foo:
         x: int
         y: str
         def __init__(self, x: int, y: str) -> None: ...
-    """)]):
+    """,
+        ),
+    ]):
       errors = self.CheckWithErrors(f"""
         import fiddle
         import foo
         fiddle.{self.buildable_type_name}(foo.Foo, x='')  # wrong-arg-types[e]
       """)
-      self.assertErrorSequences(errors, {"e": ["Expected", "x: int",
-                                               "Actual", "x: str"]})
+      self.assertErrorSequences(
+          errors, {"e": ["Expected", "x: int", "Actual", "x: str"]}
+      )
 
 
 class TestDataclassPartial(TestDataclassConfig):

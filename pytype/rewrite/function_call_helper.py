@@ -59,7 +59,8 @@ class FunctionCallHelper(Generic[_FrameT]):
     return posargs
 
   def _unpack_starstarargs(
-      self, starstarargs: _Var) -> abstract.FunctionArgDict:
+      self, starstarargs: _Var
+  ) -> abstract.FunctionArgDict:
     """Unpacks variable keyword arguments."""
     kwargs = starstarargs.get_atomic_value()
     if isinstance(kwargs, abstract.FunctionArgDict):
@@ -104,14 +105,20 @@ class FunctionCallHelper(Generic[_FrameT]):
     else:
       kwargs = datatypes.EMPTY_MAP
     return abstract.Args(
-        posargs=posargs, kwargs=kwargs, starargs=starargs,
-        starstarargs=starstarargs, frame=self._frame)
+        posargs=posargs,
+        kwargs=kwargs,
+        starargs=starargs,
+        starstarargs=starstarargs,
+        frame=self._frame,
+    )
 
   def build_class(
-      self, args: abstract.Args[_FrameT]) -> abstract.InterpreterClass:
+      self, args: abstract.Args[_FrameT]
+  ) -> abstract.InterpreterClass:
     """Builds a class."""
     builder = args.posargs[0].get_atomic_value(
-        abstract.InterpreterFunction[_FrameT])
+        abstract.InterpreterFunction[_FrameT]
+    )
     name_var = args.posargs[1]
     name = abstract.get_atomic_constant(name_var, str)
 

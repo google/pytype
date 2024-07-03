@@ -14,14 +14,17 @@ class TupleTest(test_base.BaseTest):
       v3 = t[2]
       v4 = t[-1]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, Union
       t = ...   # type: Tuple[str, int]
       v1 = ...  # type: str
       v2 = ...  # type: int
       v3 = ...  # type: Union[str, int]
       v4 = ...  # type: int
-    """)
+    """,
+    )
 
   @test_base.skip("Needs better slice support in abstract.Tuple, convert.py.")
   def test_getitem_slice(self):
@@ -34,7 +37,9 @@ class TupleTest(test_base.BaseTest):
       v5 = t[0:2:2]
       v6 = t[:][0]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple
       t = ...  # type: Tuple[str, int]
       v1 = ...  # type: Tuple[str, int]
@@ -43,7 +48,8 @@ class TupleTest(test_base.BaseTest):
       v4 = ...  # type: Tuple[str]
       v5 = ...  # type: Tuple[str]
       v6 = ...  # type: str
-    """)
+    """,
+    )
 
   def test_unpack_tuple(self):
     ty = self.Infer("""
@@ -51,7 +57,9 @@ class TupleTest(test_base.BaseTest):
       _, w = ("", 42)
       x, (y, z) = ("", (3.14, True))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v1 = ...  # type: str
       v2 = ...  # type: int
       _ = ...  # type: str
@@ -59,7 +67,8 @@ class TupleTest(test_base.BaseTest):
       x = ...  # type: str
       y = ...  # type: float
       z = ...  # type: bool
-    """)
+    """,
+    )
 
   def test_bad_unpacking(self):
     ty, errors = self.InferWithErrors("""
@@ -67,16 +76,20 @@ class TupleTest(test_base.BaseTest):
       a, = tup  # bad-unpacking[e1]
       b, c, d = tup  # bad-unpacking[e2]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, Union
       tup = ...  # type: Tuple[int, str]
       a = ...  # type: Union[int, str]
       b = ...  # type: Union[int, str]
       c = ...  # type: Union[int, str]
       d = ...  # type: Union[int, str]
-    """)
+    """,
+    )
     self.assertErrorRegexes(
-        errors, {"e1": r"2 values.*1 variable", "e2": r"2 values.*3 variables"})
+        errors, {"e1": r"2 values.*1 variable", "e2": r"2 values.*3 variables"}
+    )
 
   def test_mutable_item(self):
     ty = self.Infer("""
@@ -85,11 +98,14 @@ class TupleTest(test_base.BaseTest):
       w[1].append(42)
       u = w[2]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       v = ...  # type: dict[str, tuple[list[nothing], list[int]]]
       w = ...  # type: tuple[list[nothing], list[int]]
       u = ...  # type: list[int]
-    """)
+    """,
+    )
 
   def test_bad_tuple_class_getitem(self):
     errors = self.CheckWithErrors("""
@@ -104,11 +120,14 @@ class TupleTest(test_base.BaseTest):
       if isinstance(x, tuple):
         y = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple
       x = ...  # type: Tuple[()]
       y = ...  # type: int
-    """)
+    """,
+    )
 
   def test_add_twice(self):
     self.Check("() + () + ()")
@@ -121,11 +140,14 @@ class TupleTest(test_base.BaseTest):
       b += (42,)
       b += ("foo",)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, Union
       a = ...  # type: Tuple[int]
       b = ...  # type: Tuple[int, str]
-    """)
+    """,
+    )
 
   def test_add(self):
     self.Check("""
@@ -137,13 +159,16 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def test_tuple_of_tuple(self):
-    self.assertNoCrash(self.Infer, """
+    self.assertNoCrash(
+        self.Infer,
+        """
       def f(x=()):
         x = (x,)
         enumerate(x)
         lambda: x
         return x
-    """)
+    """,
+    )
 
   def test_tuple_container_matching(self):
     # Regression test for crash introduced by using
@@ -185,11 +210,14 @@ class TupleTest(test_base.BaseTest):
       T = TypeVar('T')
       X = Tuple[T][T][str]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, TypeVar
       T = TypeVar('T')
       X = Tuple[str]
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

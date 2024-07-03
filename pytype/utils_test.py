@@ -1,4 +1,5 @@
 """Tests for utils.py."""
+
 from pytype import utils
 
 import unittest
@@ -23,16 +24,21 @@ class UtilsTest(unittest.TestCase):
     self.assertEqual([2, 3], utils.list_strip_prefix([1, 2, 3], [1]))
     self.assertEqual([3], utils.list_strip_prefix([1, 2, 3], [1, 2]))
     self.assertEqual([], utils.list_strip_prefix([1, 2, 3], [1, 2, 3]))
-    self.assertEqual([1, 2, 3],
-                     utils.list_strip_prefix([1, 2, 3], [0, 1, 2, 3]))
+    self.assertEqual(
+        [1, 2, 3], utils.list_strip_prefix([1, 2, 3], [0, 1, 2, 3])
+    )
     self.assertEqual([], utils.list_strip_prefix([], [1, 2, 3]))
-    self.assertEqual(list("wellington"), utils.list_strip_prefix(
-        list("newwellington"), list("new")))
+    self.assertEqual(
+        list("wellington"),
+        utils.list_strip_prefix(list("newwellington"), list("new")),
+    )
     self.assertEqual(
         "a.somewhat.long.path.src2.d3.shrdlu".split("."),
         utils.list_strip_prefix(
             "top.a.somewhat.long.path.src2.d3.shrdlu".split("."),
-            "top".split(".")))
+            "top".split("."),
+        ),
+    )
 
   def test_list_starts_with(self):
     self.assertTrue(utils.list_startswith([1, 2, 3], []))
@@ -87,9 +93,11 @@ class DecoratorsTest(unittest.TestCase):
 
   def test_annotating_decorator(self):
     foo = utils.AnnotatingDecorator()
+
     @foo(3)
     def f():  # pylint: disable=unused-variable
       pass
+
     self.assertEqual(foo.lookup["f"], 3)
 
 

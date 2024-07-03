@@ -24,6 +24,7 @@ def build_version_bool(major):
   def make(ctx, module):
     del module  # unused
     return ctx.convert.bool_values[ctx.python_version[0] == major]
+
   return make
 
 
@@ -39,5 +40,6 @@ def build_string_types(ctx):
 def build_integer_types(ctx):
   # pytype treats `long` as an alias of `int`, so the value of integer_types can
   # be represented as just `(int,)` in both Py2 and Py3.
-  return ctx.convert.tuple_to_value(
-      (ctx.convert.int_type.to_variable(ctx.root_node),))
+  return ctx.convert.tuple_to_value((
+      ctx.convert.int_type.to_variable(ctx.root_node),
+  ))

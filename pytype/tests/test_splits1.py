@@ -18,10 +18,13 @@ class SplitTest(test_base.BaseTest):
         else:
           return 123
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def foo(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_restrict_true(self):
     ty = self.Infer("""
@@ -33,10 +36,13 @@ class SplitTest(test_base.BaseTest):
         else:
           return y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def foo(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_related_variable(self):
     ty = self.Infer("""
@@ -56,10 +62,13 @@ class SplitTest(test_base.BaseTest):
 
         return 123
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def foo(x) -> Union[float, int]: ...
-    """)
+    """,
+    )
 
   def test_nested_conditions(self):
     ty = self.Infer("""
@@ -72,9 +81,12 @@ class SplitTest(test_base.BaseTest):
 
         return "abc"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x1, x2) -> str: ...
-    """)
+    """,
+    )
 
   def test_remove_condition_after_merge(self):
     ty = self.Infer("""
@@ -87,10 +99,13 @@ class SplitTest(test_base.BaseTest):
         # But y can be None here.
         return y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def foo(x) -> Union[None, str]: ...
-    """)
+    """,
+    )
 
   def test_unsatisfiable_condition(self):
     # Check both sides of an "if".  If unsatisfiable code is executed then
@@ -133,12 +148,15 @@ class SplitTest(test_base.BaseTest):
         else:
           return "hello"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f1(x) -> str: ...
       def f2(x) -> int: ...
       def f3(x) -> str: ...
       def f4(x) -> int: ...
-    """)
+    """,
+    )
 
   def test_sources_propagated_through_call(self):
     ty = self.Infer("""
@@ -160,7 +178,9 @@ class SplitTest(test_base.BaseTest):
           return obj.method()
         return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class Foo:
         def method(self) -> int: ...
@@ -169,7 +189,8 @@ class SplitTest(test_base.BaseTest):
         def method(self) -> str: ...
 
       def foo(x) -> Union[None, int]: ...
-    """)
+    """,
+    )
 
   def test_short_circuit(self):
     # Unlike normal if statement, the and/or short circuit logic does
@@ -189,7 +210,9 @@ class SplitTest(test_base.BaseTest):
       def set_f(x): return set() and x
       def frozenset_f(x): return frozenset() and x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, List, Tuple
       def int_t(x) -> int: ...
       def int_f(x) -> int: ...
@@ -203,7 +226,8 @@ class SplitTest(test_base.BaseTest):
       def list_f(x) -> List[nothing]: ...
       def set_f(x) -> set[nothing]: ...
       def frozenset_f(x) -> frozenset[nothing]: ...
-    """)
+    """,
+    )
 
   def test_dict(self):
     # Dicts start out as empty, which is compatible with False and not
@@ -219,11 +243,14 @@ class SplitTest(test_base.BaseTest):
         d[x] = x
         return 123 if d else "hello"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def f1() -> str: ...
       def f2(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_dict_update(self):
     ty = self.Infer("""
@@ -238,11 +265,14 @@ class SplitTest(test_base.BaseTest):
         return 123 if d else "hello"
 
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def f1() -> str: ...
       def f2() -> int: ...
-    """)
+    """,
+    )
 
   def test_dict_update_from_kwargs(self):
     ty = self.Infer("""
@@ -256,10 +286,13 @@ class SplitTest(test_base.BaseTest):
         d.update(a=1)
         return 123 if d else "hello"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f1() -> str: ...
       def f2() -> int: ...
-    """)
+    """,
+    )
 
   def test_dict_update_wrong_count(self):
     ty, _ = self.InferWithErrors("""
@@ -273,11 +306,14 @@ class SplitTest(test_base.BaseTest):
         d.update({"a": 1}, {"b": 2}, c=3)  # wrong-arg-count
         return 123 if d else "hello"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def f1() -> Union[str, int]: ...
       def f2() -> Union[str, int]: ...
-    """)
+    """,
+    )
 
   def test_dict_update_wrong_type(self):
     ty, _ = self.InferWithErrors("""
@@ -286,9 +322,12 @@ class SplitTest(test_base.BaseTest):
         d.update(1)  # wrong-arg-types
         return 123 if d else "hello"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int | str: ...
-    """)
+    """,
+    )
 
   def test_isinstance(self):
     ty = self.Infer("""
@@ -306,7 +345,9 @@ class SplitTest(test_base.BaseTest):
         cls = int if __random__ else str
         return "y" if isinstance("a", cls) else 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def sig(x) -> bool: ...
       def d1() -> str: ...
@@ -315,7 +356,8 @@ class SplitTest(test_base.BaseTest):
       def d4() -> str: ...
       def a1(x) -> Union[int, str]: ...
       def a2(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_is_subclass(self):
     ty = self.Infer("""
@@ -335,7 +377,9 @@ class SplitTest(test_base.BaseTest):
       # Ambiguous results
       def a1(x): return "y" if issubclass(x, A) else 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def sig(x) -> bool: ...
       def d1() -> str: ...
@@ -354,7 +398,8 @@ class SplitTest(test_base.BaseTest):
 
       class C:
         pass
-      """)
+      """,
+    )
 
   def test_hasattr_builtin(self):
     ty = self.Infer("""
@@ -369,14 +414,17 @@ class SplitTest(test_base.BaseTest):
       # Cases where hasattr() is ambiguous.
       def a1(x): return "y" if hasattr(x, "upper") else 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def sig(x) -> bool: ...
       def d1() -> str: ...
       def d2() -> int: ...
       def d3() -> str: ...
       def a1(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_split(self):
     ty = self.Infer("""
@@ -393,12 +441,15 @@ class SplitTest(test_base.BaseTest):
         else:
           return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Optional, TypeVar, Union
       _T0 = TypeVar("_T0")
       def f2(x: _T0) -> Union[_T0, complex]: ...
       def f1(x) -> Optional[int]: ...
-    """)
+    """,
+    )
 
   def test_dead_if(self):
     ty = self.Infer("""
@@ -408,9 +459,12 @@ class SplitTest(test_base.BaseTest):
           x.foo()
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x) -> None: ...
-    """)
+    """,
+    )
 
   def test_unary_not(self):
     ty = self.Infer("""
@@ -437,21 +491,27 @@ class SplitTest(test_base.BaseTest):
           return "a"
 
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def not_t(x) -> int: ...
       def not_f(x) -> str: ...
       def not_ambiguous(x) -> Union[int, str]: ...
-    """)
+    """,
+    )
 
   def test_isinstance_object_without_class(self):
     ty = self.Infer("""
       def foo(x):
         return 1 if isinstance(dict, type) else "x"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo(x) -> int: ...
-    """)
+    """,
+    )
 
   def test_double_assign(self):
     self.Check("""
@@ -538,12 +598,15 @@ class SplitTest(test_base.BaseTest):
       if "a" not in x:
         v2 = x["b"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       x = ...  # type: Dict[str, Union[int, complex]]
       v1 = ...  # type: int
       v2 = ...  # type: complex
-    """)
+    """,
+    )
 
   def test_contains_coerce_to_bool(self):
     ty = self.Infer("""
@@ -558,7 +621,9 @@ class SplitTest(test_base.BaseTest):
       y1 = 3.14 if "b" in B() else 16j
       y2 = True if "b" not in B() else 4.2
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         def __contains__(self, x) -> int: ...
       class B:
@@ -567,7 +632,8 @@ class SplitTest(test_base.BaseTest):
       x2 = ...  # type: complex
       y1 = ...  # type: complex
       y2 = ...  # type: bool
-    """)
+    """,
+    )
 
   def test_skip_over_midway_if(self):
     ty = self.Infer("""
@@ -582,10 +648,13 @@ class SplitTest(test_base.BaseTest):
         else:
           return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional
       def f(r) -> Optional[str]: ...
-    """)
+    """,
+    )
 
   def test_dict_eq(self):
     ty = self.Infer("""
@@ -601,14 +670,17 @@ class SplitTest(test_base.BaseTest):
       if x != y:
         v2 = z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       x = ...  # type: Dict[str, int]
       y = ...  # type: Dict[str, int]
       z = ...  # type: Union[int, complex]
       v1 = ...  # type: complex
       v2 = ...  # type: Union[int, complex]
-    """)
+    """,
+    )
 
   def test_tuple_eq(self):
     ty = self.Infer("""
@@ -624,14 +696,17 @@ class SplitTest(test_base.BaseTest):
       if x != y:
         v2 = z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, Union
       x: Tuple[int, ...]
       y: Tuple[int, int]
       z: Union[str, float]
       v1: float
       v2: str
-    """)
+    """,
+    )
 
   def test_primitive_eq(self):
     ty = self.Infer("""
@@ -647,14 +722,17 @@ class SplitTest(test_base.BaseTest):
       if x != y:
         v2 = z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       x = ...  # type: str
       y = ...  # type: str
       z = ...  # type: Union[int, float]
       v1 = ...  # type: int
       v2 = ...  # type: float
-    """)
+    """,
+    )
 
   def test_primitive_not_eq(self):
     self.Check("""
@@ -680,10 +758,13 @@ class SplitTest(test_base.BaseTest):
       else:
         x = {"b": 42j}
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       x = ...  # type: Dict[str, Union[int, complex]]
-    """)
+    """,
+    )
 
   def test_none_or_tuple(self):
     # This tests the attribute retrieval code in vm.py:_get_iter
@@ -735,15 +816,21 @@ class SplitTest(test_base.BaseTest):
 
   def test_cmp_is_class_name_collision(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class X: pass
         if foo.X is X:
           name_error
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_get_iter(self):
     self.Check("""
@@ -764,17 +851,23 @@ class SplitTest(test_base.BaseTest):
 
   def test_primitive(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Value(int):
             pass
         value1 = ...  # type: int
         value2 = ...  # type: Value
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         if foo.value1 == foo.value2:
           name_error  # name-error
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_list_element(self):
     ty = self.Infer("""
@@ -782,10 +875,13 @@ class SplitTest(test_base.BaseTest):
         x = None if __random__ else 42
         return [x] if x else [42]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       def f() -> List[int]: ...
-    """)
+    """,
+    )
 
   def test_keep_constant(self):
     self.Check("""
@@ -808,9 +904,12 @@ class SplitTest(test_base.BaseTest):
     ty = self.Infer("""
       x = object() and True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x: bool
-    """)
+    """,
+    )
 
   def test_override_len(self):
     ty = self.Infer("""
@@ -820,12 +919,15 @@ class SplitTest(test_base.BaseTest):
 
       x = A() and True
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class A:
         def __len__(self) -> int: ...
       x: Union[A, bool]
-    """)
+    """,
+    )
 
   def test_container_loop(self):
     self.Check("""

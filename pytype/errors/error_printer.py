@@ -3,7 +3,6 @@
 import collections
 import dataclasses
 import enum
-
 from typing import List
 
 from pytype import matcher
@@ -48,7 +47,7 @@ class BadCallPrinter:
   def __init__(
       self,
       pp: pretty_printer_base.PrettyPrinterBase,
-      bad_call: error_types.BadCall
+      bad_call: error_types.BadCall,
   ):
     self.bad_call = bad_call
     self._pp = pp
@@ -60,7 +59,7 @@ class BadCallPrinter:
       yield "", name
     if sig.posonly_params:
       yield ("/", "")
-    for name in sig.param_names[sig.posonly_count:]:
+    for name in sig.param_names[sig.posonly_count :]:
       yield "", name
     if sig.varargs_name is not None:
       yield "*", sig.varargs_name
@@ -92,13 +91,15 @@ class BadCallPrinter:
     passed_args = self.bad_call.passed_args
     bad_param = self.bad_call.bad_param
     keys = {param: n for n, (_, param) in enumerate(self._iter_sig())}
+
     def key_f(arg):
       arg_name = arg[0]
       # starargs are given anonymous names, which won't be found in the sig.
       # Instead, use the same name as the varags param itself, if present.
       if arg_name not in keys and pytd_utils.ANON_PARAM.match(arg_name):
-        return keys.get(sig.varargs_name, len(keys)+1)
-      return keys.get(arg_name, len(keys)+1)
+        return keys.get(sig.varargs_name, len(keys) + 1)
+      return keys.get(arg_name, len(keys) + 1)
+
     for name, arg in sorted(passed_args, key=key_f):
       if bad_param and name == bad_param.name:
         suffix = ": " + self._pp.print_type(arg, literal=literal)
@@ -150,37 +151,46 @@ class MatcherErrorPrinter:
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       left = self._pp.print_pytd(error.left_type.to_pytd_type_of_instance())
       protocol = self._pp.print_pytd(
-          error.other_type.to_pytd_type_of_instance())
+          error.other_type.to_pytd_type_of_instance()
+      )
     if isinstance(error, error_types.ProtocolMissingAttributesError):
       missing = ", ".join(sorted(error.missing))
-      return (f"Attributes of protocol {protocol} are not implemented on "
-              f"{left}: {missing}")
+      return (
+          f"Attributes of protocol {protocol} are not implemented on "
+          f"{left}: {missing}"
+      )
     else:
       assert isinstance(error, error_types.ProtocolTypeError)
       actual, expected = error.actual_type, error.expected_type
-      if (isinstance(actual, types.Function) and
-          isinstance(expected, types.Function)):
+      if isinstance(actual, types.Function) and isinstance(
+          expected, types.Function
+      ):
         # TODO(b/196434939): When matching a protocol like Sequence[int] the
         # protocol name will be Sequence[int] but the method signatures will be
         # displayed as f(self: Sequence[_T], ...).
         actual = self._pp.print_function_def(actual)
         expected = self._pp.print_function_def(expected)
-        return (f"\nMethod {error.attribute_name} of protocol {protocol} has "
-                f"the wrong signature in {left}:\n\n"
-                f">> {protocol} expects:\n{expected}\n\n"
-                f">> {left} defines:\n{actual}")
+        return (
+            f"\nMethod {error.attribute_name} of protocol {protocol} has "
+            f"the wrong signature in {left}:\n\n"
+            f">> {protocol} expects:\n{expected}\n\n"
+            f">> {left} defines:\n{actual}"
+        )
       else:
         with convert.set_output_mode(convert.OutputMode.DETAILED):
           actual = self._pp.print_pytd(error.actual_type.to_pytd_type())
           expected = self._pp.print_pytd(error.expected_type.to_pytd_type())
-        return (f"Attribute {error.attribute_name} of protocol {protocol} has "
-                f"wrong type in {left}: expected {expected}, got {actual}")
+        return (
+            f"Attribute {error.attribute_name} of protocol {protocol} has "
+            f"wrong type in {left}: expected {expected}, got {actual}"
+        )
 
   def _print_noniterable_str_error(self, error) -> str:
     """Pretty-print the matcher.NonIterableStrError instance."""
     return (
         f"Note: {error.left_type.name} does not match string iterables by "
-        "default. Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables")
+        "default. Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables"
+    )
 
   def _print_typed_dict_error(self, error) -> str:
     """Pretty-print the TypedDictError instance."""
@@ -204,13 +214,11 @@ class MatcherErrorPrinter:
     printers = [
         (error_details.protocol, self._print_protocol_error),
         (error_details.noniterable_str, self._print_noniterable_str_error),
-        (error_details.typed_dict, self._print_typed_dict_error)
+        (error_details.typed_dict, self._print_typed_dict_error),
     ]
     return ["\n" + printer(err) if err else "" for err, printer in printers]
 
-  def prepare_errorlog_details(
-      self, bad: List[matcher.BadMatch]
-  ) -> List[str]:
+  def prepare_errorlog_details(self, bad: List[matcher.BadMatch]) -> List[str]:
     """Prepare printable annotation matching errors."""
     details = collections.defaultdict(set)
     for match in bad:
@@ -236,13 +244,17 @@ class MatcherErrorPrinter:
     else:
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
-      bad_actual = self._pp.print_pytd(pytd_utils.JoinTypes(
-          match.actual_binding.data.to_pytd_type(node, view=match.view)
-          for match in bad))
+      bad_actual = self._pp.print_pytd(
+          pytd_utils.JoinTypes(
+              match.actual_binding.data.to_pytd_type(node, view=match.view)
+              for match in bad
+          )
+      )
       actual = bad[0].actual
       if len(actual.bindings) > len(bad):
-        full_actual = self._pp.print_pytd(pytd_utils.JoinTypes(
-            v.to_pytd_type(node) for v in actual.data))
+        full_actual = self._pp.print_pytd(
+            pytd_utils.JoinTypes(v.to_pytd_type(node) for v in actual.data)
+        )
       else:
         full_actual = bad_actual
     # typing.Never is a prettier alias for nothing.

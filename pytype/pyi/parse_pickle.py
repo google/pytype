@@ -21,11 +21,18 @@ def _make_argument_parser() -> argparse.ArgumentParser:
   """Creates and returns an argument parser."""
 
   o = argparse.ArgumentParser()
-  o.add_argument('pytd', nargs='?', default=None,
-                 help='Serialized AST to diagnose.')
-  o.add_argument('--pyi', nargs='?', default=None,
-                 help='An optional pyi file to pickle in lieu of an existing '
-                      'serialized AST.')
+  o.add_argument(
+      'pytd', nargs='?', default=None, help='Serialized AST to diagnose.'
+  )
+  o.add_argument(
+      '--pyi',
+      nargs='?',
+      default=None,
+      help=(
+          'An optional pyi file to pickle in lieu of an existing '
+          'serialized AST.'
+      ),
+  )
   return o
 
 
@@ -35,17 +42,20 @@ def _pickle(src_path: str) -> Optional[bytes]:
   with open(src_path) as f:
     src = f.read()
   module_name = module_utils.path_to_module_name(src_path)
-  options = config.Options.create(module_name=module_name,
-                                  input_filename=src_path,
-                                  validate_version=False)
+  options = config.Options.create(
+      module_name=module_name, input_filename=src_path, validate_version=False
+  )
   loader = load_pytd.Loader(options)
   try:
     ast: pytd.TypeDeclUnit = serialize_ast.SourceToExportableAst(
-        module_name, src, loader)
+        module_name, src, loader
+    )
   except _ParseError as e:
     header = utils.COLOR_ERROR_NAME_TEMPLATE % 'ParseError:'
-    print(f'{header} Invalid type stub for module {module_name!r}:\n{e}',
-          file=sys.stderr)
+    print(
+        f'{header} Invalid type stub for module {module_name!r}:\n{e}',
+        file=sys.stderr,
+    )
     return None
 
   return pickle_utils.Serialize(ast)

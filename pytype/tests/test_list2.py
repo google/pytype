@@ -40,7 +40,9 @@ class ListTest(test_base.BaseTest):
       vars = None # type : List[int]
       s, *t, u = vars
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Optional, Union
       a = ... # type: int
       b = ... # type: List[int]
@@ -60,7 +62,8 @@ class ListTest(test_base.BaseTest):
       t = ...  # type: List[int]
       u = ...  # type: int
       vars = ...  # type: List[int]
-    """)
+    """,
+    )
 
   def test_getitem_slot(self):
     ty, _ = self.InferWithErrors("""
@@ -71,7 +74,9 @@ class ListTest(test_base.BaseTest):
       s = a["s"]  # unsupported-operands
       t = a[-1]
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       p = ...  # type: str
@@ -79,7 +84,8 @@ class ListTest(test_base.BaseTest):
       r = ...  # type: Union[int, str]
       s = ...  # type: Any
       t = ...  # type: int
-      """)
+      """,
+    )
 
   def test_slice_returntype(self):
     # each of the superclasses of list should return their own type when sliced.
@@ -92,7 +98,9 @@ class ListTest(test_base.BaseTest):
       e = [2]
       f = e[0:1]
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, MutableSequence, Sequence
       a = ...  # type: Sequence[int]
       b = ...  # type: Sequence[int]
@@ -100,7 +108,8 @@ class ListTest(test_base.BaseTest):
       d = ...  # type: MutableSequence[int]
       e = ...  # type: List[int]
       f = ...  # type: List[int]
-      """)
+      """,
+    )
 
   @test_base.skip("Requires more precise slice objects")
   def test_getitem_slice(self):
@@ -124,7 +133,9 @@ class ListTest(test_base.BaseTest):
       o = a[1:1]
       p = a[1:2]
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: List[Union[int, str]]
@@ -141,7 +152,8 @@ class ListTest(test_base.BaseTest):
       n = ...  # type: List[nothing]
       o = ...  # type: List[nothing]
       p = ...  # type: List[str]
-      """)
+      """,
+    )
 
   def test_appends(self):
     # Regression test for a crash involving list appends and accesses for a
@@ -164,10 +176,13 @@ class ListTest(test_base.BaseTest):
       a = [0]
       a.clear()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       a = ...  # type: List[int]
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

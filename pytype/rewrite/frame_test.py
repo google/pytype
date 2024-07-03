@@ -1,5 +1,4 @@
 from typing import Mapping, Type, TypeVar, cast, get_origin
-
 from unittest import mock
 
 from pytype.pyc import opcodes
@@ -28,11 +27,17 @@ class FrameTestBase(test_utils.ContextfulTestBase):
     if name == '__main__':
       module_globals = self.ctx.abstract_loader.get_module_globals()
       initial_locals = initial_globals = {
-          name: value.to_variable() for name, value in module_globals.items()}
+          name: value.to_variable() for name, value in module_globals.items()
+      }
     else:
       initial_locals = initial_globals = {}
-    return frame_lib.Frame(self.ctx, name, code, initial_locals=initial_locals,
-                           initial_globals=initial_globals)
+    return frame_lib.Frame(
+        self.ctx,
+        name,
+        code,
+        initial_locals=initial_locals,
+        initial_globals=initial_globals,
+    )
 
   def _const_var(self, const, name=None):
     return self.ctx.consts[const].to_variable(name)
@@ -120,8 +125,12 @@ class LoadStoreTest(FrameTestBase):
     code = test_utils.parse('')
     var = self._const_var(5)
     frame = frame_lib.Frame(
-        self.ctx, '__main__', code, initial_locals={'x': var},
-        initial_globals={'x': var})
+        self.ctx,
+        '__main__',
+        code,
+        initial_locals={'x': var},
+        initial_globals={'x': var},
+    )
     frame.step()
 
     self.assertEqual(frame.load_global('x'), var.with_name('x'))
@@ -215,11 +224,14 @@ class FrameTest(FrameTestBase):
     self.assertCountEqual(frame.functions, [func])
 
   def test_copy_globals_from_module_frame(self):
-    module_frame = self._make_frame("""
+    module_frame = self._make_frame(
+        """
       x = 42
       def f():
         pass
-    """, name='__main__')
+    """,
+        name='__main__',
+    )
     module_frame.run()
     f = _get(module_frame, 'f', _FrameFunction)
     f_frame = module_frame.make_child_frame(f, {})
@@ -227,40 +239,48 @@ class FrameTest(FrameTestBase):
     self.assertIn('f', f_frame._initial_globals)
 
   def test_copy_globals_from_nonmodule_frame(self):
-    f_frame = self._make_frame("""
+    f_frame = self._make_frame(
+        """
       global x
       x = 42
       def g():
         pass
-    """, name='f')
+    """,
+        name='f',
+    )
     f_frame.run()
     g = _get(f_frame, 'g', _FrameFunction)
     g_frame = f_frame.make_child_frame(g, {})
     self.assertIn('x', g_frame._initial_globals)
 
   def test_copy_globals_from_inner_frame_to_module(self):
-    module_frame = self._make_frame("""
+    module_frame = self._make_frame(
+        """
       def f():
         global x
         x = 42
       f()
-    """, name='__main__')
+    """,
+        name='__main__',
+    )
     module_frame.run()
     self.assertIn('f', module_frame.final_locals)
     self.assertIn('x', module_frame.final_locals)
 
   def test_copy_globals_from_inner_frame_to_outer(self):
-    f_frame = self._make_frame("""
+    f_frame = self._make_frame(
+        """
       def g():
         global x
         x = 42
       g()
-    """, name='f')
+    """,
+        name='f',
+    )
     f_frame.run()
     self.assertIn('g', f_frame.final_locals)
     self.assertIn('x', f_frame.final_locals)
-    self.assertCountEqual(
-        f_frame._shadowed_nonlocals.get_global_names(), {'x'})
+    self.assertCountEqual(f_frame._shadowed_nonlocals.get_global_names(), {'x'})
 
   def test_read_enclosing(self):
     module_frame = self._make_frame("""
@@ -340,7 +360,7 @@ class FrameTest(FrameTestBase):
     cls = _get(module_frame, 'C', abstract.InterpreterClass)
     instance = cls.instantiate()
     read = cast(abstract.InterpreterFunction, cls.members['read'])
-    frame, = read.bind_to(instance).analyze()
+    (frame,) = read.bind_to(instance).analyze()
     self.assertIn('x', frame.final_locals)
     self.assertEqual(frame.final_locals['x'], self.ctx.consts[3])
 
@@ -354,9 +374,10 @@ class FrameTest(FrameTestBase):
     module_frame.run()
     cls = _get(module_frame, 'C', abstract.InterpreterClass)
     instance = cls.instantiate()
-    write_and_read = cast(abstract.InterpreterFunction,
-                          cls.members['write_and_read'])
-    frame, = write_and_read.bind_to(instance).analyze()
+    write_and_read = cast(
+        abstract.InterpreterFunction, cls.members['write_and_read']
+    )
+    (frame,) = write_and_read.bind_to(instance).analyze()
     self.assertIn('x', frame.final_locals)
     self.assertEqual(frame.final_locals['x'], self.ctx.consts[3])
 
@@ -400,7 +421,8 @@ class FrameTest(FrameTestBase):
     instance = _get(module_frame, 'C', abstract.InterpreterClass).instantiate()
     self.assertEqual(
         instance.get_attribute('x'),
-        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])),
+    )
 
   def test_method_parameter(self):
     module_frame = self._make_frame("""
@@ -430,7 +452,8 @@ class FrameTest(FrameTestBase):
     instance = cls.instantiate()
     self.assertEqual(
         instance.get_attribute('x'),
-        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])),
+    )
 
   def test_return(self):
     module_frame = self._make_frame("""
@@ -442,10 +465,11 @@ class FrameTest(FrameTestBase):
     """)
     module_frame.run()
     f = _get(module_frame, 'f', _FrameFunction)
-    f_frame, = f.analyze()
+    (f_frame,) = f.analyze()
     self.assertEqual(
         f_frame.get_return_value(),
-        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])),
+    )
 
   def test_stack(self):
     module_frame = self._make_frame('def f(): pass')
@@ -464,18 +488,18 @@ class FrameTest(FrameTestBase):
         opcodes.LOAD_CONST(1, 0, 0, 0, 0, 0, 1),  # 1
         opcodes.LOAD_CONST(2, 0, 0, 0, 0, 1, 2),  # 2
         opcodes.LOAD_CONST(3, 0, 0, 0, 0, 2, 3),  # 3
-        opcodes.DUP_TOP(4, 0),           # 4
-        opcodes.DUP_TOP_TWO(5, 0),       # 6
-        opcodes.ROT_TWO(6, 0),           # 6
-        opcodes.ROT_THREE(7, 0),         # 6
-        opcodes.ROT_FOUR(8, 0),          # 6
-        opcodes.ROT_N(9, 0, 0, 0, 0, 2, 2),       # 6
-        opcodes.POP_TOP(10, 0),          # 5
-        opcodes.POP_TOP(11, 0),          # 4
-        opcodes.POP_TOP(12, 0),          # 3
-        opcodes.POP_TOP(13, 0),          # 2
-        opcodes.POP_TOP(14, 0),          # 1
-        opcodes.RETURN_VALUE(15, 0),     # 0
+        opcodes.DUP_TOP(4, 0),  # 4
+        opcodes.DUP_TOP_TWO(5, 0),  # 6
+        opcodes.ROT_TWO(6, 0),  # 6
+        opcodes.ROT_THREE(7, 0),  # 6
+        opcodes.ROT_FOUR(8, 0),  # 6
+        opcodes.ROT_N(9, 0, 0, 0, 0, 2, 2),  # 6
+        opcodes.POP_TOP(10, 0),  # 5
+        opcodes.POP_TOP(11, 0),  # 4
+        opcodes.POP_TOP(12, 0),  # 3
+        opcodes.POP_TOP(13, 0),  # 2
+        opcodes.POP_TOP(14, 0),  # 1
+        opcodes.RETURN_VALUE(15, 0),  # 0
     ]
     code = test_utils.FakeOrderedCode([block], [1, 2, 3])
     frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
@@ -521,11 +545,14 @@ class BuildConstantsTest(FrameTestBase):
       c = 3
       constant = (a, b, c)
     """)
-    self.assertEqual(constant.constant, (
-        self._const_var(1, 'a'),
-        self._const_var(2, 'b'),
-        self._const_var(3, 'c'),
-    ))
+    self.assertEqual(
+        constant.constant,
+        (
+            self._const_var(1, 'a'),
+            self._const_var(2, 'b'),
+            self._const_var(3, 'c'),
+        ),
+    )
 
   def test_list(self):
     constant = self._build_constant("""
@@ -534,11 +561,14 @@ class BuildConstantsTest(FrameTestBase):
       c = 3
       constant = [a, b, c]
     """)
-    self.assertEqual(constant.constant, [
-        self._const_var(1, 'a'),
-        self._const_var(2, 'b'),
-        self._const_var(3, 'c'),
-    ])
+    self.assertEqual(
+        constant.constant,
+        [
+            self._const_var(1, 'a'),
+            self._const_var(2, 'b'),
+            self._const_var(3, 'c'),
+        ],
+    )
 
   def test_set(self):
     constant = self._build_constant("""
@@ -547,11 +577,14 @@ class BuildConstantsTest(FrameTestBase):
       c = 3
       constant = {a, b, c}
     """)
-    self.assertEqual(constant.constant, {
-        self._const_var(1, 'a'),
-        self._const_var(2, 'b'),
-        self._const_var(3, 'c'),
-    })
+    self.assertEqual(
+        constant.constant,
+        {
+            self._const_var(1, 'a'),
+            self._const_var(2, 'b'),
+            self._const_var(3, 'c'),
+        },
+    )
 
   def test_map(self):
     constant = self._build_constant("""
@@ -560,59 +593,77 @@ class BuildConstantsTest(FrameTestBase):
       c = 3
       constant = {a: 1, b: 2, c: 3}
     """)
-    self.assertEqual(constant.constant, {
-        self._const_var(1, 'a'): self._const_var(1),
-        self._const_var(2, 'b'): self._const_var(2),
-        self._const_var(3, 'c'): self._const_var(3),
-    })
+    self.assertEqual(
+        constant.constant,
+        {
+            self._const_var(1, 'a'): self._const_var(1),
+            self._const_var(2, 'b'): self._const_var(2),
+            self._const_var(3, 'c'): self._const_var(3),
+        },
+    )
 
   def test_const_key_map(self):
-    constant = self._build_constant("""
+    constant = self._build_constant(
+        """
       a = 1
       b = 2
       c = 3
       constant = {'a': a, 'b': b, 'c': c}
-    """, typ=abstract.Dict)
-    self.assertEqual(constant.constant, {
-        self._const_var('a'): self._const_var(1, 'a'),
-        self._const_var('b'): self._const_var(2, 'b'),
-        self._const_var('c'): self._const_var(3, 'c'),
-    })
+    """,
+        typ=abstract.Dict,
+    )
+    self.assertEqual(
+        constant.constant,
+        {
+            self._const_var('a'): self._const_var(1, 'a'),
+            self._const_var('b'): self._const_var(2, 'b'),
+            self._const_var('c'): self._const_var(3, 'c'),
+        },
+    )
 
 
 class ComprehensionAccumulatorTest(FrameTestBase):
   """Test accumulating results in a comprehension."""
 
   def test_list_append(self):
-    frame = self.run_block("""
+    frame = self.run_block(
+        """
       BUILD_LIST 0
       LOAD_CONST 0
       LOAD_CONST 1
       LIST_APPEND 2
-    """, consts=[1, 2])
+    """,
+        consts=[1, 2],
+    )
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, [self._const_var(2)])
 
   def test_set_add(self):
-    frame = self.run_block("""
+    frame = self.run_block(
+        """
       BUILD_SET 0
       LOAD_CONST 0
       LOAD_CONST 1
       SET_ADD 2
-    """, consts=[1, 2])
+    """,
+        consts=[1, 2],
+    )
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, {self._const_var(2)})
 
   def test_map_add(self):
-    frame = self.run_block("""
+    frame = self.run_block(
+        """
       BUILD_MAP 0
       LOAD_CONST 0
       LOAD_CONST 1
       LOAD_CONST 2
       MAP_ADD 2
-    """, consts=[1, 2, 3])
+    """,
+        consts=[1, 2, 3],
+    )
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, {self._const_var(2): self._const_var(3)})
@@ -629,15 +680,19 @@ class FunctionTest(FrameTestBase):
   def _run_until_call(self, code):
     def cond(frame):
       return frame.current_opcode.name.startswith('CALL')
+
     frame = self.run_frame_until(code, condition=cond)
     return frame
 
   @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
   def test_make_function(self):
-    f = self._make_function("""
+    f = self._make_function(
+        """
       def f(x, /, y, z, *, a, b, c):
         pass
-    """, 'f')
+    """,
+        'f',
+    )
     self.assertIsInstance(f, abstract.InterpreterFunction)
     self.assertEqual(f.name, 'f')
     sig = f.signatures[0]
@@ -645,10 +700,13 @@ class FunctionTest(FrameTestBase):
 
   @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
   def test_function_annotations(self):
-    f = self._make_function("""
+    f = self._make_function(
+        """
       def f(x: int, /, y: str, *, a: int, b: int = 1):
         pass
-    """, 'f')
+    """,
+        'f',
+    )
     self.assertIsInstance(f, abstract.InterpreterFunction)
     self.assertEqual(f.name, 'f')
     sig = f.signatures[0]

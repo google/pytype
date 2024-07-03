@@ -18,11 +18,14 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_namedtuple_different_name(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import collections
       X1 = collections.namedtuple("X", ["a", "b"])
       X2 = collections.namedtuple("X", ["c", "d"])
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f() -> foo.X2:
@@ -98,13 +101,16 @@ class NamedtupleTestsPy3(test_base.BaseTest):
         a: int
         b: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       from typing import NamedTuple
       class X(NamedTuple):
         a: int
         b: str
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

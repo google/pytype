@@ -9,33 +9,48 @@ class AnyStrTest(test_base.BaseTest):
 
   def test_type_parameters(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import AnyStr
         def f(x: AnyStr) -> AnyStr: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         if a.f(""):
           x = 3
         if a.f("hello"):
           y = 3
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x = ...  # type: int
         y = ...  # type: int
-      """)
+      """,
+      )
 
   def test_format(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import AnyStr
         def f(x: AnyStr) -> AnyStr: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.f("" % __any_object__)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 if __name__ == "__main__":

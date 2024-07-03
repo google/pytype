@@ -13,15 +13,17 @@ if sys.platform == 'win32':
     """A cross-platform replacement for tempfile.NamedTemporaryFile."""
 
     # pylint: disable=redefined-builtin
-    def __init__(self,
-                 mode='w+b',
-                 buffering=-1,
-                 encoding=None,
-                 newline=None,
-                 suffix=None,
-                 prefix=None,
-                 dir=None,
-                 delete=True):
+    def __init__(
+        self,
+        mode='w+b',
+        buffering=-1,
+        encoding=None,
+        newline=None,
+        suffix=None,
+        prefix=None,
+        dir=None,
+        delete=True,
+    ):
       # pylint: disable=R1732
       self._tempfile = tempfile.NamedTemporaryFile(
           mode=mode,
@@ -31,7 +33,8 @@ if sys.platform == 'win32':
           suffix=suffix,
           prefix=prefix,
           dir=dir,
-          delete=False)
+          delete=False,
+      )
       self._delete = delete
 
     def __enter__(self):
@@ -60,6 +63,7 @@ if sys.platform == 'win32':
 
   def mkdtemp(*args, **kwargs):
     return path_utils.standardize_return_path(tempfile.mkdtemp(*args, **kwargs))
+
 else:
   NamedTemporaryFile = tempfile.NamedTemporaryFile
   mkdtemp = tempfile.mkdtemp

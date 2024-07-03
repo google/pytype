@@ -36,7 +36,8 @@ class PytdConverter:
       return self._function_to_pytd_def(val)
     else:
       raise NotImplementedError(
-          f'to_pytd_def() not implemented for {val.__class__.__name__}: {val}')
+          f'to_pytd_def() not implemented for {val.__class__.__name__}: {val}'
+      )
 
   def _class_to_pytd_def(self, val: abstract.SimpleClass) -> pytd.Class:
     """Converts an abstract class to a pytd.Class."""
@@ -63,12 +64,14 @@ class PytdConverter:
             parameters=(member_type,),
         )
         constants.append(
-            pytd.Constant(name=member_name, type=class_member_type))
+            pytd.Constant(name=member_name, type=class_member_type)
+        )
     for member_name, member_val in instance.members.items():
       member_type = self.to_pytd_type(member_val)
       constants.append(pytd.Constant(name=member_name, type=member_type))
-    keywords = tuple((k, self.to_pytd_type_of_instance(v))
-                     for k, v in val.keywords.items())
+    keywords = tuple(
+        (k, self.to_pytd_type_of_instance(v)) for k, v in val.keywords.items()
+    )
     bases = tuple(self.to_pytd_type_of_instance(base) for base in val.bases)
     return pytd.Class(
         name=val.name,
@@ -98,15 +101,20 @@ class PytdConverter:
       else:
         param_kind = pytd.ParameterKind.REGULAR
       params.append((param_name, param_kind))
-    params.extend((param_name, pytd.ParameterKind.KWONLY)
-                  for param_name in sig.kwonly_params)
-    pytd_params = tuple(pytd.Parameter(
-        name=param_name,
-        type=get_pytd(param_name),
-        kind=param_kind,
-        optional=param_name in sig.defaults,
-        mutated_type=None,
-    ) for param_name, param_kind in params)
+    params.extend(
+        (param_name, pytd.ParameterKind.KWONLY)
+        for param_name in sig.kwonly_params
+    )
+    pytd_params = tuple(
+        pytd.Parameter(
+            name=param_name,
+            type=get_pytd(param_name),
+            kind=param_kind,
+            optional=param_name in sig.defaults,
+            mutated_type=None,
+        )
+        for param_name, param_kind in params
+    )
     if sig.varargs_name:
       starargs = pytd.Parameter(
           name=sig.varargs_name,
@@ -191,27 +199,30 @@ class PytdConverter:
       else:
         sig = val.signatures[0]
         fixed_length_posargs_only = (
-            not sig.defaults and
-            not sig.varargs_name and
-            not sig.kwonly_params and
-            not sig.kwargs_name)
+            not sig.defaults
+            and not sig.varargs_name
+            and not sig.kwonly_params
+            and not sig.kwargs_name
+        )
       if fixed_length_posargs_only:
-        pytd_sig, = self.to_pytd_def(val).signatures
+        (pytd_sig,) = self.to_pytd_def(val).signatures
         params = tuple(param.type for param in pytd_sig.params)
         return pytd.CallableType(
             base_type=pytd.NamedType('typing.Callable'),
             parameters=params + (pytd_sig.return_type,),
         )
       else:
-        ret = abstract.join_values(self._ctx, [frame.get_return_value()
-                                               for frame in val.analyze()])
+        ret = abstract.join_values(
+            self._ctx, [frame.get_return_value() for frame in val.analyze()]
+        )
         return pytd.GenericType(
             base_type=pytd.NamedType('typing.Callable'),
             parameters=(pytd.AnythingType(), self.to_pytd_type(ret)),
         )
     else:
       raise NotImplementedError(
-          f'to_pytd_type() not implemented for {val.__class__.__name__}: {val}')
+          f'to_pytd_type() not implemented for {val.__class__.__name__}: {val}'
+      )
 
   def to_pytd_type_of_instance(self, val: abstract.BaseValue) -> pytd.Type:
     """Returns the type of an instance of the abstract value, as a pytd node.
@@ -229,11 +240,13 @@ class PytdConverter:
     elif val is self._ctx.consts[None]:
       return pytd.NamedType('builtins.NoneType')
     elif isinstance(val, abstract.Union):
-      return pytd_utils.JoinTypes(self.to_pytd_type_of_instance(v)
-                                  for v in val.options)
+      return pytd_utils.JoinTypes(
+          self.to_pytd_type_of_instance(v) for v in val.options
+      )
     elif isinstance(val, abstract.SimpleClass):
       return pytd.NamedType(val.name)
     else:
       raise NotImplementedError(
           'to_pytd_type_of_instance() not implemented for '
-          f'{val.__class__.__name__}: {val}')
+          f'{val.__class__.__name__}: {val}'
+      )

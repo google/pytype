@@ -36,9 +36,16 @@ def parse_args():
   allowed_modes = (TEST_MODE, RELEASE_MODE)
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      "-m", "--mode", type=str, default=f"{TEST_MODE}",
-      help="Specify if the release should be uploaded to pypi or testpyi. Can "
-           "take a value of %s or %s" % allowed_modes)
+      "-m",
+      "--mode",
+      type=str,
+      default=f"{TEST_MODE}",
+      help=(
+          "Specify if the release should be uploaded to pypi or testpyi. Can "
+          "take a value of %s or %s"
+      )
+      % allowed_modes,
+  )
   args = parser.parse_args()
   if args.mode not in allowed_modes:
     sys.exit(f"Invalid --mode option. Should be one of {allowed_modes}")
@@ -50,8 +57,10 @@ def verify_no_pytype_installation_exists():
     import pytype as _  # pylint: disable=g-import-not-at-top
   except ImportError:
     return  # This is what we want - that Pytype does not already exist.
-  sys.exit("ERROR: Pytype installation detected; Run this script from inside "
-           "a virtualenv without a pytype installation.")
+  sys.exit(
+      "ERROR: Pytype installation detected; Run this script from inside "
+      "a virtualenv without a pytype installation."
+  )
 
 
 def verify_pypirc_exists():
@@ -64,8 +73,10 @@ def check_if_version_is_ok():
   """Prompt the user to confirm that the version in __version__.py is OK."""
   sys.path.append(build_utils.PYTYPE_SRC_ROOT)
   version_mod = __import__("pytype.__version__", fromlist=["pytype"])
-  response = input("Making a release with version %s; Continue? " %
-                   getattr(version_mod, "__version__"))
+  response = input(
+      "Making a release with version %s; Continue? "
+      % getattr(version_mod, "__version__")
+  )
   if response not in ["y", "Y", "yes", "YES"]:
     sys.exit("Aborting release.")
 

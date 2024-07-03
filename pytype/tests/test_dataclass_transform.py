@@ -23,12 +23,15 @@ class TestDecorator(test_base.BaseTest):
 
   def test_pyi_args(self):
     # Args directly in a pyi file are silently ignored.
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import dataclass_transform
 
       @dataclass_transform(eq_default=True)
       def dc(cls): ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
 
@@ -69,24 +72,30 @@ class TestFunction(test_base.BaseTest):
       def dc(f):
         return f
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar, dataclass_transform
 
       _T0 = TypeVar('_T0')
 
       @dataclass_transform
       def dc(f: _T0) -> _T0: ...
-    """)
+    """,
+    )
 
   def test_pyi_function(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypeVar, dataclass_transform
 
       _T0 = TypeVar('_T0')
 
       @dataclass_transform
       def dc(cls: _T0) -> _T0: ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -99,14 +108,17 @@ class TestFunction(test_base.BaseTest):
       """)
 
   def test_reingest(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import TypeVar
       from typing_extensions import dataclass_transform
 
       @dataclass_transform()
       def dc(f):
         return f
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -204,7 +216,9 @@ class TestClass(test_base.BaseTest):
       class B(A):
         x: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import dataclass_transform
 
@@ -215,7 +229,8 @@ class TestClass(test_base.BaseTest):
       class B(A):
         x: int
         def __init__(self, x: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_write_pyi(self):
     ty, _ = self.InferWithErrors("""
@@ -233,7 +248,9 @@ class TestClass(test_base.BaseTest):
       class B(A):
           z: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import dataclasses
       from typing import dataclass_transform
 
@@ -252,16 +269,20 @@ class TestClass(test_base.BaseTest):
 
       @dataclass_transform
       class Mixin: ...
-    """)
+    """,
+    )
 
   def test_pyi_class(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import dataclass_transform
 
       @dataclass_transform
       class Mixin:
         ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -277,13 +298,16 @@ class TestClass(test_base.BaseTest):
       """)
 
   def test_reingest(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import dataclass_transform
 
       @dataclass_transform()
       class Mixin:
         pass
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -299,7 +323,9 @@ class TestClass(test_base.BaseTest):
       """)
 
   def test_init_subclass_impl(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import dataclasses
       from typing_extensions import dataclass_transform
 
@@ -307,7 +333,8 @@ class TestClass(test_base.BaseTest):
       class X:
         def __init_subclass__(cls):
           return dataclasses.dataclass(cls)
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Y(foo.X):
@@ -339,7 +366,9 @@ class TestMetaclass(test_base.BaseTest):
     """)
 
   def test_pyi_class(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import dataclass_transform
 
       @dataclass_transform
@@ -347,7 +376,8 @@ class TestMetaclass(test_base.BaseTest):
         ...
 
       class Base(metaclass=Meta): ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -361,7 +391,9 @@ class TestMetaclass(test_base.BaseTest):
       """)
 
   def test_reingest(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import dataclass_transform
 
       @dataclass_transform()
@@ -369,7 +401,8 @@ class TestMetaclass(test_base.BaseTest):
         ...
 
       class Base(metaclass=Meta): ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 

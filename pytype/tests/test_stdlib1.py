@@ -13,18 +13,24 @@ class StdlibTests(test_base.BaseTest):
       def f():
         return ast.parse("True")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import ast
       def f() -> _ast.Module: ...
-    """)
+    """,
+    )
 
   def test_urllib(self):
     ty = self.Infer("""
       import urllib
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import urllib
-    """)
+    """,
+    )
 
   def test_traceback(self):
     ty = self.Infer("""
@@ -32,40 +38,52 @@ class StdlibTests(test_base.BaseTest):
       def f(exc):
         return traceback.format_exception(*exc)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import traceback
       from typing import List
       def f(exc) -> List[str]: ...
-    """)
+    """,
+    )
 
   def test_os_walk(self):
     ty = self.Infer("""
       import os
       x = list(os.walk("/tmp"))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import os
       from typing import List, Tuple
       x = ...  # type: List[Tuple[str, List[str], List[str]]]
-    """)
+    """,
+    )
 
   def test_struct(self):
     ty = self.Infer("""
       import struct
       x = struct.Struct("b")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import struct
       x = ...  # type: struct.Struct
-    """)
+    """,
+    )
 
   def test_warning(self):
     ty = self.Infer("""
       import warnings
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import warnings
-    """)
+    """,
+    )
 
   @test_utils.skipOnWin32("os.pathconf is not supported on Windows")
   def test_path_conf(self):
@@ -113,7 +131,9 @@ class StdlibTests(test_base.BaseTest):
       e = collections.defaultdict(int)
       f = collections.defaultdict(default_factory = int)
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       a = ...  # type: collections.defaultdict[str, int]
       b = ...  # type: collections.defaultdict[str, int]
@@ -121,7 +141,8 @@ class StdlibTests(test_base.BaseTest):
       d = ...  # type: collections.defaultdict[nothing, int]
       e = ...  # type: collections.defaultdict[nothing, int]
       f = ...  # type: collections.defaultdict[nothing, int]
-      """)
+      """,
+    )
 
   def test_defaultdict_no_factory(self):
     ty = self.Infer("""
@@ -135,7 +156,9 @@ class StdlibTests(test_base.BaseTest):
       g = collections.defaultdict(one = 1, two = 2)
       h = collections.defaultdict(default_factory = None)
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       from typing import Any
       a = ...  # type: collections.defaultdict[nothing, nothing]
@@ -146,7 +169,8 @@ class StdlibTests(test_base.BaseTest):
       f = ...  # type: collections.defaultdict[str, int]
       g = ...  # type: collections.defaultdict[str, int]
       h = ...  # type: collections.defaultdict[nothing, nothing]
-      """)
+      """,
+    )
 
   def test_defaultdict_diff_defaults(self):
     ty = self.Infer("""
@@ -156,14 +180,17 @@ class StdlibTests(test_base.BaseTest):
       c = collections.defaultdict(None, one = 1)
       d = collections.defaultdict(int, {1: 'one'})
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       from typing import Union
       a = ...  # type: collections.defaultdict[str, Union[int, str]]
       b = ...  # type: collections.defaultdict[str, Union[int, str]]
       c = ...  # type: collections.defaultdict[str, int]
       d = ...  # type: collections.defaultdict[int, Union[int, str]]
-      """)
+      """,
+    )
 
   def test_counter(self):
     self.Check("""
@@ -205,14 +232,17 @@ class StdlibTests(test_base.BaseTest):
       import sys
       major, minor, micro, releaselevel, serial = sys.version_info
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import sys
       major: int
       minor: int
       micro: int
       releaselevel: str
       serial: int
-    """)
+    """,
+    )
 
   def test_subprocess(self):
     # Sanity check to make sure basic type-checking works in both py2 and py3.
@@ -234,11 +264,15 @@ class StdlibTests(test_base.BaseTest):
 
   def test_subprocess_src_and_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import subprocess
         def f() -> subprocess.Popen: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         import subprocess
 
@@ -249,7 +283,9 @@ class StdlibTests(test_base.BaseTest):
         def g():
           p = subprocess.Popen(__any_object__)
           return p.communicate()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_namedtuple_from_counter(self):
     self.Check("""

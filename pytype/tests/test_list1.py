@@ -14,11 +14,14 @@ class ListTest(test_base.BaseTest):
       b = b + [42]
       b = b + ["foo"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       a = ...  # type: List[int]
       b = ...  # type: List[Union[int, str]]
-    """)
+    """,
+    )
 
   def test_inplace_add(self):
     ty = self.Infer("""
@@ -28,11 +31,14 @@ class ListTest(test_base.BaseTest):
       b += [42]
       b += ["foo"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       a = ...  # type: List[int]
       b = ...  # type: List[Union[int, str]]
-    """)
+    """,
+    )
 
   def test_inplace_mutates(self):
     ty = self.Infer("""
@@ -40,11 +46,14 @@ class ListTest(test_base.BaseTest):
       b = a
       a += [42]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       a = ...  # type: List[int]
       b = ...  # type: List[int]
-    """)
+    """,
+    )
 
   def test_extend_with_empty(self):
     ty = self.Infer("""
@@ -53,11 +62,14 @@ class ListTest(test_base.BaseTest):
       for x in []:
         v.extend(x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List
       v = ...  # type: List[str]
       x = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_getitem_slot(self):
     ty, errors = self.InferWithErrors("""
@@ -69,7 +81,9 @@ class ListTest(test_base.BaseTest):
       f = a[-1]
       g = a[slice(1,2)]  # should be List[str]
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List, Union
       a = ...  # type: List[Union[int, str]]
       b = ...  # type: str
@@ -78,7 +92,8 @@ class ListTest(test_base.BaseTest):
       e = ...  # type: Any
       f = ...  # type: int
       g = ...  # type: List[Union[int, str]]
-      """)
+      """,
+    )
     self.assertErrorRegexes(errors, {"e": r"__getitem__ on List"})
 
   def test_index_out_of_range(self):
@@ -88,12 +103,15 @@ class ListTest(test_base.BaseTest):
       if b < len(a):
         c = a[b]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       a = ...  # type: List[int]
       b = ...  # type: int
       c = ...  # type: int
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

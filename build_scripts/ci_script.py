@@ -39,20 +39,32 @@ def _run_steps(steps):
 
 
 def main():
-  s1 = STEP(name="Lint",
-            command=["pylint", "build_scripts/", "pytype/",
-                     "pytype_extensions/", "setup.py"])
-  s2 = STEP(name="Build",
-            command=["python", build_utils.build_script("build.py")])
-  s3 = STEP(name="Run Tests",
-            command=[
-                "python", build_utils.build_script("run_tests.py"), "-f", "-v"])
-  s4 = STEP(name="Run Extensions Tests",
-            command=["python", "-m",
-                     "pytype_extensions.test_pytype_extensions"])
-  s5 = STEP(name="Type Check",
-            command=(['python'] if sys.platform == 'win32' else []) +
-               [os.path.join("out", "bin", "pytype"), "-j", "auto"])
+  s1 = STEP(
+      name="Lint",
+      command=[
+          "pylint",
+          "build_scripts/",
+          "pytype/",
+          "pytype_extensions/",
+          "setup.py",
+      ],
+  )
+  s2 = STEP(
+      name="Build", command=["python", build_utils.build_script("build.py")]
+  )
+  s3 = STEP(
+      name="Run Tests",
+      command=["python", build_utils.build_script("run_tests.py"), "-f", "-v"],
+  )
+  s4 = STEP(
+      name="Run Extensions Tests",
+      command=["python", "-m", "pytype_extensions.test_pytype_extensions"],
+  )
+  s5 = STEP(
+      name="Type Check",
+      command=(["python"] if sys.platform == "win32" else [])
+      + [os.path.join("out", "bin", "pytype"), "-j", "auto"],
+  )
   steps = [s1, s2, s3, s4, s5]
   if os.environ.get("LINT") == "false":
     steps.remove(s1)

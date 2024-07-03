@@ -17,9 +17,12 @@ class MatchTest(test_base.BaseTest):
           case 2:
             return 10
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int | str | None: ...
-    """)
+    """,
+    )
 
   def test_default(self):
     ty = self.Infer("""
@@ -32,9 +35,12 @@ class MatchTest(test_base.BaseTest):
           case _:
             return 20
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_sequence1(self):
     ty = self.Infer("""
@@ -43,10 +49,13 @@ class MatchTest(test_base.BaseTest):
           case [a]:
             return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f(x) -> Any: ...
-    """)
+    """,
+    )
 
   def test_sequence2(self):
     ty = self.Infer("""
@@ -55,9 +64,12 @@ class MatchTest(test_base.BaseTest):
           case [a]:
             return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_sequence3(self):
     self.Check("""
@@ -109,9 +121,12 @@ class MatchTest(test_base.BaseTest):
           case [a]:
             return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: list[int]) -> int | None: ...
-    """)
+    """,
+    )
 
   def test_list2(self):
     ty = self.Infer("""
@@ -122,9 +137,12 @@ class MatchTest(test_base.BaseTest):
           case [a, *rest]:
             return rest
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: list[int]) -> int | list[int] | None: ...
-    """)
+    """,
+    )
 
   @test_base.skip("Exhaustiveness checks not implemented")
   def test_list3(self):
@@ -138,9 +156,12 @@ class MatchTest(test_base.BaseTest):
           case [a, *rest]:
             return rest
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: list[int]) -> int | list[int]: ...
-    """)
+    """,
+    )
 
   def test_list4(self):
     ty = self.Infer("""
@@ -151,9 +172,12 @@ class MatchTest(test_base.BaseTest):
           case _:
             return '1'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: list[int]) -> int: ...
-    """)
+    """,
+    )
 
   def test_tuple(self):
     ty = self.Infer("""
@@ -162,9 +186,12 @@ class MatchTest(test_base.BaseTest):
           case [a, b]:
             return b
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: tuple[int, str]) -> str: ...
-    """)
+    """,
+    )
 
   def test_tuple2(self):
     ty = self.Infer("""
@@ -173,9 +200,12 @@ class MatchTest(test_base.BaseTest):
           case [a, b, *rest]:
             return b
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: tuple[int, str]) -> str: ...
-    """)
+    """,
+    )
 
   def test_map1(self):
     ty = self.Infer("""
@@ -186,9 +216,12 @@ class MatchTest(test_base.BaseTest):
           case {'y': b}:
             return '1'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int | str | None : ...
-    """)
+    """,
+    )
 
   def test_map2(self):
     ty = self.Infer("""
@@ -199,10 +232,13 @@ class MatchTest(test_base.BaseTest):
           case {'y': b}:
             return b
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f(x) -> Any: ...
-    """)
+    """,
+    )
 
   def test_map3(self):
     ty = self.Infer("""
@@ -214,9 +250,12 @@ class MatchTest(test_base.BaseTest):
           case {'y': b}:
             return b
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_map_starstar(self):
     ty = self.Infer("""
@@ -226,9 +265,12 @@ class MatchTest(test_base.BaseTest):
           case {'x': a, **rest}:
             return rest
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> dict[str, str]: ...
-    """)
+    """,
+    )
 
   def test_map_annotation(self):
     ty = self.Infer("""
@@ -239,9 +281,12 @@ class MatchTest(test_base.BaseTest):
           case {'y': b}:
             return b
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: dict[str, int]) -> int | None: ...
-    """)
+    """,
+    )
 
   def test_overloaded_function(self):
     self.Check("""
@@ -336,13 +381,16 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x: int
         y: str
 
       def f(x) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_annotated(self):
     ty = self.Infer("""
@@ -356,13 +404,16 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x: int
         y: str
 
       def f(x: A) -> str: ...
-    """)
+    """,
+    )
 
   def test_instance1(self):
     ty = self.Infer("""
@@ -379,14 +430,17 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x: int
         y: str
         def __init__(self, x: int, y: str) -> None: ...
 
       def f() -> str: ...
-    """)
+    """,
+    )
 
   def test_instance2(self):
     ty = self.Infer("""
@@ -403,7 +457,9 @@ class MatchClassTest(test_base.BaseTest):
       b = f(A('20'))
       c = f('foo')
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         x: Any
@@ -413,7 +469,8 @@ class MatchClassTest(test_base.BaseTest):
       a: int
       b: str
       c: bool
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
   def test_none_as_type(self):
@@ -430,10 +487,13 @@ class MatchClassTest(test_base.BaseTest):
 
   def test_type_as_value(self):
     # Regression test for a crash
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       class A:
         pass
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
 
@@ -653,14 +713,16 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       class A:
         __match_args__: tuple[str, str]
         x: int
         y: str
 
       def f(x: A) -> str: ...
-    """)
+    """,
+    )
 
   def test_posargs_no_match_args(self):
     ty, err = self.InferWithErrors("""
@@ -675,13 +737,15 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       class A:
         x: int
         y: str
 
       def f(x: A) -> int: ...
-    """)
+    """,
+    )
     self.assertErrorSequences(err, {"e": ["A()", "accepts 0", "2 given"]})
 
   def test_posargs_too_many_params(self):
@@ -713,14 +777,16 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       class A:
         __match_args__: tuple[str, str]
         x: int
         y: str
 
       def f(x: A) -> int: ...
-    """)
+    """,
+    )
 
   def test_posargs_and_kwargs(self):
     ty = self.Infer("""
@@ -737,7 +803,8 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       class A:
         __match_args__: tuple[str, str]
         x: int
@@ -745,7 +812,8 @@ class MatchClassTest(test_base.BaseTest):
         z: bool
 
       def f(x: A) -> bool: ...
-    """)
+    """,
+    )
 
   def test_posargs_multiple_matches(self):
     self.Check("""
@@ -780,9 +848,12 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: str) -> str: ...
-    """)
+    """,
+    )
 
   def test_builtin_with_union(self):
     ty = self.Infer("""
@@ -797,9 +868,12 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: int | str) -> str: ...
-    """)
+    """,
+    )
 
   def test_builtin_kwargs(self):
     ty = self.Infer("""
@@ -810,9 +884,12 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: str) -> int: ...
-    """)
+    """,
+    )
 
   def test_builtin_too_many_params(self):
     err = self.CheckWithErrors("""
@@ -887,9 +964,12 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> int | None: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 11), "Behaviour changed in 3.11")
   def test_error_311(self):
@@ -901,9 +981,12 @@ class MatchClassTest(test_base.BaseTest):
           case _:
             return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> None: ...
-    """)
+    """,
+    )
 
   def test_nested_function(self):
     ty = self.Infer("""
@@ -924,7 +1007,9 @@ class MatchClassTest(test_base.BaseTest):
               return arg.z
         return g()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x: int
       class B:
@@ -932,7 +1017,8 @@ class MatchClassTest(test_base.BaseTest):
       class C:
         z: bytes
       def f(arg: A | B | C) -> int | str | bytes: ...
-    """)
+    """,
+    )
 
   def test_instance_attribute(self):
     self.Check("""
@@ -967,11 +1053,14 @@ class MatchClassTest(test_base.BaseTest):
     """)
 
   def test_pytd(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Literal
       class C:
         __match_args__: tuple[Literal["a"], Literal["b"]]
-    """)]):
+    """,
+    )]):
       self.Check("""
       import foo
       def f(x):
@@ -1005,9 +1094,12 @@ class MatchFeaturesTest(test_base.BaseTest):
           case [a, 'x'] | [2, a]:
             return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: tuple[int, str]) -> int | str | None: ...
-    """)
+    """,
+    )
 
   def test_as_pattern(self):
     ty = self.Infer("""
@@ -1016,9 +1108,12 @@ class MatchFeaturesTest(test_base.BaseTest):
           case [('x' | 1) as a]:
             return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: list[int | str]) -> int | str | None: ...
-    """)
+    """,
+    )
 
   def test_guard_literal(self):
     ty = self.Infer("""
@@ -1028,9 +1123,12 @@ class MatchFeaturesTest(test_base.BaseTest):
           case a if a > 0:
             return a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_guard_type(self):
     ty = self.Infer("""
@@ -1041,9 +1139,12 @@ class MatchFeaturesTest(test_base.BaseTest):
           case _:
             return 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: int | str) -> int: ...
-    """)
+    """,
+    )
 
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
@@ -1066,7 +1167,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
               Color.BLUE):
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1078,7 +1181,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_default(self):
     ty = self.Infer("""
@@ -1095,7 +1199,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           case _:
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1107,7 +1213,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_default_with_capture(self):
     ty = self.Infer("""
@@ -1124,7 +1231,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           case _ as foo:
             return foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1136,7 +1245,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color) -> int | Color: ...
-    """)
+    """,
+    )
 
   def test_nonexhaustive(self):
     ty, err = self.InferWithErrors("""
@@ -1153,7 +1263,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           case Color.GREEN:
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type, Union
 
@@ -1165,7 +1277,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color) -> int | str | None: ...
-    """)
+    """,
+    )
     self.assertErrorSequences(err, {"e": ["missing", "cases", "Color.BLUE"]})
 
   def test_unused_after_exhaustive(self):
@@ -1186,7 +1299,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           case _:
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1198,7 +1313,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color) -> int: ...
-    """)
+    """,
+    )
 
   def test_nested(self):
     ty = self.Infer("""
@@ -1222,7 +1338,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
               case _:
                 return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1234,7 +1352,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color, y: Color) -> int | str | None: ...
-    """)
+    """,
+    )
 
   def test_nested_mixed(self):
     self.CheckWithErrors("""
@@ -1274,7 +1393,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           case Color.GREEN | Color.BLUE:
             return 'b'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1286,7 +1407,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color, y: Color) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_enum_with_methods(self):
     ty = self.Infer("""
@@ -1307,7 +1429,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
               Color.BLUE):
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type, TypeVar
 
@@ -1322,7 +1446,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           def red(self: _TColor) -> _TColor: ...
 
       def f(x: Color) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_redundant(self):
     ty, _ = self.InferWithErrors("""
@@ -1344,7 +1469,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
             return 20
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1356,7 +1482,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color, y: Color) -> int: ...
-    """)
+    """,
+    )
 
   def test_incomplete_and_redundant(self):
     ty, _ = self.InferWithErrors("""
@@ -1376,7 +1503,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
             return '10'
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1388,7 +1516,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color, y: Color) -> int | None: ...
-    """)
+    """,
+    )
 
   def test_partially_redundant(self):
     err = self.CheckWithErrors("""
@@ -1410,7 +1539,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
     self.assertErrorSequences(err, {"e": ["already been covered", "Color.RED"]})
 
   def test_complete_match_no_caching(self):
-    self.Check("""
+    self.Check(
+        """
       import enum
       @enum.unique
       class Coin(str, enum.Enum):
@@ -1425,7 +1555,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
               pass
         def bar(self) -> None:
           pass
-    """, skip_repeat_calls=False)
+    """,
+        skip_repeat_calls=False,
+    )
 
   def test_multiple_enums(self):
     """Skip tracking if matching several enums at once."""
@@ -1467,13 +1599,16 @@ class EnumMatchCoverageTest(test_base.BaseTest):
     """)
 
   def test_pytd_enum_basic(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import enum
 
       class A(enum.Enum):
         BASIC = 1
         ADVANCED = 2
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
 
@@ -1488,13 +1623,16 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       """)
 
   def test_pytd_enum_redundant(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import enum
 
       class A(enum.Enum):
         BASIC = 1
         ADVANCED = 2
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -1509,13 +1647,16 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       """)
 
   def test_pytd_enum_incomplete(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import enum
 
       class A(enum.Enum):
         BASIC = 1
         ADVANCED = 2
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
 
@@ -1543,7 +1684,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
 
       a = f(Color.RED)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Type
 
@@ -1557,7 +1700,8 @@ class EnumMatchCoverageTest(test_base.BaseTest):
           RED: Literal[0]
 
       def f(x: Color) -> int | str: ...
-    """)
+    """,
+    )
 
   def call_method_from_init(self):
     """Regression test for a crash."""
@@ -1678,11 +1822,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
           case "b" | "c":
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"]) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_default(self):
     ty = self.Infer("""
@@ -1695,11 +1842,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
           case _:
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"]) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_default_with_capture(self):
     ty = self.Infer("""
@@ -1712,11 +1862,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
           case _ as foo:
             return foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"]) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_nonexhaustive(self):
     ty, err = self.InferWithErrors("""
@@ -1729,11 +1882,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
           case "b":
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"]) -> int | str | None: ...
-    """)
+    """,
+    )
     self.assertErrorSequences(err, {"e": ["missing", "cases", "c"]})
 
   def test_unused_after_exhaustive(self):
@@ -1749,11 +1905,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
           case _:
             return 'a'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"]) -> int: ...
-    """)
+    """,
+    )
 
   def test_nested(self):
     ty = self.Infer("""
@@ -1772,11 +1931,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
               case _:
                 return None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int | str | None: ...
-    """)
+    """,
+    )
 
   def test_multiple(self):
     ty, _ = self.InferWithErrors("""
@@ -1794,11 +1956,14 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
           case "b" | "c":
             return 'b'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_redundant(self):
     ty, _ = self.InferWithErrors("""
@@ -1816,11 +1981,13 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
             return 20
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int: ...
-    """)
+    """,
+    )
 
   def test_incomplete_and_redundant(self):
     ty, _ = self.InferWithErrors("""
@@ -1836,11 +2003,13 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
             return '10'
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       from typing import Literal
 
       def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int | None: ...
-    """)
+    """,
+    )
 
   def test_partially_redundant(self):
     err = self.CheckWithErrors("""
@@ -1870,24 +2039,30 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
 
       a = f("a")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
 
       a: int | str
 
       def f(x: Literal["a", "b", "c"]) -> int | str: ...
-    """)
+    """,
+    )
 
   def test_literal_vs_indefinite_value(self):
     # Regression test for a false positive in a corner case
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import enum
       class Color(enum.Enum):
         RED = 'red'
         GREEN = 'green'
         BLUE = 'blue'
         OCTARINE: str
-    """)]):
+    """,
+    )]):
       self.Check("""
         from typing import Literal
         import foo

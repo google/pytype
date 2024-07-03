@@ -1,4 +1,5 @@
 """This allows running pytype as `python -m pytype`."""
+
 # pylint: disable=invalid-name
 
 import sys

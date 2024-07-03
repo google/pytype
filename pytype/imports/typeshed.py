@@ -111,7 +111,8 @@ class InternalTypeshedFs(TypeshedFs):
   def _list_files(self, relpath):
     """Lists files recursively in a basedir relative to typeshed root."""
     return pytype_source_utils.list_pytype_files(
-        path_utils.join("typeshed", relpath))
+        path_utils.join("typeshed", relpath)
+    )
 
   def list_files(self, relpath):
     return list(self._list_files(relpath))
@@ -147,8 +148,10 @@ class ExternalTypeshedFs(TypeshedFs):
   def get_root(self):
     home = os.getenv("TYPESHED_HOME")
     if not home or not path_utils.isdir(home):
-      raise OSError("Could not find a typeshed installation in "
-                    "$TYPESHED_HOME directory %s" % home)
+      raise OSError(
+          "Could not find a typeshed installation in "
+          "$TYPESHED_HOME directory %s" % home
+      )
     return home
 
   def _list_files(self, relpath):
@@ -182,9 +185,9 @@ class Typeshed:
 
     Args:
       missing_modules: A collection of modules in the format
-          'stdlib/module_name', which will be combined with the contents of
-          MISSING_FILE to form a set of missing modules for which pytype will
-          not report errors.
+        'stdlib/module_name', which will be combined with the contents of
+        MISSING_FILE to form a set of missing modules for which pytype will not
+        report errors.
     """
     if os.getenv("TYPESHED_HOME"):
       self._store = ExternalTypeshedFs(missing_file=self.MISSING_FILE)
@@ -220,9 +223,11 @@ class Typeshed:
       assert match
       module, min_major, min_minor, max_major, max_minor = match.groups()
       minimum = (int(min_major), int(min_minor))
-      maximum = ((int(max_major), int(max_minor))
-                 if max_major is not None and max_minor is not None
-                 else None)
+      maximum = (
+          (int(max_major), int(max_minor))
+          if max_major is not None and max_minor is not None
+          else None
+      )
       versions[module] = minimum, maximum
     return versions
 
@@ -264,9 +269,9 @@ class Typeshed:
     """Get the contents of a typeshed .pyi file.
 
     Arguments:
-      namespace: selects a top-level directory within typeshed/
-        Allowed values are "stdlib" and "third_party".
-        "third_party" corresponds to the the typeshed/stubs/ directory.
+      namespace: selects a top-level directory within typeshed/ Allowed values
+        are "stdlib" and "third_party". "third_party" corresponds to the the
+        typeshed/stubs/ directory.
       module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
         it's a submodule. Package names should omit the "__init__" suffix (e.g.,
         pass in "os", not "os.__init__").
@@ -285,8 +290,10 @@ class Typeshed:
       # The VERSIONS file tells us whether stdlib/foo exists and what versions
       # it targets.
       path = path_utils.join(namespace, module_path)
-      if (self._is_module_in_typeshed(module_parts, version) or
-          path in self.missing):
+      if (
+          self._is_module_in_typeshed(module_parts, version)
+          or path in self.missing
+      ):
         paths.append(path)
     elif namespace == "third_party":
       # For third-party modules, we grab the alphabetically first package that
@@ -301,7 +308,8 @@ class Typeshed:
         relpath = path_utils.join("nonexistent", path_rel + ".pyi")
         return self._store.filepath(relpath), builtin_stubs.DEFAULT_SRC
       for path in [
-          path_utils.join(path_rel, "__init__.pyi"), path_rel + ".pyi"
+          path_utils.join(path_rel, "__init__.pyi"),
+          path_rel + ".pyi",
       ]:
         try:
           name, src = self._store.load_file(path)
@@ -326,8 +334,9 @@ class Typeshed:
     if version_info is None:
       return False
     min_version, max_version = version_info
-    return (min_version <= version and
-            (max_version is None or max_version >= version))
+    return min_version <= version and (
+        max_version is None or max_version >= version
+    )
 
   def get_typeshed_paths(self):
     """Gets the paths to typeshed's version-specific pyi files."""
@@ -354,7 +363,8 @@ class Typeshed:
       if "stdlib" in parts:
         # Check supported versions for stubs directly in stdlib/.
         module_parts = module_utils.strip_init_suffix(
-            path_utils.splitext(filename)[0].split(os.path.sep))
+            path_utils.splitext(filename)[0].split(os.path.sep)
+        )
         if not self._is_module_in_typeshed(module_parts, python_version):
           continue
       yield filename
@@ -379,12 +389,15 @@ class Typeshed:
     for abspath in self.get_typeshed_paths():
       relpath = abspath.rpartition(f"typeshed{os.path.sep}")[-1]
       module_names |= _get_module_names_in_path(
-          self._list_modules, relpath, python_version)
+          self._list_modules, relpath, python_version
+      )
     for abspath in self.get_pytd_paths():
       relpath = abspath.rpartition(f"pytype{os.path.sep}")[-1]
       module_names |= _get_module_names_in_path(
           lambda path, _: pytype_source_utils.list_pytype_files(path),
-          relpath, python_version)
+          relpath,
+          python_version,
+      )
     # Also load modules not in typeshed, so that we have a dummy entry for them.
     module_names |= self._get_missing_modules()
     assert "ctypes" in module_names  # sanity check
@@ -395,7 +408,7 @@ class Typeshed:
     lines = self._store.load_pytype_blocklist()
     for line in lines:
       if "#" in line:
-        line = line[:line.index("#")]
+        line = line[: line.index("#")]
       line = line.strip()
       if line:
         yield line
@@ -438,8 +451,8 @@ class TypeshedLoader(base.BuiltinLoader):
 
     Args:
       namespace: one of "stdlib" or "third_party"
-      module_name: the module name (without any file extension or
-          "__init__" suffix).
+      module_name: the module name (without any file extension or "__init__"
+        suffix).
 
     Returns:
       (None, None) if the module doesn't have a definition.
@@ -447,10 +460,12 @@ class TypeshedLoader(base.BuiltinLoader):
     """
     try:
       filename, src = self.typeshed.get_module_file(
-          namespace, module_name, self.options.python_version)
+          namespace, module_name, self.options.python_version
+      )
     except OSError:
       return None, None
 
-    ast = parser.parse_string(src, filename=filename, name=module_name,
-                              options=self.options)
+    ast = parser.parse_string(
+        src, filename=filename, name=module_name, options=self.options
+    )
     return filename, ast

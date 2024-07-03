@@ -66,8 +66,7 @@ class TestBoolEq(unittest.TestCase):
     self.assertEqual(hash(And([eq1, eq2, eq3])), hash(And([eq2, eq3, eq1])))
 
   def test_pivots(self):
-    values = {"x": {"0", "1"},
-              "y": {"0", "1"}}
+    values = {"x": {"0", "1"}, "y": {"0", "1"}}
     # x == 0 || x == 1
     equation = Or([Eq("x", "0"), Eq("x", "1")])
     self.assertCountEqual(["0", "1"], equation.extract_pivots(values)["x"])
@@ -146,15 +145,15 @@ class TestBoolEq(unittest.TestCase):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), TRUE)
     solver.implies(Eq("y", "2"), TRUE)
-    self.assertDictEqual(solver._get_first_approximation(),
-                         {"x": {"1"}, "y": {"2"}})
+    self.assertDictEqual(
+        solver._get_first_approximation(), {"x": {"1"}, "y": {"2"}}
+    )
 
   def test_get_equal_first_approximation(self):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("x", "y"))
     assignments = solver._get_first_approximation()
-    self.assertDictEqual(assignments,
-                         {"x": {"1"}, "y": {"1"}})
+    self.assertDictEqual(assignments, {"x": {"1"}, "y": {"1"}})
     self.assertIs(assignments["x"], assignments["y"])
 
   def test_get_multiple_equal_first_approximation(self):
@@ -162,10 +161,9 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("y", "1"), Eq("x", "y"))
     solver.implies(Eq("z", "2"), Eq("y", "z"))
     assignments = solver._get_first_approximation()
-    self.assertDictEqual(assignments,
-                         {"x": {"1", "2"},
-                          "y": {"1", "2"},
-                          "z": {"1", "2"}})
+    self.assertDictEqual(
+        assignments, {"x": {"1", "2"}, "y": {"1", "2"}, "z": {"1", "2"}}
+    )
     self.assertIs(assignments["x"], assignments["y"])
     self.assertIs(assignments["y"], assignments["z"])
 
@@ -173,17 +171,13 @@ class TestBoolEq(unittest.TestCase):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("y", "1"))
     solver.implies(Eq("x", "2"), FALSE)  # not Eq("x", "2")
-    self.assertDictEqual(solver.solve(),
-                         {"x": {"1"},
-                          "y": {"1"}})
+    self.assertDictEqual(solver.solve(), {"x": {"1"}, "y": {"1"}})
 
   def test_ground_truth(self):
     solver = self._MakeSolver()
     solver.implies(Eq("x", "1"), Eq("y", "1"))
     solver.always_true(Eq("x", "1"))
-    self.assertDictEqual(solver.solve(),
-                         {"x": {"1"},
-                          "y": {"1"}})
+    self.assertDictEqual(solver.solve(), {"x": {"1"}, "y": {"1"}})
 
   def test_filter(self):
     solver = self._MakeSolver(["x", "y"])
@@ -193,9 +187,7 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("y", "1"), Or([Eq("x", "1"), Eq("x", "2"), Eq("x", "3")]))
     solver.implies(Eq("y", "2"), Or([Eq("x", "2"), Eq("x", "3")]))
     solver.implies(Eq("y", "3"), Or([Eq("x", "2")]))
-    self.assertDictEqual(solver.solve(),
-                         {"x": {"1"},
-                          "y": {"1"}})
+    self.assertDictEqual(solver.solve(), {"x": {"1"}, "y": {"1"}})
 
   def test_solve_and(self):
     solver = self._MakeSolver(["x", "y", "z"])
@@ -203,10 +195,7 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("y", "1"), And([Eq("x", "1"), Eq("z", "1")]))
     solver.implies(Eq("x", "1"), And([Eq("y", "1"), Eq("z", "1")]))
     solver.implies(Eq("z", "1"), And([Eq("x", "1"), Eq("y", "1")]))
-    self.assertDictEqual(solver.solve(),
-                         {"x": {"1"},
-                          "y": {"1"},
-                          "z": {"1"}})
+    self.assertDictEqual(solver.solve(), {"x": {"1"}, "y": {"1"}, "z": {"1"}})
 
   def test_solve_twice(self):
     solver = self._MakeSolver()
@@ -245,8 +234,7 @@ class TestBoolEq(unittest.TestCase):
     solver.register_variable("w")
     solver.implies(Eq("x", "1"), And([Eq("y", "2"), Eq("y.T", "1")]))
     solver.implies(Eq("y", "2"), And([Eq("z", "3"), Eq("z.T", "y.T")]))
-    solver.implies(Eq("z", "3"),
-                   Eq("w", "z.T"))
+    solver.implies(Eq("z", "3"), Eq("w", "z.T"))
     solver.implies(Eq("w", "1"), TRUE)
     solver.implies(Eq("w", "4"), TRUE)
     m = solver.solve()
@@ -256,6 +244,7 @@ class TestBoolEq(unittest.TestCase):
     self.assertCountEqual(m["z.T"], {"1"})
     self.assertIn("1", m["y.T"])
     self.assertNotIn("4", m["y.T"])
+
 
 if __name__ == "__main__":
   unittest.main()

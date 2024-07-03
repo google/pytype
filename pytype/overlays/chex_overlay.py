@@ -28,12 +28,15 @@ class ChexOverlay(overlay.Overlay):
 class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
-  DEFAULT_ARGS = {**dataclass_overlay.Dataclass.DEFAULT_ARGS,
-                  "mappable_dataclass": True}
+  DEFAULT_ARGS = {
+      **dataclass_overlay.Dataclass.DEFAULT_ARGS,
+      "mappable_dataclass": True,
+  }
 
   def _add_replace_method(self, node, cls):
     cls.members["replace"] = classgen.make_replace_method(
-        self.ctx, node, cls, kwargs_name="changes")
+        self.ctx, node, cls, kwargs_name="changes"
+    )
 
   def _add_from_tuple_method(self, node, cls):
     # from_tuple is discouraged anyway, so we provide only bare-bones types.
@@ -62,19 +65,22 @@ class Dataclass(dataclass_overlay.Dataclass):
           node=node,
           name="__getitem__",
           params=[overlay_utils.Param("key")],
-          return_type=self.ctx.convert.unsolvable)
+          return_type=self.ctx.convert.unsolvable,
+      )
     if "__iter__" not in cls.members:
       cls.members["__iter__"] = overlay_utils.make_method(
           ctx=self.ctx,
           node=node,
           name="__iter__",
-          return_type=self.ctx.convert.lookup_value("typing", "Iterator"))
+          return_type=self.ctx.convert.lookup_value("typing", "Iterator"),
+      )
     if "__len__" not in cls.members:
       cls.members["__len__"] = overlay_utils.make_method(
           ctx=self.ctx,
           node=node,
           name="__len__",
-          return_type=self.ctx.convert.int_type)
+          return_type=self.ctx.convert.int_type,
+      )
 
   def decorate(self, node, cls):
     super().decorate(node, cls)

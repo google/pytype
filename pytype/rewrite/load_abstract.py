@@ -27,14 +27,16 @@ class Constants:
 
     for single in self._SINGLETONS:
       self.singles[single] = abstract.Singleton(
-          ctx, single, allow_direct_instantiation=True)
+          ctx, single, allow_direct_instantiation=True
+      )
     # We use Any all the time, so alias it for convenience.
     self.Any = self.singles['Any']  # pylint: disable=invalid-name
 
   def __getitem__(self, const: Any):
     if const not in self._consts:
       self._consts[const] = abstract.PythonConstant(
-          self._ctx, const, allow_direct_instantiation=True)
+          self._ctx, const, allow_direct_instantiation=True
+      )
     return self._consts[const]
 
 

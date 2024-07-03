@@ -51,29 +51,44 @@ sys.exit({modname}.main())
 
 def parse_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument("--path", "-p", action="append", default=[],
-                      help="Path to prepend to sys.path.")
   parser.add_argument(
-      "--env", "-v", action="append", default=[],
-      help="Environment variable to set. Should be of the form VAR=VALUE.")
+      "--path",
+      "-p",
+      action="append",
+      default=[],
+      help="Path to prepend to sys.path.",
+  )
   parser.add_argument(
-      "--main_module", "-m", required=True,
-      help="The fully qualified name of the target main module of the exe.")
-  parser.add_argument("--exe_path", "-x", required=True,
-                      help="Path to the Python executable.")
+      "--env",
+      "-v",
+      action="append",
+      default=[],
+      help="Environment variable to set. Should be of the form VAR=VALUE.",
+  )
+  parser.add_argument(
+      "--main_module",
+      "-m",
+      required=True,
+      help="The fully qualified name of the target main module of the exe.",
+  )
+  parser.add_argument(
+      "--exe_path", "-x", required=True, help="Path to the Python executable."
+  )
   args = parser.parse_args()
   for env in args.env:
     if "=" not in env:
       sys.exit(
-          "Environment variables should be specified in the form VAR=VALUE.")
+          "Environment variables should be specified in the form VAR=VALUE."
+      )
   return args
 
 
 def main():
   options = parse_args()
 
-  path_adjustment = "add_paths([%s])" % ",".join([
-        "'%s'" % path for path in options.path])
+  path_adjustment = "add_paths([%s])" % ",".join(
+      ["'%s'" % path for path in options.path]
+  )
 
   env_adjustment = ""
   for env in options.env:

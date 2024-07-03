@@ -1,7 +1,6 @@
 """Tests for block_environment.py."""
 
 import dataclasses
-
 from typing import Dict, Set
 
 from pytype import block_environment
@@ -19,6 +18,7 @@ class FakeBlock:
 
 
 class BlockGraph:
+
   def __init__(self):
     self.blocks = {}
 

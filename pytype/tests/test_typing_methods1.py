@@ -11,16 +11,22 @@ class TypingMethodsTest(test_base.BaseTest):
 
   def _check_call(self, t, expr):  # pylint: disable=invalid-name
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import {type}
         def f() -> {type}: ...
-      """.format(type=t))
-      indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
-      self.Check(f"""
+      """.format(type=t),
+      )
+      indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " " * 8)
+      self.Check(
+          f"""
         import foo
         x = foo.f()
         {indented_expr}
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_text(self):
     self._check_call("Text", "x.upper()")
@@ -60,11 +66,15 @@ class TypingMethodsTest(test_base.BaseTest):
 
   def test_io(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import IO
         def f() -> IO[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         x = foo.f()
         with x as fi:
@@ -87,9 +97,12 @@ class TypingMethodsTest(test_base.BaseTest):
         x.write("foo")
         x.writelines(["foo", "bar"])
         x.close()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertTypesMatchPytd(
-          ty, """
+          ty,
+          """
         import foo
         from typing import IO, List
         fi = ...  # type: IO[str]
@@ -106,7 +119,8 @@ class TypingMethodsTest(test_base.BaseTest):
         k = ...  # type: int
         m = ...  # type: bool
         x = ...  # type: IO[str]
-      """)
+      """,
+      )
 
   def test_binary_io(self):
     self._check_call("BinaryIO", "x.read(10).upper()")
@@ -116,12 +130,16 @@ class TypingMethodsTest(test_base.BaseTest):
 
   def test_sequence_and_tuple(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Sequence, Tuple
         def seq() -> Sequence[str]: ...
         def tpl() -> Tuple[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         for seq in [foo.seq(), foo.tpl()]:
           a = seq[0]
@@ -131,8 +149,12 @@ class TypingMethodsTest(test_base.BaseTest):
           d = "foo" in seq
           e = iter(seq)
           f = reversed(seq)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Iterator, List, Sequence, Tuple, Union
         seq = ...  # type: Union[Sequence[str], Tuple[str]]
@@ -142,19 +164,24 @@ class TypingMethodsTest(test_base.BaseTest):
         d = ...  # type: bool
         e = ...  # type: Union[Iterator[str], tupleiterator[str]]
         f = ...  # type: reversed[str]
-      """)
+      """,
+      )
 
   def test_mutablesequence_and_list(self):
     # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
     # wrong-arg-types error on line 10.
     self.options.tweak(strict_parameter_checks=False)
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import List, MutableSequence
         def seq() -> MutableSequence[str]: ...
         def lst() -> List[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         for seq in [foo.seq(), foo.lst()]:
           seq[0] = 3
@@ -167,8 +194,12 @@ class TypingMethodsTest(test_base.BaseTest):
           g = seq.remove("foo")
           seq[0:5] = [1,2,3]
           b = seq.extend([1,2,3])
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Iterator, List, Sequence, Union
         # TODO(b/159065400): Should be List[Union[int, str]]
@@ -180,15 +211,20 @@ class TypingMethodsTest(test_base.BaseTest):
         e = ...  # type: Union[int, str]
         f = ...  # type: Union[int, str]
         g = ...  # type: None
-      """)
+      """,
+      )
 
   def test_deque(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Deque
         def deq() -> Deque[int]: ...
-        """)
-      ty = self.Infer("""
+        """,
+      )
+      ty = self.Infer(
+          """
         import foo
         q = foo.deq()
         q[0] = 3
@@ -200,8 +236,12 @@ class TypingMethodsTest(test_base.BaseTest):
         c = q.pop()
         cl = q.popleft()
         d = q.rotate(3)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Deque
         q = ...  # type: Deque[int]
@@ -212,18 +252,23 @@ class TypingMethodsTest(test_base.BaseTest):
         c = ...  # type: int
         cl = ...  # type: int
         d = ...  # type: None
-      """)
+      """,
+      )
 
   def test_mutablemapping(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import MutableMapping, TypeVar
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(MutableMapping[K, V]): ...
         def f() -> MyDict[str, int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         m = foo.f()
         m.clear()
@@ -234,15 +279,20 @@ class TypingMethodsTest(test_base.BaseTest):
         c = m.setdefault("baz", 3j)
         m.update({4j: 2.1})
         m.update([(1, 2), (3, 4)])
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import Tuple, Union
         import foo
         m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
         a = ...  # type: Union[complex, float, int]
         b = ...  # type: Tuple[Union[complex, str], Union[float, int]]
         c = ...  # type: Union[complex, float, int]
-      """)
+      """,
+      )
 
   def test_dict_and_defaultdict(self):
     # Sanity checks. (Default)Dict is just MutableMapping, which is tested above
@@ -251,11 +301,15 @@ class TypingMethodsTest(test_base.BaseTest):
 
   def test_abstractset(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import AbstractSet
         def f() -> AbstractSet[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         x = foo.f()
         a = "bar" in x
@@ -264,8 +318,12 @@ class TypingMethodsTest(test_base.BaseTest):
         d = x - x
         e = x ^ x
         f = x.isdisjoint([1,2,3])
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import AbstractSet
         x = ...  # type: AbstractSet[str]
@@ -275,7 +333,8 @@ class TypingMethodsTest(test_base.BaseTest):
         d = ...  # type: AbstractSet[str]
         e = ...  # type: AbstractSet[str]
         f = ...  # type: bool
-      """)
+      """,
+      )
 
   def test_frozenset(self):
     # Sanity check. FrozenSet is just AbstractSet, tested above.
@@ -286,11 +345,15 @@ class TypingMethodsTest(test_base.BaseTest):
     # wrong-arg-types error on line 8.
     self.options.tweak(strict_parameter_checks=False)
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import MutableSet
         def f() -> MutableSet[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         x = foo.f()
         x.add(1)
@@ -303,8 +366,12 @@ class TypingMethodsTest(test_base.BaseTest):
         c = x | {1,2,3}
         d = x ^ {1,2,3}
         e = 3 in x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import MutableSet, Union
         a = ...  # type: Union[int, str]
@@ -315,28 +382,36 @@ class TypingMethodsTest(test_base.BaseTest):
         d = ...  # type: MutableSet[Union[complex, int, str]]
         e = ...  # type: bool
         x = ...  # type: MutableSet[Union[complex, int, str]]
-      """)
+      """,
+      )
 
   def test_set(self):
     # Sanity check. Set is just MutableSet, tested above.
     self._check_call("Set", "x.add(3)")
 
   def test_generator(self):
-    self._check_call("Generator", """
+    self._check_call(
+        "Generator",
+        """
       next(x)
       x.send(42)
       x.throw(Exception())
       x.close()
-    """)
+    """,
+    )
 
   def test_pattern_and_match(self):
     # Basic pattern sanity check.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Pattern
         def f() -> Pattern[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         pattern = foo.f()
         m1 = pattern.search("foo")
@@ -352,8 +427,12 @@ class TypingMethodsTest(test_base.BaseTest):
         c = m1.group(0)
         d = m1.start()
         e = m1.end()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         import re
         from typing import Pattern
@@ -364,7 +443,8 @@ class TypingMethodsTest(test_base.BaseTest):
         e: int
         m1: re.Match[str] | None
         pattern: Pattern[str]
-      """)
+      """,
+      )
 
 
 if __name__ == "__main__":

@@ -53,39 +53,54 @@ class TestStrictNone(test_base.BaseTest):
         def set_x(self):
           self.x = ""
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Optional
       class Foo:
         x = ...  # type: Optional[str]
         def __init__(self) -> None: ...
         def f(self) -> Any: ...
         def set_x(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_pyi_constant(self):
     self.options.tweak(strict_none_binding=False)
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         x = ...  # type: None
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         def f():
           return foo.x.upper()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pyi_attribute(self):
     self.options.tweak(strict_none_binding=False)
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo:
           x = ...  # type: None
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         def f():
           return foo.Foo.x.upper()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_return_value(self):
     errors = self.CheckWithErrors("""
@@ -109,11 +124,14 @@ class TestStrictNone(test_base.BaseTest):
   def test_pyi_return_value(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> None: ...")
-      errors = self.CheckWithErrors("""
+      errors = self.CheckWithErrors(
+          """
         import foo
         def g():
           return foo.f().upper()  # attribute-error[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def test_pass_through_none(self):
@@ -182,29 +200,38 @@ class TestStrictNone(test_base.BaseTest):
       def f():
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> None: ...
-    """)
+    """,
+    )
 
   def test_keep_none_yield(self):
     ty = self.Infer("""
       def f():
         yield None
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Generator, Any
       def f() -> Generator[None, Any, None]: ...
-    """)
+    """,
+    )
 
   def test_keep_contained_none_return(self):
     ty = self.Infer("""
       def f():
         return [None]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       def f() -> List[None]: ...
-    """)
+    """,
+    )
 
   def test_discard_none_return(self):
     self.options.tweak(strict_none_binding=False)
@@ -213,11 +240,14 @@ class TestStrictNone(test_base.BaseTest):
       def f():
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       x = ...  # type: None
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_discard_none_yield(self):
     self.options.tweak(strict_none_binding=False)
@@ -226,11 +256,14 @@ class TestStrictNone(test_base.BaseTest):
       def f():
         yield x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Generator
       x = ...  # type: None
       def f() -> Generator[Any, Any, None]: ...
-    """)
+    """,
+    )
 
   def test_discard_contained_none_return(self):
     ty = self.Infer("""
@@ -238,10 +271,13 @@ class TestStrictNone(test_base.BaseTest):
       def f():
         return [x]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x: None
       def f() -> list[None]: ...
-    """)
+    """,
+    )
 
   def test_discard_attribute_none_return(self):
     self.options.tweak(strict_none_binding=False)
@@ -251,12 +287,15 @@ class TestStrictNone(test_base.BaseTest):
       def f():
         return Foo.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         x = ...  # type: None
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_getitem(self):
     errors = self.CheckWithErrors("""
@@ -354,13 +393,16 @@ class TestAttributes(test_base.BaseTest):
         def method2(self):
           self.a = 3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class A:
         a = ...  # type: Union[complex, int]
         def method1(self) -> NoneType: ...
         def method2(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_outside_attribute_access(self):
     ty = self.Infer("""
@@ -371,13 +413,16 @@ class TestAttributes(test_base.BaseTest):
       def f2():
         A().a = 3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class A:
         a = ...  # type: Union[complex, int]
       def f1() -> NoneType: ...
       def f2() -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_private(self):
     ty = self.Infer("""
@@ -387,12 +432,15 @@ class TestAttributes(test_base.BaseTest):
         def foo(self):
           return self._x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class C:
         _x = ...  # type: int
         def __init__(self) -> None: ...
         def foo(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_public(self):
     ty = self.Infer("""
@@ -402,12 +450,15 @@ class TestAttributes(test_base.BaseTest):
         def foo(self):
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class C:
         x = ...  # type: int
         def __init__(self) -> None: ...
         def foo(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_crosswise(self):
     ty = self.Infer("""
@@ -424,7 +475,9 @@ class TestAttributes(test_base.BaseTest):
         def set_on_a(self):
           self.a.x = 3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         b = ...  # type: B
         x = ...  # type: complex
@@ -435,7 +488,8 @@ class TestAttributes(test_base.BaseTest):
         x = ...  # type: int
         def __init__(self) -> None: ...
         def set_on_a(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_attr_with_bad_getattr(self):
     self.Check("""
@@ -468,13 +522,16 @@ class TestAttributes(test_base.BaseTest):
         def __getattribute__(self, name):
           return object.__getattribute__(self, name)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class MyClass1:
         def __getattribute__(self, name) -> Any: ...
       class MyClass2:
         def __getattribute__(self, name) -> Any: ...
-    """)
+    """,
+    )
 
   def test_getattribute(self):
     ty = self.Infer("""
@@ -485,13 +542,16 @@ class TestAttributes(test_base.BaseTest):
       a.x = "hello world"
       x = a.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x = ...  # type: str
         def __getattribute__(self, name) -> int: ...
       a = ...  # type: A
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_getattribute_branch(self):
     ty = self.Infer("""
@@ -506,14 +566,17 @@ class TestAttributes(test_base.BaseTest):
           v.__class__ = B
         return v.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         x = ...  # type: str
       class B:
         def __getattribute__(self, name) -> bool: ...
       def f(x) -> Any: ...
-    """)
+    """,
+    )
 
   def test_set_class(self):
     ty = self.Infer("""
@@ -522,17 +585,23 @@ class TestAttributes(test_base.BaseTest):
         y.__class__ = x.__class__
         return set([x, y])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> set: ...
-    """)
+    """,
+    )
 
   def test_get_mro(self):
     ty = self.Infer("""
       x = int.mro()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x = ...  # type: list
-    """)
+    """,
+    )
 
   def test_call(self):
     ty = self.Infer("""
@@ -541,11 +610,14 @@ class TestAttributes(test_base.BaseTest):
           return 42
       x = A()()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         def __call__(self) -> int: ...
       x = ...  # type: int
-    """)
+    """,
+    )
 
   @test_base.skip("Magic methods aren't computed")
   def test_call_computed(self):
@@ -555,11 +627,14 @@ class TestAttributes(test_base.BaseTest):
           return int
       x = A().__call__()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         def __getattribute__(self, name) -> int: ...
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_has_dynamic_attributes(self):
     self.Check("""
@@ -612,23 +687,33 @@ class TestAttributes(test_base.BaseTest):
 
   def test_has_dynamic_attributes_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("mod.pyi", """
+      d.create_file(
+          "mod.pyi",
+          """
         class Foo:
           has_dynamic_attributes = True
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import mod
         mod.Foo().baz
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_has_dynamic_attributes_metaclass_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("mod.pyi", """
+      d.create_file(
+          "mod.pyi",
+          """
         class Metaclass(type):
           _HAS_DYNAMIC_ATTRIBUTES: bool
         class Foo(metaclass=Metaclass): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import mod
         class Bar(mod.Foo):
           pass
@@ -636,7 +721,9 @@ class TestAttributes(test_base.BaseTest):
         mod.Foo().baz
         Bar.CONST
         Bar().baz
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_attr_on_static_method(self):
     self.Check("""
@@ -700,7 +787,9 @@ class TestAttributes(test_base.BaseTest):
       x = A() if __random__ else B()
       a = x.foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Union
       a = ...  # type: int
       x = ...  # type: Union[A, B]
@@ -711,7 +800,8 @@ class TestAttributes(test_base.BaseTest):
         bar = ...  # type: int
         foo = ...  # type: Annotated[int, 'property']
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_reuse_annotated(self):
     foo = self.Infer("""
@@ -754,15 +844,20 @@ class TestAttributes(test_base.BaseTest):
         pass
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"'in'.*'.*Union\[Foo, int\]' and 'int'"})
+        errors, {"e": r"'in'.*'.*Union\[Foo, int\]' and 'int'"}
+    )
 
   def test_subclass_shadowing(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X:
           b = ...  # type: int
-        """)
-      self.Check("""
+        """,
+      )
+      self.Check(
+          """
         import foo
         a = foo.X()
         a.b  # The attribute exists
@@ -770,28 +865,39 @@ class TestAttributes(test_base.BaseTest):
           a.b = 1  # A new value is assigned
         else:
           a.b  # The original attribute isn't overwritten by the assignment
-        """, pythonpath=[d.path])
+        """,
+          pythonpath=[d.path],
+      )
 
   def test_generic_property(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, Optional, TypeVar
         T = TypeVar("T")
         class Foo(Generic[T]):
           @property
           def x(self) -> Optional[T]: ...
         def f() -> Foo[str]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         def f():
           return foo.f().x
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import Optional
       def f() -> Optional[str]: ...
-    """)
+    """,
+    )
 
   def test_bad_instance_assignment(self):
     errors = self.CheckWithErrors("""
@@ -828,11 +934,14 @@ class TestAttributes(test_base.BaseTest):
         def __init__(self):
           self.x = 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x: float
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_annotation_in_init(self):
     ty, errors = self.InferWithErrors("""
@@ -842,12 +951,15 @@ class TestAttributes(test_base.BaseTest):
         def oops(self):
           self.x = ''  # annotation-type-mismatch[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x: int
         def __init__(self) -> None: ...
         def oops(self) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"Annotation: int.*Assignment: str"})
 
   def test_split(self):
@@ -862,17 +974,22 @@ class TestAttributes(test_base.BaseTest):
         if isinstance(x, Foo):
           x.foo = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class Foo:
         foo: int
       class Bar: ...
       def f(x: Union[Foo, Bar]) -> None: ...
-    """)
+    """,
+    )
 
   def test_separate_instances(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any
         _T = TypeVar('_T')
 
@@ -880,8 +997,10 @@ class TestAttributes(test_base.BaseTest):
           return_value: Any
 
         def patch() -> Foo: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
 
         x = foo.patch()
@@ -889,17 +1008,23 @@ class TestAttributes(test_base.BaseTest):
 
         x.return_value = 0
         y.return_value.rumpelstiltskin = 1
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_typevar(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, Type, TypeVar
         T = TypeVar('T')
         class Foo(Generic[T]):
           x: Type[T]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         from typing import Any, Type
         class Bar:
@@ -908,7 +1033,9 @@ class TestAttributes(test_base.BaseTest):
             self.x = foo.x
         def f():
           return Bar(foo.Foo())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 if __name__ == "__main__":

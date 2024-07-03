@@ -118,6 +118,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     Args:
       name: The name of the type parameter.
       node: Optionally, the current CFG node.
+
     Returns:
       A Variable which may be empty.
     """
@@ -135,6 +136,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
     Args:
       t: The name of the type parameter.
+
     Returns:
       A formal type.
     """
@@ -151,8 +153,8 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       callself: The Variable that should be passed as self or cls when the call
         is made. We only need one of self or cls, so having them share a
         parameter prevents accidentally passing in both.
-      is_class: Whether callself is self or cls. Should be cls only when we
-        want to directly pass in a class to bind a class method to, rather than
+      is_class: Whether callself is self or cls. Should be cls only when we want
+        to directly pass in a class to bind a class method to, rather than
         passing in an instance and calling get_class().
 
     Returns:
@@ -195,6 +197,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       args: Arguments for the call.
       alias_map: A datatypes.UnionFind, which stores all the type renaming
         information, mapping of type parameter name to its representative.
+
     Returns:
       A tuple (cfg.Node, cfg.Variable). The CFGNode corresponds
       to the function's "return" statement(s).
@@ -222,10 +225,12 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """
 
   def to_pytd_type_of_instance(
-      self, node=None, instance=None, seen=None, view=None):
+      self, node=None, instance=None, seen=None, view=None
+  ):
     """Get the type an instance of us would have."""
     return self.ctx.pytd_convert.value_instance_to_pytd_type(
-        node, self, instance, seen, view)
+        node, self, instance, seen, view
+    )
 
   def to_pytd_type(self, node=None, seen=None, view=None):
     """Get a PyTD type representing this object, as seen at a node."""
@@ -289,13 +294,14 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
     Args:
       node: The current CFG node.
+
     Returns:
       A cfg.Variable.
     """
     return self.ctx.program.NewVariable([self], source_set=[], where=node)
 
   def to_binding(self, node):
-    binding, = self.to_variable(node).bindings
+    (binding,) = self.to_variable(node).bindings
     return binding
 
   def has_varargs(self):
@@ -327,8 +333,10 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     Returns:
       A list of list of bindings.
     """
+
     def _get_values(parameter):
       return {b.data.get_type_key(): b for b in parameter.bindings}.values()
+
     return [_get_values(parameter) for parameter in self._unique_parameters()]
 
   def init_subclass(self, node, cls):
@@ -347,7 +355,8 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     Args:
       node: cfg node
       cls: the abstract.InterpreterClass that is being constructed with subclass
-           as a base
+        as a base
+
     Returns:
       A possibly new cfg node
     """
@@ -367,8 +376,10 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     # We need to disable attribute-error because pytype doesn't understand our
     # special _isinstance function.
     # pytype: disable=attribute-error
-    if (not _isinstance(self, "SignedFunction") or
-        not self.signature.param_names):
+    if (
+        not _isinstance(self, "SignedFunction")
+        or not self.signature.param_names
+    ):
       # no 'self' to replace
       return False
     # SimpleFunctions are methods we construct internally for generated classes
@@ -377,8 +388,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       return False
     # We don't want to clobber our own generic annotations.
     return (
-        self.signature.param_names[0] not in self.signature.annotations or
-        not self.signature.annotations[self.signature.param_names[0]].formal)
+        self.signature.param_names[0] not in self.signature.annotations
+        or not self.signature.annotations[self.signature.param_names[0]].formal
+    )
     # pytype: enable=attribute-error
 
 
@@ -391,7 +403,8 @@ def _get_template(val: Any):
     elif _isinstance(val, ("PyTDClass", "InterpreterClass")):
       for base in val.bases():
         base = abstract_utils.get_atomic_value(
-            base, default=val.ctx.convert.unsolvable)
+            base, default=val.ctx.convert.unsolvable
+        )
         res.update(_get_template(base))
     return res
   elif val.cls != val:
@@ -439,10 +452,12 @@ def _compute_template(val: Any):
     if base.full_name == "typing.Generic":
       if _isinstance(base, "PyTDClass"):
         raise abstract_utils.GenericTypeError(
-            val, "Cannot inherit from plain Generic")
+            val, "Cannot inherit from plain Generic"
+        )
       if template:
         raise abstract_utils.GenericTypeError(
-            val, "Cannot inherit from Generic[...] multiple times")
+            val, "Cannot inherit from Generic[...] multiple times"
+        )
       for item in base.template:
         param = base.formal_type_parameters.get(item.name)
         template.append(param.with_scope(val.full_name))
@@ -459,7 +474,8 @@ def _compute_template(val: Any):
               t = param.with_scope(val.full_name)
               if t not in template:
                 raise abstract_utils.GenericTypeError(
-                    val, "Generic should contain all the type variables")
+                    val, "Generic should contain all the type variables"
+                )
   else:
     # Compute template parameters according to C3
     seqs = []
@@ -475,6 +491,7 @@ def _compute_template(val: Any):
       template.extend(mro.MergeSequences(seqs))
     except ValueError as e:
       raise abstract_utils.GenericTypeError(
-          val, f"Illegal type parameter order in class {val.name}") from e
+          val, f"Illegal type parameter order in class {val.name}"
+      ) from e
 
   return template

@@ -1,4 +1,5 @@
 """Test functions with complex cfg."""
+
 # Regression test to make sure our large constant optimizations don't affect
 # functions with complex control flow (since we use the number of bindings a
 # variable has as a proxy for large literals, a function with many internal

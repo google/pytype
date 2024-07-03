@@ -18,7 +18,9 @@ class TestBasic(test_base.BaseTest):
       """)
 
   def test_inplace_operators(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       x, y = 2, 3
       x **= y
       assert x == 8 and y == 3
@@ -44,10 +46,13 @@ class TestBasic(test_base.BaseTest):
       assert x == 0x95
       x ^= 0x33
       assert x == 0xA6
-      """)
+      """,
+    )
 
   def test_inplace_division(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       x, y = 24, 3
       x /= y
       assert x == 8 and y == 3
@@ -55,7 +60,8 @@ class TestBasic(test_base.BaseTest):
       x /= y
       assert x == 2 and y == 3
       assert isinstance(x, int)
-      """)
+      """,
+    )
 
   def test_slice(self):
     ty = self.Infer("""
@@ -73,7 +79,9 @@ class TestBasic(test_base.BaseTest):
       def f6():
         return s[3:8:2]
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     s = ...  # type: str
     def f1() -> str: ...
     def f2() -> str: ...
@@ -81,7 +89,8 @@ class TestBasic(test_base.BaseTest):
     def f4() -> str: ...
     def f5() -> str: ...
     def f6() -> str: ...
-    """)
+    """,
+    )
 
   def test_slice_assignment(self):
     self.Check("""
@@ -205,7 +214,9 @@ class TestBasic(test_base.BaseTest):
 
   def test_strange_sequence_ops(self):
     # from stdlib: test/test_augassign.py
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       x = [1,2]
       x += [3,4]
       x *= 2
@@ -219,7 +230,8 @@ class TestBasic(test_base.BaseTest):
 
       assert x == [1, 2, 1, 2, 3]
       assert x is y
-      """)
+      """,
+    )
 
   def test_unary_operators(self):
     self.Check("""
@@ -237,12 +249,15 @@ class TestBasic(test_base.BaseTest):
       """)
 
   def test_attribute_inplace_ops(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       l = lambda: 1   # Just to have an object...
       l.foo = 17
       l.foo -= 3
       print(l.foo)
-      """)
+      """,
+    )
 
   def test_deleting_names(self):
     _, err = self.InferWithErrors("""

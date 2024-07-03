@@ -17,8 +17,9 @@ class MatcherTestBase(test_base.UnitTest):
 
   def setUp(self):
     super().setUp()
-    options = config.Options.create(python_version=self.python_version,
-                                    none_is_not_bool=True)
+    options = config.Options.create(
+        python_version=self.python_version, none_is_not_bool=True
+    )
     self.ctx = test_utils.make_context(options)
     self.matcher = self.ctx.matcher(self.ctx.root_node)
 
@@ -90,10 +91,11 @@ class MatcherTest(MatcherTestBase):
     type_parameters = {
         abstract_utils.T: abstract.TypeParameter(abstract_utils.T, self.ctx)
     }
-    other_type = abstract.ParameterizedClass(self.ctx.convert.type_type,
-                                             type_parameters, self.ctx)
+    other_type = abstract.ParameterizedClass(
+        self.ctx.convert.type_type, type_parameters, self.ctx
+    )
     for result in self._match_var(left, other_type):
-      instance_binding, = result[abstract_utils.T].bindings
+      (instance_binding,) = result[abstract_utils.T].bindings
       self.assertEqual(instance_binding.data.cls, left)
 
   def test_union(self):
@@ -108,7 +110,8 @@ class MatcherTest(MatcherTestBase):
     meta2 = self._make_class("m2")
     left.set_class(
         self.ctx.root_node,
-        self.ctx.program.NewVariable([meta1, meta2], [], self.ctx.root_node))
+        self.ctx.program.NewVariable([meta1, meta2], [], self.ctx.root_node),
+    )
     self.assertMatch(left, meta1)
     self.assertMatch(left, meta2)
 
@@ -140,8 +143,9 @@ class MatcherTest(MatcherTestBase):
   def test_class_against_type_union(self):
     left = self._make_class("foo")
     union = abstract.Union((left,), self.ctx)
-    right = abstract.ParameterizedClass(self.ctx.convert.type_type,
-                                        {abstract_utils.T: union}, self.ctx)
+    right = abstract.ParameterizedClass(
+        self.ctx.convert.type_type, {abstract_utils.T: union}, self.ctx
+    )
     self.assertMatch(left, right)
 
   def test_none_against_bool(self):
@@ -219,9 +223,13 @@ class MatcherTest(MatcherTestBase):
     self.assertMatch(left3, right)
 
   def test_tuple_subclass(self):
-    left = self._convert("""
+    left = self._convert(
+        """
       from typing import Tuple
-      class A(Tuple[bool, int]): ...""", "A", as_instance=True)
+      class A(Tuple[bool, int]): ...""",
+        "A",
+        as_instance=True,
+    )
     right1 = self._convert_type("Tuple[bool, int]")
     right2 = self._convert_type("Tuple[int, bool]")
     right3 = self._convert_type("Tuple[int, int]")
@@ -246,7 +254,7 @@ class MatcherTest(MatcherTestBase):
     var = self.ctx.program.NewVariable()
     params = {
         0: abstract.TypeParameter(abstract_utils.K, self.ctx),
-        1: abstract.TypeParameter(abstract_utils.V, self.ctx)
+        1: abstract.TypeParameter(abstract_utils.V, self.ctx),
     }
     params[abstract_utils.T] = abstract.Union((params[0], params[1]), self.ctx)
     right = abstract.TupleClass(self.ctx.convert.tuple_type, params, self.ctx)
@@ -257,16 +265,18 @@ class MatcherTest(MatcherTestBase):
     left = self.ctx.convert.unsolvable
     params = {
         0: abstract.TypeParameter(abstract_utils.K, self.ctx),
-        1: abstract.TypeParameter(abstract_utils.V, self.ctx)
+        1: abstract.TypeParameter(abstract_utils.V, self.ctx),
     }
     params[abstract_utils.T] = abstract.Union((params[0], params[1]), self.ctx)
     right = abstract.TupleClass(self.ctx.convert.tuple_type, params, self.ctx)
     for match in self._match_var(left, right):
       self.assertSetEqual(set(match), {abstract_utils.K, abstract_utils.V})
-      self.assertEqual(match[abstract_utils.K].data,
-                       [self.ctx.convert.unsolvable])
-      self.assertEqual(match[abstract_utils.V].data,
-                       [self.ctx.convert.unsolvable])
+      self.assertEqual(
+          match[abstract_utils.K].data, [self.ctx.convert.unsolvable]
+      )
+      self.assertEqual(
+          match[abstract_utils.V].data, [self.ctx.convert.unsolvable]
+      )
 
   def test_bool_against_float(self):
     left = self.ctx.convert.true
@@ -302,16 +312,22 @@ class MatcherTest(MatcherTestBase):
     self.assertNoMatch(f, callable_bad_arg2)
 
   def test_bound_pytd_function_against_callable(self):
-    instance = self._convert("""
+    instance = self._convert(
+        """
       class A:
         def f(self, x: int) -> bool: ...
-    """, "A", as_instance=True)
+    """,
+        "A",
+        as_instance=True,
+    )
     binding = instance.to_binding(self.ctx.root_node)
-    _, var = self.ctx.attribute_handler.get_attribute(self.ctx.root_node,
-                                                      instance, "f", binding)
+    _, var = self.ctx.attribute_handler.get_attribute(
+        self.ctx.root_node, instance, "f", binding
+    )
     bound = var.data[0]
-    _, var = self.ctx.attribute_handler.get_attribute(self.ctx.root_node,
-                                                      instance.cls, "f")
+    _, var = self.ctx.attribute_handler.get_attribute(
+        self.ctx.root_node, instance.cls, "f"
+    )
     unbound = var.data[0]
     callable_no_self = self._convert_type("Callable[[int], Any]")
     callable_self = self._convert_type("Callable[[Any, int], Any]")
@@ -385,14 +401,19 @@ class MatcherTest(MatcherTestBase):
     for result in self._match_var(left, right):
       self.assertCountEqual(
           [(name, var.data) for name, var in result.items()],
-          [("typing.AnyStr", [left])])
+          [("typing.AnyStr", [left])],
+      )
 
   def test_protocol(self):
     left1 = self._convert_type("str", as_instance=True)
-    left2 = self._convert("""
+    left2 = self._convert(
+        """
       class A:
         def lower(self) : ...
-    """, "A", as_instance=True)
+    """,
+        "A",
+        as_instance=True,
+    )
     left3 = self._convert_type("int", as_instance=True)
     right = self._convert_type("SupportsLower")
     self.assertMatch(left1, right)
@@ -401,11 +422,15 @@ class MatcherTest(MatcherTestBase):
 
   def test_protocol_iterator(self):
     left1 = self._convert_type("Iterator", as_instance=True)
-    left2 = self._convert("""
+    left2 = self._convert(
+        """
       class A:
         def __next__(self): ...
         def __iter__(self): ...
-    """, "A", as_instance=True)
+    """,
+        "A",
+        as_instance=True,
+    )
     left3 = self._convert_type("int", as_instance=True)
     right = self._convert_type("Iterator")
     self.assertMatch(left1, right)
@@ -414,11 +439,15 @@ class MatcherTest(MatcherTestBase):
 
   def test_protocol_sequence(self):
     left1 = self._convert_type("list", as_instance=True)
-    left2 = self._convert("""
+    left2 = self._convert(
+        """
       class A:
         def __getitem__(self, i) : ...
         def __len__(self): ...
-    """, "A", as_instance=True)
+    """,
+        "A",
+        as_instance=True,
+    )
     left3 = self._convert_type("int", as_instance=True)
     right = self._convert_type("Sequence")
     self.assertMatch(left1, right)
@@ -427,11 +456,15 @@ class MatcherTest(MatcherTestBase):
 
   @unittest.skip("Needs to be fixed, tries to match protocol against A")
   def test_parameterized_protocol(self):
-    left1 = self._convert("""
+    left1 = self._convert(
+        """
       from typing import Iterator
       class A:
         def __iter__(self) -> Iterator[int] : ...
-    """, "A", as_instance=True)
+    """,
+        "A",
+        as_instance=True,
+    )
     left2 = self._convert_type("int", as_instance=True)
     right = self._convert_type("Iterable[int]")
     self.assertMatch(left1, right)
@@ -452,11 +485,13 @@ class MatcherTest(MatcherTestBase):
     right = abstract.ParameterizedClass(
         self.ctx.convert.list_type,
         {abstract_utils.T: abstract.TypeParameter(abstract_utils.T, self.ctx)},
-        self.ctx)
+        self.ctx,
+    )
     for subst in self._match_var(left, right):
       self.assertSetEqual(set(subst), {abstract_utils.T})
-      self.assertListEqual(subst[abstract_utils.T].data,
-                           [self.ctx.convert.empty])
+      self.assertListEqual(
+          subst[abstract_utils.T].data, [self.ctx.convert.empty]
+      )
 
   def test_list_against_mapping(self):
     left = self._convert_type("list", as_instance=True)
@@ -466,12 +501,17 @@ class MatcherTest(MatcherTestBase):
   def test_list_against_parameterized_mapping(self):
     left = self._convert_type("list", as_instance=True)
     right = abstract.ParameterizedClass(
-        self.ctx.convert.lookup_value("typing", "Mapping"), {
-            abstract_utils.K:
-                abstract.TypeParameter(abstract_utils.K, self.ctx),
-            abstract_utils.V:
-                abstract.TypeParameter(abstract_utils.V, self.ctx)
-        }, self.ctx)
+        self.ctx.convert.lookup_value("typing", "Mapping"),
+        {
+            abstract_utils.K: abstract.TypeParameter(
+                abstract_utils.K, self.ctx
+            ),
+            abstract_utils.V: abstract.TypeParameter(
+                abstract_utils.V, self.ctx
+            ),
+        },
+        self.ctx,
+    )
     self.assertNoMatch(left, right)
 
 
@@ -483,79 +523,113 @@ class TypeVarTest(MatcherTestBase):
     # empty. This test is mostly to make sure we don't crash.
     self.assertIsNone(
         self.matcher.match_from_mro(
-            abstract.TypeParameter("T", self.ctx), self.ctx.convert.int_type))
+            abstract.TypeParameter("T", self.ctx), self.ctx.convert.int_type
+        )
+    )
 
   def test_compute_matches(self):
     x_val = abstract.TypeParameter("T", self.ctx)
-    args = [types.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
-                      typ=self.ctx.convert.unsolvable)]
-    match, = self.matcher.compute_matches(args, match_all_views=True)
+    args = [
+        types.Arg(
+            name="x",
+            value=x_val.to_variable(self.ctx.root_node),
+            typ=self.ctx.convert.unsolvable,
+        )
+    ]
+    (match,) = self.matcher.compute_matches(args, match_all_views=True)
     self.assertEqual(match.subst, {})
 
   def test_compute_matches_no_match(self):
     x_val = abstract.TypeParameter("T", self.ctx)
-    args = [types.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
-                      typ=self.ctx.convert.int_type)]
+    args = [
+        types.Arg(
+            name="x",
+            value=x_val.to_variable(self.ctx.root_node),
+            typ=self.ctx.convert.int_type,
+        )
+    ]
     with self.assertRaises(error_types.MatchError):
       self.matcher.compute_matches(args, match_all_views=True)
 
   def test_compute_one_match(self):
     self.assertTrue(
         self.matcher.compute_one_match(
-            abstract.TypeParameter("T",
-                                   self.ctx).to_variable(self.ctx.root_node),
-            self.ctx.convert.unsolvable).success)
+            abstract.TypeParameter("T", self.ctx).to_variable(
+                self.ctx.root_node
+            ),
+            self.ctx.convert.unsolvable,
+        ).success
+    )
 
   def test_compute_one_match_no_match(self):
     self.assertFalse(
         self.matcher.compute_one_match(
-            abstract.TypeParameter("T",
-                                   self.ctx).to_variable(self.ctx.root_node),
-            self.ctx.convert.int_type).success)
+            abstract.TypeParameter("T", self.ctx).to_variable(
+                self.ctx.root_node
+            ),
+            self.ctx.convert.int_type,
+        ).success
+    )
 
   def test_any(self):
     self.assertMatch(
-        abstract.TypeParameter("T", self.ctx), self.ctx.convert.unsolvable)
+        abstract.TypeParameter("T", self.ctx), self.ctx.convert.unsolvable
+    )
 
   def test_object(self):
     self.assertMatch(
-        abstract.TypeParameter("T", self.ctx), self.ctx.convert.object_type)
+        abstract.TypeParameter("T", self.ctx), self.ctx.convert.object_type
+    )
 
   def test_type(self):
     self.assertMatch(
-        abstract.TypeParameter("T", self.ctx), self.ctx.convert.type_type)
+        abstract.TypeParameter("T", self.ctx), self.ctx.convert.type_type
+    )
 
   def test_parameterized_type(self):
     self.assertMatch(
         abstract.TypeParameter("T", self.ctx),
         abstract.ParameterizedClass(
             self.ctx.convert.type_type,
-            {abstract_utils.T: self.ctx.convert.unsolvable}, self.ctx))
+            {abstract_utils.T: self.ctx.convert.unsolvable},
+            self.ctx,
+        ),
+    )
 
   def test_parameterized_type_no_match(self):
     self.assertNoMatch(
         abstract.TypeParameter("T", self.ctx),
         abstract.ParameterizedClass(
             self.ctx.convert.type_type,
-            {abstract_utils.T: self.ctx.convert.int_type}, self.ctx))
+            {abstract_utils.T: self.ctx.convert.int_type},
+            self.ctx,
+        ),
+    )
 
   def test_nested(self):
     self.assertMatch(
         abstract.ParameterizedClass(
             self.ctx.convert.list_type,
             {abstract_utils.T: abstract.TypeParameter("T", self.ctx)},
-            self.ctx), self.ctx.convert.type_type)
+            self.ctx,
+        ),
+        self.ctx.convert.type_type,
+    )
 
   def test_nested_no_match(self):
     self.assertNoMatch(
         abstract.ParameterizedClass(
             self.ctx.convert.list_type,
             {abstract_utils.T: abstract.TypeParameter("T", self.ctx)},
-            self.ctx), self.ctx.convert.list_type)
+            self.ctx,
+        ),
+        self.ctx.convert.list_type,
+    )
 
   def test_no_match(self):
     self.assertNoMatch(
-        abstract.TypeParameter("T", self.ctx), self.ctx.convert.int_type)
+        abstract.TypeParameter("T", self.ctx), self.ctx.convert.int_type
+    )
 
 
 if __name__ == "__main__":

@@ -100,12 +100,12 @@ def simplify_exprs(exprs, result_type, stop_term, skip_term):
 
   Args:
     exprs: An iterable. The subexpressions.
-    result_type: _And or _Or. The type of result (unless it simplifies
-      down to something simpler).
-    stop_term: FALSE for _And, TRUE for _Or. If this term is encountered,
-      it will be immediately returned.
-    skip_term: TRUE for _And, FALSE for _Or. If this term is encountered,
-      it will be ignored.
+    result_type: _And or _Or. The type of result (unless it simplifies down to
+      something simpler).
+    stop_term: FALSE for _And, TRUE for _Or. If this term is encountered, it
+      will be immediately returned.
+    skip_term: TRUE for _And, FALSE for _Or. If this term is encountered, it
+      will be ignored.
 
   Returns:
     A BooleanTerm.
@@ -136,11 +136,12 @@ class _Eq(BooleanTerm):
   instance directly.
 
   Attributes:
-    left: A string; left side of the equality. This is expected to be the
-      string with the higher ascii value, so e.g. strings starting with "~"
-      (ascii 0x7e) should be on the left.
+    left: A string; left side of the equality. This is expected to be the string
+      with the higher ascii value, so e.g. strings starting with "~" (ascii
+      0x7e) should be on the left.
     right: A string; right side of the equality. This is the lower ascii value.
   """
+
   __slots__ = ("left", "right")
 
   def __init__(self, left, right):
@@ -163,9 +164,11 @@ class _Eq(BooleanTerm):
     return hash((self.left, self.right))
 
   def __eq__(self, other):
-    return (self.__class__ == other.__class__ and
-            self.left == other.left and
-            self.right == other.right)
+    return (
+        self.__class__ == other.__class__
+        and self.left == other.left
+        and self.right == other.right
+    )
 
   def __ne__(self, other):
     return not self == other
@@ -179,8 +182,8 @@ class _Eq(BooleanTerm):
 
     Args:
       assignments: Variable assignments (dict mapping strings to sets of
-      strings). Used to determine whether this equality is still possible, and
-      to compute intersections between two variables.
+        strings). Used to determine whether this equality is still possible, and
+        to compute intersections between two variables.
 
     Returns:
       A new BooleanTerm.
@@ -194,11 +197,15 @@ class _Eq(BooleanTerm):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
     if self.left in assignments and self.right in assignments:
       intersection = assignments[self.left] & assignments[self.right]
-      return {self.left: frozenset(intersection),
-              self.right: frozenset(intersection)}
+      return {
+          self.left: frozenset(intersection),
+          self.right: frozenset(intersection),
+      }
     else:
-      return {self.left: frozenset((self.right,)),
-              self.right: frozenset((self.left,))}
+      return {
+          self.left: frozenset((self.right,)),
+          self.right: frozenset((self.left,)),
+      }
 
   def extract_equalities(self):
     return ((self.left, self.right),)
@@ -242,8 +249,9 @@ class _And(BooleanTerm):
     return _expr_set_hash(self.exprs)
 
   def simplify(self, assignments):
-    return simplify_exprs((e.simplify(assignments) for e in self.exprs), _And,
-                          FALSE, TRUE)
+    return simplify_exprs(
+        (e.simplify(assignments) for e in self.exprs), _And, FALSE, TRUE
+    )
 
   def extract_pivots(self, assignments):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
@@ -293,8 +301,9 @@ class _Or(BooleanTerm):
     return _expr_set_hash(self.exprs)
 
   def simplify(self, assignments):
-    return simplify_exprs((e.simplify(assignments) for e in self.exprs), _Or,
-                          TRUE, FALSE)
+    return simplify_exprs(
+        (e.simplify(assignments) for e in self.exprs), _Or, TRUE, FALSE
+    )
 
   def extract_pivots(self, assignments):
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
@@ -319,8 +328,8 @@ def Eq(left: str, right: str) -> BooleanTerm:  # pylint: disable=invalid-name
   TRUE).
 
   Args:
-    left: A string. Left side of the equality. This will get sorted, so it
-      might end up on the right.
+    left: A string. Left side of the equality. This will get sorted, so it might
+      end up on the right.
     right: A string. Right side of the equality. This will get sorted, so it
       might end up on the left.
 
@@ -383,10 +392,10 @@ class Solver:
     ANY_VALUE: A special value assigned to variables with no constraints.
     variables: A list of all variables.
     implications: A nested dictionary mapping variable names to values to
-      BooleanTerm instances. This is used to specify rules like "if x is 1,
-      then ..."
-    ground_truth: An equation that needs to always be TRUE. If this is FALSE,
-      or can be reduced to FALSE, the system is unsolvable.
+      BooleanTerm instances. This is used to specify rules like "if x is 1, then
+      ..."
+    ground_truth: An equation that needs to always be TRUE. If this is FALSE, or
+      can be reduced to FALSE, the system is unsolvable.
     assignments: The solutions, a mapping of variables to values.
   """
 
@@ -412,7 +421,10 @@ class Solver:
       else:
         lines.append(f"if {_Eq(var, value)} then {implication}")
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
-        "\n".join(lines), count_false, count_true)
+        "\n".join(lines),
+        count_false,
+        count_true,
+    )
 
   def __repr__(self):
     lines = []
@@ -451,8 +463,11 @@ class Solver:
         yield (var, value, implication)
 
   def _get_nonfalse_values(self, var):
-    return {value for value, implication in self.implications[var].items()
-            if implication is not FALSE}
+    return {
+        value
+        for value, implication in self.implications[var].items()
+        if implication is not FALSE
+    }
 
   def _get_first_approximation(self):
     """Get all (variable, value) combinations to consider.
@@ -472,10 +487,12 @@ class Solver:
       assignment (by first approximation), then D[t1] and D[t2] point
       to the same memory location.
     """
-    equalities = set(chain(
-        implication.extract_equalities()
-        for (_, _, implication) in self._iter_implications())).union(
-            self.ground_truth.extract_equalities())
+    equalities = set(
+        chain(
+            implication.extract_equalities()
+            for (_, _, implication) in self._iter_implications()
+        )
+    ).union(self.ground_truth.extract_equalities())
     var_assignments = {}
     value_assignments = {}
     for var in self.variables:
@@ -525,11 +542,13 @@ class Solver:
 
     self._complete()
 
-    assignments = {var: self._get_nonfalse_values(var)
-                   for var in self.variables}
+    assignments = {
+        var: self._get_nonfalse_values(var) for var in self.variables
+    }
 
     ground_pivots = self.ground_truth.simplify(assignments).extract_pivots(
-        assignments)
+        assignments
+    )
     for pivot, possible_values in ground_pivots.items():
       if pivot in assignments:
         assignments[pivot] &= set(possible_values)
@@ -559,7 +578,7 @@ class Solver:
           length_before = len(assignments[pivot])
           assignments[pivot] &= set(possible_values)
           length_after = len(assignments[pivot])
-          something_changed |= (length_before != length_after)
+          something_changed |= length_before != length_after
 
     self.register_variable = pytd_utils.disabled_function  # pylint: disable=g-missing-from-attributes
     self.implies = pytd_utils.disabled_function  # pylint: disable=g-missing-from-attributes

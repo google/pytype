@@ -22,13 +22,17 @@ class FunctionCommentWithAnnotationsTest(test_base.BaseTest):
         ys = [f(x) for x in xs]  # type: List[str]  # annotation-type-mismatch[e]
         return ys
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       def f(x: str) -> None: ...
       def g(xs: List[str]) -> List[str]: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"})
+        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"}
+    )
 
 
 class Py3TypeCommentTest(test_base.BaseTest):

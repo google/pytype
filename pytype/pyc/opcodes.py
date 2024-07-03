@@ -39,9 +39,23 @@ class OpcodeMetadata:
 class Opcode:
   """An opcode without arguments."""
 
-  __slots__ = ("line", "endline", "col", "endcol", "index", "prev", "next",
-               "target", "block_target", "code", "annotation", "folded",
-               "metadata", "push_exc_block", "pop_exc_block")
+  __slots__ = (
+      "line",
+      "endline",
+      "col",
+      "endcol",
+      "index",
+      "prev",
+      "next",
+      "target",
+      "block_target",
+      "code",
+      "annotation",
+      "folded",
+      "metadata",
+      "push_exc_block",
+      "pop_exc_block",
+  )
   _FLAGS = 0
 
   def __init__(self, index, line, endline=None, col=None, endcol=None):
@@ -72,7 +86,11 @@ class Opcode:
     """Helper function for the various __str__ formats."""
     folded = "<<<<" if self.folded else ""
     return "%d: %d: %s %s" % (
-        self.line, self.index, self.__class__.__name__, folded)
+        self.line,
+        self.index,
+        self.__class__.__name__,
+        folded,
+    )
 
   def __str__(self):
     if self.annotation:
@@ -185,6 +203,7 @@ class OpcodeWithArg(Opcode):
     else:
       return out
 
+
 # --------------------------------------------------------
 # Fake opcodes used internally
 
@@ -198,8 +217,9 @@ class LOAD_FOLDED_CONST(OpcodeWithArg):
 
 
 class SETUP_EXCEPT_311(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | STORE_JUMP | PUSHES_BLOCK
   __slots__ = ("stack_depth",)
+
 
 # --------------------------------------------------------
 
@@ -482,12 +502,12 @@ class POP_EXCEPT(Opcode):
 
 
 class STORE_NAME(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_NAME(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -497,7 +517,7 @@ class UNPACK_SEQUENCE(OpcodeWithArg):  # Arg: Number of tuple items
 
 
 class FOR_ITER(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT
+  _FLAGS = HAS_JREL | HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -512,32 +532,32 @@ class UNPACK_EX(OpcodeWithArg):
 
 
 class STORE_ATTR(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_ATTR(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_GLOBAL(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_GLOBAL(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_CONST(OpcodeWithArg):  # Arg: Index in const list
-  _FLAGS = HAS_ARGUMENT|HAS_CONST
+  _FLAGS = HAS_ARGUMENT | HAS_CONST
   __slots__ = ()
 
 
 class LOAD_NAME(OpcodeWithArg):  # Arg: Index in name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -562,7 +582,7 @@ class BUILD_MAP(OpcodeWithArg):  # Arg: Number of dict entries (up to 255)
 
 
 class LOAD_ATTR(OpcodeWithArg):  # Arg: Index in name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -572,32 +592,32 @@ class COMPARE_OP(OpcodeWithArg):  # Arg: Comparison operator
 
 
 class IMPORT_NAME(OpcodeWithArg):  # Arg: Index in name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NAME | HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
 class IMPORT_FROM(OpcodeWithArg):  # Arg: Index in name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_FORWARD(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|NO_NEXT
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | NO_NEXT
   __slots__ = ()
 
 
 class JUMP_IF_FALSE_OR_POP(OpcodeWithArg):
-  _FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_JABS | HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_IF_TRUE_OR_POP(OpcodeWithArg):
-  _FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_JABS | HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_ABSOLUTE(OpcodeWithArg):
-  _FLAGS = HAS_JABS|HAS_ARGUMENT|NO_NEXT
+  _FLAGS = HAS_JABS | HAS_ARGUMENT | NO_NEXT
   __slots__ = ()
 
 
@@ -612,57 +632,57 @@ class POP_JUMP_IF_TRUE(OpcodeWithArg):
 
 
 class LOAD_GLOBAL(OpcodeWithArg):  # Indexes into name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class CONTINUE_LOOP(OpcodeWithArg):  # Acts as jump
-  _FLAGS = HAS_JABS|HAS_ARGUMENT|NO_NEXT
+  _FLAGS = HAS_JABS | HAS_ARGUMENT | NO_NEXT
   __slots__ = ()
 
 
 class SETUP_LOOP(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | STORE_JUMP | PUSHES_BLOCK
   __slots__ = ()
 
 
 class SETUP_EXCEPT(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | STORE_JUMP | PUSHES_BLOCK
   __slots__ = ()
 
 
 class SETUP_FINALLY(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | STORE_JUMP | PUSHES_BLOCK
   __slots__ = ()
 
 
 class LOAD_FAST(OpcodeWithArg):  # Loads local variable number
-  _FLAGS = HAS_LOCAL|HAS_ARGUMENT
+  _FLAGS = HAS_LOCAL | HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_FAST(OpcodeWithArg):  # Stores local variable number
-  _FLAGS = HAS_LOCAL|HAS_ARGUMENT
+  _FLAGS = HAS_LOCAL | HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_FAST(OpcodeWithArg):  # Deletes local variable number
-  _FLAGS = HAS_LOCAL|HAS_ARGUMENT
+  _FLAGS = HAS_LOCAL | HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_ANNOTATION(OpcodeWithArg):
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class RAISE_VARARGS(OpcodeWithArg):  # Arg: Number of raise args (1, 2, or 3)
-  _FLAGS = HAS_ARGUMENT|HAS_JUNKNOWN|NO_NEXT
+  _FLAGS = HAS_ARGUMENT | HAS_JUNKNOWN | NO_NEXT
   __slots__ = ()
 
 
 class CALL_FUNCTION(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS | HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
@@ -682,37 +702,37 @@ class MAKE_CLOSURE(OpcodeWithArg):
 
 
 class LOAD_CLOSURE(OpcodeWithArg):
-  _FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE | HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_DEREF(OpcodeWithArg):
-  _FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE | HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_DEREF(OpcodeWithArg):
-  _FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE | HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_DEREF(OpcodeWithArg):
-  _FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE | HAS_ARGUMENT
   __slots__ = ()
 
 
 class CALL_FUNCTION_VAR(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS | HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
 class CALL_FUNCTION_KW(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS | HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
 class CALL_FUNCTION_VAR_KW(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS | HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
@@ -722,7 +742,7 @@ class CALL_FUNCTION_EX(OpcodeWithArg):  # Arg: flags
 
 
 class SETUP_WITH(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | STORE_JUMP | PUSHES_BLOCK
   __slots__ = ()
 
 
@@ -742,7 +762,7 @@ class MAP_ADD(OpcodeWithArg):
 
 
 class LOAD_CLASSDEREF(OpcodeWithArg):
-  _FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE | HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -772,7 +792,7 @@ class BUILD_SET_UNPACK(OpcodeWithArg):  # Arg: Number of items
 
 
 class SETUP_ASYNC_WITH(OpcodeWithArg):
-  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL | HAS_ARGUMENT | STORE_JUMP | PUSHES_BLOCK
   __slots__ = ()
 
 
@@ -797,12 +817,12 @@ class BUILD_TUPLE_UNPACK_WITH_CALL(OpcodeWithArg):  # Arg: Number of items
 
 
 class LOAD_METHOD(OpcodeWithArg):  # Arg: Index in name list
-  _FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME | HAS_ARGUMENT
   __slots__ = ()
 
 
 class CALL_METHOD(OpcodeWithArg):  # Arg: #args
-  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS | HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
@@ -1233,9 +1253,12 @@ def _make_opcode_list(offset_to_op, python_version):
   op_items = sorted(offset_to_op.items())
   for i, (off, op) in enumerate(op_items):
     index += 1
-    if (python_version == (3, 11) and isinstance(op, JUMP_BACKWARD) and
-        i + 1 < len(op_items) and
-        isinstance(op_items[i + 1][1], END_ASYNC_FOR)):
+    if (
+        python_version == (3, 11)
+        and isinstance(op, JUMP_BACKWARD)
+        and i + 1 < len(op_items)
+        and isinstance(op_items[i + 1][1], END_ASYNC_FOR)
+    ):
       # In 3.11 `async for` is compiled into an infinite loop, relying on the
       # exception handler to break out. This causes the block graph to be
       # pruned abruptly, so we need to remove the loop opcode.

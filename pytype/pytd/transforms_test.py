@@ -4,6 +4,7 @@ import textwrap
 
 from pytype.pytd import transforms
 from pytype.pytd.parse import parser_test_base
+
 import unittest
 
 

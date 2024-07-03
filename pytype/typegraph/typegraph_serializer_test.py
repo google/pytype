@@ -10,8 +10,7 @@ class TypegraphSerializerTest(test_base.BaseTest):
   def test_basic(self):
     ctx = test_utils.make_context(self.options)
     # Max depth is arbitrarily chosen from analyze.py.
-    loc, defs = ctx.vm.run_program(
-        src="", filename="", maximum_depth=3)
+    loc, defs = ctx.vm.run_program(src="", filename="", maximum_depth=3)
     ctx.vm.analyze(loc, defs, maximum_depth=3)
 
     prog = ctx.program
@@ -28,8 +27,7 @@ class TypegraphSerializerTest(test_base.BaseTest):
   def test_deserialize(self):
     ctx = test_utils.make_context(self.options)
     # Max depth is arbitrarily chosen from analyze.py.
-    loc, defs = ctx.vm.run_program(
-        src="", filename="", maximum_depth=3)
+    loc, defs = ctx.vm.run_program(src="", filename="", maximum_depth=3)
     ctx.vm.analyze(loc, defs, maximum_depth=3)
 
     prog = ctx.program

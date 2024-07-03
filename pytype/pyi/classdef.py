@@ -1,8 +1,7 @@
 """Class definitions in pyi files."""
 
 import ast as astlib
-
-from typing import cast, Callable, List
+from typing import Callable, List, cast
 
 from pytype.pyi import types
 from pytype.pytd import pytd
@@ -11,7 +10,8 @@ _ParseError = types.ParseError
 
 
 def get_bases(
-    bases: List[pytd.Type], type_match: Callable[..., bool]) -> List[pytd.Type]:
+    bases: List[pytd.Type], type_match: Callable[..., bool]
+) -> List[pytd.Type]:
   """Collect base classes."""
 
   bases_out = []

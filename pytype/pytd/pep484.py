@@ -4,15 +4,48 @@ from pytype.pytd import base_visitor
 from pytype.pytd import pytd
 
 
-ALL_TYPING_NAMES = ["AbstractSet", "AnyStr", "AsyncGenerator", "BinaryIO",
-                    "ByteString", "Callable", "Container", "Dict", "FrozenSet",
-                    "Generator", "Generic", "Hashable", "IO", "ItemsView",
-                    "Iterable", "Iterator", "KeysView", "List", "Mapping",
-                    "MappingView", "Match", "MutableMapping", "MutableSequence",
-                    "MutableSet", "NamedTuple", "Optional", "Pattern",
-                    "Reversible", "Sequence", "Set", "Sized", "SupportsAbs",
-                    "SupportsFloat", "SupportsInt", "SupportsRound", "TextIO",
-                    "Tuple", "Type", "TypeVar", "Union"]
+ALL_TYPING_NAMES = [
+    "AbstractSet",
+    "AnyStr",
+    "AsyncGenerator",
+    "BinaryIO",
+    "ByteString",
+    "Callable",
+    "Container",
+    "Dict",
+    "FrozenSet",
+    "Generator",
+    "Generic",
+    "Hashable",
+    "IO",
+    "ItemsView",
+    "Iterable",
+    "Iterator",
+    "KeysView",
+    "List",
+    "Mapping",
+    "MappingView",
+    "Match",
+    "MutableMapping",
+    "MutableSequence",
+    "MutableSet",
+    "NamedTuple",
+    "Optional",
+    "Pattern",
+    "Reversible",
+    "Sequence",
+    "Set",
+    "Sized",
+    "SupportsAbs",
+    "SupportsFloat",
+    "SupportsInt",
+    "SupportsRound",
+    "TextIO",
+    "Tuple",
+    "Type",
+    "TypeVar",
+    "Union",
+]
 
 
 # Pairs of a type and a more generalized type.
@@ -27,9 +60,20 @@ _COMPAT_ITEMS = [
 
 # The PEP 484 definition of built-in types.
 # E.g. "typing.List" is used to represent the "list" type.
-TYPING_TO_BUILTIN = {t: t.lower() for t in [
-    "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Type",
-    "Coroutine", "AsyncGenerator"]}
+TYPING_TO_BUILTIN = {
+    t: t.lower()
+    for t in [
+        "List",
+        "Dict",
+        "Tuple",
+        "Set",
+        "FrozenSet",
+        "Generator",
+        "Type",
+        "Coroutine",
+        "AsyncGenerator",
+    ]
+}
 
 
 BUILTIN_TO_TYPING = {v: k for k, v in TYPING_TO_BUILTIN.items()}

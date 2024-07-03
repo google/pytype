@@ -37,12 +37,15 @@ class InTest(test_base.BaseTest):
         # The result of __contains__ is coerced to a bool.
         return 3 in Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __contains__(self, x) -> complex: ...
       def f() -> bool: ...
       def g() -> bool: ...
-    """)
+    """,
+    )
 
   def test_none(self):
     _, errors = self.InferWithErrors("""
@@ -51,7 +54,8 @@ class InTest(test_base.BaseTest):
         del x[""]  # unsupported-operands[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"'in'.*None", "e2": r"item deletion.*None"})
+        errors, {"e1": r"'in'.*None", "e2": r"item deletion.*None"}
+    )
 
 
 class NotInTest(test_base.BaseTest):
@@ -83,12 +87,15 @@ class NotInTest(test_base.BaseTest):
         # The result of __contains__ is coerced to a bool.
         return 3 not in Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __contains__(self, x) -> complex: ...
       def f() -> bool: ...
       def g() -> bool: ...
-    """)
+    """,
+    )
 
   def test_none(self):
     _, errors = self.InferWithErrors("""
@@ -97,7 +104,8 @@ class NotInTest(test_base.BaseTest):
         x[""] = 42  # unsupported-operands[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"'in'.*None", "e2": r"item assignment.*None"})
+        errors, {"e1": r"'in'.*None", "e2": r"item assignment.*None"}
+    )
 
 
 class IsTest(test_base.BaseTest):
@@ -146,12 +154,15 @@ class IsNotTest(test_base.BaseTest):
           assert(cls is not Foo)
           return object.__new__(cls)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type, TypeVar
       _TFoo = TypeVar('_TFoo', bound=Foo)
       class Foo:
         def __new__(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
-    """)
+    """,
+    )
 
   def test_class_factory(self):
     # The assert should not block inference of the return type, since cls could
@@ -163,13 +174,16 @@ class IsNotTest(test_base.BaseTest):
           assert(cls is not Foo)
           return object.__new__(cls)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type, TypeVar
       _TFoo = TypeVar('_TFoo', bound=Foo)
       class Foo:
         @classmethod
         def factory(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
-    """)
+    """,
+    )
 
 
 class CmpTest(test_base.BaseTest):
@@ -207,11 +221,14 @@ class CmpTest(test_base.BaseTest):
       def f():
         return Foo() < 3
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __lt__(self, x) -> complex: ...
       def f() -> complex: ...
-    """)
+    """,
+    )
 
 
 class EqTest(test_base.BaseTest):
@@ -234,11 +251,14 @@ class EqTest(test_base.BaseTest):
       def f():
         return Foo() == 3
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __eq__(self, x) -> complex: ...
       def f() -> complex: ...
-    """)
+    """,
+    )
 
   def test_class(self):
     self.Check("""
@@ -250,10 +270,13 @@ class EqTest(test_base.BaseTest):
     """)
 
   def test_primitive_against_unknown(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       v = None  # type: int
       v == __any_object__
-    """)
+    """,
+    )
 
 
 class NeTest(test_base.BaseTest):
@@ -276,11 +299,14 @@ class NeTest(test_base.BaseTest):
       def f():
         return Foo() != 3
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __ne__(self, x) -> complex: ...
       def f() -> complex: ...
-    """)
+    """,
+    )
 
 
 class InstanceUnequalityTest(test_base.BaseTest):

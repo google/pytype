@@ -10,9 +10,12 @@ class TestExceptionsPy3(test_base.BaseTest):
   def test_reraise(self):
     # Test that we don't crash when trying to reraise a nonexistent exception.
     # (Causes a runtime error when actually run)
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       raise
-    """)
+    """,
+    )
 
   def test_raise_exception_from(self):
     self.Check("raise ValueError from NameError")
@@ -35,12 +38,15 @@ class TestExceptionsPy3(test_base.BaseTest):
         else:
           e()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Never
 
       def e() -> Never: ...
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_union(self):
     self.Check("""
@@ -70,10 +76,12 @@ class TestExceptionsPy3(test_base.BaseTest):
           return e
     """)
     self.assertErrorRegexes(
-        errors, {"e": "NoneType does not inherit from BaseException"})
+        errors, {"e": "NoneType does not inherit from BaseException"}
+    )
 
   @test_utils.skipIfPy(
-      (3, 8), reason="failing, not worth fixing since this works again in 3.9")
+      (3, 8), reason="failing, not worth fixing since this works again in 3.9"
+  )
   def test_no_return_in_finally(self):
     # Tests that pytype is okay with the finally block not returning anything.
     self.Check("""

@@ -42,7 +42,7 @@ class ParseError(Exception):
       self._filename = filename
     if self._line and src_code:
       try:
-        self._text = src_code.splitlines()[self._line-1]
+        self._text = src_code.splitlines()[self._line - 1]
       except IndexError:
         pass
     return self
@@ -86,6 +86,7 @@ class SlotDecl:
 @dataclasses.dataclass(frozen=True)
 class Pyval(astlib.AST):
   """Literal constants in pyi files."""
+
   # Inherits from ast.AST so it can be visited by ast visitors.
 
   type: str
@@ -141,6 +142,6 @@ def builtin_keyword_constants():
       ("True", "bool"),
       ("False", "bool"),
       ("None", "NoneType"),
-      ("__debug__", "bool")
+      ("__debug__", "bool"),
   ]
   return [pytd.Constant(name, pytd.NamedType(typ)) for name, typ in defs]

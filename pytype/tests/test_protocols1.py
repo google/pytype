@@ -18,23 +18,32 @@ class ProtocolTest(test_base.BaseTest):
           return iter(__any_object__)
       v = list(A())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         def __iter__(self) -> Any: ...
       v = ...  # type: list
-    """)
+    """,
+    )
 
   def test_generic(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, Protocol, TypeVar
         T = TypeVar("T")
         class Foo(Protocol[T]): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_generic_py(self):
     ty = self.Infer("""
@@ -43,11 +52,14 @@ class ProtocolTest(test_base.BaseTest):
       class Foo(Protocol[T]):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Generic, Protocol, TypeVar
       T = TypeVar("T")
       class Foo(Generic[T], Protocol): ...
-    """)
+    """,
+    )
 
   def test_generic_alias(self):
     foo_ty = self.Infer("""
@@ -58,33 +70,44 @@ class ProtocolTest(test_base.BaseTest):
       class Bar(Foo[T]):
         pass
     """)
-    self.assertTypesMatchPytd(foo_ty, """
+    self.assertTypesMatchPytd(
+        foo_ty,
+        """
       from typing import Generic, Protocol, TypeVar
       T = TypeVar("T")
       Foo = Protocol[T]
       class Bar(Generic[T], Protocol): ...
-    """)
+    """,
+    )
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         from typing import TypeVar
         T = TypeVar('T')
         class Baz(foo.Foo[T]):
           pass
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import Generic, Protocol, TypeVar
       T = TypeVar('T')
       class Baz(Generic[T], Protocol): ...
-    """)
+    """,
+    )
 
   def test_self_referential_protocol(self):
     # Some protocols use methods that return instances of the protocol, e.g.
     # Iterator's __next__ returns Iterator. Make sure that doesn't crash pytype.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, TypeVar
         _TElem = TypeVar("_TElem")
         _TIter = TypeVar("_TIter", bound=Iter)
@@ -93,12 +116,16 @@ class ProtocolTest(test_base.BaseTest):
           def next(self) -> _TElem: ...
           def __next__(self) -> _TElem: ...
           def __iter__(self) -> _TIter: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         i = foo.Iter[int]()
         next(i)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_attribute(self):
     self.CheckWithErrors("""
@@ -118,7 +145,9 @@ class ProtocolTest(test_base.BaseTest):
 
   def test_pyi_protocol_in_typevar(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, TypeVar
         from typing_extensions import Protocol
 
@@ -129,14 +158,18 @@ class ProtocolTest(test_base.BaseTest):
 
         class Foo(Generic[T]):
           def __init__(self, x: T) -> None: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class Bar:
           def close(self) -> None:
             pass
         foo.Foo(Bar())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 if __name__ == "__main__":

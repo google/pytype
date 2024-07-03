@@ -2,7 +2,6 @@
 
 import argparse
 import dataclasses
-
 from typing import Any, Dict, List
 
 from pytype import config as pytype_config
@@ -40,7 +39,7 @@ class Parser:
       parser: An argparse.ArgumentParser or compatible object
       pytype_single_args: Args passed to pytype
       overrides: Pytype args that the tool overrides (will be put into the tool
-          args, with the corresponding pytype opts getting their default values)
+        args, with the corresponding pytype opts getting their default values)
     """
     self._parser = parser
     self._overrides = overrides or []
@@ -75,9 +74,11 @@ class Parser:
     pytype_dict = vars(pytype_args)
     tool_dict = {}
     for k, v in vars(tool_args).items():
-      if (k in self.pytype_single_args and
-          k not in self._overrides and
-          k in pytype_dict):
+      if (
+          k in self.pytype_single_args
+          and k not in self._overrides
+          and k in pytype_dict
+      ):
         pytype_dict[k] = v
       else:
         tool_dict[k] = v

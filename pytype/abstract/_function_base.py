@@ -41,7 +41,8 @@ class Function(_instance_base.SimpleValue, types.Function):
     self.is_method = "." in name
     self.decorators = []
     self.members["func_name"] = self.ctx.convert.build_string(
-        self.ctx.root_node, name)
+        self.ctx.root_node, name
+    )
 
   def property_get(self, callself, is_class=False):
     if self.name == "__new__" or not callself or is_class:
@@ -97,12 +98,24 @@ class Function(_instance_base.SimpleValue, types.Function):
       # Case 2: Data are entirely Tuple Instances, Unknown or Unsolvable. Make
       # all parameters except self/cls optional.
       # Case 3: Data is anything else. Same as Case 2, but emit a warning.
-      if not (all(isinstance(d, (
-          _instance_base.Instance, _singletons.Unknown, _singletons.Unsolvable))
-                  for d in defaults_var.data) and
-              all(d.full_name == "builtins.tuple"
-                  for d in defaults_var.data
-                  if isinstance(d, _instance_base.Instance))):
+      if not (
+          all(
+              isinstance(
+                  d,
+                  (
+                      _instance_base.Instance,
+                      _singletons.Unknown,
+                      _singletons.Unsolvable,
+                  ),
+              )
+              for d in defaults_var.data
+          )
+          and all(
+              d.full_name == "builtins.tuple"
+              for d in defaults_var.data
+              if isinstance(d, _instance_base.Instance)
+          )
+      ):
         self.ctx.errorlog.bad_function_defaults(self.ctx.vm.frames, self.name)
       # The ambiguous case is handled by the subclass.
       return None
@@ -137,8 +150,9 @@ class NativeFunction(Function):
       sig = function.Signature.from_callable(self.func.__self__)
     args = args.simplify(node, self.ctx, match_signature=sig)
     posargs = [u.AssignToNewVariable(node) for u in args.posargs]
-    namedargs = {k: u.AssignToNewVariable(node)
-                 for k, u in args.namedargs.items()}
+    namedargs = {
+        k: u.AssignToNewVariable(node) for k, u in args.namedargs.items()
+    }
     try:
       inspect.signature(self.func).bind(node, *posargs, **namedargs)
     except ValueError as e:
@@ -165,8 +179,9 @@ class NativeFunction(Function):
       if inspect.ismethod(func) and func.__self__ is not None:
         expected_argcount -= 1
       actual_argcount = len(posargs) + len(namedargs)
-      if (actual_argcount > expected_argcount or
-          (not args.starargs and not args.starstarargs)):
+      if actual_argcount > expected_argcount or (
+          not args.starargs and not args.starstarargs
+      ):
         # If we have too many arguments, or starargs and starstarargs are both
         # empty, then we can be certain of a WrongArgCount error.
         argnames = tuple("_" + str(i) for i in range(expected_argcount))
@@ -183,14 +198,15 @@ class NativeFunction(Function):
       namedargs = {}
     if "self" in namedargs:
       argnames = tuple(
-          "_" + str(i) for i in range(len(posargs) + len(namedargs)))
+          "_" + str(i) for i in range(len(posargs) + len(namedargs))
+      )
       sig = function.Signature.from_param_names(self.name, argnames)
       raise error_types.DuplicateKeyword(sig, args, self.ctx, "self")
     return self.func(node, *posargs, **namedargs)
 
   def get_positional_names(self):
     code = self.func.func_code
-    return list(code.varnames[:code.argcount])
+    return list(code.varnames[: code.argcount])
 
   def property_get(self, callself, is_class=False):
     return self
@@ -211,7 +227,8 @@ class BoundFunction(_base.BaseValue):
     # `self` when do argument matching
     self._self_annot = None
     inst = abstract_utils.get_atomic_value(
-        self._callself, default=self.ctx.convert.unsolvable)
+        self._callself, default=self.ctx.convert.unsolvable
+    )
     if self.underlying.should_set_self_annot():
       self._self_annot = self._get_self_annot(inst)
     if isinstance(inst, _instance_base.SimpleValue):
@@ -230,7 +247,8 @@ class BoundFunction(_base.BaseValue):
       return abstract_utils.get_generic_type(callself)
     if "classmethod" in self.underlying.decorators:
       return _classes.ParameterizedClass(
-          self.ctx.convert.type_type, {abstract_utils.T: self_type}, self.ctx)
+          self.ctx.convert.type_type, {abstract_utils.T: self_type}, self.ctx
+      )
     else:
       return self_type
 
@@ -258,15 +276,18 @@ class BoundFunction(_base.BaseValue):
       else:
         # If a function is recursively calling itself and has set the `self`
         # annotation for the previous call, we want to clear it for this one.
-        should_set_self_annot = (isinstance(self.underlying, SignedFunction) and
-                                 self.underlying.has_self_annot)
+        should_set_self_annot = (
+            isinstance(self.underlying, SignedFunction)
+            and self.underlying.has_self_annot
+        )
       if should_set_self_annot:
         context = self.underlying.set_self_annot(self._self_annot)
       else:
         context = contextlib.nullcontext()
       with context:
-        node, ret = self.underlying.call(node, func, args,
-                                         alias_map=self.alias_map)
+        node, ret = self.underlying.call(
+            node, func, args, alias_map=self.alias_map
+        )
     except error_types.InvalidParameters as e:
       if self._callself and self._callself.bindings:
         if "." in e.name:
@@ -389,7 +410,8 @@ class ClassMethod(_base.BaseValue):
 
   def call(self, node, func, args, alias_map=None):
     return self.method.call(
-        node, func, args.replace(posargs=(self._callcls,) + args.posargs))
+        node, func, args.replace(posargs=(self._callcls,) + args.posargs)
+    )
 
   def to_bound_function(self):
     return BoundPyTDFunction(self._callcls, self.method)
@@ -478,9 +500,11 @@ class SignedFunction(Function):
     return len(self.signature.param_names)
 
   def get_nondefault_params(self):
-    return ((n, n in self.signature.kwonly_params)
-            for n in self.signature.param_names
-            if n not in self.signature.defaults)
+    return (
+        (n, n in self.signature.kwonly_params)
+        for n in self.signature.param_names
+        if n not in self.signature.defaults
+    )
 
   def match_and_map_args(self, node, args, alias_map):
     """Calls match_args() and _map_args()."""
@@ -503,10 +527,8 @@ class SignedFunction(Function):
       function.FailedFunctionCall: If the caller supplied incorrect arguments.
     """
     # Originate a new variable for each argument and call.
-    posargs = [u.AssignToNewVariable(node)
-               for u in args.posargs]
-    kws = {k: u.AssignToNewVariable(node)
-           for k, u in args.namedargs.items()}
+    posargs = [u.AssignToNewVariable(node) for u in args.posargs]
+    kws = {k: u.AssignToNewVariable(node) for k, u in args.namedargs.items()}
     sig = self.signature
     callargs = {
         name: self.ctx.program.NewVariable(default.data, [], node)
@@ -532,8 +554,8 @@ class SignedFunction(Function):
     callargs.update(positional)
     callargs.update(kws)
     for key, kwonly in itertools.chain(
-        self.get_nondefault_params(),
-        ((key, True) for key in sig.kwonly_params)):
+        self.get_nondefault_params(), ((key, True) for key in sig.kwonly_params)
+    ):
       if key not in callargs:
         if args.starstarargs or (args.starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
@@ -543,7 +565,7 @@ class SignedFunction(Function):
           raise error_types.MissingParameter(sig, args, self.ctx, key)
     if sig.varargs_name:
       varargs_name = sig.varargs_name
-      extraneous = posargs[self.argcount(node):]
+      extraneous = posargs[self.argcount(node) :]
       if args.starargs:
         if extraneous:
           log.warning("Not adding extra params to *%s", varargs_name)
@@ -606,10 +628,12 @@ class SignedFunction(Function):
     matcher = self.ctx.matcher(node)
     try:
       matches = matcher.compute_matches(
-          args_to_match, match_all_views, alias_map=alias_map)
+          args_to_match, match_all_views, alias_map=alias_map
+      )
     except error_types.MatchError as e:
       raise error_types.WrongArgTypes(
-          self.signature, args, self.ctx, e.bad_type)
+          self.signature, args, self.ctx, e.bad_type
+      )
     return [m.subst for m in matches]
 
   def get_first_opcode(self):
@@ -624,27 +648,31 @@ class SignedFunction(Function):
 
     Args:
       node: The node where default arguments are being set. Needed if we cannot
-            get a useful value from defaults_var.
+        get a useful value from defaults_var.
       defaults_var: a Variable with a single binding to a tuple of default
-                    values.
+        values.
     """
     defaults = self._extract_defaults(defaults_var)
     if defaults is None:
       defaults = [
           self.ctx.new_unsolvable(node) for _ in self.signature.param_names
       ]
-    defaults = dict(zip(self.signature.param_names[-len(defaults):], defaults))
+    defaults = dict(zip(self.signature.param_names[-len(defaults) :], defaults))
     self.signature.defaults = defaults
 
   def _mutations_generator(self, node, first_arg, substs):
     def generator():
       """Yields mutations."""
-      if (not (self.is_attribute_of_class or self.name == "__new__") or
-          not first_arg or not substs):
+      if (
+          not (self.is_attribute_of_class or self.name == "__new__")
+          or not first_arg
+          or not substs
+      ):
         return
       try:
         inst = abstract_utils.get_atomic_value(
-            first_arg, _instance_base.Instance)
+            first_arg, _instance_base.Instance
+        )
       except abstract_utils.ConversionError:
         return
       if inst.cls.template:
@@ -665,13 +693,13 @@ class SignedFunction(Function):
               else:
                 value.PasteVariable(v, node)
               yield function.Mutation(inst, k, value)
+
     # Optimization: return a generator to avoid iterating over the mutations an
     # extra time.
     return generator
 
   def update_signature_scope(self, cls):
-    self.signature.excluded_types.update(
-        [t.name for t in cls.template])
+    self.signature.excluded_types.update([t.name for t in cls.template])
     self.signature.add_scope(cls)
 
 
@@ -687,8 +715,18 @@ class SimpleFunction(SignedFunction):
     self.bound_class = BoundFunction
 
   @classmethod
-  def build(cls, name, param_names, posonly_count, varargs_name, kwonly_params,
-            kwargs_name, defaults, annotations, ctx):
+  def build(
+      cls,
+      name,
+      param_names,
+      posonly_count,
+      varargs_name,
+      kwonly_params,
+      kwargs_name,
+      defaults,
+      annotations,
+      ctx,
+  ):
     """Returns a SimpleFunction.
 
     Args:
@@ -705,15 +743,23 @@ class SimpleFunction(SignedFunction):
     """
     annotations = dict(annotations)
     # Every parameter must have an annotation. Defaults to unsolvable.
-    for n in itertools.chain(param_names, [varargs_name, kwargs_name],
-                             kwonly_params):
+    for n in itertools.chain(
+        param_names, [varargs_name, kwargs_name], kwonly_params
+    ):
       if n and n not in annotations:
         annotations[n] = ctx.convert.unsolvable
     if not isinstance(defaults, dict):
-      defaults = dict(zip(param_names[-len(defaults):], defaults))
-    signature = function.Signature(name, param_names, posonly_count,
-                                   varargs_name, kwonly_params, kwargs_name,
-                                   defaults, annotations)
+      defaults = dict(zip(param_names[-len(defaults) :], defaults))
+    signature = function.Signature(
+        name,
+        param_names,
+        posonly_count,
+        varargs_name,
+        kwonly_params,
+        kwargs_name,
+        defaults,
+        annotations,
+    )
     return cls(signature, ctx)
 
   def call(self, node, func, args, alias_map=None):
@@ -722,7 +768,8 @@ class SimpleFunction(SignedFunction):
     substs = self.match_args(node, args, alias_map)
     # Substitute type parameters in the signature's annotations.
     annotations = self.ctx.annotation_utils.sub_annotations(
-        node, self.signature.annotations, substs, instantiate_unbound=False)
+        node, self.signature.annotations, substs, instantiate_unbound=False
+    )
     if self.signature.has_return_annotation:
       ret_type = annotations["return"]
       ret = ret_type.instantiate(node)

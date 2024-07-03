@@ -25,16 +25,24 @@ class PopenInit(abstract.PyTDFunction):
     # a few of the parameters, but pytype will fall back to less precise
     # matching if any of the parameters has an unknown type.
     found_ambiguous_arg = False
-    for kw, literal in [("encoding", False), ("errors", False),
-                        ("universal_newlines", True), ("text", True)]:
+    for kw, literal in [
+        ("encoding", False),
+        ("errors", False),
+        ("universal_newlines", True),
+        ("text", True),
+    ]:
       if kw not in args.namedargs:
         continue
       if literal:
-        ambiguous = any(not isinstance(v, abstract.ConcreteValue)
-                        for v in args.namedargs[kw].data)
+        ambiguous = any(
+            not isinstance(v, abstract.ConcreteValue)
+            for v in args.namedargs[kw].data
+        )
       else:
-        ambiguous = any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
-                        for v in args.namedargs[kw].data)
+        ambiguous = any(
+            isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
+            for v in args.namedargs[kw].data
+        )
       if not ambiguous:
         return False
       found_ambiguous_arg = True
@@ -59,7 +67,8 @@ class Popen(abstract.PyTDClass, mixin.HasSlots):
     # lazily loaded because the signatures refer back to Popen itself
     if name not in self._slots:
       slot = self.ctx.convert.convert_pytd_function(
-          self.pytd_cls.Lookup(name), PopenInit)
+          self.pytd_cls.Lookup(name), PopenInit
+      )
       self._setting_init = True
       self.set_slot(name, slot)
       self._setting_init = False

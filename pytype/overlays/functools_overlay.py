@@ -12,7 +12,8 @@ class FunctoolsOverlay(overlay.Overlay):
   def __init__(self, ctx):
     member_map = {
         "cached_property": overlay.add_name(
-            "cached_property", special_builtins.Property.make_alias),
+            "cached_property", special_builtins.Property.make_alias
+        ),
     }
     ast = ctx.loader.import_name(_MODULE_NAME)
     super().__init__(ctx, _MODULE_NAME, member_map, ast)

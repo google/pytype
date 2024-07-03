@@ -13,21 +13,30 @@ class ParamSpecTest(test_base.BaseTest):
       from typing import ParamSpec
       P = ParamSpec("P")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import ParamSpec
       P = ParamSpec("P")
-    """)
+    """,
+    )
 
   def test_import(self):
     with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """P = ParamSpec("P")""")
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         from a import P
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import ParamSpec
         P = ParamSpec("P")
-      """)
+      """,
+      )
 
   def test_invalid(self):
     ty, errors = self.InferWithErrors("""
@@ -43,16 +52,25 @@ class ParamSpecTest(test_base.BaseTest):
       S = ParamSpec("S", covariant=False)  # ok
       T = ParamSpec("T", covariant=False)  # duplicate ok
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import ParamSpec
       S = ParamSpec("S")
       T = ParamSpec("T")
-    """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"wrong arguments", "e2": r"Expected.*str.*Actual.*int",
-        "e3": r"constant str", "e4": r"constraint.*Must be constant",
-        "e5": r"Expected.*_1:.*type.*Actual.*_1: int", "e6": r"0 or more than 1"
-    })
+    """,
+    )
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"wrong arguments",
+            "e2": r"Expected.*str.*Actual.*int",
+            "e3": r"constant str",
+            "e4": r"constraint.*Must be constant",
+            "e5": r"Expected.*_1:.*type.*Actual.*_1: int",
+            "e6": r"0 or more than 1",
+        },
+    )
 
   def test_print_args(self):
     ty = self.Infer("""
@@ -60,10 +78,13 @@ class ParamSpecTest(test_base.BaseTest):
       S = ParamSpec("S", bound=float, covariant=True)
     """)
     # The "covariant" keyword is ignored for now.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import ParamSpec
       S = ParamSpec("S", bound=float)
-    """)
+    """,
+    )
 
   def test_paramspec_in_def(self):
     ty = self.Infer("""
@@ -73,12 +94,15 @@ class ParamSpecTest(test_base.BaseTest):
       def f(x: Callable[P, int]) -> Callable[P, int]:
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, ParamSpec
       P = ParamSpec("P")
 
       def f(x: Callable[P, int]) -> Callable[P, int]: ...
-    """)
+    """,
+    )
 
   def test_concatenate_in_def(self):
     ty = self.Infer("""
@@ -88,12 +112,15 @@ class ParamSpecTest(test_base.BaseTest):
       def f(x: Callable[Concatenate[int, P], int]) -> Callable[P, int]:
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, Concatenate, ParamSpec
       P = ParamSpec("P")
 
       def f(x: Callable[Concatenate[int, P], int]) -> Callable[P, int]: ...
-    """)
+    """,
+    )
 
   def test_drop_param(self):
     self.Check("""
@@ -229,7 +256,9 @@ class PyiParamSpecTest(test_base.BaseTest):
         p = h(A(), b='2')
         q = h(1, 2)  # wrong-arg-types
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import List, Any
 
@@ -239,7 +268,8 @@ class PyiParamSpecTest(test_base.BaseTest):
       class A: ...
 
       def h(a: A, b: str) -> List[int]: ...
-   """)
+   """,
+    )
 
   def test_method_decoration(self):
     with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
@@ -254,7 +284,9 @@ class PyiParamSpecTest(test_base.BaseTest):
           def h(a: 'B', b: str) -> int:
             return 10
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import List, Any
 
@@ -262,7 +294,8 @@ class PyiParamSpecTest(test_base.BaseTest):
 
       class B:
         def h(a: B, b: str) -> List[int]: ...
-   """)
+   """,
+    )
 
   def test_multiple_decorators(self):
     """Check that we don't cache the decorator type params."""
@@ -300,7 +333,9 @@ class PyiParamSpecTest(test_base.BaseTest):
         p = h(A(), b='2')
         q = h(1, 2)  # wrong-arg-types
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, List, ParamSpec, TypeVar, Any
 
       p: List[int]
@@ -313,13 +348,16 @@ class PyiParamSpecTest(test_base.BaseTest):
 
       def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
       def h(a: A, b: str) -> List[int]: ...
-   """)
+   """,
+    )
 
   def test_concatenate(self):
     # TODO(b/217789659):
     # - Should change_arg preserve the name of the posarg?
     # - Should paramspecs in error messages be changed to ...?
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypeVar, ParamSpec, Concatenate, Callable
 
       T = TypeVar("T")
@@ -329,7 +367,8 @@ class PyiParamSpecTest(test_base.BaseTest):
       def drop_arg(fn: Callable[Concatenate[int, P], T]) -> Callable[P, T]: ...
       def add_arg(fn: Callable[P, T]) -> Callable[Concatenate[int, P], T]: ...
       def mismatched(fn: Callable[Concatenate[str, P], T]) -> Callable[Concatenate[str, P], T]: ...
-    """)]):
+    """,
+    )]):
       ty, err = self.InferWithErrors("""
         import foo
 
@@ -349,7 +388,9 @@ class PyiParamSpecTest(test_base.BaseTest):
         def k(a: int, b: str) -> int:  # wrong-arg-types[e]<3.11
           return 10
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import Any
 
@@ -358,13 +399,24 @@ class PyiParamSpecTest(test_base.BaseTest):
       def f(_0: str, b: str) -> int: ...
       def g(b: str) -> int: ...
       def h(_0: int, /, a: int, b: str) -> int: ...
-   """)
-    self.assertErrorSequences(err, {
-        "e": ["Expected", "fn: Callable[Concatenate[str, P], Any]",
-              "Actual", "fn: Callable[[int, str], int]"]})
+   """,
+    )
+    self.assertErrorSequences(
+        err,
+        {
+            "e": [
+                "Expected",
+                "fn: Callable[Concatenate[str, P], Any]",
+                "Actual",
+                "fn: Callable[[int, str], int]",
+            ]
+        },
+    )
 
   def test_overloaded_argument(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypeVar, ParamSpec, Callable, List
 
       T = TypeVar("T")
@@ -376,13 +428,16 @@ class PyiParamSpecTest(test_base.BaseTest):
       def f(x: str) -> int: ...
       @overload
       def f(x: str, *, y: int = 0) -> int: ...
-    """)]):
+    """,
+    )]):
       ty, _ = self.InferWithErrors("""
         import foo
 
         f = foo.decorator(foo.f)
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import List, overload
 
@@ -390,7 +445,8 @@ class PyiParamSpecTest(test_base.BaseTest):
       def f(x: str) -> List[int]: ...
       @overload
       def f(x: str, *, y: int = ...) -> List[int]: ...
-   """)
+   """,
+    )
 
   def test_starargs(self):
     with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
@@ -413,7 +469,9 @@ class PyiParamSpecTest(test_base.BaseTest):
         def k(**kwargs) -> int:
           return 10
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       from typing import List, Any
 
@@ -424,17 +482,21 @@ class PyiParamSpecTest(test_base.BaseTest):
 
       def s(*args) -> List[int]: ...
       def k(**kwargs) -> List[int]: ...
-   """)
+   """,
+    )
 
   def test_callable(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypeVar, ParamSpec, Concatenate, Callable
 
       T = TypeVar("T")
       P = ParamSpec("P")
 
       def add_arg(fn: Callable[P, T]) -> Callable[Concatenate[int, P], T]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import Callable, List
@@ -446,11 +508,14 @@ class PyiParamSpecTest(test_base.BaseTest):
       """)
 
   def test_match_callable(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Any, Callable, ParamSpec
       P = ParamSpec('P')
       def f(x: Callable[P, Any]) -> Callable[P, Any]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
 
@@ -485,11 +550,14 @@ class PyiParamSpecTest(test_base.BaseTest):
       """)
 
   def test_callable_class_inference(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Any, Callable, ParamSpec
       P = ParamSpec('P')
       def f(x: Callable[P, Any]) -> Callable[P, Any]: ...
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import foo
         class C:
@@ -497,13 +565,16 @@ class PyiParamSpecTest(test_base.BaseTest):
             return str(x)
         f = foo.f(C())
       """)
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Any
         class C:
           def __call__(self, x: int, y) -> str: ...
         def f(x: int, y) -> Any: ...
-      """)
+      """,
+      )
 
 
 class ContextlibTest(test_base.BaseTest):

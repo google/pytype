@@ -1,11 +1,11 @@
 """Module with common utilities used by other build and test scripts."""
 
 import json
+import locale
 import os
 import shutil
 import subprocess
 import sys
-import locale
 
 PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(PYTYPE_SRC_ROOT, "out")
@@ -44,21 +44,26 @@ class BuildConfig:
   def save_to_cache_file(self):
     with open(self.BUILD_CONFIG_CACHE, "w") as f:
       json.dump(
-          {"py_version": self.py_version, "build_type": self.build_type}, f)
+          {"py_version": self.py_version, "build_type": self.build_type}, f
+      )
 
   def __eq__(self, other):
-    return all([self.py_version == other.py_version,
-                self.build_type == other.build_type])
+    return all([
+        self.py_version == other.py_version,
+        self.build_type == other.build_type,
+    ])
 
   def __ne__(self, other):
-    return any([self.py_version != other.py_version,
-                self.build_type != other.build_type])
+    return any([
+        self.py_version != other.py_version,
+        self.build_type != other.build_type,
+    ])
 
   @classmethod
   def current_build_config(cls, debug):
     return BuildConfig(**{
         "py_version": current_py_version(),
-        "build_type": "debug" if debug else "None"
+        "build_type": "debug" if debug else "None",
     })
 
   @classmethod
@@ -135,10 +140,13 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
     _clean_out_dir("Force-cleaning 'out' directory.")
   elif BuildConfig.read_cached_config() != current_config:
     _clean_out_dir(
-        "Previous build config was different; cleaning 'out' directory.\n")
+        "Previous build config was different; cleaning 'out' directory.\n"
+    )
   else:
-    print("Running with build config same as cached build config; "
-          "not cleaning 'out' directory.\n")
+    print(
+        "Running with build config same as cached build config; "
+        "not cleaning 'out' directory.\n"
+    )
 
   if os.path.exists(os.path.join(OUT_DIR, "build.ninja")):
     # Run CMake if it was not already run. If CMake was already run, it
@@ -151,8 +159,13 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
     return True
 
   print("Running CMake ...\n")
-  cmd = ["cmake", PYTYPE_SRC_ROOT, "-G", "Ninja",
-         f"-DPython_ADDITIONAL_VERSIONS={current_config.py_version}"]
+  cmd = [
+      "cmake",
+      PYTYPE_SRC_ROOT,
+      "-G",
+      "Ninja",
+      f"-DPython_ADDITIONAL_VERSIONS={current_config.py_version}",
+  ]
   if debug_build:
     cmd.append("-DCMAKE_BUILD_TYPE=Debug")
   returncode, stdout = run_cmd(cmd, cwd=OUT_DIR)
@@ -214,8 +227,8 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
   # True.
   cmd = ["ninja", "-k", "1" if fail_fast else "100000"] + targets
   with subprocess.Popen(
-      cmd, cwd=OUT_DIR,
-      stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
+      cmd, cwd=OUT_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+  ) as process:
     failed_targets = []
     # When verbose output is requested, test failure logs are printed to stderr.
     # However, sometimes a test fails without generating a log, in which case we
@@ -232,10 +245,12 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
         msg_type, modname, logfile = parse_ninja_output_line(line)
         if msg_type == _NINJA_FAILURE_MSG:
           # This is a failed ninja target.
-          failed_targets.append(line[len(NINJA_FAILURE_PREFIX):].strip())
+          failed_targets.append(line[len(NINJA_FAILURE_PREFIX) :].strip())
           print_if_verbose = True
-        if (msg_type == _TEST_MODULE_PASS_MSG or
-            msg_type == _TEST_MODULE_FAIL_MSG):
+        if (
+            msg_type == _TEST_MODULE_PASS_MSG
+            or msg_type == _TEST_MODULE_FAIL_MSG
+        ):
           print(line)
           if msg_type == _TEST_MODULE_FAIL_MSG:
             fail_collector.add_failure(modname, logfile)
@@ -245,7 +260,8 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
       if failed_targets:
         # For convenience, we will print the list of failed targets.
         summary_hdr = (
-            ">>> Found Ninja target failures (includes test failures):")
+            ">>> Found Ninja target failures (includes test failures):"
+        )
         print("\n" + summary_hdr)
         ninja_log.write("\n" + summary_hdr + "\n")
         for t in failed_targets:

@@ -20,6 +20,8 @@ class CollectAnnotationLines(ast.NodeVisitor):
     for n in node.body:
       self.visit(n)
     self.in_function = False
+
+
 # pylint: enable=invalid-name
 
 

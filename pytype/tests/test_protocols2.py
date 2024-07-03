@@ -38,7 +38,8 @@ class ProtocolTest(test_base.BaseTest):
       f(["foo"])  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"\(x: SupportsAbs\).*\(x: List\[str\]\)"})
+        errors, {"e": r"\(x: SupportsAbs\).*\(x: List\[str\]\)"}
+    )
 
   def test_check_iterator_error(self):
     _, errors = self.InferWithErrors("""
@@ -98,7 +99,8 @@ class ProtocolTest(test_base.BaseTest):
       f(foo)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"\(x: Iterable\[int\]\).*\(x: Foo\)"})
+        errors, {"e": r"\(x: Iterable\[int\]\).*\(x: Foo\)"}
+    )
 
   def test_check_parameterized_protocol_multi_signature(self):
     self.Check("""
@@ -134,7 +136,8 @@ class ProtocolTest(test_base.BaseTest):
       f(foo)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"\(x: Sequence\[int\]\).*\(x: Foo\)"})
+        errors, {"e": r"\(x: Sequence\[int\]\).*\(x: Foo\)"}
+    )
 
   def test_construct_dict_with_protocol(self):
     self.Check("""
@@ -198,14 +201,17 @@ class ProtocolTest(test_base.BaseTest):
         return iter(s)
       next(f(Bar()))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterable, Iterator, TypeVar
       T = TypeVar("T")
       class Bar:
         def __getitem__(self, i: T) -> T: ...
       T2 = TypeVar("T2")
       def f(s: Iterable[T2]) -> Iterator[T2]: ...
-    """)
+    """,
+    )
 
   def test_iterable_iter(self):
     ty = self.Infer("""
@@ -218,43 +224,58 @@ class ProtocolTest(test_base.BaseTest):
         return iter(s)
       next(f(Bar()))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Iterable, Iterator, TypeVar
       class Bar:
         def __iter__(self) -> Iterator: ...
       T = TypeVar("T")
       def f(s: Iterable[T]) -> Iterator[T]: ...
-    """)
+    """,
+    )
 
   def test_pyi_iterable_getitem(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         T = TypeVar("T")
         class Foo:
           def __getitem__(self, i: T) -> T: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Iterable, TypeVar
         import foo
         T = TypeVar("T")
         def f(s: Iterable[T]) -> T: ...
         f(foo.Foo())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pyi_iterable_iter(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any
         class Foo:
           def __iter__(self) -> Any: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Iterable, TypeVar
         import foo
         T = TypeVar("T")
         def f(s: Iterable[T]) -> T: ...
         f(foo.Foo())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_inherited_abstract_method_error(self):
     _, errors = self.InferWithErrors("""
@@ -354,15 +375,19 @@ class ProtocolTest(test_base.BaseTest):
 
   def test_generic_callable(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, TypeVar
         T = TypeVar("T")
         class Foo(Generic[T]):
           def __init__(self, x: T):
             self = Foo[T]
           def __call__(self) -> T: ...
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         from typing import Any, Callable
         import foo
         def f() -> Callable:
@@ -373,13 +398,23 @@ class ProtocolTest(test_base.BaseTest):
           return foo.Foo("")  # bad-return-type[e1]
         def i() -> Callable[[], int]:
           return foo.Foo("")  # bad-return-type[e2]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       # TODO(rechen): 'T' should be 'str'.
-      self.assertErrorSequences(errors, {
-          "e1": ["def <callable>(self, _0) -> str: ...",
-                 "def __call__(self: foo.Foo[T]) -> T: ..."],
-          "e2": ["def <callable>(self) -> int: ...",
-                 "def __call__(self: foo.Foo[T]) -> T: ..."]})
+      self.assertErrorSequences(
+          errors,
+          {
+              "e1": [
+                  "def <callable>(self, _0) -> str: ...",
+                  "def __call__(self: foo.Foo[T]) -> T: ...",
+              ],
+              "e2": [
+                  "def <callable>(self) -> int: ...",
+                  "def __call__(self: foo.Foo[T]) -> T: ...",
+              ],
+          },
+      )
 
   def test_staticmethod(self):
     self.CheckWithErrors("""
@@ -456,9 +491,13 @@ class ProtocolTest(test_base.BaseTest):
       f(42)  # wrong-arg-types[e1]
       f(NotAppendable())  # wrong-arg-types[e2]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Appendable.*int.*append",
-        "e2": r"Appendable.*NotAppendable.*append"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Appendable.*int.*append",
+            "e2": r"Appendable.*NotAppendable.*append",
+        },
+    )
 
   def test_reingest_custom_protocol(self):
     ty = self.Infer("""
@@ -469,7 +508,8 @@ class ProtocolTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      self.Check("""
+      self.Check(
+          """
         import foo
         class MyAppendable:
           def append(self):
@@ -478,7 +518,9 @@ class ProtocolTest(test_base.BaseTest):
           pass
         f([])
         f(MyAppendable())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_reingest_custom_protocol_error(self):
     ty = self.Infer("""
@@ -489,7 +531,8 @@ class ProtocolTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""
+      errors = self.CheckWithErrors(
+          """
         import foo
         class NotAppendable:
           pass
@@ -497,10 +540,16 @@ class ProtocolTest(test_base.BaseTest):
           pass
         f(42)  # wrong-arg-types[e1]
         f(NotAppendable())  # wrong-arg-types[e2]
-      """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e1": r"Appendable.*int.*append",
-          "e2": r"Appendable.*NotAppendable.*append"})
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertErrorRegexes(
+          errors,
+          {
+              "e1": r"Appendable.*int.*append",
+              "e2": r"Appendable.*NotAppendable.*append",
+          },
+      )
 
   def test_reingest_custom_protocol_inherit_method(self):
     ty = self.Infer("""
@@ -514,7 +563,8 @@ class ProtocolTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      errors = self.CheckWithErrors("""
+      errors = self.CheckWithErrors(
+          """
         from foo import Mutable
         class NotMutable:
           def remove(self):
@@ -523,7 +573,9 @@ class ProtocolTest(test_base.BaseTest):
           pass
         f([])  # ok
         f(NotMutable())  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"Mutable.*NotMutable.*append"})
 
   def test_reingest_custom_protocol_implement_method(self):
@@ -541,7 +593,8 @@ class ProtocolTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      self.Check("""
+      self.Check(
+          """
         from foo import Removable
         def f(x: Removable):
           pass
@@ -549,7 +602,9 @@ class ProtocolTest(test_base.BaseTest):
           def remove(self):
             pass
         f(MyRemovable())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_ignore_method_body(self):
     self.Check("""
@@ -595,13 +650,17 @@ class ProtocolTest(test_base.BaseTest):
 
   def test_callback_protocol_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Protocol
         class Foo(Protocol):
           def __call__(self, x: str) -> str: ...
         def accepts_foo(f: Foo) -> None: ...
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         def f1(x: str) -> str:
           return x
@@ -613,7 +672,9 @@ class ProtocolTest(test_base.BaseTest):
         foo.accepts_foo(f1)
         foo.accepts_foo(f2)  # wrong-arg-types
         foo.accepts_foo(f3)  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_class_matches_callback_protocol(self):
     self.CheckWithErrors("""
@@ -630,17 +691,23 @@ class ProtocolTest(test_base.BaseTest):
 
   def test_class_matches_callback_protocol_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Protocol
         class Foo(Protocol):
           def __call__(self) -> int: ...
         def accepts_foo(f: Foo) -> None: ...
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         foo.accepts_foo(int)
         foo.accepts_foo(str)  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_classmethod(self):
     # TODO(rechen): An instance method shouldn't match a classmethod.
@@ -776,7 +843,8 @@ class ProtocolTest(test_base.BaseTest):
         return (x,)  # bad-return-type[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Actually returned[^\n]*\nAttributes[^\n]*$"})
+        errors, {"e": r"Actually returned[^\n]*\nAttributes[^\n]*$"}
+    )
 
   def test_annotated_classmethod(self):
     self.Check("""
@@ -908,7 +976,8 @@ class ProtocolsTestPython3Feature(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      errors = self.CheckWithErrors("""
+      errors = self.CheckWithErrors(
+          """
         import foo
         from typing import Protocol
         class ShouldMatch(Protocol):
@@ -934,12 +1003,17 @@ class ProtocolsTestPython3Feature(test_base.BaseTest):
         extra_attribute(foo)  # wrong-arg-types[e1]
         extra_method(foo)  # wrong-arg-types[e2]
         wrong_type(foo)  # wrong-arg-types[e3]
-      """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e1": r"not implemented on module: y",
-          "e2": r"not implemented on module: g",
-          "e3": r"x.*expected str, got int",
-      })
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertErrorRegexes(
+          errors,
+          {
+              "e1": r"not implemented on module: y",
+              "e2": r"not implemented on module: g",
+              "e3": r"x.*expected str, got int",
+          },
+      )
 
 
 class ProtocolAttributesTest(test_base.BaseTest):
@@ -977,12 +1051,16 @@ class ProtocolAttributesTest(test_base.BaseTest):
 
   def test_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Protocol
         class Foo(Protocol):
           x: int
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         class Bar:
           x = 0
@@ -992,15 +1070,21 @@ class ProtocolAttributesTest(test_base.BaseTest):
           pass
         f(Bar())
         f(Baz())  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pyi_inheritance(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo:
           x: int
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         from typing import Protocol
         class Bar(Protocol):
@@ -1015,7 +1099,9 @@ class ProtocolAttributesTest(test_base.BaseTest):
           pass
         f(Foo2())
         g(Foo2())  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_instance_attribute(self):
     self.CheckWithErrors("""
@@ -1064,7 +1150,8 @@ class ProtocolAttributesTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import foo
         class Bar:
           @property
@@ -1078,7 +1165,9 @@ class ProtocolAttributesTest(test_base.BaseTest):
           pass
         f(Bar())
         f(Baz())  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_inherit_property(self):
     foo_ty = self.Infer("""
@@ -1089,7 +1178,8 @@ class ProtocolAttributesTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import foo
         from typing import Protocol
         class Protocol1(Protocol):
@@ -1106,7 +1196,9 @@ class ProtocolAttributesTest(test_base.BaseTest):
           pass
         f1(Bar())
         f2(Bar())  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_optional(self):
     errors = self.CheckWithErrors("""
@@ -1161,13 +1253,17 @@ class ProtocolAttributesTest(test_base.BaseTest):
 
   def test_generic_from_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Protocol, TypeVar
         T = TypeVar('T')
         class Foo(Protocol[T]):
           x: T
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         from typing import Type, TypeVar
         import foo
 
@@ -1182,24 +1278,33 @@ class ProtocolAttributesTest(test_base.BaseTest):
 
         f(Bar)  # ok
         f(Baz)  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"expected int, got str"})
 
   def test_generic_used_in_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("protocol.pyi", """
+      d.create_file(
+          "protocol.pyi",
+          """
         from typing import Dict, List, Protocol, TypeVar
         T = TypeVar('T')
         class Foo(Protocol[T]):
           x: Dict[str, List[T]]
-    """)
-      d.create_file("util.pyi", """
+    """,
+      )
+      d.create_file(
+          "util.pyi",
+          """
         import protocol
         from typing import Type, TypeVar
         T = TypeVar('T', bound=protocol.Foo[int])
         def f(x: Type[T]) -> T: ...
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         from typing import Dict, List
         import util
         class Bar:
@@ -1208,10 +1313,18 @@ class ProtocolAttributesTest(test_base.BaseTest):
           x: Dict[str, List[str]]
         util.f(Bar)  # ok
         util.f(Baz)  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e": (r"expected Dict\[str, List\[int\]\], "
-                r"got Dict\[str, List\[str\]\]")})
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertErrorRegexes(
+          errors,
+          {
+              "e": (
+                  r"expected Dict\[str, List\[int\]\], "
+                  r"got Dict\[str, List\[str\]\]"
+              )
+          },
+      )
 
   def test_match_multi_attributes_against_dataclass_protocol(self):
     errors = self.CheckWithErrors("""
@@ -1233,9 +1346,15 @@ class ProtocolAttributesTest(test_base.BaseTest):
       f(ShouldMatch(0, 0))
       f(ShouldNotMatch(0, ''))  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"expected Dict\[str, dataclasses\.Field\[int\]\], "
-              r"got Dict\[str, dataclasses\.Field\[Union\[int, str\]\]\]")})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e": (
+                r"expected Dict\[str, dataclasses\.Field\[int\]\], "
+                r"got Dict\[str, dataclasses\.Field\[Union\[int, str\]\]\]"
+            )
+        },
+    )
 
 
 if __name__ == "__main__":

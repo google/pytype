@@ -47,11 +47,13 @@ class BuildClass(_base.BaseValue):
     metaclass = kwargs.get("metaclass", None)
     if len(funcvar.bindings) != 1:
       raise abstract_utils.ConversionError(
-          "Invalid ambiguous argument to __build_class__")
-    func, = funcvar.data
+          "Invalid ambiguous argument to __build_class__"
+      )
+    (func,) = funcvar.data
     if not _isinstance(func, "InterpreterFunction"):
       raise abstract_utils.ConversionError(
-          "Invalid argument to __build_class__")
+          "Invalid argument to __build_class__"
+      )
     func.is_class_builder = True
     bases = args.posargs[2:]
     subst = {}
@@ -64,13 +66,19 @@ class BuildClass(_base.BaseValue):
         if base.final:
           self.ctx.errorlog.subclassing_final_class(self.ctx.vm.frames, basevar)
         if isinstance(base, ParameterizedClass):
-          subst.update(
-              {v.name: any_var for v in base.formal_type_parameters.values()
-               if _isinstance(v, "TypeParameter")})
+          subst.update({
+              v.name: any_var
+              for v in base.formal_type_parameters.values()
+              if _isinstance(v, "TypeParameter")
+          })
 
-    node, _ = func.call(node, funcvar.bindings[0],
-                        args.replace(posargs=(), namedargs={}),
-                        new_locals=True, frame_substs=(subst,))
+    node, _ = func.call(
+        node,
+        funcvar.bindings[0],
+        args.replace(posargs=(), namedargs={}),
+        new_locals=True,
+        frame_substs=(subst,),
+    )
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var
@@ -88,7 +96,8 @@ class BuildClass(_base.BaseValue):
         metaclass_var=metaclass,
         new_class_var=class_closure_var,
         decorators=self.decorators,
-        undecorated_methods=undecorated_methods)
+        undecorated_methods=undecorated_methods,
+    )
     # Check for special classes first.
     node, clsvar = _special_classes.build_class(node, props, kwargs, self.ctx)
     if not clsvar:
@@ -106,11 +115,15 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   """
 
   def __init__(
-      self, name: str, bases: List[cfg.Variable],
-      members: Dict[str, cfg.Variable], cls: _base.BaseValue,
+      self,
+      name: str,
+      bases: List[cfg.Variable],
+      members: Dict[str, cfg.Variable],
+      cls: _base.BaseValue,
       first_opcode: Optional[opcodes.Opcode],
       undecorated_methods: Optional[class_mixin.FunctionMapType],
-      ctx: _ContextType):
+      ctx: _ContextType,
+  ):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
@@ -129,8 +142,9 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     self._first_opcode = first_opcode
 
   def _get_class(self):
-    return ParameterizedClass(self.ctx.convert.type_type,
-                              {abstract_utils.T: self}, self.ctx)
+    return ParameterizedClass(
+        self.ctx.convert.type_type, {abstract_utils.T: self}, self.ctx
+    )
 
   def get_first_opcode(self):
     return self._first_opcode
@@ -168,22 +182,29 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         nitem = item.with_scope(self.full_name)
         if nitem in self.template:
           raise abstract_utils.GenericTypeError(
-              self, ("Generic class [%s] and its nested generic class [%s] "
-                     "cannot use the same type variable %s.")
-              % (self.full_name, cls.full_name, item.name))
+              self,
+              (
+                  "Generic class [%s] and its nested generic class [%s] "
+                  "cannot use the same type variable %s."
+              )
+              % (self.full_name, cls.full_name, item.name),
+          )
 
     self._load_all_formal_type_parameters()  # Throw exception if there is error
     for t in self.template:
       if t.full_name in self.all_formal_type_parameters:
         raise abstract_utils.GenericTypeError(
-            self, f"Conflicting value for TypeVar {t.full_name}")
+            self, f"Conflicting value for TypeVar {t.full_name}"
+        )
 
   def _override_check(self):
     """Checks for @typing.override errors."""
     for name, member in self.members.items():
       member_data = [
-          m for m in member.data
-          if _isinstance(m, ("InterpreterClass", "InterpreterFunction"))]
+          m
+          for m in member.data
+          if _isinstance(m, ("InterpreterClass", "InterpreterFunction"))
+      ]
       if not member_data:
         continue
 
@@ -195,8 +216,10 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         opcode = member.def_opcode
       stack = self.ctx.vm.simple_stack(opcode)
 
-      if any("override" in m.decorators or "typing.override" in m.decorators
-             for m in member_data):
+      if any(
+          "override" in m.decorators or "typing.override" in m.decorators
+          for m in member_data
+      ):
         base = self._get_defining_base_class(name)
         if not base:
           # 'name' is marked as an override but not defined in a base class.
@@ -206,7 +229,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         if base:
           # 'name' is defined in a base class but not marked as an override.
           self.ctx.errorlog.missing_override_decorator(
-              stack, name, base.full_name)
+              stack, name, base.full_name
+          )
 
   def _get_defining_base_class(self, attr):
     """Gets first base class, if any, that defines the given attribute."""
@@ -221,10 +245,12 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     if max_depth > 0:
       for mbr in self.members.values():
         mbr = abstract_utils.get_atomic_value(
-            mbr, default=self.ctx.convert.unsolvable)
+            mbr, default=self.ctx.convert.unsolvable
+        )
         if isinstance(mbr, InterpreterClass) and mbr.template:
-          templates.update([(mbr, item.with_scope(None))
-                            for item in mbr.template])
+          templates.update(
+              [(mbr, item.with_scope(None)) for item in mbr.template]
+          )
           templates.update(mbr.collect_inner_cls_types(max_depth - 1))
     return templates
 
@@ -240,8 +266,9 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         # Skip non-classes and imported classes.
         continue
       if value.official_name is None or (
-          self.official_name and
-          value.official_name.startswith(f"{self.official_name}.")):
+          self.official_name
+          and value.official_name.startswith(f"{self.official_name}.")
+      ):
         inner_classes.append(value)
     return inner_classes
 
@@ -255,6 +282,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def get_own_abstract_methods(self):
     def _can_be_abstract(var):
       return any(_isinstance(v, "Function") and v.is_abstract for v in var.data)
+
     return {name for name, var in self.members.items() if _can_be_abstract(var)}
 
   def register_instance(self, instance):
@@ -267,8 +295,10 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     return self._bases
 
   def metaclass(self, node):
-    if (self.cls.full_name != "builtins.type" and
-        self.cls is not self._get_inherited_metaclass()):
+    if (
+        self.cls.full_name != "builtins.type"
+        and self.cls is not self._get_inherited_metaclass()
+    ):
       return self.ctx.convert.merge_classes([self])
     else:
       return None
@@ -299,15 +329,18 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     return False
 
   def get_undecorated_method(
-      self, name: str, node: cfg.CFGNode) -> Optional[cfg.Variable]:
+      self, name: str, node: cfg.CFGNode
+  ) -> Optional[cfg.Variable]:
     if name not in self._undecorated_methods:
       return None
     return self.ctx.program.NewVariable(
-        self._undecorated_methods[name], (), node)
+        self._undecorated_methods[name], (), node
+    )
 
 
 class PyTDClass(
-    _instance_base.SimpleValue, class_mixin.Class, mixin.LazyMembers):
+    _instance_base.SimpleValue, class_mixin.Class, mixin.LazyMembers
+):
   """An abstract wrapper for PyTD class objects.
 
   These are the abstract values for class objects that are described in PyTD.
@@ -325,7 +358,8 @@ class PyTDClass(
     self.pytd_cls = pytd_cls
     super().__init__(name, ctx)
     if decorate.has_decorator(
-        pytd_cls, ("typing.final", "typing_extensions.final")):
+        pytd_cls, ("typing.final", "typing_extensions.final")
+    ):
       self.final = True
     # Keep track of the names of final methods and instance variables.
     self.final_members = {}
@@ -333,8 +367,10 @@ class PyTDClass(
     for val in pytd_cls.constants:
       if isinstance(val.type, pytd.Annotated):
         mm[val.name] = val.Replace(type=val.type.base_type)
-      elif (isinstance(val.type, pytd.GenericType) and
-            val.type.base_type.name == "typing.Final"):
+      elif (
+          isinstance(val.type, pytd.GenericType)
+          and val.type.base_type.name == "typing.Final"
+      ):
         self.final_members[val.name] = val
         mm[val.name] = val.Replace(type=val.type.parameters[0])
       else:
@@ -351,7 +387,8 @@ class PyTDClass(
       metaclass = self.ctx.convert.constant_to_value(
           pytd_cls.metaclass,
           subst=datatypes.AliasingDict(),
-          node=self.ctx.root_node)
+          node=self.ctx.root_node,
+      )
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
@@ -361,7 +398,8 @@ class PyTDClass(
       self._populate_decorator_metadata()
     if "__dataclass_fields__" in self.metadata:
       self.match_args = tuple(
-          attr.name for attr in self.metadata["__dataclass_fields__"])
+          attr.name for attr in self.metadata["__dataclass_fields__"]
+      )
     elif self.load_lazy_attribute("__match_args__"):
       self.match_args = self._convert_str_tuple("__match_args__") or ()
     else:
@@ -395,8 +433,10 @@ class PyTDClass(
         keyed_decorators[decorator] = key
     # Because dataclass() can be used to implement dataclass_transform() at
     # runtime, a class may be decorated with both.
-    if ("typing.dataclass_transform" in keyed_decorators and
-        "dataclasses.dataclass" in keyed_decorators):
+    if (
+        "typing.dataclass_transform" in keyed_decorators
+        and "dataclasses.dataclass" in keyed_decorators
+    ):
       del keyed_decorators["dataclasses.dataclass"]
     if not keyed_decorators:
       return
@@ -405,7 +445,7 @@ class PyTDClass(
       error = f"Cannot apply both @{decorator1} and @{decorator2}."
       self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
       return
-    (decorator, key), = keyed_decorators.items()  # pylint: disable=unbalanced-dict-unpacking
+    ((decorator, key),) = keyed_decorators.items()  # pylint: disable=unbalanced-dict-unpacking
     if key == "__dataclass_transform__":
       # TODO(mdemello): Fix how we handle metadata keys; we have been
       # assuming that they always contain __init__ fields.
@@ -426,8 +466,11 @@ class PyTDClass(
     # __init__ argument for fields. This behavior may not be shared by other
     # libraries, such as dataclasses.
     if decorator.startswith("attr."):
-      protected = {x.name[1:]: x.name for x in self.pytd_cls.constants
-                   if x.name.startswith("_")}
+      protected = {
+          x.name[1:]: x.name
+          for x in self.pytd_cls.constants
+          if x.name.startswith("_")
+      }
     else:
       protected = {}
     params = []
@@ -461,8 +504,11 @@ class PyTDClass(
     return {name for name, member in self._member_map.items()}
 
   def get_own_abstract_methods(self):
-    return {name for name, member in self._member_map.items()
-            if isinstance(member, pytd.Function) and member.is_abstract}
+    return {
+        name
+        for name, member in self._member_map.items()
+        if isinstance(member, pytd.Function) and member.is_abstract
+    }
 
   def bases(self):
     convert = self.ctx.convert
@@ -476,7 +522,8 @@ class PyTDClass(
           stack.extend(option.type_list)
           continue
         converted_option = convert.constant_to_var(
-            option, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
+            option, subst=datatypes.AliasingDict(), node=self.ctx.root_node
+        )
         converted_base_options.append(converted_option)
       if len(converted_base_options) > 1:
         converted_base = self.ctx.program.NewVariable()
@@ -491,8 +538,9 @@ class PyTDClass(
     try:
       return super().load_lazy_attribute(name, subst, store)
     except self.ctx.convert.TypeParameterError as e:
-      self.ctx.errorlog.unbound_type_param(self.ctx.vm.frames, self, name,
-                                           e.type_param_name)
+      self.ctx.errorlog.unbound_type_param(
+          self.ctx.vm.frames, self, name, e.type_param_name
+      )
       member = self.ctx.new_unsolvable(self.ctx.root_node)
       if store:
         self.members[name] = member
@@ -518,7 +566,8 @@ class PyTDClass(
       value = _instances.Tuple((), self.ctx)
     else:
       value = _instance_base.Instance(
-          self.ctx.convert.constant_to_value(self.pytd_cls), self.ctx)
+          self.ctx.convert.constant_to_value(self.pytd_cls), self.ctx
+      )
     for type_param in self.template:
       name = type_param.full_name
       if name not in value.instance_type_parameters:
@@ -559,10 +608,11 @@ class PyTDClass(
         subst = datatypes.AliasingDict()
         for itm in self.pytd_cls.template:
           subst[itm.full_name] = self.ctx.convert.constant_to_value(
-              itm.type_param, {}).instantiate(
-                  self.ctx.root_node, container=instance)
+              itm.type_param, {}
+          ).instantiate(self.ctx.root_node, container=instance)
         subst[f"{self.full_name}.Self"] = instance.to_variable(
-            self.ctx.root_node)
+            self.ctx.root_node
+        )
         # Set all other type parameters to Any. See
         # test_recursive_types:PyiTest.test_callable for a case in which it is
         # not an error to have an unsubstituted type parameter here.
@@ -600,7 +650,8 @@ class FunctionPyTDClass(PyTDClass):
 
 
 class ParameterizedClass(  # pytype: disable=signature-mismatch
-    _base.BaseValue, class_mixin.Class, mixin.NestedAnnotation):
+    _base.BaseValue, class_mixin.Class, mixin.NestedAnnotation
+):
   """A class that contains additional parameters.
 
   E.g. a container.
@@ -612,10 +663,14 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
   """
 
   def __init__(
-      self, base_cls: Union[PyTDClass, InterpreterClass],
-      formal_type_parameters: Union[abstract_utils.LazyFormalTypeParameters,
-                                    Dict[str, _base.BaseValue]],
-      ctx: _ContextType, template: Optional[Tuple[_TypeParamType, ...]] = None):
+      self,
+      base_cls: Union[PyTDClass, InterpreterClass],
+      formal_type_parameters: Union[
+          abstract_utils.LazyFormalTypeParameters, Dict[str, _base.BaseValue]
+      ],
+      ctx: _ContextType,
+      template: Optional[Tuple[_TypeParamType, ...]] = None,
+  ):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
     self.base_cls = base_cls
@@ -641,26 +696,30 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
 
   def __repr__(self):
     return "ParameterizedClass(cls={!r} params={})".format(
-        self.base_cls,
-        self._formal_type_parameters)
+        self.base_cls, self._formal_type_parameters
+    )
 
   def _type_param_check(self):
     """Throw exception for invalid type parameters."""
     # It will cause infinite recursion if `formal_type_parameters` is
     # `LazyFormalTypeParameters`
-    if not isinstance(self._formal_type_parameters,
-                      abstract_utils.LazyFormalTypeParameters):
+    if not isinstance(
+        self._formal_type_parameters, abstract_utils.LazyFormalTypeParameters
+    ):
       tparams = datatypes.AliasingDict()
       abstract_utils.parse_formal_type_parameters(self, None, tparams)
 
   def get_formal_type_parameters(self):
-    return {abstract_utils.full_type_name(self, k): v
-            for k, v in self.formal_type_parameters.items()}
+    return {
+        abstract_utils.full_type_name(self, k): v
+        for k, v in self.formal_type_parameters.items()
+    }
 
   def __eq__(self, other):
     if isinstance(other, type(self)):
       return self.base_cls == other.base_cls and (
-          self.formal_type_parameters == other.formal_type_parameters)
+          self.formal_type_parameters == other.formal_type_parameters
+      )
     return NotImplemented
 
   def __ne__(self, other):
@@ -668,8 +727,9 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
 
   def __hash__(self):
     if self._hash is None:
-      if isinstance(self._formal_type_parameters,
-                    abstract_utils.LazyFormalTypeParameters):
+      if isinstance(
+          self._formal_type_parameters, abstract_utils.LazyFormalTypeParameters
+      ):
         items = self._raw_formal_type_parameters()
         cache = False
       else:
@@ -680,8 +740,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
         for name, val in self.formal_type_parameters.items():
           # The 'is not True' check is to prevent us from incorrectly caching
           # the hash when val.resolved == LateAnnotation._RESOLVING.
-          if (val.is_late_annotation() and
-              val.resolved is not True):  # pylint: disable=g-bool-id-comparison  # pytype: disable=attribute-error
+          if val.is_late_annotation() and val.resolved is not True:  # pylint: disable=g-bool-id-comparison  # pytype: disable=attribute-error
             cache = False
           items.append((name, val.full_name))
       hashval = hash((self.base_cls, tuple(items)))
@@ -695,8 +754,9 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     return name in self.base_cls
 
   def _raw_formal_type_parameters(self):
-    assert isinstance(self._formal_type_parameters,
-                      abstract_utils.LazyFormalTypeParameters)
+    assert isinstance(
+        self._formal_type_parameters, abstract_utils.LazyFormalTypeParameters
+    )
     parameters = self._formal_type_parameters.parameters
     for i, name in enumerate(self._formal_type_parameters.template):
       # TODO(rechen): A missing parameter should be an error.
@@ -720,22 +780,26 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
   def _load_formal_type_parameters(self):
     if self._formal_type_parameters_loaded:
       return
-    if isinstance(self._formal_type_parameters,
-                  abstract_utils.LazyFormalTypeParameters):
+    if isinstance(
+        self._formal_type_parameters, abstract_utils.LazyFormalTypeParameters
+    ):
       formal_type_parameters = {}
       for name, param in self._raw_formal_type_parameters():
         if param is None:
           formal_type_parameters[name] = self.ctx.convert.unsolvable
         else:
           formal_type_parameters[name] = self.ctx.convert.constant_to_value(
-              param, self._formal_type_parameters.subst, self.ctx.root_node)
+              param, self._formal_type_parameters.subst, self.ctx.root_node
+          )
       self._formal_type_parameters = formal_type_parameters
     # Hack: we'd like to evaluate annotations at the currently active node so
     # that imports, etc., are visible. The last created node is usually the
     # active one.
     self._formal_type_parameters = (
         self.ctx.annotation_utils.convert_class_annotations(
-            self.ctx.program.cfg_nodes[-1], self._formal_type_parameters))
+            self.ctx.program.cfg_nodes[-1], self._formal_type_parameters
+        )
+    )
     self._formal_type_parameters_loaded = True
 
   def compute_mro(self):
@@ -745,11 +809,13 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     if self.full_name == "builtins.type":
       # deformalize removes TypeVars.
       instance = self.ctx.annotation_utils.deformalize(
-          self.formal_type_parameters[abstract_utils.T])
+          self.formal_type_parameters[abstract_utils.T]
+      )
       return instance.to_variable(node)
     elif self.full_name == "typing.ClassVar":
       return self.formal_type_parameters[abstract_utils.T].instantiate(
-          node, container)
+          node, container
+      )
     else:
       return self._new_instance(container, node, None).to_variable(node)
 
@@ -850,25 +916,33 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
 
   def get_formal_type_parameters(self):
     return {
-        abstract_utils.full_type_name(self, abstract_utils.ARGS): (
-            self.formal_type_parameters[abstract_utils.ARGS]),
-        abstract_utils.full_type_name(self, abstract_utils.RET): (
-            self.formal_type_parameters[abstract_utils.RET])}
+        abstract_utils.full_type_name(
+            self, abstract_utils.ARGS
+        ): self.formal_type_parameters[abstract_utils.ARGS],
+        abstract_utils.full_type_name(
+            self, abstract_utils.RET
+        ): self.formal_type_parameters[abstract_utils.RET],
+    }
 
   def call_slot(self, node, *args, **kwargs):
     """Implementation of CallableClass.__call__."""
     if kwargs:
       raise error_types.WrongKeywordArgs(
           function.Signature.from_callable(self),
-          function.Args(posargs=args, namedargs=kwargs), self.ctx,
-          kwargs.keys())
+          function.Args(posargs=args, namedargs=kwargs),
+          self.ctx,
+          kwargs.keys(),
+      )
     if len(args) != self.num_args:
       raise error_types.WrongArgCount(
-          function.Signature.from_callable(self), function.Args(posargs=args),
-          self.ctx)
-    match_args = [types.Arg(function.argname(i), args[i],
-                            self.formal_type_parameters[i])
-                  for i in range(self.num_args)]
+          function.Signature.from_callable(self),
+          function.Args(posargs=args),
+          self.ctx,
+      )
+    match_args = [
+        types.Arg(function.argname(i), args[i], self.formal_type_parameters[i])
+        for i in range(self.num_args)
+    ]
     matcher = self.ctx.matcher(node)
     try:
       matches = matcher.compute_matches(match_args, match_all_views=False)
@@ -877,13 +951,17 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
           function.Signature.from_callable(self),
           function.Args(posargs=args),
           self.ctx,
-          bad_param=e.bad_type)
+          bad_param=e.bad_type,
+      )
     ret = self.ctx.annotation_utils.sub_one_annotation(
-        node, self.formal_type_parameters[abstract_utils.RET],
-        [m.subst for m in matches])
+        node,
+        self.formal_type_parameters[abstract_utils.RET],
+        [m.subst for m in matches],
+    )
     if args and ret.full_name in abstract_utils.TYPE_GUARDS:
       typeguard_return = function.handle_typeguard(
-          node, function.AbstractReturnType(ret, self.ctx), args[0], self.ctx)
+          node, function.AbstractReturnType(ret, self.ctx), args[0], self.ctx
+      )
     else:
       typeguard_return = None
     if typeguard_return:
@@ -893,8 +971,11 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
-    if (valself and not abstract_utils.equivalent_to(valself, self) and
-        name in self._slots):
+    if (
+        valself
+        and not abstract_utils.equivalent_to(valself, self)
+        and name in self._slots
+    ):
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super().get_special_attribute(node, name, valself)
 
@@ -903,8 +984,10 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     return [self.formal_type_parameters[i] for i in range(self.num_args)]
 
   def has_paramspec(self):
-    return _isinstance(self.formal_type_parameters[abstract_utils.ARGS],
-                       ("ParamSpec", "Concatenate"))
+    return _isinstance(
+        self.formal_type_parameters[abstract_utils.ARGS],
+        ("ParamSpec", "Concatenate"),
+    )
 
 
 class LiteralClass(ParameterizedClass):
@@ -921,8 +1004,9 @@ class LiteralClass(ParameterizedClass):
 
   def __eq__(self, other):
     if isinstance(other, LiteralClass):
-      if (isinstance(self.value, mixin.PythonConstant) and
-          isinstance(other.value, mixin.PythonConstant)):
+      if isinstance(self.value, mixin.PythonConstant) and isinstance(
+          other.value, mixin.PythonConstant
+      ):
         return self.value.pyval == other.value.pyval
       else:
         return self.value == other.value
@@ -956,8 +1040,9 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
     self.set_native_slot("__add__", self.add_slot)
-    if isinstance(self._formal_type_parameters,
-                  abstract_utils.LazyFormalTypeParameters):
+    if isinstance(
+        self._formal_type_parameters, abstract_utils.LazyFormalTypeParameters
+    ):
       num_parameters = len(self._formal_type_parameters.template)
     else:
       num_parameters = len(self._formal_type_parameters)
@@ -976,8 +1061,11 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     return (self,) + self.base_cls.mro
 
   def get_formal_type_parameters(self):
-    return {abstract_utils.full_type_name(self, abstract_utils.T):
-            self.formal_type_parameters[abstract_utils.T]}
+    return {
+        abstract_utils.full_type_name(
+            self, abstract_utils.T
+        ): self.formal_type_parameters[abstract_utils.T]
+    }
 
   def _new_instance(self, container, node, args):
     del args  # unused
@@ -990,9 +1078,10 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
       if container is abstract_utils.DUMMY_CONTAINER or (
-          isinstance(container, _instance_base.SimpleValue) and
-          _isinstance(p, "TypeParameter") and
-          p.full_name in container.all_template_names):
+          isinstance(container, _instance_base.SimpleValue)
+          and _isinstance(p, "TypeParameter")
+          and p.full_name in container.all_template_names
+      ):
         content.append(p.instantiate(self.ctx.root_node, container))
       else:
         content.append(p.instantiate(self.ctx.root_node))
@@ -1024,7 +1113,8 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     """Implementation of tuple.__getitem__."""
     try:
       index = self.ctx.convert.value_to_constant(
-          abstract_utils.get_atomic_value(index_var), (int, slice))
+          abstract_utils.get_atomic_value(index_var), (int, slice)
+      )
     except abstract_utils.ConversionError:
       pass
     else:
@@ -1035,11 +1125,14 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
         else:
           # Constructing the tuple directly is faster than calling call_pytd.
           instance = _instance_base.Instance(
-              self.ctx.convert.tuple_type, self.ctx)
+              self.ctx.convert.tuple_type, self.ctx
+          )
           contained_type = self.ctx.vm.init_class(
-              node, self.formal_type_parameters[abstract_utils.T])
+              node, self.formal_type_parameters[abstract_utils.T]
+          )
           instance.merge_instance_type_parameter(
-              node, abstract_utils.T, contained_type)
+              node, abstract_utils.T, contained_type
+          )
           return node, instance.to_variable(node)
       if -self.tuple_length <= index < self.tuple_length:
         # Index out of bounds is not a pytype error because of the high
@@ -1050,11 +1143,15 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
         #     tup[idx]
         return node, self._instantiate_index(node, index)
     return self.call_pytd(
-        node, "__getitem__", self.instantiate(node), index_var)
+        node, "__getitem__", self.instantiate(node), index_var
+    )
 
   def get_special_attribute(self, node, name, valself):
-    if (valself and not abstract_utils.equivalent_to(valself, self) and
-        name in self._slots):
+    if (
+        valself
+        and not abstract_utils.equivalent_to(valself, self)
+        and name in self._slots
+    ):
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super().get_special_attribute(node, name, valself)
 

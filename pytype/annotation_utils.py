@@ -3,7 +3,6 @@
 import collections
 import dataclasses
 import itertools
-
 from typing import Any, Dict, Optional, Sequence, Set, Tuple
 
 from pytype import state
@@ -30,28 +29,38 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):
     """Apply type parameter substitutions to a dictionary of annotations."""
     if substs and all(substs):
-      return {name: self.sub_one_annotation(node, annot, substs,
-                                            instantiate_unbound)
-              for name, annot in annotations.items()}
+      return {
+          name: self.sub_one_annotation(
+              node, annot, substs, instantiate_unbound
+          )
+          for name, annot in annotations.items()
+      }
     return annotations
 
   def _get_type_parameter_subst(
-      self, node: cfg.CFGNode, annot: abstract.TypeParameter,
-      substs: Sequence[Dict[str, cfg.Variable]], instantiate_unbound: bool
+      self,
+      node: cfg.CFGNode,
+      annot: abstract.TypeParameter,
+      substs: Sequence[Dict[str, cfg.Variable]],
+      instantiate_unbound: bool,
   ) -> abstract.BaseValue:
     """Helper for sub_one_annotation."""
     # We use the given substitutions to bind the annotation if
     # (1) every subst provides at least one binding, and
     # (2) none of the bindings are ambiguous, and
     # (3) at least one binding is non-empty.
-    if all(annot.full_name in subst and subst[annot.full_name].bindings
-           for subst in substs):
+    if all(
+        annot.full_name in subst and subst[annot.full_name].bindings
+        for subst in substs
+    ):
       vals = sum((subst[annot.full_name].data for subst in substs), [])
     else:
       vals = None
-    if (vals is None or
-        any(isinstance(v, abstract.AMBIGUOUS) for v in vals) or
-        all(isinstance(v, abstract.Empty) for v in vals)):
+    if (
+        vals is None
+        or any(isinstance(v, abstract.AMBIGUOUS) for v in vals)
+        or all(isinstance(v, abstract.Empty) for v in vals)
+    ):
       if instantiate_unbound:
         vals = annot.instantiate(node).data
       else:
@@ -61,8 +70,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
 
     def get_type_parameter_subst(annotation):
-      return self._get_type_parameter_subst(node, annotation, substs,
-                                            instantiate_unbound)
+      return self._get_type_parameter_subst(
+          node, annotation, substs, instantiate_unbound
+      )
 
     return self._do_sub_one_annotation(node, annot, get_type_parameter_subst)
 
@@ -91,7 +101,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
             param_strings = []
             for t in utils.unique_list(self.get_type_parameters(cur)):
               s = pytd_utils.Print(
-                  get_type_parameter_subst_fn(t).to_pytd_type_of_instance(node))
+                  get_type_parameter_subst_fn(t).to_pytd_type_of_instance(node)
+              )
               param_strings.append(s)
             expr = f"{cur.expr}[{', '.join(param_strings)}]"
             late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
@@ -114,10 +125,12 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
             if "[" in late_annot.expr:
               if self.ctx.vm.late_annotations is None:
                 self.ctx.vm.flatten_late_annotation(
-                    node, late_annot, self.ctx.vm.frame.f_globals)
+                    node, late_annot, self.ctx.vm.frame.f_globals
+                )
               else:
                 self.ctx.vm.late_annotations[
-                    late_annot.expr.split("[", 1)[0]].append(late_annot)
+                    late_annot.expr.split("[", 1)[0]
+                ].append(late_annot)
           done.append(done_annot)
       else:
         done.append(get_type_parameter_subst_fn(cur))
@@ -125,8 +138,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     return done[0]
 
   def sub_annotations_for_parameterized_class(
-      self, cls: abstract.ParameterizedClass,
-      annotations: Dict[str, abstract.BaseValue]
+      self,
+      cls: abstract.ParameterizedClass,
+      annotations: Dict[str, abstract.BaseValue],
   ) -> Dict[str, abstract.BaseValue]:
     """Apply type parameter substitutions to a dictionary of annotations.
 
@@ -141,7 +155,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     formal_type_parameters = cls.get_formal_type_parameters()
 
     def get_type_parameter_subst(
-        annotation: abstract.TypeParameter) -> Optional[abstract.BaseValue]:
+        annotation: abstract.TypeParameter,
+    ) -> Optional[abstract.BaseValue]:
       # Normally the type parameter module is set correctly at this point.
       # Except for the case when a method that references this type parameter
       # is inherited in a subclass that does not specialize this parameter:
@@ -155,8 +170,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       # In this case t in A[T].f will be annotated with T with no module set,
       # since we don't know the correct module until T is specialized in
       # B[int].
-      for name in (f"{cls.full_name}.{annotation.name}",
-                   f"{cls.name}.{annotation.name}"):
+      for name in (
+          f"{cls.full_name}.{annotation.name}",
+          f"{cls.name}.{annotation.name}",
+      ):
         if name in formal_type_parameters:
           return formal_type_parameters[name]
       # Method parameter can be annotated with a typevar that doesn't
@@ -167,8 +184,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       return annotation
 
     return {
-        name: self._do_sub_one_annotation(self.ctx.root_node, annot,
-                                          get_type_parameter_subst)
+        name: self._do_sub_one_annotation(
+            self.ctx.root_node, annot, get_type_parameter_subst
+        )
         for name, annot in annotations.items()
     }
 
@@ -210,8 +228,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       else:
         return annot
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.add_scope(typ, types, cls, seen))
-                     for key, typ in annot.get_inner_types()]
+      inner_types = [
+          (key, self.add_scope(typ, types, cls, seen))
+          for key, typ in annot.get_inner_types()
+      ]
       return annot.replace(inner_types)
     return annot
 
@@ -237,12 +257,18 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     elif isinstance(annot, abstract.TupleClass):
       annots = []
       for idx in range(annot.tuple_length):
-        annots.extend(self.get_type_parameters(
-            annot.formal_type_parameters[idx], seen))
+        annots.extend(
+            self.get_type_parameters(annot.formal_type_parameters[idx], seen)
+        )
       return annots
     elif isinstance(annot, mixin.NestedAnnotation):
-      return sum((self.get_type_parameters(t, seen)
-                  for _, t in annot.get_inner_types()), [])
+      return sum(
+          (
+              self.get_type_parameters(t, seen)
+              for _, t in annot.get_inner_types()
+          ),
+          [],
+      )
     return []
 
   def get_callable_type_parameter_names(self, val: abstract.BaseValue):
@@ -261,8 +287,11 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           # pytype represents Callable[[T1, T2], None] as
           # CallableClass({0: T1, 1: T2, ARGS: Union[T1, T2], RET: None}),
           # so we have to fix double-counting of argument type parameters.
-          params -= collections.Counter(self.get_type_parameters(
-              annot.formal_type_parameters[abstract_utils.ARGS]))
+          params -= collections.Counter(
+              self.get_type_parameters(
+                  annot.formal_type_parameters[abstract_utils.ARGS]
+              )
+          )
         # Type parameters that appear only once in a function signature are
         # invalid, so ignore them.
         type_params.update(p.name for p, n in params.items() if n > 1)
@@ -300,8 +329,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       if t is None or abstract_utils.is_ellipsis(t):
         # '...' is an experimental "inferred type"; see b/213607272.
         continue
-      annot = self._process_one_annotation(node, t, name,
-                                           self.ctx.vm.simple_stack())
+      annot = self._process_one_annotation(
+          node, t, name, self.ctx.vm.simple_stack()
+      )
       if annot is not None:
         annotations[name] = annot
     return annotations
@@ -313,14 +343,16 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     for name, t in raw_items:
       # Don't use the parameter name, since it's often something unhelpful
       # like `0`.
-      annot = self._process_one_annotation(node, t, None,
-                                           self.ctx.vm.simple_stack())
+      annot = self._process_one_annotation(
+          node, t, None, self.ctx.vm.simple_stack()
+      )
       annotations[name] = annot or self.ctx.convert.unsolvable
     return annotations
 
   def init_annotation(self, node, name, annot, container=None, extra_key=None):
     value = self.ctx.vm.init_class(
-        node, annot, container=container, extra_key=extra_key)
+        node, annot, container=container, extra_key=extra_key
+    )
     for d in value.data:
       d.from_annotation = name
     return node, value
@@ -329,8 +361,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     frame = self.ctx.vm.frame
     if not frame.func:
       return False
-    return (isinstance(frame.func.data, abstract.BoundFunction) or
-            frame.func.data.is_attribute_of_class)
+    return (
+        isinstance(frame.func.data, abstract.BoundFunction)
+        or frame.func.data.is_attribute_of_class
+    )
 
   def extract_and_init_annotation(self, node, name, var):
     """Extracts an annotation from var and instantiates it."""
@@ -355,14 +389,16 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
               break
         self_substs = tuple(
             abstract_utils.get_type_parameter_substitutions(cls, type_params)
-            for cls in defining_classes)
+            for cls in defining_classes
+        )
         substs = abstract_utils.combine_substs(substs, self_substs)
     typ = self.extract_annotation(
         node,
         var,
         name,
         self.ctx.vm.simple_stack(),
-        allowed_type_params=set(itertools.chain(*substs)))
+        allowed_type_params=set(itertools.chain(*substs)),
+    )
     if isinstance(typ, typing_overlay.Final):
       return typ, self.ctx.new_unsolvable(node)
     return self._sub_and_instantiate(node, name, typ, substs)
@@ -372,15 +408,18 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       t, value = self._sub_and_instantiate(node, name, typ.annotation, substs)
       return abstract.FinalAnnotation(t, self.ctx), value
     if typ.formal:
-      substituted_type = self.sub_one_annotation(node, typ, substs,
-                                                 instantiate_unbound=False)
+      substituted_type = self.sub_one_annotation(
+          node, typ, substs, instantiate_unbound=False
+      )
     else:
       substituted_type = typ
     if typ.formal and self._in_class_frame():
       class_substs = abstract_utils.combine_substs(
-          substs, [{"typing.Self": self.ctx.vm.frame.first_arg}])
-      type_for_value = self.sub_one_annotation(node, typ, class_substs,
-                                               instantiate_unbound=False)
+          substs, [{"typing.Self": self.ctx.vm.frame.first_arg}]
+      )
+      type_for_value = self.sub_one_annotation(
+          node, typ, class_substs, instantiate_unbound=False
+      )
     else:
       type_for_value = substituted_type
     _, value = self.init_annotation(node, name, type_for_value)
@@ -400,11 +439,13 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     frame = self.ctx.vm.frame
     stack = self.ctx.vm.simple_stack()
     with self.ctx.vm.generate_late_annotations(stack):
-      var, errorlog = abstract_utils.eval_expr(self.ctx, node, frame.f_globals,
-                                               frame.f_locals, annot)
+      var, errorlog = abstract_utils.eval_expr(
+          self.ctx, node, frame.f_globals, frame.f_locals, annot
+      )
     if errorlog:
       self.ctx.errorlog.invalid_annotation(
-          self.ctx.vm.frames, annot, details=errorlog.details)
+          self.ctx.vm.frames, annot, details=errorlog.details
+      )
     typ, annot_val = self.extract_and_init_annotation(node, name, var)
     if isinstance(typ, typing_overlay.Final):
       # return the original value, we want type inference here.
@@ -419,8 +460,13 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       return AnnotatedValue(typ, annot_val)
 
   def extract_annotation(
-      self, node, var, name, stack,
-      allowed_type_params: Optional[Set[str]] = None):
+      self,
+      node,
+      var,
+      name,
+      stack,
+      allowed_type_params: Optional[Set[str]] = None,
+  ):
     """Returns an annotation extracted from 'var'.
 
     Args:
@@ -442,11 +488,13 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if not typ:
       return self.ctx.convert.unsolvable
     if typ.formal and allowed_type_params is not None:
-      allowed_type_params = (allowed_type_params |
-                             self.get_callable_type_parameter_names(typ))
-      if (self.ctx.vm.frame.func and
-          (isinstance(self.ctx.vm.frame.func.data, abstract.BoundFunction) or
-           self.ctx.vm.frame.func.data.is_class_builder)):
+      allowed_type_params = (
+          allowed_type_params | self.get_callable_type_parameter_names(typ)
+      )
+      if self.ctx.vm.frame.func and (
+          isinstance(self.ctx.vm.frame.func.data, abstract.BoundFunction)
+          or self.ctx.vm.frame.func.data.is_class_builder
+      ):
         allowed_type_params.add("typing.Self")
       illegal_params = []
       for x in self.get_type_parameters(typ):
@@ -460,7 +508,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
   def _log_illegal_params(self, illegal_params, stack, typ, name):
     out_of_scope_params = utils.unique_list(illegal_params)
     details = "TypeVar(s) %s not in scope" % ", ".join(
-        repr(p) for p in out_of_scope_params)
+        repr(p) for p in out_of_scope_params
+    )
     if self.ctx.vm.frame.func:
       method = self.ctx.vm.frame.func.data
       if isinstance(method, abstract.BoundFunction):
@@ -472,7 +521,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       details += f" for {desc} {frame_name!r}"
     if "AnyStr" in out_of_scope_params:
       str_type = "Union[str, bytes]"
-      details += (f"\nNote: For all string types, use {str_type}.")
+      details += f"\nNote: For all string types, use {str_type}."
     self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
@@ -480,7 +529,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     args, errorlog = self._eval_expr_as_tuple(node, annot, stack)
     if errorlog:
       self.ctx.errorlog.invalid_function_type_comment(
-          stack, annot, details=errorlog.details)
+          stack, annot, details=errorlog.details
+      )
     code = func.code
     expected = code.get_arg_count()
     names = code.varnames
@@ -499,7 +549,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       self.ctx.errorlog.invalid_function_type_comment(
           stack,
           annot,
-          details="Expected %d args, %d given" % (expected, len(args)))
+          details="Expected %d args, %d given" % (expected, len(args)),
+      )
       return
     for name, arg in zip(names, args):
       resolved = self._process_one_annotation(node, arg, name, stack)
@@ -507,36 +558,48 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         func.signature.set_annotation(name, resolved)
 
   def _process_one_annotation(
-      self, node: cfg.CFGNode, annotation: abstract.BaseValue,
+      self,
+      node: cfg.CFGNode,
+      annotation: abstract.BaseValue,
       # We require `stack` to be a tuple to make sure we pass in a frozen
       # snapshot of the frame stack, rather than the actual stack, since late
       # annotations need to snapshot the stack at time of creation in order to
       # get the right line information for error messages.
-      name: Optional[str], stack: Tuple[state.FrameType, ...]
+      name: Optional[str],
+      stack: Tuple[state.FrameType, ...],
   ) -> Optional[abstract.BaseValue]:
     """Change annotation / record errors where required."""
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
 
     if isinstance(annotation, typing_overlay.Union):
-      self.ctx.errorlog.invalid_annotation(stack, annotation, "Needs options",
-                                           name)
-      return None
-    elif (name is not None and name != "return" and
-          annotation.full_name in abstract_utils.TYPE_GUARDS):
       self.ctx.errorlog.invalid_annotation(
-          stack, annotation,
-          f"{annotation.name} is only allowed as a return annotation", name)
+          stack, annotation, "Needs options", name
+      )
       return None
-    elif (isinstance(annotation, abstract.Instance) and
-          annotation.cls == self.ctx.convert.str_type):
+    elif (
+        name is not None
+        and name != "return"
+        and annotation.full_name in abstract_utils.TYPE_GUARDS
+    ):
+      self.ctx.errorlog.invalid_annotation(
+          stack,
+          annotation,
+          f"{annotation.name} is only allowed as a return annotation",
+          name,
+      )
+      return None
+    elif (
+        isinstance(annotation, abstract.Instance)
+        and annotation.cls == self.ctx.convert.str_type
+    ):
       # String annotations : Late evaluation
       if isinstance(annotation, abstract.PythonConstant):
         expr = annotation.pyval
         if not expr:
-          self.ctx.errorlog.invalid_annotation(stack, annotation,
-                                               "Cannot be an empty string",
-                                               name)
+          self.ctx.errorlog.invalid_annotation(
+              stack, annotation, "Cannot be an empty string", name
+          )
           return None
         frame = self.ctx.vm.frame
         # Immediately try to evaluate the reference, generating LateAnnotation
@@ -548,9 +611,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         #   evaluate the union immediately so we don't end up with a complex
         #   LateAnnotation, which can lead to bugs when instantiated.
         with self.ctx.vm.generate_late_annotations(stack):
-          v, errorlog = abstract_utils.eval_expr(self.ctx, node,
-                                                 frame.f_globals,
-                                                 frame.f_locals, expr)
+          v, errorlog = abstract_utils.eval_expr(
+              self.ctx, node, frame.f_globals, frame.f_locals, expr
+          )
         if errorlog:
           self.ctx.errorlog.copy_from(errorlog.errors, stack)
         if len(v.data) == 1:
@@ -565,19 +628,23 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         return annotation
       annotation.processed = True
       for key, typ in annotation.get_inner_types():
-        if (annotation.full_name == "typing.Callable" and
-            key == abstract_utils.RET):
+        if (
+            annotation.full_name == "typing.Callable"
+            and key == abstract_utils.RET
+        ):
           inner_name = "return"
         else:
           inner_name = name
         processed = self._process_one_annotation(node, typ, inner_name, stack)
         if processed is None:
           return None
-        elif (name == inner_name and
-              processed.full_name in abstract_utils.TYPE_GUARDS):
+        elif (
+            name == inner_name
+            and processed.full_name in abstract_utils.TYPE_GUARDS
+        ):
           self.ctx.errorlog.invalid_annotation(
-              stack, typ, f"{processed.name} is not allowed as inner type",
-              name)
+              stack, typ, f"{processed.name} is not allowed as inner type", name
+          )
           return None
         annotation.update_inner_type(key, processed)
       return annotation
@@ -599,8 +666,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     ):
       return annotation
     else:
-      self.ctx.errorlog.invalid_annotation(stack, annotation, "Not a type",
-                                           name)
+      self.ctx.errorlog.invalid_annotation(
+          stack, annotation, "Not a type", name
+      )
       return None
 
   def _eval_expr_as_tuple(self, node, expr, stack):
@@ -611,14 +679,18 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     f_globals = self.ctx.vm.frame.f_globals
     f_locals = self.ctx.vm.frame.f_locals
     with self.ctx.vm.generate_late_annotations(stack):
-      result_var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
-                                                      f_locals, expr)
+      result_var, errorlog = abstract_utils.eval_expr(
+          self.ctx, node, f_globals, f_locals, expr
+      )
     result = abstract_utils.get_atomic_value(result_var)
     # If the result is a tuple, expand it.
-    if (isinstance(result, abstract.PythonConstant) and
-        isinstance(result.pyval, tuple)):
-      return (tuple(abstract_utils.get_atomic_value(x) for x in result.pyval),
-              errorlog)
+    if isinstance(result, abstract.PythonConstant) and isinstance(
+        result.pyval, tuple
+    ):
+      return (
+          tuple(abstract_utils.get_atomic_value(x) for x in result.pyval),
+          errorlog,
+      )
     else:
       return (result,), errorlog
 

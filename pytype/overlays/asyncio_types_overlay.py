@@ -9,9 +9,7 @@ class TypesOverlay(overlay.Overlay):
   """A custom overlay for the 'types' module."""
 
   def __init__(self, ctx):
-    member_map = {
-        "coroutine": CoroutineDecorator.make
-    }
+    member_map = {"coroutine": CoroutineDecorator.make}
     ast = ctx.loader.import_name("types")
     super().__init__(ctx, "types", member_map, ast)
 
@@ -41,9 +39,11 @@ class CoroutineDecorator(abstract.PyTDFunction):
     func_var = args.posargs[0]
     for funcv in func_var.data:
       code = funcv.code
-      if (not code.has_iterable_coroutine() and
-          (self.module == "asyncio" or
-           self.module == "types" and code.has_generator())):
+      if not code.has_iterable_coroutine() and (
+          self.module == "asyncio"
+          or self.module == "types"
+          and code.has_generator()
+      ):
         code.set_iterable_coroutine()
       if funcv.signature.has_return_annotation:
         ret = funcv.signature.annotations["return"]
@@ -52,6 +52,7 @@ class CoroutineDecorator(abstract.PyTDFunction):
             for param in (abstract_utils.T, abstract_utils.T2, abstract_utils.V)
         }
         coroutine_type = abstract.ParameterizedClass(
-            self.ctx.convert.coroutine_type, params, self.ctx)
+            self.ctx.convert.coroutine_type, params, self.ctx
+        )
         funcv.signature.annotations["return"] = coroutine_type
     return node, func_var

@@ -18,34 +18,46 @@ class TestExceptions(test_base.BaseTest):
           x = 3
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_catching_exceptions(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       try:
         x[1]
         print("Shouldn't be here...")
       except NameError:
         print("caught it!")
-      """)
+      """,
+    )
     # Catch the exception by a base class
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       try:
         x[1]
         print("Shouldn't be here...")
       except Exception:
         print("caught it!")
-      """)
+      """,
+    )
     # Catch all exceptions
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       try:
         x[1]
         print("Shouldn't be here...")
       except:
         print("caught it!")
-      """)
+      """,
+    )
 
   def test_raise_exception(self):
     self.Check("raise Exception('oops')")
@@ -77,13 +89,16 @@ class TestExceptions(test_base.BaseTest):
   def test_global_name_error(self):
     self.CheckWithErrors("fooey  # name-error")
     # TODO(b/159068542): Don't warn about NameErrors that are being caught.
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       try:
         fooey
         print("Yes fooey?")
       except NameError:
         print("No fooey")
-    """)
+    """,
+    )
 
   def test_local_name_error(self):
     self.CheckWithErrors("""
@@ -93,7 +108,9 @@ class TestExceptions(test_base.BaseTest):
     """)
 
   def test_catch_local_name_error(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       def fn():
         try:
           fooey
@@ -101,7 +118,8 @@ class TestExceptions(test_base.BaseTest):
         except NameError:
           print("No fooey")
       fn()
-      """)
+      """,
+    )
 
   def test_reraise(self):
     self.CheckWithErrors("""
@@ -198,32 +216,44 @@ class TestExceptions(test_base.BaseTest):
       def bar(x):
         return Foo(x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo(Exception):
         pass
 
       def bar(x) -> Foo: ...
-    """)
+    """,
+    )
 
   def test_match_exception_type(self):
     with test_utils.Tempdir() as d:
-      d.create_file("warnings.pyi", """
+      d.create_file(
+          "warnings.pyi",
+          """
         from typing import Optional, Type, Union
         def warn(message: Union[str, Warning],
                  category: Optional[Type[Warning]] = ...,
                  stacklevel: int = ...) -> None: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import warnings
         def warn():
           warnings.warn(
             "set_prefix() is deprecated; use the prefix property",
             DeprecationWarning, stacklevel=2)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import warnings
         def warn() -> None: ...
-      """)
+      """,
+      )
 
   def test_end_finally(self):
     ty = self.Infer("""
@@ -234,12 +264,16 @@ class TestExceptions(test_base.BaseTest):
         except Exception:
           return 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo() -> int: ...
-    """)
+    """,
+    )
 
   @test_utils.skipFromPy(
-      (3, 11), reason="Code gets eliminated very early, not worth fixing")
+      (3, 11), reason="Code gets eliminated very early, not worth fixing"
+  )
   def test_dont_eliminate_except_block(self):
     # Testing for dead code is imprecise, so do not do it at all unless we add
     # special cases for code analysis within try blocks.
@@ -250,10 +284,13 @@ class TestExceptions(test_base.BaseTest):
         except Exception:
           return 1+3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def foo() -> Union[int, complex]: ...
-    """)
+    """,
+    )
 
   @test_utils.skipBeforePy((3, 11), reason="New behaviour in 3.11")
   def test_eliminate_except_block(self):
@@ -265,9 +302,12 @@ class TestExceptions(test_base.BaseTest):
         except Exception:
           return 1+3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo() -> int: ...
-    """)
+    """,
+    )
 
   def test_assert(self):
     ty = self.Infer("""
@@ -278,21 +318,27 @@ class TestExceptions(test_base.BaseTest):
         except:
           return 1+3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
 
       def foo() -> Union[complex, int]: ...
-    """)
+    """,
+    )
 
   def test_never(self):
     ty = self.Infer("""
       def f():
         raise ValueError()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Never
       def f() -> Never: ...
-    """)
+    """,
+    )
 
   def test_never_chain(self):
     ty = self.Infer("""
@@ -301,11 +347,14 @@ class TestExceptions(test_base.BaseTest):
       def g():
         f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Never
       def f() -> Never: ...
       def g() -> Never: ...
-    """)
+    """,
+    )
 
   def test_try_except_never(self):
     ty = self.Infer("""
@@ -315,10 +364,13 @@ class TestExceptions(test_base.BaseTest):
         except ValueError as e:
           raise ValueError(str(e))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Never
       def f() -> Never: ...
-    """)
+    """,
+    )
 
   def test_callable_noreturn(self):
     self.Check("""
@@ -345,9 +397,12 @@ class TestExceptions(test_base.BaseTest):
         else:
           raise ValueError()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_return_or_raise_set_attribute(self):
     self.CheckWithErrors("""
@@ -377,9 +432,12 @@ class TestExceptions(test_base.BaseTest):
         except KeyError as e:
           return e
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> KeyError: ...
-    """)
+    """,
+    )
 
   def test_value_from_tuple(self):
     ty = self.Infer("""
@@ -401,12 +459,15 @@ class TestExceptions(test_base.BaseTest):
         except tup as e:
           return e
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def f() -> Union[KeyError, ValueError]: ...
       def g() -> KeyError: ...
       def h() -> KeyError: ...
-    """)
+    """,
+    )
 
   def test_bad_type(self):
     errors = self.CheckWithErrors("""
@@ -420,7 +481,8 @@ class TestExceptions(test_base.BaseTest):
         pass
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Not a class", "e2": r"None.*BaseException"})
+        errors, {"e1": r"Not a class", "e2": r"None.*BaseException"}
+    )
 
   def test_unknown_type(self):
     self.Check("""
@@ -441,12 +503,15 @@ class TestExceptions(test_base.BaseTest):
         except MyException as e:
           return e.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class MyException(BaseException):
         x: str
         def __init__(self) -> None: ...
       def f() -> str: ...
-    """)
+    """,
+    )
 
   def test_reuse_name(self):
     self.Check("""
@@ -483,11 +548,14 @@ class TestExceptions(test_base.BaseTest):
             assert data is not None
         return filename
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict
       _temporaries: Dict[nothing, nothing]
       def f(name) -> Any: ...
-    """)
+    """,
+    )
 
   def test_no_except(self):
     # Tests inference for a finally block without an except.
@@ -500,9 +568,12 @@ class TestExceptions(test_base.BaseTest):
           __any_object__()
         return 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_traceback(self):
     # Check that with_traceback() preserves the exception type.

@@ -28,7 +28,7 @@ _CLASS_ALIASES = {
     "Config": "Config",
     "PaxConfig": "Config",
     "Partial": "Partial",
-    "PaxPartial": "Partial"
+    "PaxPartial": "Partial",
 }
 
 
@@ -81,7 +81,8 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     for signature in init.signatures:
       old_pytd_sig = signature.pytd_sig
       signature.pytd_sig = old_pytd_sig.Replace(
-          params=tuple(p.Replace(optional=True) for p in old_pytd_sig.params))
+          params=tuple(p.Replace(optional=True) for p in old_pytd_sig.params)
+      )
       old_pytd_sigs.append(old_pytd_sig)
     try:
       init.match_args(node, args)
@@ -110,6 +111,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 
   def _make_init_args(self, node, underlying, args, kwargs):
     """Unwrap Config instances for arg matching."""
+
     def unwrap(arg_var):
       # If an arg has a Config object, just use its underlying type and don't
       # bother with the rest of the bindings (assume strict arg matching)
@@ -125,11 +127,11 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
             # an arg of type Config[A] is wrong. We should ideally do arg-by-arg
             # matching here instead of trying to construct function args without
             # reference to the signature we are matching.
-            return self.ctx.join_variables(node, [
-                arg_var,
-                d.underlying.instantiate(node)
-            ])
+            return self.ctx.join_variables(
+                node, [arg_var, d.underlying.instantiate(node)]
+            )
       return arg_var
+
     new_args = (underlying.instantiate(node),)
     new_args += tuple(unwrap(arg) for arg in args[1:])
     new_kwargs = {k: unwrap(arg) for k, arg in kwargs.items()}
@@ -141,7 +143,8 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     # the extra args match the underlying __init__ signature.
     if len(args) > 1 or kwargs:
       _, init_var = self.ctx.attribute_handler.get_attribute(
-          node, underlying, "__init__")
+          node, underlying, "__init__"
+      )
       if abstract_utils.is_dataclass(underlying):
         # Only do init matching for dataclasses for now
         args = self._make_init_args(node, underlying, args, kwargs)
@@ -180,9 +183,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 class BuildableType(abstract.ParameterizedClass):
   """Base generic class for fiddle.Config and fiddle.Partial."""
 
-  def __init__(
-      self, base_cls, underlying, ctx, template=None, module="fiddle"
-  ):
+  def __init__(self, base_cls, underlying, ctx, template=None, module="fiddle"):
     if isinstance(underlying, abstract.FUNCTION_TYPES):
       # We don't support functions for now, but falling back to Any here gets us
       # as much of the functionality as possible.
@@ -212,13 +213,17 @@ class BuildableType(abstract.ParameterizedClass):
     new_underlying = inner_types[abstract_utils.T]
     typ = self.__class__
     return typ.make(
-        self.fiddle_type_name, new_underlying, self.ctx, self.template,
-        self.module
+        self.fiddle_type_name,
+        new_underlying,
+        self.ctx,
+        self.template,
+        self.module,
     )
 
   def instantiate(self, node, container=None):
     _, ret = make_instance(
-        self.fiddle_type_name, self.underlying, node, self.ctx)
+        self.fiddle_type_name, self.underlying, node, self.ctx
+    )
     return ret.to_variable(node)
 
   def __repr__(self):
@@ -314,7 +319,8 @@ def make_instance(
     obj.members[f.name] = f.typ.instantiate(node)
   # Add a per-instance annotations dict so setattr can be typechecked.
   obj.members["__annotations__"] = classgen.make_annotations_dict(
-      fields, node, ctx)
+      fields, node, ctx
+  )
   _INSTANCE_CACHE[cache_key] = obj
   return node, obj
 
@@ -333,5 +339,7 @@ def get_fiddle_buildable_subclass(cls: pytd.Class) -> str:
     return "Config"
   if re.search(r"\.(Pax)?Partial$", cls.name):
     return "Partial"
-  raise ValueError(f"Unexpected {cls.name} when computing fiddle Buildable "
-                   "subclass; allowed suffixes are `.Config`, and `.Partial`.")
+  raise ValueError(
+      f"Unexpected {cls.name} when computing fiddle Buildable "
+      "subclass; allowed suffixes are `.Config`, and `.Partial`."
+  )

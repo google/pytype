@@ -62,8 +62,9 @@ class StatsCollector:
     self.unexpected_success_count += len(test_result.unexpectedSuccesses)
 
   def report(self):
-    msg = (f"\nRan {self.method_count} methods from {self.class_count} "
-           "classes.\n")
+    msg = (
+        f"\nRan {self.method_count} methods from {self.class_count} classes.\n"
+    )
     msg += "Found %d errors\n" % self.error_count
     msg += "Found %d failures\n" % self.fail_count
     msg += f"Found {self.unexpected_success_count} unexpected successes\n"
@@ -89,9 +90,11 @@ class ResultReporter:
   def report_method(self, fq_method_name, test_result):
     self._stats_collector.add_method(test_result)
     ret_val = 0
-    problems_list = [("ERROR", test_result.errors),
-                     ("FAIL", test_result.failures),
-                     ("UNEXPECTED PASS", test_result.unexpectedSuccesses)]
+    problems_list = [
+        ("ERROR", test_result.errors),
+        ("FAIL", test_result.failures),
+        ("UNEXPECTED PASS", test_result.unexpectedSuccesses),
+    ]
     for kind, problems in problems_list:
       if problems:
         log_msg, stdout_msg = self._method_info(kind, fq_method_name, problems)
@@ -108,7 +111,8 @@ class ResultReporter:
   def report_class(self, class_name):
     self._stats_collector.add_class()
     msg = "\nRunning test methods in class %s ..." % (
-        self._options.fq_mod_name + "." + class_name)
+        self._options.fq_mod_name + "." + class_name
+    )
     self._print_messages(msg, msg)
 
   def report_module(self):
@@ -119,19 +123,40 @@ class ResultReporter:
 def parse_args():
   """Parse the command line options and return the result."""
   parser = argparse.ArgumentParser()
-  parser.add_argument("fq_mod_name", type=str, metavar="FQ_MOD_NAME",
-                      help="Fully qualified name of the test module to run.")
-  parser.add_argument("-P", "--pytype_path", type=str,
-                      default=build_utils.PYTYPE_SRC_ROOT,
-                      help="Path in which the pytype package can be found.")
-  parser.add_argument("-o", "--output", type=str,
-                      help="Path to the results file.")
-  parser.add_argument("-p", "--print_passes", action="store_true",
-                      help="Print information about passing tests to stdout.")
-  parser.add_argument("-s", "--print_st", action="store_true",
-                      help="Print stack traces of failing tests to stdout.")
-  parser.add_argument("-S", "--silent", action="store_true",
-                      help="Do not print anything to stdout.")
+  parser.add_argument(
+      "fq_mod_name",
+      type=str,
+      metavar="FQ_MOD_NAME",
+      help="Fully qualified name of the test module to run.",
+  )
+  parser.add_argument(
+      "-P",
+      "--pytype_path",
+      type=str,
+      default=build_utils.PYTYPE_SRC_ROOT,
+      help="Path in which the pytype package can be found.",
+  )
+  parser.add_argument(
+      "-o", "--output", type=str, help="Path to the results file."
+  )
+  parser.add_argument(
+      "-p",
+      "--print_passes",
+      action="store_true",
+      help="Print information about passing tests to stdout.",
+  )
+  parser.add_argument(
+      "-s",
+      "--print_st",
+      action="store_true",
+      help="Print stack traces of failing tests to stdout.",
+  )
+  parser.add_argument(
+      "-S",
+      "--silent",
+      action="store_true",
+      help="Do not print anything to stdout.",
+  )
   return parser.parse_args()
 
 
@@ -143,7 +168,8 @@ def run_test_method(method_name, class_object, options, reporter):
   test_object.run(test_result)
   test_object.tearDown()
   fq_method_name = ".".join(
-      [options.fq_mod_name, class_object.__name__, method_name])
+      [options.fq_mod_name, class_object.__name__, method_name]
+  )
   return reporter.report_method(fq_method_name, test_result)
 
 
@@ -163,8 +189,7 @@ def run_tests_in_class(class_object, options, reporter):
   reporter.report_class(class_object.__name__)
   for method_name, method_object in _get_members_list(class_object):
     if callable(method_object) and method_name.startswith("test"):
-      result += run_test_method(method_name, class_object, options,
-                                reporter)
+      result += run_test_method(method_name, class_object, options, reporter)
   class_object.tearDownClass()
   return result
 
@@ -173,8 +198,8 @@ def run_tests_in_module(options, reporter):
   """Run test methods in a module and return the number of failing methods.."""
   reporter.report_module()
   mod_abs_path = os.path.join(
-      options.pytype_path,
-      options.fq_mod_name.replace(".", os.path.sep) + ".py")
+      options.pytype_path, options.fq_mod_name.replace(".", os.path.sep) + ".py"
+  )
   if not os.path.exists(mod_abs_path):
     msg = f"ERROR: Module not found: {options.fq_mod_name}."
     if options.output_file:
@@ -207,8 +232,9 @@ def run_tests_in_module(options, reporter):
           assert isinstance(obj, unittest.TestCase), (obj, type(obj))
           result += run_tests_in_class(obj.__class__, options, reporter)
   for _, class_object in _get_members_list(mod_object):
-    if (isinstance(class_object, type) and
-        issubclass(class_object, unittest.TestCase)):
+    if isinstance(class_object, type) and issubclass(
+        class_object, unittest.TestCase
+    ):
       result += run_tests_in_class(class_object, options, reporter)
   return result
 

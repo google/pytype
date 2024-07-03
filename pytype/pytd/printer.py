@@ -112,8 +112,12 @@ class _Imports:
       else:
         imports.append(f"import {module} as {alias}")
     for module, members in self._from_imports.items():
-      targets = ", ".join(sorted(f"{name} as {alias}" if alias != name else name
-                                 for alias, name in members.items()))
+      targets = ", ".join(
+          sorted(
+              f"{name} as {alias}" if alias != name else name
+              for alias, name in members.items()
+          )
+      )
       imports.append(f"from {module} import {targets}")
     # Sort import lines lexicographically and ensure import statements come
     # before from-import statements.
@@ -122,12 +126,14 @@ class _Imports:
 
 class PrintVisitor(base_visitor.Visitor):
   """Visitor for converting ASTs back to pytd source code."""
+
   visits_all_node_types = True
   unchecked_node_names = base_visitor.ALL_NODE_NAMES
 
   INDENT = " " * 4
-  _RESERVED = frozenset(parser_constants.RESERVED +
-                        parser_constants.RESERVED_PYTHON)
+  _RESERVED = frozenset(
+      parser_constants.RESERVED + parser_constants.RESERVED_PYTHON
+  )
 
   def __init__(self, multiline_args=False):
     super().__init__()
@@ -161,10 +167,8 @@ class PrintVisitor(base_visitor.Visitor):
     copy.in_function = self.in_function
     # pylint: disable=protected-access
     copy._local_names = set(self._local_names)
-    copy._imports._typing._members = dict(
-        self._imports._typing._members)
-    copy._imports._reverse_alias_map = dict(
-        self._imports._reverse_alias_map)
+    copy._imports._typing._members = dict(self._imports._typing._members)
+    copy._imports._reverse_alias_map = dict(self._imports._reverse_alias_map)
     # pylint: enable=protected-access
     return copy
 
@@ -210,8 +214,7 @@ class PrintVisitor(base_visitor.Visitor):
       if t.bound:
         args.append(f"bound={self.Print(t.bound)}")
       if isinstance(t.default, tuple):
-        args.append(
-            f"default=[{', '.join(self.Print(d) for d in t.default)}]")
+        args.append(f"default=[{', '.join(self.Print(d) for d in t.default)}]")
       elif t.default:
         args.append(f"default={self.Print(t.default)}")
       if isinstance(t, pytd.ParamSpec):
@@ -225,7 +228,8 @@ class PrintVisitor(base_visitor.Visitor):
 
     def name_in(members):
       return name in members or (
-          self._unit and f"{self._unit.name}.{name}" in members)
+          self._unit and f"{self._unit.name}.{name}" in members
+      )
 
     return name_in(self._class_members) or name_in(self._local_names)
 
@@ -254,9 +258,10 @@ class PrintVisitor(base_visitor.Visitor):
       return True
     # Modules and classes can be imported. Modules are represented as NamedTypes
     # in partially resolved asts and sometimes as LateTypes in pickled asts.
-    return isinstance(
-        node.type, (pytd.NamedType, pytd.ClassType, pytd.LateType)
-    ) and "." in node.type.name
+    return (
+        isinstance(node.type, (pytd.NamedType, pytd.ClassType, pytd.LateType))
+        and "." in node.type.name
+    )
 
   def _ProcessDecorators(self, node):
     # Our handling of class and function decorators is a bit hacky (see
@@ -272,8 +277,13 @@ class PrintVisitor(base_visitor.Visitor):
 
   def EnterTypeDeclUnit(self, unit):
     self._unit = unit
-    definitions = (unit.classes + unit.functions + unit.constants +
-                   unit.type_params + unit.aliases)
+    definitions = (
+        unit.classes
+        + unit.functions
+        + unit.constants
+        + unit.type_params
+        + unit.aliases
+    )
     self._local_names = {c.name for c in definitions}
     for alias in unit.aliases:
       if not self._IsAliasImport(alias):
@@ -285,8 +295,9 @@ class PrintVisitor(base_visitor.Visitor):
         name = alias.type.name
         alias_name = self._StripUnitPrefix(alias.name)
       self._imports.add(name, alias_name)
-    self._paramspec_names = {x.name for x in unit.type_params
-                             if isinstance(x, pytd.ParamSpec)}
+    self._paramspec_names = {
+        x.name for x in unit.type_params if isinstance(x, pytd.ParamSpec)
+    }
 
   def LeaveTypeDeclUnit(self, _):
     self._unit = None
@@ -318,9 +329,11 @@ class PrintVisitor(base_visitor.Visitor):
 
     # We put one blank line after every class,so we need to strip the blank line
     # after the last class.
-    sections_as_string = ("\n".join(section_suite).rstrip()
-                          for section_suite in sections
-                          if section_suite)
+    sections_as_string = (
+        "\n".join(section_suite).rstrip()
+        for section_suite in sections
+        if section_suite
+    )
     return "\n\n".join(sections_as_string)
 
   def EnterConstant(self, node):
@@ -418,8 +431,9 @@ class PrintVisitor(base_visitor.Visitor):
       if any(not utils.is_valid_name(name) for name in constants):
         # We output the TypedDict in functional form, since using the class form
         # would produce a parse error when the pyi file is ingested.
-        fields = "{%s}" % ", ".join(f"{name!r}: {typ}"
-                                    for name, typ in constants.items())
+        fields = "{%s}" % ", ".join(
+            f"{name!r}: {typ}" for name, typ in constants.items()
+        )
         return f"{node.name} = TypedDict('{node.name}', {fields})"
     # If object is the only base, we don't need to list any bases.
     if bases == ("object",):
@@ -437,7 +451,7 @@ class PrintVisitor(base_visitor.Visitor):
     bases_str = f"({', '.join(bases)})" if bases else ""
     header = [f"class {node.name}{bases_str}:"]
     if node.slots is not None:
-      slots_str = ", ".join(f"\"{s}\"" for s in node.slots)
+      slots_str = ", ".join(f'"{s}"' for s in node.slots)
       slots = [self.INDENT + f"__slots__ = [{slots_str}]"]
     else:
       slots = []
@@ -475,11 +489,12 @@ class PrintVisitor(base_visitor.Visitor):
       decorators = ""
     if node.is_final:
       decorators += "@" + self._FromTyping("final") + "\n"
-    if (node.kind == pytd.MethodKind.STATICMETHOD and
-        function_name != "__new__"):
+    if node.kind == pytd.MethodKind.STATICMETHOD and function_name != "__new__":
       decorators += "@staticmethod\n"
-    elif (node.kind == pytd.MethodKind.CLASSMETHOD and
-          function_name != "__init_subclass__"):
+    elif (
+        node.kind == pytd.MethodKind.CLASSMETHOD
+        and function_name != "__init_subclass__"
+    ):
       decorators += "@classmethod\n"
     elif node.kind == pytd.MethodKind.PROPERTY:
       decorators += "@property\n"
@@ -489,8 +504,9 @@ class PrintVisitor(base_visitor.Visitor):
       decorators += "@coroutine\n"
     if len(node.signatures) > 1:
       decorators += "@" + self._FromTyping("overload") + "\n"
-    signatures = "\n".join(decorators + "def " + function_name + sig
-                           for sig in node.signatures)
+    signatures = "\n".join(
+        decorators + "def " + function_name + sig for sig in node.signatures
+    )
     return signatures
 
   def _FormatContainerContents(self, node: pytd.Parameter) -> str:
@@ -505,7 +521,8 @@ class PrintVisitor(base_visitor.Visitor):
       if isinstance(node.type.parameters[-1], pytd.AnythingType):
         self._imports.decrement_typing_count("Any")
       return self.Print(
-          node.Replace(type=node.type.parameters[-1], optional=False))
+          node.Replace(type=node.type.parameters[-1], optional=False)
+      )
     else:
       return self.Print(node.Replace(type=pytd.AnythingType(), optional=False))
 
@@ -534,15 +551,18 @@ class PrintVisitor(base_visitor.Visitor):
     params = []
     for i, p in enumerate(node.params):
       if self.old_node.params[i].kind == pytd.ParameterKind.KWONLY:
-        assert all(p.kind == pytd.ParameterKind.KWONLY
-                   for p in self.old_node.params[i:])
+        assert all(
+            p.kind == pytd.ParameterKind.KWONLY
+            for p in self.old_node.params[i:]
+        )
         params.append("*" + starargs)
         params.extend(node.params[i:])
         break
       params.append(p)
-      if (self.old_node.params[i].kind == pytd.ParameterKind.POSONLY and
-          (i == len(node.params)-1 or
-           self.old_node.params[i+1].kind != pytd.ParameterKind.POSONLY)):
+      if self.old_node.params[i].kind == pytd.ParameterKind.POSONLY and (
+          i == len(node.params) - 1
+          or self.old_node.params[i + 1].kind != pytd.ParameterKind.POSONLY
+      ):
         params.append("/")
     else:
       if starargs:
@@ -555,8 +575,11 @@ class PrintVisitor(base_visitor.Visitor):
     # Handle Mutable parameters
     # pylint: disable=no-member
     # (old_node is set in parse/node.py)
-    mutable_params = [(p.name, p.mutated_type) for p in self.old_node.params
-                      if p.mutated_type is not None]
+    mutable_params = [
+        (p.name, p.mutated_type)
+        for p in self.old_node.params
+        if p.mutated_type is not None
+    ]
     # pylint: enable=no-member
     for name, new_type in mutable_params:
       body.append(f"\n{self.INDENT}{name} = {self.Print(new_type)}")
@@ -602,8 +625,9 @@ class PrintVisitor(base_visitor.Visitor):
     elif node.name == "self" and class_name == node.type.split("[")[0]:
       self._DecrementParameterImports(node.type)
       return node.name + suffix
-    elif (node.name == "cls" and
-          re.fullmatch(rf"Type\[{class_name}(\[.+\])?\]", node.type)):
+    elif node.name == "cls" and re.fullmatch(
+        rf"Type\[{class_name}(\[.+\])?\]", node.type
+    ):
       self._imports.decrement_typing_count("Type")
       self._DecrementParameterImports(node.type[5:-1])
       return node.name + suffix
@@ -735,8 +759,12 @@ class PrintVisitor(base_visitor.Visitor):
       else:
         assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
-    return (self.MaybeCapitalize(node.base_type) +
-            "[" + ", ".join(str(p) for p in parameters) + "]")
+    return (
+        self.MaybeCapitalize(node.base_type)
+        + "["
+        + ", ".join(str(p) for p in parameters)
+        + "]"
+    )
 
   def VisitCallableType(self, node):
     typ = self.MaybeCapitalize(node.base_type)
@@ -802,8 +830,12 @@ class PrintVisitor(base_visitor.Visitor):
     if len(new_type_list) == 1:
       return new_type_list[0]
     elif "None" in new_type_list:
-      return (self._FromTyping("Optional") + "[" +
-              self._BuildUnion(t for t in new_type_list if t != "None") + "]")
+      return (
+          self._FromTyping("Optional")
+          + "["
+          + self._BuildUnion(t for t in new_type_list if t != "None")
+          + "]"
+      )
     else:
       return self._FromTyping("Union") + "[" + ", ".join(new_type_list) + "]"
 

@@ -23,42 +23,73 @@ def make_parser():
   """Use argparse to make a parser for command line options."""
 
   o = argparse.ArgumentParser(
-      usage="%(prog)s [options] infile.pytd [outfile.pytd]")
+      usage="%(prog)s [options] infile.pytd [outfile.pytd]"
+  )
 
   # Input and output filenames
   o.add_argument("input", help="File to process")
-  o.add_argument("output", nargs="?",
-                 help=("Output file (or - for stdout). If output is omitted, "
-                       "the input file will be checked for errors."))
+  o.add_argument(
+      "output",
+      nargs="?",
+      help=(
+          "Output file (or - for stdout). If output is omitted, "
+          "the input file will be checked for errors."
+      ),
+  )
 
   o.add_argument(
-      "-O", "--optimize", action="store_true",
-      dest="optimize", default=False,
-      help="Optimize pytd file.")
+      "-O",
+      "--optimize",
+      action="store_true",
+      dest="optimize",
+      default=False,
+      help="Optimize pytd file.",
+  )
   o.add_argument(
-      "--lossy", action="store_true",
-      dest="lossy", default=False,
-      help="Allow lossy optimizations, such as merging classes.")
+      "--lossy",
+      action="store_true",
+      dest="lossy",
+      default=False,
+      help="Allow lossy optimizations, such as merging classes.",
+  )
   o.add_argument(
-      "--max-union", type=int, action="store",
-      dest="max_union", default=4,
-      help="Maximum number of objects in an 'or' clause.\nUse with --lossy.")
+      "--max-union",
+      type=int,
+      action="store",
+      dest="max_union",
+      default=4,
+      help="Maximum number of objects in an 'or' clause.\nUse with --lossy.",
+  )
   o.add_argument(
-      "--use-abcs", action="store_true",
-      dest="use_abcs", default=False,
-      help="Inject abstract bases classes for type merging.\nUse with --lossy.")
+      "--use-abcs",
+      action="store_true",
+      dest="use_abcs",
+      default=False,
+      help="Inject abstract bases classes for type merging.\nUse with --lossy.",
+  )
   o.add_argument(
-      "--remove-mutable", action="store_true",
-      dest="remove_mutable", default=False,
-      help="Remove mutable parameters.")
+      "--remove-mutable",
+      action="store_true",
+      dest="remove_mutable",
+      default=False,
+      help="Remove mutable parameters.",
+  )
   o.add_argument(
-      "-V", "--python_version", type=str, action="store",
-      dest="python_version", default=None,
-      help=("Python version to target (\"major.minor\", e.g. \"3.10\")"))
+      "-V",
+      "--python_version",
+      type=str,
+      action="store",
+      dest="python_version",
+      default=None,
+      help='Python version to target ("major.minor", e.g. "3.10")',
+  )
   o.add_argument(
-      "--multiline-args", action="store_true",
-      dest="multiline_args", default=False,
-      help="Print function arguments one to a line.")
+      "--multiline-args",
+      action="store_true",
+      dest="multiline_args",
+      default=False,
+      help="Print function arguments one to a line.",
+  )
   return o
 
 
@@ -81,7 +112,8 @@ def main():
     sourcecode = fi.read()
     try:
       parsed = parser.parse_string(
-          sourcecode, filename=opts.input, options=options)
+          sourcecode, filename=opts.input, options=options
+      )
     except parser.ParseError as e:
       sys.stderr.write(str(e))
       sys.exit(1)
@@ -94,7 +126,8 @@ def main():
         use_abcs=opts.use_abcs,
         max_union=opts.max_union,
         remove_mutable=opts.remove_mutable,
-        can_do_lookup=False)
+        can_do_lookup=False,
+    )
 
   if opts.output is not None:
     out_text = pytd_utils.Print(parsed, opts.multiline_args)

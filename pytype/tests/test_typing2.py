@@ -62,7 +62,9 @@ class TypingTest(test_base.BaseTest):
       v4 = f4(Foo)
     """)
     self.assertErrorRegexes(errors, {"e": r"y.*Foo"})
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Type
       class Foo:
         x = ...  # type: int
@@ -74,7 +76,8 @@ class TypingTest(test_base.BaseTest):
       v2 = ...  # type: Any
       v3 = ...  # type: list
       v4 = ...  # type: Foo
-    """)
+    """,
+    )
 
   def test_type_union(self):
     _, errors = self.InferWithErrors("""
@@ -96,31 +99,43 @@ class TypingTest(test_base.BaseTest):
 
   def test_use_type_alias(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import List
         MyType = List[str]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         def f(x: foo.MyType):
           pass
         f([""])
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_callable(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Callable
         def f() -> Callable: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Callable
         import foo
         def f() -> Callable:
           return foo.f()
         def g() -> Callable:
           return int
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_callable_parameters(self):
     ty, errors = self.InferWithErrors("""
@@ -145,7 +160,9 @@ class TypingTest(test_base.BaseTest):
       def g8(x: Callable[Any, bool]): ...  # Any is not allowed  # invalid-annotation[e9]
       def g9(x: Callable[[]]) -> None: ...  # invalid-annotation[e10]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
        from typing import Any, Callable, List, Type
 
        lst = ...  # type: List[int]
@@ -162,18 +179,23 @@ class TypingTest(test_base.BaseTest):
        def g7(x: Callable[[], bool]) -> None: ...
        def g8(x: Callable[Any, bool]) -> None: ...
        def g9(x: Callable[[], Any]) -> None: ...
-    """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"'int'.*must be a list of argument types or ellipsis",
-        "e2": r"\[int\] or \[str\].*Must be constant",
-        "e3": r"'Any'.*must be a list of argument types or ellipsis",
-        "e4": r"bool or str.*Must be constant",
-        "e5": r"int or str.*Must be constant",
-        "e6": r"instance of List\[int\].*Must be constant",
-        "e7": r"instance of int",
-        "e8": r"Callable.*expected 2.*got 3",
-        "e9": r"'Any'.*must be a list of argument types or ellipsis",
-        "e10": r"Callable\[_ARGS, _RET].*2.*1"})
+    """,
+    )
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"'int'.*must be a list of argument types or ellipsis",
+            "e2": r"\[int\] or \[str\].*Must be constant",
+            "e3": r"'Any'.*must be a list of argument types or ellipsis",
+            "e4": r"bool or str.*Must be constant",
+            "e5": r"int or str.*Must be constant",
+            "e6": r"instance of List\[int\].*Must be constant",
+            "e7": r"instance of int",
+            "e8": r"Callable.*expected 2.*got 3",
+            "e9": r"'Any'.*must be a list of argument types or ellipsis",
+            "e10": r"Callable\[_ARGS, _RET].*2.*1",
+        },
+    )
 
   def test_callable_bad_args(self):
     ty, errors = self.InferWithErrors("""
@@ -186,31 +208,46 @@ class TypingTest(test_base.BaseTest):
         lst2.append(int)
       def g2(x: Callable[lst2, bool]): ...  # invalid-annotation[e2]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, List, Type, Union
       lst1 = ...  # type: List[Type[Union[int, str]]]
       lst2 = ...  # type: List[Type[Union[int, str]]]
       def g1(x: Callable[..., bool]) -> None: ...
       def g2(x: Callable[..., bool]) -> None: ...
-    """)
+    """,
+    )
     # For the first error, it would be more precise to say [str or int], since
     # the mutation is simple enough that we could keep track of the change to
     # the constant, but we don't do that yet.
-    self.assertErrorRegexes(errors, {
-        "e1": (r"instance of List\[Type\[Union\[int, str\]\]\].*"
-               r"Must be constant"),
-        "e2": r"instance of List\[Type\[Union\[int, str\]\]\].*Must be constant"
-    })
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": (
+                r"instance of List\[Type\[Union\[int, str\]\]\].*"
+                r"Must be constant"
+            ),
+            "e2": (
+                r"instance of List\[Type\[Union\[int, str\]\]\].*Must be"
+                r" constant"
+            ),
+        },
+    )
 
   def test_generics(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Dict
         K = TypeVar("K")
         V = TypeVar("V")
         class CustomDict(Dict[K, V]): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import typing
         import foo
         def f(x: typing.Callable[..., int]): pass
@@ -239,7 +276,9 @@ class TypingTest(test_base.BaseTest):
         def f(x: typing.Pattern[str]): pass
         def f(x: typing.Match[str]): pass
         def f(x: foo.CustomDict[int, str]): pass
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_generator_iterator_match(self):
     self.Check("""
@@ -259,13 +298,16 @@ class TypingTest(test_base.BaseTest):
       def g() -> Any:
         return __any_object__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import typing
       def f() -> typing.Any: ...
       def g() -> Any: ...
       class Any:
           pass
-    """)
+    """,
+    )
 
   def test_callable_call(self):
     ty, errors = self.InferWithErrors("""
@@ -276,16 +318,20 @@ class TypingTest(test_base.BaseTest):
       v3 = f(42.0)  # wrong-arg-types[e2]
       v4 = f(1, 2)  # wrong-arg-count[e3]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       f = ...  # type: Callable[[int], str]
       v1 = ...  # type: Any
       v2 = ...  # type: str
       v3 = ...  # type: Any
       v4 = ...  # type: Any
-    """)
+    """,
+    )
     self.assertErrorRegexes(
-        errors, {"e1": r"1.*0", "e2": r"int.*float", "e3": r"1.*2"})
+        errors, {"e1": r"1.*0", "e2": r"int.*float", "e3": r"1.*2"}
+    )
 
   def test_callable_call_with_type_parameters(self):
     ty, errors = self.InferWithErrors("""
@@ -296,13 +342,16 @@ class TypingTest(test_base.BaseTest):
       v1 = f(__any_object__, 42, 3.14)  # ok
       v2 = f(__any_object__, 42, "hello world")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable, TypeVar, Union
       T = TypeVar("T")
       def f(g: Callable[[T, T], T], y, z): ...
       v1 = ...  # type: Union[int, float]
       v2 = ...  # type: Any
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"int.*str"})
 
   def test_callable_call_with_return_only(self):
@@ -311,11 +360,14 @@ class TypingTest(test_base.BaseTest):
       f = ...  # type: Callable[..., int]
       v = f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable
       f = ...  # type: Callable[..., int]
       v = ...  # type: int
-    """)
+    """,
+    )
 
   def test_callable_call_with_varargs_and_kwargs(self):
     _, errors = self.InferWithErrors("""
@@ -326,8 +378,9 @@ class TypingTest(test_base.BaseTest):
       f(**{"x": "hello", "y": "world"})  # wrong-keyword-args[e3]
       f(*(42,), **{"hello": "world"})  # wrong-keyword-args[e4]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"x", "e2": r"0.*1", "e3": r"x, y",
-                                     "e4": r"hello"})
+    self.assertErrorRegexes(
+        errors, {"e1": r"x", "e2": r"0.*1", "e3": r"x, y", "e4": r"hello"}
+    )
 
   def test_callable_attribute(self):
     self.Check("""
@@ -379,7 +432,9 @@ class TypingTest(test_base.BaseTest):
       func6(my_special_a)
       func7(my_special_a)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         pass
@@ -406,7 +461,8 @@ class TypingTest(test_base.BaseTest):
       v = ...  # type: int
       my_a = ...  # type: MyA
       my_special_a = ...  # type: MySpecialA
-    """)
+    """,
+    )
 
   def test_new_type_error(self):
     _, errors = self.InferWithErrors("""
@@ -422,10 +478,14 @@ class TypingTest(test_base.BaseTest):
       func1(123)  # wrong-arg-types[e2]
       func3(MyStr(123))  # wrong-arg-types[e3]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Expected: MyInt\nActually returned: int",
-        "e2": r".*Expected: \(i: MyInt\)\nActually passed: \(i: int\)",
-        "e3": r".*Expected:.*val: str\)\nActually passed:.*val: int\)"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Expected: MyInt\nActually returned: int",
+            "e2": r".*Expected: \(i: MyInt\)\nActually passed: \(i: int\)",
+            "e3": r".*Expected:.*val: str\)\nActually passed:.*val: int\)",
+        },
+    )
 
   def test_new_type_not_abstract(self):
     # At runtime, the 'class' created by NewType is simply an identity function,
@@ -453,10 +513,13 @@ class TypingTest(test_base.BaseTest):
       def g():
         return f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> str: ...
       def g() -> str: ...
-    """)
+    """,
+    )
 
   def test_called_no_return_against_str(self):
     self.Check("""
@@ -493,8 +556,10 @@ class TypingTest(test_base.BaseTest):
       MyTuple1 = Tuple[..., ...]  # invalid-annotation[e1]
       MyTuple2 = Tuple[...]  # invalid-annotation[e2]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Ellipsis.*index 0.*Tuple",
-                                     "e2": r"Ellipsis.*index 0.*Tuple"})
+    self.assertErrorRegexes(
+        errors,
+        {"e1": r"Ellipsis.*index 0.*Tuple", "e2": r"Ellipsis.*index 0.*Tuple"},
+    )
 
   def test_bad_callable_ellipsis(self):
     errors = self.CheckWithErrors("""
@@ -504,11 +569,15 @@ class TypingTest(test_base.BaseTest):
       MyCallable3 = Callable[[...], int]  # invalid-annotation[e3]
       MyCallable4 = Callable[[int], int, int]  # invalid-annotation[e4]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Ellipsis.*index 1.*Callable",
-        "e2": r"Ellipsis.*index 1.*Callable",
-        "e3": r"Ellipsis.*index 0.*list",
-        "e4": r"Callable\[_ARGS, _RET].*2.*3"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Ellipsis.*index 1.*Callable",
+            "e2": r"Ellipsis.*index 1.*Callable",
+            "e3": r"Ellipsis.*index 0.*list",
+            "e4": r"Callable\[_ARGS, _RET].*2.*3",
+        },
+    )
 
   def test_optional_parameters(self):
     errors = self.CheckWithErrors("""
@@ -524,8 +593,12 @@ class TypingTest(test_base.BaseTest):
         pass
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Not a type",
-                 "e2": r"typing\.Optional can only contain one type parameter"})
+        errors,
+        {
+            "e1": r"Not a type",
+            "e2": r"typing\.Optional can only contain one type parameter",
+        },
+    )
 
   def test_noreturn_possible_return(self):
     errors = self.CheckWithErrors("""
@@ -535,7 +608,8 @@ class TypingTest(test_base.BaseTest):
           raise ValueError()  # bad-return-type[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected: Never", "Actually returned: None"]})
+        errors, {"e": ["Expected: Never", "Actually returned: None"]}
+    )
 
   def test_noreturn(self):
     errors = self.CheckWithErrors("""
@@ -559,25 +633,34 @@ class TypingTest(test_base.BaseTest):
         x: List[NoReturn] = []
         x.append(0)  # container-type-mismatch[e4]
     """)
-    self.assertErrorSequences(errors, {
-        "e1": ["Expected: List[nothing]", "Actually returned: List[None]"],
-        "e2": ["Expected: (x: Never)", "Actually passed: (x: int)"],
-        "e3": ["Expected: (x: List[nothing])",
-               "Actually passed: (x: List[int])"],
-        "e4": ["Allowed", "_T: Never", "New", "_T: int"],
-    })
+    self.assertErrorSequences(
+        errors,
+        {
+            "e1": ["Expected: List[nothing]", "Actually returned: List[None]"],
+            "e2": ["Expected: (x: Never)", "Actually passed: (x: int)"],
+            "e3": [
+                "Expected: (x: List[nothing])",
+                "Actually passed: (x: List[int])",
+            ],
+            "e4": ["Allowed", "_T: Never", "New", "_T: int"],
+        },
+    )
 
   def test_noreturn_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import NoReturn
       def f(x: NoReturn): ...
-    """)]):
+    """,
+    )]):
       errors = self.CheckWithErrors("""
         import foo
         foo.f(0)  # wrong-arg-types[e]
       """)
       self.assertErrorSequences(
-          errors, {"e": ["Expected: (x: empty)", "Actually passed: (x: int)"]})
+          errors, {"e": ["Expected: (x: empty)", "Actually passed: (x: int)"]}
+      )
 
   def test_noreturn_in_tuple(self):
     self.Check("""
@@ -624,7 +707,9 @@ class TypingTest(test_base.BaseTest):
     # not possible to distinguish between using Union.getitem_slot and accessing
     # the actual __getitem__ method on a union's options. Inferring `Callable`
     # should generally be safe, since __getitem__ is a method by convention.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable, Type, Union
 
       class Foo:
@@ -634,7 +719,8 @@ class TypingTest(test_base.BaseTest):
 
       def f(x: Type[Union[Foo, Bar]]) -> Callable[[Any, Any], Union[int, str]]: ...
       def g(x: Type[Union[Foo, Bar]]) -> Callable: ...
-    """)
+    """,
+    )
 
   def test_bytestring(self):
     self.Check("""
@@ -680,7 +766,9 @@ class CounterTest(test_base.BaseTest):
       e = x.copy()
       f = x | z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import collections
       import typing
       from typing import Counter, Iterable, List, Tuple, Union
@@ -697,7 +785,8 @@ class CounterTest(test_base.BaseTest):
       z: Counter[int]
 
       def freqs(s: str) -> Counter[str]: ...
-    """)
+    """,
+    )
 
 
 class TypingTestPython3Feature(test_base.BaseTest):
@@ -705,28 +794,37 @@ class TypingTestPython3Feature(test_base.BaseTest):
 
   def test_namedtuple_item(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import NamedTuple
         class Ret(NamedTuple):
           x: int
           y: str
         def f() -> Ret: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         w = foo.f()[-1]
         x = foo.f()[0]
         y = foo.f()[1]
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Union
         w: str
         x: int
         y: str
         z: Union[int, str]
-      """)
+      """,
+      )
 
   def test_import_all(self):
     python = [
@@ -749,11 +847,14 @@ class TypingTestPython3Feature(test_base.BaseTest):
         x: ClassVar[int] = 5
       print(A.x + 3)  # make sure using a ClassVar[int] as an int works
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import ClassVar
       class A:
         x: ClassVar[int]
-    """)
+    """,
+    )
 
   def test_uninitialized_classvar(self):
     ty = self.Infer("""
@@ -761,26 +862,35 @@ class TypingTestPython3Feature(test_base.BaseTest):
       class A:
         x: ClassVar[int]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import ClassVar
       class A:
         x: ClassVar[int]
-    """)
+    """,
+    )
 
   def test_pyi_classvar_of_union(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import ClassVar, Optional
         class Foo:
           x: ClassVar[Optional[str]]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         from typing import Optional
         def f(x: Optional[str]):
           pass
         f(foo.Foo.x)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_ordered_dict(self):
     self.Check("""
@@ -800,11 +910,15 @@ class TypingTestPython3Feature(test_base.BaseTest):
 
   def test_typed_dict(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing_extensions import TypedDict
         X = TypedDict('X', {'a': int})
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         from typing import Dict
 
@@ -821,7 +935,9 @@ class TypingTestPython3Feature(test_base.BaseTest):
         f2(x)  # wrong-arg-types
         f3({'a': 0})  # okay
         f3({0: 'a'})  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
 
 class LiteralTest(test_base.BaseTest):
@@ -837,7 +953,9 @@ class LiteralTest(test_base.BaseTest):
       x5: Literal[True]
       x6: Literal[None]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
       x1: Literal['hello']
       x2: Literal[b'hello']
@@ -845,7 +963,8 @@ class LiteralTest(test_base.BaseTest):
       x4: Literal[0]
       x5: Literal[True]
       x6: None
-    """)
+    """,
+    )
 
   def test_basic_enum(self):
     ty = self.Infer("""
@@ -855,13 +974,16 @@ class LiteralTest(test_base.BaseTest):
         RED = "RED"
       x: Literal[Color.RED]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Literal
       x: Literal[Color.RED]
       class Color(enum.Enum):
         RED: Literal["RED"]
-    """)
+    """,
+    )
 
   @test_base.skip("Pytype loads N.A and treats it as a literal.")
   def test_not_an_enum(self):
@@ -887,10 +1009,13 @@ class LiteralTest(test_base.BaseTest):
       def f(x: Literal["x", "y"]):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal, Union
       def f(x: Literal['x', 'y']) -> None: ...
-    """)
+    """,
+    )
 
   def test_unnest(self):
     ty = self.Infer("""
@@ -899,11 +1024,14 @@ class LiteralTest(test_base.BaseTest):
       def f(x: Literal[X, Literal[None], Literal[Literal["Y"]]]):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal, Optional, Union
       X = Literal['X']
       def f(x: Optional[Literal['X', 'Y']]) -> None: ...
-    """)
+    """,
+    )
 
   def test_invalid(self):
     errors = self.CheckWithErrors("""
@@ -911,11 +1039,16 @@ class LiteralTest(test_base.BaseTest):
       x1: Literal[0, ...]  # invalid-annotation[e1]
       x2: Literal[str, 4.2]  # invalid-annotation[e2]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Bad parameter '...' at index 1",
-        "e2": (r"Bad parameter 'str' at index 0\n"
-               r"\s*Bad parameter 'float' at index 1"),
-    })
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Bad parameter '...' at index 1",
+            "e2": (
+                r"Bad parameter 'str' at index 0\n"
+                r"\s*Bad parameter 'float' at index 1"
+            ),
+        },
+    )
 
   def test_variable(self):
     errors = self.CheckWithErrors("""
@@ -923,9 +1056,9 @@ class LiteralTest(test_base.BaseTest):
       x: Literal[0] = 0
       y: Literal[0] = 1  # annotation-type-mismatch[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Annotation: Literal\[0\].*Assignment: Literal\[1\]"
-    })
+    self.assertErrorRegexes(
+        errors, {"e": r"Annotation: Literal\[0\].*Assignment: Literal\[1\]"}
+    )
 
   def test_parameter(self):
     errors = self.CheckWithErrors("""
@@ -935,9 +1068,9 @@ class LiteralTest(test_base.BaseTest):
       f(True)
       f(False)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Expected.*Literal\[True\].*Actual.*Literal\[False\]"
-    })
+    self.assertErrorRegexes(
+        errors, {"e": r"Expected.*Literal\[True\].*Actual.*Literal\[False\]"}
+    )
 
   def test_union_parameter(self):
     errors = self.CheckWithErrors("""
@@ -948,9 +1081,9 @@ class LiteralTest(test_base.BaseTest):
       f("y")  # wrong-arg-types[e]
       f("z")
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Expected.*Literal\['x', 'z'\].*Actual.*Literal\['y'\]")
-    })
+    self.assertErrorRegexes(
+        errors, {"e": r"Expected.*Literal\['x', 'z'\].*Actual.*Literal\['y'\]"}
+    )
 
   def test_mixed_union(self):
     # "hello" is a ConcreteValue, M.A is an Instance. There was a crash when
@@ -976,9 +1109,10 @@ class LiteralTest(test_base.BaseTest):
         else:
           return "goodbye"  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Expected.*Literal\['hello'\].*Actual.*Literal\['goodbye'\]"
-    })
+    self.assertErrorRegexes(
+        errors,
+        {"e": r"Expected.*Literal\['hello'\].*Actual.*Literal\['goodbye'\]"},
+    )
 
   def test_match_non_literal(self):
     self.CheckWithErrors("""
@@ -1040,13 +1174,16 @@ class LiteralTest(test_base.BaseTest):
           return None
         return ""
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal, Optional, overload
       @overload
       def f(x: Literal[False]) -> str: ...
       @overload
       def f(x: Literal[True]) -> Optional[str]: ...
-    """)
+    """,
+    )
 
   def test_list_of_literals(self):
     self.CheckWithErrors("""
@@ -1085,10 +1222,13 @@ class LiteralTest(test_base.BaseTest):
       from typing import Literal
       X: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 'A']
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Literal
       X: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 'A']
-    """)
+    """,
+    )
 
 
 class TypeAliasTest(test_base.BaseTest):
@@ -1102,10 +1242,13 @@ class TypeAliasTest(test_base.BaseTest):
           from {typing_module} import TypeAlias
           X: TypeAlias = int
         """)
-        self.assertTypesMatchPytd(ty, """
+        self.assertTypesMatchPytd(
+            ty,
+            """
           from typing import Type
           X: Type[int]
-        """)
+        """,
+        )
 
   def test_bad_alias(self):
     self.CheckWithErrors("""
@@ -1118,24 +1261,33 @@ class TypeAliasTest(test_base.BaseTest):
       typing_module = f"typing{suffix}"
       with self.subTest(typing_module=typing_module):
         with test_utils.Tempdir() as d:
-          d.create_file("foo.pyi", f"""
+          d.create_file(
+              "foo.pyi",
+              f"""
             from {typing_module} import TypeAlias
             X: TypeAlias = int
-          """)
-          self.Check("""
+          """,
+          )
+          self.Check(
+              """
             import foo
             assert_type(foo.X, "Type[int]")
-          """, pythonpath=[d.path])
+          """,
+              pythonpath=[d.path],
+          )
 
   def test_forward_ref(self):
     ty = self.Infer("""
       from typing import TypeAlias
       X: TypeAlias = "int"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       X: Type[int]
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

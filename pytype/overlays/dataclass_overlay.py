@@ -70,7 +70,8 @@ class Dataclass(classgen.Decorator):
         cls.name,
         allow_methods=True,
         ordering=classgen.Ordering.FIRST_ANNOTATE,
-        ctx=self.ctx)
+        ctx=self.ctx,
+    )
 
   def decorate(self, node, cls):
     """Processes class members."""
@@ -87,13 +88,16 @@ class Dataclass(classgen.Decorator):
     sticky_kwonly = False
     for name, local in cls_locals.items():
       typ, orig = local.get_type(node, name), local.orig
-      if (isinstance(typ, abstract.PyTDClass) and
-          typ.full_name == "dataclasses.KW_ONLY"):
+      if (
+          isinstance(typ, abstract.PyTDClass)
+          and typ.full_name == "dataclasses.KW_ONLY"
+      ):
         if sticky_kwonly:
           # TODO(mdemello): If both KW_ONLY tags are named `_` we only get one
           # entry in cls_locals
           self.ctx.errorlog.dataclass_error(
-              self.ctx.vm.stack(), "KW_ONLY can only be used once per class")
+              self.ctx.vm.stack(), "KW_ONLY can only be used once per class"
+          )
         sticky_kwonly = True
         continue
       kind = ""
@@ -121,11 +125,17 @@ class Dataclass(classgen.Decorator):
         # matches the declared type. However, it allows None defaults, and
         # dataclasses do not.
         self.ctx.check_annotation_type_mismatch(
-            node, name, typ, orig, local.stack, allow_none=False)
+            node, name, typ, orig, local.stack, allow_none=False
+        )
 
       attr = classgen.Attribute(
-          name=name, typ=typ, init=init, kw_only=kw_only, default=orig,
-          kind=kind)
+          name=name,
+          typ=typ,
+          init=init,
+          kw_only=kw_only,
+          default=orig,
+          kind=kind,
+      )
       own_attrs.append(attr)
 
     cls.record_attr_ordering(own_attrs)
@@ -133,8 +143,11 @@ class Dataclass(classgen.Decorator):
 
     # Add an __init__ method if one doesn't exist already (dataclasses do not
     # overwrite an explicit __init__ method).
-    if ("__init__" not in cls.members and self.args[cls] and
-        self.args[cls]["init"]):
+    if (
+        "__init__" not in cls.members
+        and self.args[cls]
+        and self.args[cls]["init"]
+    ):
       init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
 
@@ -144,19 +157,24 @@ class Dataclass(classgen.Decorator):
     attr_types = self.ctx.convert.merge_values({attr.typ for attr in attrs})
     generic_field = abstract.ParameterizedClass(
         self.ctx.convert.lookup_value("dataclasses", "Field"),
-        {abstract_utils.T: attr_types}, self.ctx)
+        {abstract_utils.T: attr_types},
+        self.ctx,
+    )
     dataclass_fields_params = {
         abstract_utils.K: self.ctx.convert.str_type,
-        abstract_utils.V: generic_field
+        abstract_utils.V: generic_field,
     }
     dataclass_fields_typ = abstract.ParameterizedClass(
-        self.ctx.convert.dict_type, dataclass_fields_params, self.ctx)
+        self.ctx.convert.dict_type, dataclass_fields_params, self.ctx
+    )
     classgen.add_member(node, cls, "__dataclass_fields__", dataclass_fields_typ)
 
     annotations_dict = classgen.get_or_create_annotations_dict(
-        cls.members, self.ctx)
+        cls.members, self.ctx
+    )
     annotations_dict.annotated_locals["__dataclass_fields__"] = (
-        abstract_utils.Local(node, None, dataclass_fields_typ, None, self.ctx))
+        abstract_utils.Local(node, None, dataclass_fields_typ, None, self.ctx)
+    )
 
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("dataclasses.dataclass")
@@ -167,7 +185,8 @@ class Dataclass(classgen.Decorator):
     match_args_params = {i: attr.typ for i, attr in enumerate(attrs)}
     match_args_params[abstract_utils.T] = attr_types
     match_args_typ = abstract.TupleClass(
-        self.ctx.convert.tuple_type, match_args_params, self.ctx)
+        self.ctx.convert.tuple_type, match_args_params, self.ctx
+    )
     classgen.add_member(node, cls, "__match_args__", match_args_typ)
 
 
@@ -202,13 +221,14 @@ class FieldFunction(classgen.FieldConstructor):
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "default_factory" in args.namedargs:
       # The pyi signatures should prevent this; check left in for safety.
-      raise error_types.DuplicateKeyword(self.signatures[0].signature, args,
-                                         self.ctx, "default")
+      raise error_types.DuplicateKeyword(
+          self.signatures[0].signature, args, self.ctx, "default"
+      )
     elif "default" in args.namedargs:
       default_var = args.namedargs["default"]
     elif "default_factory" in args.namedargs:
       factory_var = args.namedargs["default_factory"]
-      factory, = factory_var.data
+      (factory,) = factory_var.data
       f_args = function.Args(posargs=())
       node, default_var = factory.call(node, factory_var.bindings[0], f_args)
     else:
@@ -282,6 +302,7 @@ class Replace(abstract.PyTDFunction):
         kwargs_name=None,
         defaults={f.name: default for f in fields},
         annotations={f.name: f.typ for f in fields},
-        ctx=self.ctx)
+        ctx=self.ctx,
+    )
     _ = replace.match_and_map_args(node, args, alias_map)
     return ret

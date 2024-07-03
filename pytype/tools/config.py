@@ -5,7 +5,6 @@ import configparser
 from typing import Iterable, Tuple, Type, TypeVar
 
 from pytype.platform_utils import path_utils
-
 import toml
 
 _CONFIG_FILENAMES = ('pyproject.toml', 'setup.cfg')

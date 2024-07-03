@@ -86,14 +86,16 @@ class OverridingTest(test_base.BaseTest):
           pass
     """)
     self.assertErrorSequences(
-        errors, {
+        errors,
+        {
             "e": [
                 "Overriding method signature mismatch",
                 "Base signature: ",
                 "Subclass signature: ",
                 "Not enough positional parameters in overriding method.",
             ]
-        })
+        },
+    )
 
   # Keyword-only -> Positional-or-keyword or keyword-only, same name
   def test_keyword_only_match(self):
@@ -186,11 +188,14 @@ class OverridingTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["t: int = 0", "t: int = 1"]})
 
   def test_default_value_imported_class(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       class Foo:
         def f(self, x: int = 0):
           pass
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class Bar(foo.Foo):
@@ -243,11 +248,14 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   def test_return_type_matches_empty(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       class Foo:
         def f(self):
           raise NotImplementedError()
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class Bar(foo.Foo):
@@ -980,11 +988,14 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   def test_pytd_varargs_not_annotated(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
         class Foo:
           def f(self, *args):
             pass
-      """)]):
+      """,
+    )]):
       self.Check("""
         import foo
 
@@ -1160,13 +1171,16 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   def test_async(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       class Foo:
         async def f(self) -> int:
           return 0
         def g(self) -> int:
           return 0
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Good(foo.Foo):
@@ -1242,7 +1256,8 @@ class TypingOverrideTest(test_base.BaseTest):
           pass
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Attribute 'g' not found on any parent class"]})
+        errors, {"e": ["Attribute 'g' not found on any parent class"]}
+    )
 
   def test_multiple_inheritance(self):
     self.CheckWithErrors("""
@@ -1319,8 +1334,15 @@ class TypingOverrideTest(test_base.BaseTest):
         def h(self):
           pass
     """)
-    self.assertErrorSequences(errors, {"e": [
-        "Missing @typing.override decorator for 'g', which overrides 'A.g'"]})
+    self.assertErrorSequences(
+        errors,
+        {
+            "e": [
+                "Missing @typing.override decorator for 'g', which overrides"
+                " 'A.g'"
+            ]
+        },
+    )
 
 
 if __name__ == "__main__":

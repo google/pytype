@@ -15,7 +15,6 @@ SUPERCLASSES = {
     "Iterator": ["Iterable"],
     "AsyncIterator": ["AsyncIterable"],
     "Coroutine": ["Awaitable"],
-
     # Classes (derive from object):
     "Container": ["object"],
     "Number": ["object"],
@@ -34,7 +33,6 @@ SUPERCLASSES = {
     "Sequence": ["Sized", "Iterable", "Container"],
     "MutableSequence": ["Sequence"],
     "ByteString": ["Sequence"],
-
     # Builtin types:
     "set": ["MutableSet"],
     "frozenset": ["Set"],
@@ -51,7 +49,6 @@ SUPERCLASSES = {
     "range": ["Sequence"],
     "bytearray": ["ByteString", "MutableSequence"],
     "memoryview": ["Sequence"],
-
     # Types that can only be constructed indirectly:
     # (See EOL comments for the definition)
     "bytearray_iterator": ["Iterator"],  # type(iter(bytearray()))

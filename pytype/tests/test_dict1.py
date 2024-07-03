@@ -14,23 +14,29 @@ class DictTest(test_base.BaseTest):
       v1 = d.pop("a")
       v2 = d.pop("b", None)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       d = ...  # type: Dict[str, int]
       v1 = ...  # type: int
       v2 = ...  # type: None
-    """)
+    """,
+    )
 
   def test_bad_pop(self):
     ty = self.Infer("""
       d = {"a": 42}
       v = d.pop("b")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict
       d = ...  # type: Dict[str, int]
       v = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_ambiguous_pop(self):
     ty = self.Infer("""
@@ -39,13 +45,16 @@ class DictTest(test_base.BaseTest):
       v1 = d.pop(k)
       v2 = d.pop(k, None)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Optional
       d = ...  # type: Dict[str, int]
       k = ...  # type: str
       v1 = ...  # type: int
       v2 = ...  # type: Optional[int]
-    """)
+    """,
+    )
 
   def test_pop_from_ambiguous_dict(self):
     ty = self.Infer("""
@@ -56,14 +65,17 @@ class DictTest(test_base.BaseTest):
       v1 = d.pop("a")
       v2 = d.pop("a", None)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Optional
       d = ...  # type: Dict[str, int]
       k = ...  # type: str
       v = ...  # type: int
       v1 = ...  # type: int
       v2 = ...  # type: Optional[int]
-    """)
+    """,
+    )
 
   def test_update_empty(self):
     ty = self.Infer("""
@@ -72,27 +84,36 @@ class DictTest(test_base.BaseTest):
       d2 = None  # type: Dict[str, int]
       d1.update(d2)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       d1 = ...  # type: Dict[str, int]
       d2 = ...  # type: Dict[str, int]
-    """)
+    """,
+    )
 
   def test_update_any_subclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import TypeVar
         T = TypeVar("T")
         def f(x: T, y: T = ...) -> T: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Any
         import foo
         class Foo(Any):
           def f(self):
             kwargs = {}
             kwargs.update(foo.f(self))
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_update_noargs(self):
     self.Check("""

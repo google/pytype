@@ -21,13 +21,16 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
         astlib.Lt: cmp_slots.LT,
         astlib.GtE: cmp_slots.GE,
         astlib.LtE: cmp_slots.LE,
-        astlib.NotEq: cmp_slots.NE
+        astlib.NotEq: cmp_slots.NE,
     }
     self._options = options
 
   def _eval_comparison(
-      self, ident: Tuple[str, Optional[Union[int, slice]]], op: str,
-      value: Union[str, int, Tuple[int, ...]]) -> bool:
+      self,
+      ident: Tuple[str, Optional[Union[int, slice]]],
+      op: str,
+      value: Union[str, int, Tuple[int, ...]],
+  ) -> bool:
     """Evaluate a comparison and return a bool.
 
     Args:
@@ -47,10 +50,12 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
         key = slice(None, None, None)
       if isinstance(key, int) and not isinstance(value, int):
         raise _ParseError(
-            "an element of sys.version_info must be compared to an integer")
+            "an element of sys.version_info must be compared to an integer"
+        )
       if isinstance(key, slice) and not _is_int_tuple(value):
         raise _ParseError(
-            "sys.version_info must be compared to a tuple of integers")
+            "sys.version_info must be compared to a tuple of integers"
+        )
       try:
         actual = self._options.python_version[key]
       except IndexError as e:
@@ -64,7 +69,8 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
       valid_cmps = (cmp_slots.EQ, cmp_slots.NE)
       if op not in valid_cmps:
         raise _ParseError(
-            "sys.platform must be compared using %s or %s" % valid_cmps)
+            "sys.platform must be compared using %s or %s" % valid_cmps
+        )
       actual = self._options.platform
     else:
       raise _ParseError(f"Unsupported condition: {name!r}.")

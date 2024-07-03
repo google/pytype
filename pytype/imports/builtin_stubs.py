@@ -52,8 +52,9 @@ class BuiltinsAndTyping:
     """Read builtins.pytd and typing.pytd, and return the parsed modules."""
     t = self._parse_predefined("typing", options)
     b = self._parse_predefined("builtins", options)
-    b = b.Visit(visitors.LookupExternalTypes({"typing": t},
-                                             self_name="builtins"))
+    b = b.Visit(
+        visitors.LookupExternalTypes({"typing": t}, self_name="builtins")
+    )
     t = t.Visit(visitors.LookupBuiltins(b))
     b = b.Visit(visitors.NamedTypeToClassType())
     t = t.Visit(visitors.NamedTypeToClassType())
@@ -61,10 +62,8 @@ class BuiltinsAndTyping:
     t = t.Visit(visitors.AdjustTypeParameters())
     b = b.Visit(visitors.CanonicalOrderingVisitor())
     t = t.Visit(visitors.CanonicalOrderingVisitor())
-    b.Visit(visitors.FillInLocalPointers({"": b, "typing": t,
-                                          "builtins": b}))
-    t.Visit(visitors.FillInLocalPointers({"": t, "typing": t,
-                                          "builtins": b}))
+    b.Visit(visitors.FillInLocalPointers({"": b, "typing": t, "builtins": b}))
+    t.Visit(visitors.FillInLocalPointers({"": t, "typing": t, "builtins": b}))
     b.Visit(visitors.VerifyLookup())
     t.Visit(visitors.VerifyLookup())
     b.Visit(visitors.VerifyContainers())
@@ -72,8 +71,9 @@ class BuiltinsAndTyping:
     return b, t
 
 
-def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
-                      as_package=False):
+def GetPredefinedFile(
+    stubs_subdir, module, extension=".pytd", as_package=False
+):
   """Get the contents of a predefined PyTD, typically with a file name *.pytd.
 
   Arguments:
@@ -81,6 +81,7 @@ def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
     module: module name (e.g., "sys" or "__builtins__")
     extension: either ".pytd" or ".py"
     as_package: try the module as a directory with an __init__ file
+
   Returns:
     The contents of the file
   Raises:
@@ -104,11 +105,13 @@ class BuiltinLoader(base.BuiltinLoader):
     """Parse a pyi/pytd file in the pytype source tree."""
     try:
       filename, src = GetPredefinedFile(
-          pytd_subdir, module, as_package=as_package)
+          pytd_subdir, module, as_package=as_package
+      )
     except OSError:
       return None
     ast = parser.parse_string(
-        src, filename=filename, name=module, options=self.options)
+        src, filename=filename, name=module, options=self.options
+    )
     assert ast.name == module
     return ast
 
@@ -124,5 +127,6 @@ class BuiltinLoader(base.BuiltinLoader):
       mod = self._parse_predefined(namespace, module_name, as_package=True)
       filename = path_utils.join(module_name, "__init__.pyi")
     return filename, mod
+
 
 # pylint: enable=invalid-name

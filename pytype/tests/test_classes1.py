@@ -18,14 +18,17 @@ class ClassesTest(test_base.BaseTest):
         x.y = 3
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Any
     class Thing(tuple):
       x = ...  # type: Any
       y = ...  # type: int
       def __init__(self, x) -> NoneType: ...
     def f() -> Thing: ...
-    """)
+    """,
+    )
 
   def test_load_classderef(self):
     """Exercises the Python 3 LOAD_CLASSDEREF opcode.
@@ -49,11 +52,14 @@ class ClassesTest(test_base.BaseTest):
       def f():
         return MyClass()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       MyClass = ...  # type: Any
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_class_name(self):
     self.Check("""
@@ -73,11 +79,14 @@ class ClassesTest(test_base.BaseTest):
       class A(__any_object__):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Any
     class A(Any):
       pass
-    """)
+    """,
+    )
 
   def test_inherit_from_unknown_and_call(self):
     ty = self.Infer("""
@@ -86,12 +95,15 @@ class ClassesTest(test_base.BaseTest):
         def __init__(self):
           x.__init__(self)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Any
     x = ...  # type: Any
     class A(Any):
       def __init__(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_inherit_from_unknown_and_set_attr(self):
     ty = self.Infer("""
@@ -99,11 +111,14 @@ class ClassesTest(test_base.BaseTest):
         def __init__(self):
           setattr(self, "test", True)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Any
     class Foo(Any):
       def __init__(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_inherit_from_unknown_and_initialize(self):
     ty = self.Infer("""
@@ -113,30 +128,41 @@ class ClassesTest(test_base.BaseTest):
         pass
       x = Bar(duration=0)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         pass
       class Bar(Foo, Any):
         pass
       x = ...  # type: Bar
-    """)
+    """,
+    )
 
   def test_inherit_from_unsolvable(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Any
         def __getattr__(name) -> Any: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         class Foo:
           pass
         class Bar(Foo, a.A):
           pass
         x = Bar(duration=0)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import Any
         class Foo:
@@ -144,7 +170,8 @@ class ClassesTest(test_base.BaseTest):
         class Bar(Foo, Any):
           pass
         x = ...  # type: Bar
-      """)
+      """,
+      )
 
   def test_classmethod(self):
     ty = self.Infer("""
@@ -156,14 +183,17 @@ class ClassesTest(test_base.BaseTest):
       def f():
         return Foo.bar()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Any
     module = ...  # type: Any
     def f() -> NoneType: ...
     class Foo:
       @classmethod
       def bar(cls) -> None: ...
-    """)
+    """,
+    )
 
   def test_factory_classmethod(self):
     ty = self.Infer("""
@@ -172,13 +202,16 @@ class ClassesTest(test_base.BaseTest):
         def factory(cls, *args, **kwargs):
           return object.__new__(cls)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type, TypeVar
       _TFoo = TypeVar('_TFoo', bound=Foo)
       class Foo:
         @classmethod
         def factory(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
-    """)
+    """,
+    )
 
   def test_classmethod_return_inference(self):
     ty = self.Infer("""
@@ -188,12 +221,15 @@ class ClassesTest(test_base.BaseTest):
         def bar(cls):
           return cls.A
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     class Foo:
       A: int
       @classmethod
       def bar(cls) -> int: ...
-    """)
+    """,
+    )
 
   def test_inherit_from_unknown_attributes(self):
     ty = self.Infer("""
@@ -202,14 +238,17 @@ class ClassesTest(test_base.BaseTest):
           self.x = [1]
           self.y = list(self.x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import List
     from typing import Any
     class Foo(Any):
       x = ...  # type: List[int]
       y = ...  # type: List[int]
       def f(self) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_inner_class(self):
     ty = self.Infer("""
@@ -219,9 +258,12 @@ class ClassesTest(test_base.BaseTest):
         l = Foo()
         return l.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_super(self):
     ty = self.Infer("""
@@ -232,12 +274,15 @@ class ClassesTest(test_base.BaseTest):
         def __init__(self, x):
           super(Foo, self).__init__(x, y='foo')
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     class Base:
       def __init__(self, x, y) -> NoneType: ...
     class Foo(Base):
       def __init__(self, x) -> NoneType: ...
-    """)
+    """,
+    )
 
   def test_super_error(self):
     _, errors = self.InferWithErrors("""
@@ -263,7 +308,9 @@ class ClassesTest(test_base.BaseTest):
         def get_x(self):
           return self.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
         class A:
           x = ...  # type: int
           def __init__(self) -> None: ...
@@ -272,7 +319,8 @@ class ClassesTest(test_base.BaseTest):
           x = ...  # type: int
           def get_x(self) -> int: ...
           def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_super_diamond(self):
     ty = self.Infer("""
@@ -291,7 +339,9 @@ class ClassesTest(test_base.BaseTest):
         def get_z(self):
           return super(D, self).z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
           x = ...  # type: int
       class B(A):
@@ -303,7 +353,8 @@ class ClassesTest(test_base.BaseTest):
           def get_x(self) -> int: ...
           def get_y(self) -> int: ...
           def get_z(self) -> complex: ...
-    """)
+    """,
+    )
 
   def test_inherit_from_list(self):
     ty = self.Infer("""
@@ -311,11 +362,14 @@ class ClassesTest(test_base.BaseTest):
         def foo(self):
           return getattr(self, '__str__')
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class MyList(list):
         def foo(self) -> Any: ...
-    """)
+    """,
+    )
 
   def test_class_attr(self):
     ty = self.Infer("""
@@ -325,12 +379,15 @@ class ClassesTest(test_base.BaseTest):
       Foo.x = 3
       OtherFoo.x = "bar"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class Foo:
         x: str
       OtherFoo: Type[Foo]
-    """)
+    """,
+    )
 
   def test_call_class_attr(self):
     ty = self.Infer("""
@@ -339,12 +396,15 @@ class ClassesTest(test_base.BaseTest):
         def convert(self, value):
           return self.convert_method(value)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class Flag:
         convert_method = ...  # type: Type[int]
         def convert(self, value) -> int: ...
-    """)
+    """,
+    )
 
   def test_bound_method(self):
     ty = self.Infer("""
@@ -355,14 +415,17 @@ class ClassesTest(test_base.BaseTest):
       _inst = Random()
       seed = _inst.seed
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       class Random:
          def seed(self) -> None: ...
 
       _inst = ...  # type: Random
       def seed() -> None: ...
-    """)
+    """,
+    )
 
   def test_mro_with_unsolvables(self):
     ty = self.Infer("""
@@ -372,7 +435,9 @@ class ClassesTest(test_base.BaseTest):
       class Bar(X, Foo, Y):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       X = ...  # type: Any
       Y = ...  # type: Any
@@ -380,7 +445,8 @@ class ClassesTest(test_base.BaseTest):
         ...
       class Bar(Any, Foo, Any):
         ...
-    """)
+    """,
+    )
 
   def test_property(self):
     ty = self.Infer("""
@@ -391,14 +457,17 @@ class ClassesTest(test_base.BaseTest):
           return self.name
         name = property(fget=lambda self: self._name)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated
       class Foo:
         _name = ...  # type: str
         name = ...  # type: Annotated[str, 'property']
         def __init__(self) -> None: ...
         def test(self) -> str: ...
-    """)
+    """,
+    )
 
   def test_descriptor_self(self):
     ty = self.Infer("""
@@ -412,7 +481,9 @@ class ClassesTest(test_base.BaseTest):
           return self.foo
         foo = Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         _name = ...  # type: str
         def __init__(self) -> None: ...
@@ -420,7 +491,8 @@ class ClassesTest(test_base.BaseTest):
       class Bar:
         foo = ...  # type: str
         def test(self) -> str: ...
-    """)
+    """,
+    )
 
   def test_descriptor_instance(self):
     ty = self.Infer("""
@@ -434,7 +506,9 @@ class ClassesTest(test_base.BaseTest):
           return self.foo
         foo = Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         def __get__(self, obj, objtype) -> Any: ...
@@ -443,7 +517,8 @@ class ClassesTest(test_base.BaseTest):
         foo = ...  # type: Any
         def __init__(self) -> None: ...
         def test(self) -> str: ...
-    """)
+    """,
+    )
 
   def test_descriptor_class(self):
     ty = self.Infer("""
@@ -456,7 +531,9 @@ class ClassesTest(test_base.BaseTest):
         _name = "name"
         foo = Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         def __get__(self, obj, objtype) -> Any: ...
@@ -464,7 +541,8 @@ class ClassesTest(test_base.BaseTest):
         _name = ...  # type: str
         foo = ...  # type: Any
         def test(self) -> str: ...
-    """)
+    """,
+    )
 
   def test_descriptor_split(self):
     ty = self.Infer("""
@@ -479,7 +557,9 @@ class ClassesTest(test_base.BaseTest):
       x1 = Bar.foo
       x2 = Bar().foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class Foo:
         def __get__(self, obj, cls) -> Union[str, int]: ...
@@ -487,7 +567,8 @@ class ClassesTest(test_base.BaseTest):
         foo: Union[str, int]
       x1: str
       x2: int
-    """)
+    """,
+    )
 
   def test_bad_descriptor(self):
     ty = self.Infer("""
@@ -496,13 +577,16 @@ class ClassesTest(test_base.BaseTest):
       class Bar:
         foo = Foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         __get__ = ...  # type: None
       class Bar:
         foo = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_not_descriptor(self):
     ty = self.Infer("""
@@ -513,13 +597,16 @@ class ClassesTest(test_base.BaseTest):
       class Bar:
         foo = foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         __get__ = ...  # type: None
       foo = ...  # type: Foo
       class Bar:
         foo = ...  # type: Foo
-    """)
+    """,
+    )
 
   def test_getattr(self):
     ty = self.Infer("""
@@ -529,27 +616,39 @@ class ClassesTest(test_base.BaseTest):
       def f():
         return Foo().foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __getattr__(self, name) -> str: ...
       def f() -> str: ...
-    """)
+    """,
+    )
 
   def test_getattr_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo:
           def __getattr__(self, name) -> str: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         def f():
           return foo.Foo().foo
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         def f() -> str: ...
-      """)
+      """,
+      )
 
   def test_getattribute(self):
     ty = self.Infer("""
@@ -558,56 +657,81 @@ class ClassesTest(test_base.BaseTest):
           return 42
       x = A().x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         def __getattribute__(self, name) -> int: ...
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_getattribute_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         class A:
           def __getattribute__(self, name) -> int: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.A().x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x = ...  # type: int
-      """)
+      """,
+      )
 
   def test_inherit_from_classobj(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         class A():
           pass
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         class C(a.A):
           pass
         name = C.__name__
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         class C(a.A):
           pass
         name = ... # type: str
-      """)
+      """,
+      )
 
   def test_metaclass_getattribute(self):
     with test_utils.Tempdir() as d:
-      d.create_file("menum.pyi", """
+      d.create_file(
+          "menum.pyi",
+          """
         from typing import Any
         class EnumMeta(type):
           def __getattribute__(self, name) -> Any: ...
         class Enum(metaclass=EnumMeta): ...
         class IntEnum(int, Enum): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import menum
         class A(menum.Enum):
           x = 1
@@ -617,8 +741,12 @@ class ClassesTest(test_base.BaseTest):
         name1 = A.x.name
         enum2 = B.x
         name2 = B.x.name
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import menum
         from typing import Any
         class A(menum.Enum):
@@ -629,11 +757,14 @@ class ClassesTest(test_base.BaseTest):
         name1 = ...  # type: Any
         enum2 = ...  # type: Any
         name2 = ...  # type: Any
-      """)
+      """,
+      )
 
   def test_return_class_type(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Type, Union
         class A:
           x = ...  # type: int
@@ -642,37 +773,53 @@ class ClassesTest(test_base.BaseTest):
         def f(x: Type[A]) -> Type[A]: ...
         def g() -> Type[Union[A, B]]: ...
         def h() -> Type[Union[int, B]]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x1 = a.f(a.A).x
         x2 = a.g().x
         x3 = a.h().x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import Union
         x1 = ...  # type: int
         x2 = ...  # type: Union[int, str]
         x3 = ...  # type: str
-      """)
+      """,
+      )
 
   def test_call_class_type(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Type
         class A: ...
         class B:
           MyA = ...  # type: Type[A]
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x = a.B.MyA()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x = ...  # type: a.A
-      """)
+      """,
+      )
 
   def test_call_alias(self):
     ty = self.Infer("""
@@ -682,21 +829,28 @@ class ClassesTest(test_base.BaseTest):
     """)
     # We don't care whether the type of x is inferred as A or B, but we want it
     # to always be the same.
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class A: ...
       B: Type[A]
       x: A
-    """)
+    """,
+    )
 
   def test_new(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         class A:
           def __new__(cls, x: int) -> B: ...
         class B: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         class C:
           def __new__(cls):
@@ -704,15 +858,20 @@ class ClassesTest(test_base.BaseTest):
         x1 = a.A(42)
         x2 = C()
         x3 = object.__new__(bool)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         class C:
           def __new__(cls) -> str: ...
         x1 = ...  # type: a.B
         x2 = ...  # type: str
         x3 = ...  # type: bool
-      """)
+      """,
+      )
 
   def test_new_and_init(self):
     ty = self.Infer("""
@@ -735,7 +894,9 @@ class ClassesTest(test_base.BaseTest):
       x4 = x3.x
       x5 = x3.y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Type, TypeVar
       _TA = TypeVar("_TA", bound=A)
       class A:
@@ -751,11 +912,14 @@ class ClassesTest(test_base.BaseTest):
       x3 = ...  # type: A
       x4 = ...  # type: float
       x5 = ...  # type: bool
-    """)
+    """,
+    )
 
   def test_new_and_init_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Generic, TypeVar
         T = TypeVar("T")
         N = TypeVar("N")
@@ -767,17 +931,24 @@ class ClassesTest(test_base.BaseTest):
           def __new__(cls) -> A[str]: ...
           # __init__ should not be called
           def __init__(self, x, y) -> None: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         x1 = a.A(0)
         x2 = a.B()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         x1 = ...  # type: a.A[int]
         x2 = ...  # type: a.A[str]
-      """)
+      """,
+      )
 
   def test_get_type(self):
     ty = self.Infer("""
@@ -789,7 +960,9 @@ class ClassesTest(test_base.BaseTest):
       C = type(f())
       D = type(int)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type, Union
       class A:
         x = ...  # type: int
@@ -797,7 +970,8 @@ class ClassesTest(test_base.BaseTest):
       B: Type[A]
       C: Type[Union[A, str]]
       D: Type[type]
-    """)
+    """,
+    )
 
   def test_type_attribute(self):
     ty = self.Infer("""
@@ -807,14 +981,17 @@ class ClassesTest(test_base.BaseTest):
       x = B.x
       mro = B.mro()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class A:
         x: int
       B: Type[A]
       x: int
       mro: list
-    """)
+    """,
+    )
 
   def test_type_subclass(self):
     ty = self.Infer("""
@@ -829,7 +1006,9 @@ class ClassesTest(test_base.BaseTest):
       a = X.a
       v = X.f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       class A(type):
         def __init__(self, name, bases, dict) -> None: ...
@@ -840,7 +1019,8 @@ class ClassesTest(test_base.BaseTest):
       x = ...  # type: X
       a = ...  # type: int
       v = ...  # type: float
-    """)
+    """,
+    )
 
   def test_union_base_class(self):
     self.Check("""
@@ -852,39 +1032,60 @@ class ClassesTest(test_base.BaseTest):
 
   def test_metaclass_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         class A(type):
           def f(self) -> float: ...
         class X(metaclass=A): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         v = a.X.f()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         v = ...  # type: float
-      """)
+      """,
+      )
 
   def test_unsolvable_metaclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import Any
         def __getattr__(name) -> Any: ...
-      """)
-      d.create_file("b.pyi", """
+      """,
+      )
+      d.create_file(
+          "b.pyi",
+          """
         from a import A
         class B(metaclass=A): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import b
         x = b.B.x
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import b
         from typing import Any
         x = ...  # type: Any
-      """)
+      """,
+      )
 
   def test_make_type(self):
     ty = self.Infer("""
@@ -892,22 +1093,28 @@ class ClassesTest(test_base.BaseTest):
       x = X()
       a = X.a
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class X(int, object):
         a = ...  # type: int
       x = ...  # type: X
       a = ...  # type: int
-    """)
+    """,
+    )
 
   def test_make_simple_type(self):
     ty = self.Infer("""
       X = type("X", (), {})
       x = X()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class X: ...
       x = ...  # type: X
-    """)
+    """,
+    )
 
   def test_make_ambiguous_type(self):
     ty = self.Infer("""
@@ -918,12 +1125,15 @@ class ClassesTest(test_base.BaseTest):
       X = type(name, (int, object), {"a": 1})
       x = X()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       name = ...  # type: str
       X = ...  # type: Any
       x = ...  # type: Any
-    """)
+    """,
+    )
 
   def test_type_init(self):
     ty = self.Infer("""
@@ -938,7 +1148,9 @@ class ClassesTest(test_base.BaseTest):
       x1 = B.x
       x2 = C.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import six
       class A(type):
         x: int
@@ -949,22 +1161,29 @@ class ClassesTest(test_base.BaseTest):
         x: int
       x1: int
       x2: int
-    """)
+    """,
+    )
 
   def test_bad_mro_parameterized_class(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, TypeVar
         T = TypeVar("T")
         class A(Generic[T]): ...
         class B(A[T]): ...
         class C(A[T], B[T]): ...
         def f() -> C[int]: ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         foo.f()  # mro-error[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"C"})
 
   def test_call_parameterized_class(self):
@@ -986,7 +1205,9 @@ class ClassesTest(test_base.BaseTest):
         def f(self):
           return self.instance_attr
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo:
         attr = ...  # type: int
@@ -994,7 +1215,8 @@ class ClassesTest(test_base.BaseTest):
         def __new__(cls) -> Any: ...
         def __init__(self) -> None: ...
         def f(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_new_false(self):
     ty = self.Infer("""
@@ -1006,13 +1228,16 @@ class ClassesTest(test_base.BaseTest):
         def f(self):
           return self.instance_attr
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         instance_attr = ...  # type: str
         def __new__(cls) -> bool: ...
         def __init__(self) -> None: ...
         def f(self) -> str: ...
-    """)
+    """,
+    )
 
   def test_new_ambiguous(self):
     ty = self.Infer("""
@@ -1027,14 +1252,17 @@ class ClassesTest(test_base.BaseTest):
         def f(self):
           return self.instance_attr
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class Foo:
         instance_attr = ...  # type: str
         def __new__(cls) -> Union[str, Foo]: ...
         def __init__(self) -> None: ...
         def f(self) -> str: ...
-    """)
+    """,
+    )
 
   def test_new_extra_arg(self):
     self.Check("""
@@ -1053,13 +1281,16 @@ class ClassesTest(test_base.BaseTest):
         def foo(self):
           return self
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar, Union
       _TFoo = TypeVar("_TFoo", bound=Foo)
       class Foo:
         def __new__(cls) -> Union[Foo, None]: ...
         def foo(self: _TFoo) -> _TFoo: ...
-    """)
+    """,
+    )
 
   def test_super_new_extra_arg(self):
     self.Check("""
@@ -1083,17 +1314,23 @@ class ClassesTest(test_base.BaseTest):
 
   def test_super_init_extra_arg2(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo:
           def __new__(cls, a, b) -> Foo: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class Bar(foo.Foo):
           def __init__(self, a, b):
             # The extra args are okay because __new__ is defined on Foo.
             super(Bar, self).__init__(a, b)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_super_new_wrong_arg_count(self):
     _, errors = self.InferWithErrors("""
@@ -1159,27 +1396,36 @@ class ClassesTest(test_base.BaseTest):
         return Bar
       Baz = f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type, TypeVar
       def f() -> Type[Baz]: ...
       _TBaz = TypeVar("_TBaz", bound=Baz)
       class Baz:
         def __new__(cls: Type[_TBaz], _) -> _TBaz: ...
-    """)
+    """,
+    )
 
   def test_module_in_class_definition_scope(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Bar: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class ConstStr(str):
           foo.Bar # testing that this does not affect inference.
           def __new__(cls, x):
             obj = super(ConstStr, cls).__new__(cls, x)
             return obj
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_init_with_no_params(self):
     self.Check("""
@@ -1192,9 +1438,12 @@ class ClassesTest(test_base.BaseTest):
     ty = self.Infer("""
       X = type("", (), dict())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class X: ...
-    """)
+    """,
+    )
 
   def test_not_instantiable(self):
     self.CheckWithErrors("""
@@ -1234,7 +1483,9 @@ class ClassesTest(test_base.BaseTest):
         def bar(self, x): pass
       x = DC(1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class DC:
           a = ...  # type: int
@@ -1245,7 +1496,8 @@ class ClassesTest(test_base.BaseTest):
           def baz(self) -> None: ...
       def get_c() -> type: ...
       x = ...  # type: DC
-    """)
+    """,
+    )
 
   def test_subclass_multiple_base_options(self):
     ty = self.Infer("""
@@ -1256,13 +1508,16 @@ class ClassesTest(test_base.BaseTest):
       Base = A if __random__ else get_base()
       class C(Base): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Union
       def get_base() -> type: ...
       class A: pass
       Base = ...  # type: type
       class C(Any): pass
-    """)
+    """,
+    )
 
   def test_subclass_contains_generic_base(self):
     ty = self.Infer("""
@@ -1273,13 +1528,16 @@ class ClassesTest(test_base.BaseTest):
         return C
       class DL(get_base()): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       import typing
       class DL(List[str]):
           def get_len(self) -> int: ...
       def get_base() -> type: ...
-    """)
+    """,
+    )
 
   def test_subclass_overrides_base_attributes(self):
     ty = self.Infer("""
@@ -1298,7 +1556,9 @@ class ClassesTest(test_base.BaseTest):
           self.c = "world"
         def bar(self, x): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def get_base() -> type: ...
       class C:
         a = ...  # type: int
@@ -1307,7 +1567,8 @@ class ClassesTest(test_base.BaseTest):
         def __init__(self) -> None: ...
         def bar(self, x) -> None: ...
         def baz(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_subclass_make_base(self):
     ty = self.Infer("""
@@ -1318,12 +1579,15 @@ class ClassesTest(test_base.BaseTest):
         return C
       class BX(make_base(list)): pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def make_base(x) -> type: ...
       class BX(list):
         x = ...  # type: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_subclass_bases_overlap(self):
     ty = self.Infer("""
@@ -1340,75 +1604,111 @@ class ClassesTest(test_base.BaseTest):
       class C(make_a(), make_b()):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def make_a() -> type: ...
       def make_b() -> type: ...
       class C:
         x = ...  # type: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_pyi_nested_class(self):
     # Test that pytype can look up a pyi nested class in a py file and reconsume
     # the inferred pyi.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X:
           class Y: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         Y = foo.X.Y
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Type
         Y: Type[foo.X.Y]
-      """)
+      """,
+      )
       d.create_file("bar.pyi", pytd_utils.Print(ty))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import bar
         Y = bar.Y
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import bar
         from typing import Type
         Y: Type[foo.X.Y]
-      """)
+      """,
+      )
 
   def test_pyi_nested_class_alias(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X:
           class Y: ...
           Z = X.Y
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         Z = foo.X.Z
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import Type
         import foo
         Z: Type[foo.X.Y]
-      """)
+      """,
+      )
 
   def test_pyi_deeply_nested_class(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class X:
           class Y:
             class Z: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         Z = foo.X.Y.Z
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import Type
         import foo
         Z: Type[foo.X.Y.Z]
-      """)
+      """,
+      )
 
   def test_late_annotation(self):
     ty = self.Infer("""
@@ -1421,7 +1721,9 @@ class ClassesTest(test_base.BaseTest):
         def f(self):
           return self.bar.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         bar: Bar
       class Bar:
@@ -1429,7 +1731,8 @@ class ClassesTest(test_base.BaseTest):
         def __init__(self) -> None: ...
       class Baz(Foo):
         def f(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_iterate_ambiguous_base_class(self):
     self.Check("""

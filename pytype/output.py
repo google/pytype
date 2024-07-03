@@ -37,6 +37,7 @@ class Converter(utils.ContextWeakrefMixin):
 
   class OutputMode(enum.IntEnum):
     """Controls the level of detail in pytd types. See set_output_mode."""
+
     NORMAL = 0
     DETAILED = 1
     LITERAL = 2
@@ -96,8 +97,9 @@ class Converter(utils.ContextWeakrefMixin):
       return var.data
 
   def _is_tuple(self, v, instance):
-    return (isinstance(v, abstract.TupleClass) or
-            isinstance(instance, abstract.Tuple))
+    return isinstance(v, abstract.TupleClass) or isinstance(
+        instance, abstract.Tuple
+    )
 
   def _make_decorator(self, name, alias):
     # If decorators are output as aliases to NamedTypes, they will be converted
@@ -106,12 +108,16 @@ class Converter(utils.ContextWeakrefMixin):
     # fully resolved name at this stage, we just output a minimal pytd.Function
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     fn = pytd.Function(
-        name, (sig,), pytd.MethodKind.METHOD, pytd.MethodFlag.NONE)
+        name, (sig,), pytd.MethodKind.METHOD, pytd.MethodFlag.NONE
+    )
     return pytd.Alias(alias, fn)
 
   def _make_decorators(self, decorators):
-    return [self._make_decorator(d, d) for d in decorators
-            if class_mixin.get_metadata_key(d)]
+    return [
+        self._make_decorator(d, d)
+        for d in decorators
+        if class_mixin.get_metadata_key(d)
+    ]
 
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
@@ -132,19 +138,28 @@ class Converter(utils.ContextWeakrefMixin):
       template = new_template
     if instance is None and isinstance(v, abstract.ParameterizedClass):
       assert v
-      return [self.value_instance_to_pytd_type(
-          node, v.get_formal_type_parameter(t), None, seen, view)
-              for t in template]
+      return [
+          self.value_instance_to_pytd_type(
+              node, v.get_formal_type_parameter(t), None, seen, view
+          )
+          for t in template
+      ]
     elif isinstance(instance, abstract.SimpleValue):
       assert instance
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
-          param_values = {val: view for val in self._get_values(
-              node, instance.pyval[t], view)}
+          param_values = {
+              val: view
+              for val in self._get_values(node, instance.pyval[t], view)
+          }
         elif instance.has_instance_type_parameter(t):
-          param_values = {val: view for val in self._get_values(
-              node, instance.get_instance_type_parameter(t), view)}
+          param_values = {
+              val: view
+              for val in self._get_values(
+                  node, instance.get_instance_type_parameter(t), view
+              )
+          }
         elif isinstance(v, abstract.CallableClass):
           param_node = node or self.ctx.root_node
           param_var = v.get_formal_type_parameter(t).instantiate(param_node)
@@ -161,16 +176,22 @@ class Converter(utils.ContextWeakrefMixin):
         # If the instance's parameter value is unsolvable or the parameter type
         # is recursive, we can get a more precise type from the class. Note that
         # we need to be careful not to introduce unbound type parameters.
-        if (isinstance(v, abstract.ParameterizedClass) and
-            not formal_param.formal and
-            (list(param_values.keys()) == [self.ctx.convert.unsolvable] or
-             abstract_utils.is_recursive_annotation(formal_param))):
+        if (
+            isinstance(v, abstract.ParameterizedClass)
+            and not formal_param.formal
+            and (
+                list(param_values.keys()) == [self.ctx.convert.unsolvable]
+                or abstract_utils.is_recursive_annotation(formal_param)
+            )
+        ):
           arg = self.value_instance_to_pytd_type(
-              node, formal_param, None, seen, view)
+              node, formal_param, None, seen, view
+          )
         else:
           arg = pytd_utils.JoinTypes(
               self.value_to_pytd_type(node, p, seen, param_view)
-              for p, param_view in param_values.items())
+              for p, param_view in param_values.items()
+          )
         type_arguments.append(arg)
       return type_arguments
     else:
@@ -192,16 +213,21 @@ class Converter(utils.ContextWeakrefMixin):
     if abstract_utils.is_recursive_annotation(v):
       return pytd.LateType(v.unflatten_expr() if self._detailed else v.expr)
     elif isinstance(v, abstract.Union):
-      return pytd.UnionType(tuple(
-          self.value_instance_to_pytd_type(node, t, instance, seen, view)
-          for t in v.options))
+      return pytd.UnionType(
+          tuple(
+              self.value_instance_to_pytd_type(node, t, instance, seen, view)
+              for t in v.options
+          )
+      )
     elif isinstance(v, abstract.AnnotationContainer):
       return self.value_instance_to_pytd_type(
-          node, v.base_cls, instance, seen, view)
+          node, v.base_cls, instance, seen, view
+      )
     elif isinstance(v, abstract.LiteralClass):
       if isinstance(v.value, abstract.Instance) and v.value.cls.is_enum:
         typ = pytd_utils.NamedTypeWithModule(
-            v.value.cls.official_name or v.value.cls.name, v.value.cls.module)
+            v.value.cls.official_name or v.value.cls.name, v.value.cls.module
+        )
         value = pytd.Constant(v.value.name, typ)
       elif isinstance(v.value.pyval, (str, bytes)):
         # Strings are stored as strings of their representations, prefix and
@@ -224,10 +250,12 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, fiddle_overlay.BuildableType):
       # TODO(mdemello): This should Just Work via the base PyTDClass!
       param = self.value_instance_to_pytd_type(
-          node, v.underlying, None, seen, view)
+          node, v.underlying, None, seen, view
+      )
       return pytd.GenericType(
           base_type=pytd.NamedType(f"fiddle.{v.fiddle_type_name}"),
-          parameters=(param,))
+          parameters=(param,),
+      )
     elif isinstance(v, abstract.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
@@ -244,7 +272,8 @@ class Converter(utils.ContextWeakrefMixin):
       if instance is not None:
         seen |= {instance}
       type_arguments = self._value_to_parameter_types(
-          node, v, instance, type_params, seen, view)
+          node, v, instance, type_params, seen, view
+      )
       base = pytd_utils.NamedTypeWithModule(v.official_name or v.name, v.module)
       if self._is_tuple(v, instance):
         homogeneous = False
@@ -253,7 +282,8 @@ class Converter(utils.ContextWeakrefMixin):
       else:
         homogeneous = len(type_arguments) == 1
       return pytd_utils.MakeClassOrContainerType(
-          base, type_arguments, homogeneous)
+          base, type_arguments, homogeneous
+      )
     elif isinstance(v, abstract.TYPE_VARIABLE_TYPES):
       # We generate the full definition because, if this type parameter is
       # imported, we will need the definition in order to declare it later.
@@ -263,16 +293,19 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.Concatenate):
       params = tuple(
           self.value_instance_to_pytd_type(node, t, instance, seen, view)
-          for t in v.args + [v.paramspec])
+          for t in v.args + [v.paramspec]
+      )
       return pytd.Concatenate(
-          pytd.NamedType("typing.Concatenate"), parameters=params)
+          pytd.NamedType("typing.Concatenate"), parameters=params
+      )
     else:
       log.info("Using Any for instance of %s", v.name)
       return pytd.AnythingType()
 
   def _type_variable_to_pytd_type(self, node, v, seen, view):
-    if (v.scope in self._scopes or
-        isinstance(v.instance, abstract_utils.DummyContainer)):
+    if v.scope in self._scopes or isinstance(
+        v.instance, abstract_utils.DummyContainer
+    ):
       if isinstance(v, abstract.TYPE_VARIABLE_INSTANCES):
         return self._type_variable_to_def(node, v.param, v.param.name)
       else:
@@ -282,14 +315,17 @@ class Converter(utils.ContextWeakrefMixin):
       # don't include v.instance in the view.
       return pytd_utils.JoinTypes(
           self.value_to_pytd_type(node, p, seen, None)
-          for p in v.instance.get_instance_type_parameter(v.full_name).data)
+          for p in v.instance.get_instance_type_parameter(v.full_name).data
+      )
     elif v.param.constraints:
       return pytd_utils.JoinTypes(
           self.value_instance_to_pytd_type(node, p, None, seen, view)
-          for p in v.param.constraints)
+          for p in v.param.constraints
+      )
     elif v.param.bound:
       return self.value_instance_to_pytd_type(
-          node, v.param.bound, None, seen, view)
+          node, v.param.bound, None, seen, view
+      )
     else:
       return pytd.AnythingType()
 
@@ -315,8 +351,8 @@ class Converter(utils.ContextWeakrefMixin):
       if not v.default:
         return pytd.AnythingType()
       return pytd_utils.JoinTypes(
-          self.value_to_pytd_type(node, d, seen, view)
-          for d in v.default.data)
+          self.value_to_pytd_type(node, d, seen, view) for d in v.default.data
+      )
     elif isinstance(v, attr_overlay.AttribInstance):
       ret = self.value_to_pytd_type(node, v.typ, seen, view)
       md = metadata.to_pytd(v.to_metadata())
@@ -339,30 +375,37 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, (abstract.ClassMethod, abstract.StaticMethod)):
       return self.value_to_pytd_type(node, v.method, seen, view)
-    elif isinstance(v, (special_builtins.IsInstance,
-                        special_builtins.ClassMethodCallable)):
+    elif isinstance(
+        v, (special_builtins.IsInstance, special_builtins.ClassMethodCallable)
+    ):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
-      return pytd.GenericType(base_type=pytd.NamedType("builtins.type"),
-                              parameters=(param,))
+      return pytd.GenericType(
+          base_type=pytd.NamedType("builtins.type"), parameters=(param,)
+      )
     elif isinstance(v, abstract.Module):
       return pytd.Alias(v.name, pytd.Module(v.name, module_name=v.full_name))
-    elif (self._output_mode >= Converter.OutputMode.LITERAL and
-          isinstance(v, abstract.ConcreteValue) and
-          isinstance(v.pyval, (int, str, bytes))):
+    elif (
+        self._output_mode >= Converter.OutputMode.LITERAL
+        and isinstance(v, abstract.ConcreteValue)
+        and isinstance(v.pyval, (int, str, bytes))
+    ):
       # LITERAL mode is used only for pretty-printing, so we just stringify the
       # inner value rather than properly converting it.
       return pytd.Literal(repr(v.pyval))
     elif isinstance(v, abstract.SimpleValue):
       ret = self.value_instance_to_pytd_type(
-          node, v.cls, v, seen=seen, view=view)
+          node, v.cls, v, seen=seen, view=view
+      )
       ret.Visit(
-          visitors.FillInLocalPointers({"builtins": self.ctx.loader.builtins}))
+          visitors.FillInLocalPointers({"builtins": self.ctx.loader.builtins})
+      )
       return ret
     elif isinstance(v, abstract.Union):
-      return pytd_utils.JoinTypes(self.value_to_pytd_type(node, o, seen, view)
-                                  for o in v.options)
+      return pytd_utils.JoinTypes(
+          self.value_to_pytd_type(node, o, seen, view) for o in v.options
+      )
     elif isinstance(v, special_builtins.SuperInstance):
       return pytd.NamedType("builtins.super")
     elif isinstance(v, abstract.TypeParameter):
@@ -387,12 +430,15 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.NamedType("typing.Callable")
     elif isinstance(v, abstract.FinalAnnotation):
       param = self.value_to_pytd_type(node, v.annotation, seen, view)
-      return pytd.GenericType(base_type=pytd.NamedType("typing.Final"),
-                              parameters=(param,))
+      return pytd.GenericType(
+          base_type=pytd.NamedType("typing.Final"), parameters=(param,)
+      )
     elif isinstance(v, abstract.SequenceLength):
       # For debugging purposes, while developing the feature.
-      return pytd.Annotated(base_type=pytd.NamedType("SequenceLength"),
-                            annotations=(str(v.length), str(v.splat)))
+      return pytd.Annotated(
+          base_type=pytd.NamedType("SequenceLength"),
+          annotations=(str(v.length), str(v.splat)),
+      )
     elif isinstance(v, abstract.Concatenate):
       # For debugging purposes, while developing the feature.
       return pytd.NamedType("typing.Concatenate")
@@ -414,8 +460,10 @@ class Converter(utils.ContextWeakrefMixin):
     """
     base_cls = self.ctx.convert.function_type
     ret = sig.annotations.get("return", self.ctx.convert.unsolvable)
-    if not sig.kwonly_params and (self._detailed or (
-        sig.mandatory_param_count() == sig.maximum_param_count())):
+    if not sig.kwonly_params and (
+        self._detailed
+        or (sig.mandatory_param_count() == sig.maximum_param_count())
+    ):
       # If self._detailed is false, we throw away the argument types if the
       # function takes a variable number of arguments, which is correct for pyi
       # generation but undesirable for, say, error message printing.
@@ -425,7 +473,7 @@ class Converter(utils.ContextWeakrefMixin):
       ]
       params = {
           abstract_utils.ARGS: self.ctx.convert.merge_values(args),
-          abstract_utils.RET: ret
+          abstract_utils.RET: ret,
       }
       params.update(enumerate(args))
       return abstract.CallableClass(base_cls, params, self.ctx)
@@ -434,7 +482,7 @@ class Converter(utils.ContextWeakrefMixin):
       # arguments in a Callable is to not specify argument types at all.
       params = {
           abstract_utils.ARGS: self.ctx.convert.unsolvable,
-          abstract_utils.RET: ret
+          abstract_utils.RET: ret,
       }
       return abstract.ParameterizedClass(base_cls, params, self.ctx)
 
@@ -460,13 +508,15 @@ class Converter(utils.ContextWeakrefMixin):
       ret = pytd.NamedType("typing.Callable")
       md = metadata.to_pytd(v.to_metadata())
       return pytd.Annotated(ret, ("'pytype_metadata'", md))
-    elif (isinstance(v, abstract.PyTDFunction) and
-          not isinstance(v, typing_overlay.TypeVar)):
+    elif isinstance(v, abstract.PyTDFunction) and not isinstance(
+        v, typing_overlay.TypeVar
+    ):
       return pytd.Function(
           name=name,
           signatures=tuple(sig.pytd_sig for sig in v.signatures),
           kind=v.kind,
-          flags=pytd.MethodFlag.abstract_flag(v.is_abstract))
+          flags=pytd.MethodFlag.abstract_flag(v.is_abstract),
+      )
     elif isinstance(v, abstract.InterpreterFunction):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.SimpleFunction):
@@ -484,16 +534,22 @@ class Converter(utils.ContextWeakrefMixin):
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.InterpreterClass):
-      if ((v.official_name is None or name == v.official_name or
-           v.official_name.endswith(f".{name}")) and not v.module):
+      if (
+          v.official_name is None
+          or name == v.official_name
+          or v.official_name.endswith(f".{name}")
+      ) and not v.module:
         return self._class_to_def(node, v, name)
       else:
         # Represent a class alias as X: Type[Y] rather than X = Y so the pytd
         # printer can distinguish it from a module alias.
         type_name = v.full_name if v.module else v.official_name
         return pytd.Constant(
-            name, pytd.GenericType(pytd.NamedType("builtins.type"),
-                                   (pytd.NamedType(type_name),)))
+            name,
+            pytd.GenericType(
+                pytd.NamedType("builtins.type"), (pytd.NamedType(type_name),)
+            ),
+        )
     elif isinstance(v, abstract.TYPE_VARIABLE_TYPES):
       return self._type_variable_to_def(node, v, name)
     elif isinstance(v, abstract.Unsolvable):
@@ -548,29 +604,38 @@ class Converter(utils.ContextWeakrefMixin):
     return ret
 
   def _function_call_combination_to_signature(
-      self, func, call_combination, num_combinations):
+      self, func, call_combination, num_combinations
+  ):
     node_after, combination, return_value = call_combination
     params = []
     for i, (name, kind, optional) in enumerate(func.get_parameters()):
       if i < func.nonstararg_count and name in func.signature.annotations:
         t = func.signature.annotations[name].to_pytd_type_of_instance(
-            node_after)
+            node_after
+        )
       else:
         t = combination[name].data.to_pytd_type(node_after)
       # Python uses ".0" etc. for the names of parameters that are tuples,
       # like e.g. in: "def f((x,  y), z)".
       params.append(
-          pytd.Parameter(name.replace(".", "_"), t, kind, optional, None))
+          pytd.Parameter(name.replace(".", "_"), t, kind, optional, None)
+      )
     ret = self._function_call_to_return_type(
-        node_after, func, return_value, num_combinations)
+        node_after, func, return_value, num_combinations
+    )
     if func.has_varargs():
       if func.signature.varargs_name in func.signature.annotations:
         annot = func.signature.annotations[func.signature.varargs_name]
         typ = annot.to_pytd_type_of_instance(node_after)
       else:
         typ = pytd.NamedType("builtins.tuple")
-      starargs = pytd.Parameter(func.signature.varargs_name, typ,
-                                pytd.ParameterKind.REGULAR, True, None)
+      starargs = pytd.Parameter(
+          func.signature.varargs_name,
+          typ,
+          pytd.ParameterKind.REGULAR,
+          True,
+          None,
+      )
     else:
       starargs = None
     if func.has_kwargs():
@@ -579,8 +644,13 @@ class Converter(utils.ContextWeakrefMixin):
         typ = annot.to_pytd_type_of_instance(node_after)
       else:
         typ = pytd.NamedType("builtins.dict")
-      starstarargs = pytd.Parameter(func.signature.kwargs_name, typ,
-                                    pytd.ParameterKind.REGULAR, True, None)
+      starstarargs = pytd.Parameter(
+          func.signature.kwargs_name,
+          typ,
+          pytd.ParameterKind.REGULAR,
+          True,
+          None,
+      )
     else:
       starstarargs = None
     return pytd.Signature(
@@ -589,7 +659,8 @@ class Converter(utils.ContextWeakrefMixin):
         starstarargs=starstarargs,
         return_type=ret,
         exceptions=(),  # TODO(b/159052087): record exceptions
-        template=())
+        template=(),
+    )
 
   def _function_to_def(self, node, v, function_name):
     """Convert an InterpreterFunction to a PyTD definition."""
@@ -599,15 +670,17 @@ class Converter(utils.ContextWeakrefMixin):
       num_combinations = len(combinations)
       signatures.extend(
           self._function_call_combination_to_signature(
-              func, combination, num_combinations)
-          for combination in combinations)
+              func, combination, num_combinations
+          )
+          for combination in combinations
+      )
     decorators = tuple(self._make_decorators(v.decorators))
     return pytd.Function(
         name=function_name,
         signatures=tuple(signatures),
         kind=pytd.MethodKind.METHOD,
         flags=pytd.MethodFlag.abstract_flag(v.is_abstract),
-        decorators=decorators
+        decorators=decorators,
     )
 
   def _simple_func_to_def(self, node, v, name):
@@ -626,7 +699,7 @@ class Converter(utils.ContextWeakrefMixin):
     ]
     params = [
         get_parameter(p, pytd.ParameterKind.REGULAR)
-        for p in sig.param_names[sig.posonly_count:]
+        for p in sig.param_names[sig.posonly_count :]
     ]
     kwonly = [
         get_parameter(p, pytd.ParameterKind.KWONLY) for p in sig.kwonly_params
@@ -635,14 +708,20 @@ class Converter(utils.ContextWeakrefMixin):
       star = pytd.Parameter(
           sig.varargs_name,
           sig.annotations[sig.varargs_name].to_pytd_type_of_instance(node),
-          pytd.ParameterKind.REGULAR, False, None)
+          pytd.ParameterKind.REGULAR,
+          False,
+          None,
+      )
     else:
       star = None
     if sig.kwargs_name:
       starstar = pytd.Parameter(
           sig.kwargs_name,
           sig.annotations[sig.kwargs_name].to_pytd_type_of_instance(node),
-          pytd.ParameterKind.REGULAR, False, None)
+          pytd.ParameterKind.REGULAR,
+          False,
+          None,
+      )
     else:
       starstar = None
     if sig.has_return_annotation:
@@ -650,12 +729,13 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       ret_type = pytd.NamedType("builtins.NoneType")
     pytd_sig = pytd.Signature(
-        params=tuple(posonly+params+kwonly),
+        params=tuple(posonly + params + kwonly),
         starargs=star,
         starstarargs=starstar,
         return_type=ret_type,
         exceptions=(),
-        template=())
+        template=(),
+    )
     return pytd.Function(name, (pytd_sig,), pytd.MethodKind.METHOD)
 
   def _function_to_return_types(self, node, fvar, allowed_type_params=()):
@@ -668,8 +748,11 @@ class Converter(utils.ContextWeakrefMixin):
       if isinstance(val, abstract.InterpreterFunction):
         combinations = val.get_call_combinations(node)
         for node_after, _, return_value in combinations:
-          types.append(self._function_call_to_return_type(
-              node_after, val, return_value, len(combinations)))
+          types.append(
+              self._function_call_to_return_type(
+                  node_after, val, return_value, len(combinations)
+              )
+          )
       elif isinstance(val, abstract.PyTDFunction):
         types.extend(sig.pytd_sig.return_type for sig in val.signatures)
       else:
@@ -677,15 +760,19 @@ class Converter(utils.ContextWeakrefMixin):
     safe_types = []  # types with illegal type parameters removed
     for t in types:
       params = pytd_utils.GetTypeParameters(t)
-      t = t.Visit(visitors.ReplaceTypeParameters(
-          {p: p if p.name in allowed_type_params else p.upper_value
-           for p in params}))
+      t = t.Visit(
+          visitors.ReplaceTypeParameters({
+              p: p if p.name in allowed_type_params else p.upper_value
+              for p in params
+          })
+      )
       safe_types.append(t)
     return safe_types
 
   def _is_instance(self, value, cls_name):
-    return (isinstance(value, abstract.Instance) and
-            value.cls.full_name == cls_name)
+    return (
+        isinstance(value, abstract.Instance) and value.cls.full_name == cls_name
+    )
 
   def _class_to_def(self, node, v, class_name):
     """Convert an InterpreterClass to a PyTD definition."""
@@ -705,8 +792,9 @@ class Converter(utils.ContextWeakrefMixin):
           constants[name].add_type(t)
           annotated_names.add(name)
 
-    add_constants(self._ordered_attrs_to_instance_types(
-        node, v.metadata, annots))
+    add_constants(
+        self._ordered_attrs_to_instance_types(node, v.metadata, annots)
+    )
     add_constants(self.annotations_to_instance_types(node, annots))
 
     def add_final(defn, value):
@@ -737,18 +825,21 @@ class Converter(utils.ContextWeakrefMixin):
       decorators.append(self._make_decorator("typing.final", "final"))
 
     # Collect nested classes
-    classes = [self.value_to_pytd_def(node, x, x.name)
-               for x in v.get_inner_classes()]
+    classes = [
+        self.value_to_pytd_def(node, x, x.name) for x in v.get_inner_classes()
+    ]
     inner_class_names = {x.name for x in classes}
 
     class_type_params = {t.name for t in v.template}
 
     # class-level attributes
     for name, member in v.members.items():
-      if (name in abstract_utils.CLASS_LEVEL_IGNORE or
-          name in annotated_names or
-          (v.is_enum and name in ("__new__", "__eq__")) or
-          name in inner_class_names):
+      if (
+          name in abstract_utils.CLASS_LEVEL_IGNORE
+          or name in annotated_names
+          or (v.is_enum and name in ("__new__", "__eq__"))
+          or name in inner_class_names
+      ):
         continue
       for value in member.FilteredData(self.ctx.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
@@ -756,11 +847,13 @@ class Converter(utils.ContextWeakrefMixin):
           # turns them into constants anyway.
           if value.fget:
             for typ in self._function_to_return_types(
-                node, value.fget, allowed_type_params=class_type_params):
+                node, value.fget, allowed_type_params=class_type_params
+            ):
               constants[name].add_type(pytd.Annotated(typ, ("'property'",)))
           else:
             constants[name].add_type(
-                pytd.Annotated(pytd.AnythingType(), ("'property'",)))
+                pytd.Annotated(pytd.AnythingType(), ("'property'",))
+            )
         elif isinstance(value, special_builtins.StaticMethodInstance):
           add_decorated_method(name, value, pytd.MethodKind.STATICMETHOD)
         elif isinstance(value, special_builtins.ClassMethodInstance):
@@ -768,8 +861,10 @@ class Converter(utils.ContextWeakrefMixin):
         elif isinstance(value, abstract.Function):
           # value_to_pytd_def returns different pytd node types depending on the
           # input type, which pytype struggles to reason about.
-          method = cast(pytd.Function,
-                        self.value_to_pytd_def(node, value, name))
+          method = cast(
+              pytd.Function, self.value_to_pytd_def(node, value, name)
+          )
+
           def fix(sig):
             if not sig.params:
               return sig
@@ -792,13 +887,17 @@ class Converter(utils.ContextWeakrefMixin):
               return sig.Replace(params=(new_first_param,) + sig.params[1:])
             else:
               return sig
-          if (isinstance(value, abstract.InterpreterFunction) and
-              len(value.signature_functions()) > 1):
+
+          if (
+              isinstance(value, abstract.InterpreterFunction)
+              and len(value.signature_functions()) > 1
+          ):
             # We should never discard overloads in the source code.
             signatures = method.signatures
           else:
             signatures = tuple(
-                filter(None, (fix(s) for s in method.signatures)))
+                filter(None, (fix(s) for s in method.signatures))
+            )
           if signatures and signatures != method.signatures:
             # Filter out calls made from subclasses unless they are the only
             # ones recorded; when inferring types for ParentClass.__init__, we
@@ -812,9 +911,11 @@ class Converter(utils.ContextWeakrefMixin):
           # its upper value.
           methods[name] = method.Visit(visitors.DropMutableParameters())
         elif v.is_enum:
-          if (any(
-              isinstance(enum_member, abstract.Instance) and
-              enum_member.cls == v for enum_member in member.data)):
+          if any(
+              isinstance(enum_member, abstract.Instance)
+              and enum_member.cls == v
+              for enum_member in member.data
+          ):
             # i.e. if this is an enum that has any enum members, and the current
             # member is an enum member.
             # In this case, we would normally output:
@@ -826,7 +927,8 @@ class Converter(utils.ContextWeakrefMixin):
             #   A: int
             enum_member = abstract_utils.get_atomic_value(member)
             node, attr_var = self.ctx.attribute_handler.get_attribute(
-                node, enum_member, "value")
+                node, enum_member, "value"
+            )
             attr = abstract_utils.get_atomic_value(attr_var)
             with self.set_output_mode(Converter.OutputMode.LITERAL):
               constants[name].add_type(attr.to_pytd_type(node))
@@ -837,11 +939,14 @@ class Converter(utils.ContextWeakrefMixin):
             constants[name].add_type(
                 pytd.GenericType(
                     base_type=pytd.NamedType("typing.ClassVar"),
-                    parameters=((cls_member.to_pytd_type(node),))))
+                    parameters=((cls_member.to_pytd_type(node),)),
+                )
+            )
         else:
           cls = self.ctx.convert.merge_classes([value])
           node, attr = self.ctx.attribute_handler.get_attribute(
-              node, cls, "__get__")
+              node, cls, "__get__"
+          )
           if attr:
             # This attribute is a descriptor. Its type is the return value of
             # its __get__ method.
@@ -895,10 +1000,12 @@ class Converter(utils.ContextWeakrefMixin):
       # Filter out generated members from namedtuples
       cls_bases = v.props.bases
       fieldnames = [x.name for x in v.props.fields]
-      methods = {k: m for k, m in methods.items()
-                 if k not in v.generated_members}
-      constants = {k: c for k, c in constants.items()
-                   if k not in v.generated_members}
+      methods = {
+          k: m for k, m in methods.items() if k not in v.generated_members
+      }
+      constants = {
+          k: c for k, c in constants.items() if k not in v.generated_members
+      }
       for k, c in constants.items():
         # If we have added class members to a namedtuple, do not emit them as
         # regular fields.
@@ -924,14 +1031,17 @@ class Converter(utils.ContextWeakrefMixin):
 
     for basevar in cls_bases:
       if len(basevar.bindings) == 1:
-        b, = basevar.data
+        (b,) = basevar.data
         if b.official_name is None and isinstance(b, abstract.InterpreterClass):
           missing_bases.append(b)
         else:
           bases.append(b.to_pytd_type_of_instance(node))
       else:
-        bases.append(pytd_utils.JoinTypes(b.to_pytd_type_of_instance(node)
-                                          for b in basevar.data))
+        bases.append(
+            pytd_utils.JoinTypes(
+                b.to_pytd_type_of_instance(node) for b in basevar.data
+            )
+        )
 
     # If a namedtuple was constructed via one of the functional forms, it will
     # not have a base class. Since we uniformly output all namedtuple classes as
@@ -963,7 +1073,8 @@ class Converter(utils.ContextWeakrefMixin):
       # the class was built.
       try:
         new = abstract_utils.get_atomic_value(
-            v.members["__new__"], abstract.SignedFunction)
+            v.members["__new__"], abstract.SignedFunction
+        )
       except abstract_utils.ConversionError:
         fields_with_defaults = {f.name for f in v.props.fields if f.default}
       else:
@@ -985,15 +1096,17 @@ class Converter(utils.ContextWeakrefMixin):
       value = pytd.AnythingType() if name in fields_with_defaults else None
       final_constants.append(pytd.Constant(name, builder.build(), value))
 
-    cls = pytd.Class(name=class_name,
-                     keywords=keywords,
-                     bases=tuple(bases),
-                     methods=tuple(methods.values()),
-                     constants=tuple(final_constants),
-                     classes=tuple(classes),
-                     decorators=tuple(decorators),
-                     slots=slots,
-                     template=())
+    cls = pytd.Class(
+        name=class_name,
+        keywords=keywords,
+        bases=tuple(bases),
+        methods=tuple(methods.values()),
+        constants=tuple(final_constants),
+        classes=tuple(classes),
+        decorators=tuple(decorators),
+        slots=slots,
+        template=(),
+    )
     for base in missing_bases:
       base_cls = self.value_to_pytd_def(node, base, base.name)
       cls = pytd_utils.MergeBaseClass(cls, base_cls)
@@ -1023,12 +1136,14 @@ class Converter(utils.ContextWeakrefMixin):
       elif not v.props.total and k in v.props.required:
         typ = pytd.GenericType(pytd.NamedType("typing.Required"), (typ,))
       constants.append(pytd.Constant(k, typ))
-    return pytd.Class(name=name,
-                      keywords=tuple(keywords),
-                      bases=bases,
-                      methods=(),
-                      constants=tuple(constants),
-                      classes=(),
-                      decorators=(),
-                      slots=None,
-                      template=())
+    return pytd.Class(
+        name=name,
+        keywords=tuple(keywords),
+        bases=bases,
+        methods=(),
+        constants=tuple(constants),
+        classes=(),
+        decorators=(),
+        slots=None,
+        template=(),
+    )

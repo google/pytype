@@ -18,20 +18,29 @@ class ErrorLogTest(test_base.BaseTest):
     """)
     self.assertEqual(
         {mark: (e.line, e.name) for mark, e in err.marks.items()},
-        {".mark": (2, "unsupported-operands"),
-         ".another_mark": (4, "wrong-arg-types")})
-    self.assertEqual(err.expected, {
-        2: [("unsupported-operands", ".mark")],
-        3: [("attribute-error", None)],
-        4: [("wrong-arg-types", ".another_mark")]})
+        {
+            ".mark": (2, "unsupported-operands"),
+            ".another_mark": (4, "wrong-arg-types"),
+        },
+    )
+    self.assertEqual(
+        err.expected,
+        {
+            2: [("unsupported-operands", ".mark")],
+            3: [("attribute-error", None)],
+            4: [("wrong-arg-types", ".another_mark")],
+        },
+    )
 
   def test_multiple_errors_one_line(self):
     err = self.CheckWithErrors("""
       x = (10).foo, "hello".foo  # attribute-error[e1]  # attribute-error[e2]
     """)
     line = 1
-    self.assertEqual(err.expected, {line: [("attribute-error", "e1"),
-                                           ("attribute-error", "e2")]})
+    self.assertEqual(
+        err.expected,
+        {line: [("attribute-error", "e1"), ("attribute-error", "e2")]},
+    )
     self.assertCountEqual(err.marks, ["e1", "e2"])
     self.assertIn("on int", err.marks["e1"].message)
     self.assertIn("on str", err.marks["e2"].message)

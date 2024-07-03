@@ -13,20 +13,28 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       b = next(a)
       c = next(42) # wrong-arg-types
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       a: listiterator[int]
       b: int
       c: Any
-    """)
+    """,
+    )
 
   def test_next_none(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       next(None)
-    """)
+    """,
+    )
 
   def test_next_ambiguous(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       class Foo:
         def a(self):
           self._foo = None
@@ -34,12 +42,16 @@ class SpecialBuiltinsTest(test_base.BaseTest):
           self._foo = __any_object__
         def c(self):
           next(self._foo)
-    """)
+    """,
+    )
 
   def test_abs(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       abs(None)
-    """)
+    """,
+    )
 
   def test_property_matching(self):
     self.Check("""
@@ -54,51 +66,72 @@ class SpecialBuiltinsTest(test_base.BaseTest):
 
   def test_property_from_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo:
           def get_foo(self) -> int: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         class Bar(foo.Foo):
           foo = property(fget=foo.Foo.get_foo)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Annotated
         class Bar(foo.Foo):
           foo = ...  # type: Annotated[int, 'property']
-      """)
+      """,
+      )
 
   def test_property_from_native_function(self):
     ty = self.Infer("""
       class Foo(dict):
         foo = property(fget=dict.__getitem__)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any
       class Foo(dict):
         foo = ...  # type: Annotated[Any, 'property']
-    """)
+    """,
+    )
 
   def test_property_from_pyi_with_type_parameter(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Union
         class Foo:
           def get_foo(self) -> Union[str, int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         class Bar(foo.Foo):
           foo = property(fget=foo.Foo.get_foo)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Annotated, Union
         class Bar(foo.Foo):
           foo = ...  # type: Annotated[Union[int, str], 'property']
-      """)
+      """,
+      )
 
   def test_callable_if_splitting(self):
     ty = self.Infer("""
@@ -111,13 +144,16 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       a = foo(f)
       b = foo(10)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       a = ...  # type: int
       b = ...  # type: bool
       def f(x) -> int: ...
       def foo(x) -> Any: ...
-    """)
+    """,
+    )
 
   def test_callable(self):
     ty = self.Infer("""
@@ -157,7 +193,9 @@ class SpecialBuiltinsTest(test_base.BaseTest):
       if callable([]): y = 1
       if callable(B()): z = 1
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated
       obj = ...  # type: A
       a = ...  # type: int
@@ -181,7 +219,8 @@ class SpecialBuiltinsTest(test_base.BaseTest):
           def foo(self) -> None: ...
       class B:
           pass
-    """)
+    """,
+    )
 
   def test_property_change(self):
     ty = self.Infer("""
@@ -198,14 +237,17 @@ class SpecialBuiltinsTest(test_base.BaseTest):
         y = foo.bar
         return (x, y)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Any, Tuple, Union
       class Foo:
         foo = ...  # type: Union[int, str]
         bar = ...  # type: Annotated[int, 'property']
         def __init__(self) -> None: ...
       def f() -> Tuple[int, str]: ...
-    """)
+    """,
+    )
 
   def test_different_property_instances(self):
     errors = self.CheckWithErrors("""
@@ -231,13 +273,16 @@ class SpecialBuiltinsTest(test_base.BaseTest):
           return self.x
       foo = Foo.foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated
       class Foo:
         x: int
         foo: Annotated[int, "property"]
       foo: property
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

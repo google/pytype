@@ -46,8 +46,7 @@ class SelfTest(test_base.BaseTest):
       B().f(B())  # ok
       B().f(0)  # wrong-arg-types[e]
     """)
-    self.assertErrorSequences(
-        errors, {"e": ["Expected", "B", "Actual", "int"]})
+    self.assertErrorSequences(errors, {"e": ["Expected", "B", "Actual", "int"]})
 
   def test_nested_class(self):
     self.Check("""
@@ -311,11 +310,14 @@ class SelfPyiTest(test_base.BaseTest):
   """Tests for typing.Self usage in type stubs."""
 
   def test_instance_method_return(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         def f(self) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -325,12 +327,15 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_classmethod_return(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         @classmethod
         def f(cls) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -340,11 +345,14 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_new_return(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         def __new__(cls) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -354,11 +362,14 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_parameterized_return(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         def f(self) -> list[Self]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -368,11 +379,14 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_parameter(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         def f(self, other: Self) -> bool: ...
-    """)]):
+    """,
+    )]):
       errors = self.CheckWithErrors("""
         import foo
         class B(foo.A):
@@ -381,15 +395,19 @@ class SelfPyiTest(test_base.BaseTest):
         B().f(0)  # wrong-arg-types[e]
       """)
       self.assertErrorSequences(
-          errors, {"e": ["Expected", "B", "Actual", "int"]})
+          errors, {"e": ["Expected", "B", "Actual", "int"]}
+      )
 
   def test_nested_class(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         class B:
           def f(self) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class C(foo.A.B):
@@ -399,12 +417,15 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_generic_class(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Generic, Self, TypeVar
       T = TypeVar('T')
       class A(Generic[T]):
         def copy(self) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import TypeVar
@@ -416,13 +437,16 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_protocol(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Protocol, Self, TypeVar
       T = TypeVar('T')
       class MyProtocol(Protocol[T]):
         @classmethod
         def build(cls) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Ok:
@@ -440,11 +464,14 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_signature_mismatch(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         def f(self) -> Self: ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Ok(foo.A):
@@ -456,11 +483,14 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_attribute(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Self
       class A:
         x: Self
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -472,12 +502,15 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_generic_attribute(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Generic, Self, TypeVar
       T = TypeVar('T')
       class A(Generic[T]):
         x: Self
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import TypeVar
@@ -491,11 +524,14 @@ class SelfPyiTest(test_base.BaseTest):
       """)
 
   def test_attribute_mismatch(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Protocol, Self
       class C(Protocol):
         x: Self
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Ok:
@@ -537,21 +573,27 @@ class SelfReingestTest(test_base.BaseTest):
         def __init__(self):
           self.y: Self = __any_object__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Self
       class A:
         x: Self
         y: Self
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_instance_method_return(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import Self
       class A:
         def f(self) -> Self:
           return self
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -561,13 +603,16 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_parameterized_return(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import List
       from typing_extensions import Self
       class A:
         def f(self) -> List[Self]:
           return [self]
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -577,12 +622,15 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_parameter(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import Self
       class A:
         def f(self, other: Self) -> bool:
           return False
-    """)]):
+    """,
+    )]):
       errors = self.CheckWithErrors("""
         import foo
         class B(foo.A):
@@ -591,16 +639,20 @@ class SelfReingestTest(test_base.BaseTest):
         B().f(0)  # wrong-arg-types[e]
       """)
       self.assertErrorSequences(
-          errors, {"e": ["Expected", "B", "Actual", "int"]})
+          errors, {"e": ["Expected", "B", "Actual", "int"]}
+      )
 
   def test_nested_class(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import Self
       class A:
         class B:
           def f(self) -> Self:
             return self
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class C(foo.A.B):
@@ -611,12 +663,15 @@ class SelfReingestTest(test_base.BaseTest):
 
   @test_utils.skipBeforePy((3, 11), "typing.Self is new in 3.11")
   def test_import_from_typing(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import Self
       class A:
         def f(self) -> Self:
           return self
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -626,13 +681,16 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_classmethod(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import Self
       class A:
         @classmethod
         def build(cls) -> Self:
           return cls()
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -642,12 +700,15 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_new(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import Self
       class A:
         def __new__(cls) -> Self:
           return super().__new__(cls)
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         class B(foo.A):
@@ -657,14 +718,17 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_generic_class(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import Generic, TypeVar
       from typing_extensions import Self
       T = TypeVar('T')
       class A(Generic[T]):
         def copy(self) -> Self:
           return self
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import TypeVar
@@ -676,14 +740,17 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_protocol(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing import Protocol, TypeVar
       from typing_extensions import Self
       T = TypeVar('T')
       class MyProtocol(Protocol[T]):
         def f(self) -> Self:
           return self
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         from typing_extensions import Self
@@ -700,12 +767,15 @@ class SelfReingestTest(test_base.BaseTest):
       """)
 
   def test_signature_mismatch(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import Self
       class A:
         def f(self) -> Self:
           return self
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Ok(foo.A):
@@ -727,7 +797,8 @@ class IllegalLocationTest(test_base.BaseTest):
         return x
     """)
     self.assertErrorSequences(
-        errors, {"e": ["'typing.Self' outside of a class"]})
+        errors, {"e": ["'typing.Self' outside of a class"]}
+    )
 
   def test_variable_annotation_not_in_class(self):
     errors = self.CheckWithErrors("""
@@ -735,8 +806,9 @@ class IllegalLocationTest(test_base.BaseTest):
       x: Self  # invalid-annotation[e1]
       y = ...  # type: Self  # invalid-annotation[e2]
     """)
-    self.assertErrorSequences(errors, {"e1": ["'Self' not in scope"],
-                                       "e2": ["'Self' not in scope"]})
+    self.assertErrorSequences(
+        errors, {"e1": ["'Self' not in scope"], "e2": ["'Self' not in scope"]}
+    )
 
 
 if __name__ == "__main__":

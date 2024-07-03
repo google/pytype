@@ -16,8 +16,9 @@ _STYLE_BRIGHT = "\x1b[1m"
 _STYLE_RESET_ALL = "\x1b[0m"
 _FORE_RED = "\x1b[31m"
 _FORE_RESET = "\x1b[39m"
-COLOR_ERROR_NAME_TEMPLATE = (_STYLE_BRIGHT + _FORE_RED + "%s" + _FORE_RESET +
-                             _STYLE_RESET_ALL)
+COLOR_ERROR_NAME_TEMPLATE = (
+    _STYLE_BRIGHT + _FORE_RED + "%s" + _FORE_RESET + _STYLE_RESET_ALL
+)
 
 
 # We disable the check that keeps pytype from running on not-yet-supported
@@ -27,7 +28,8 @@ def _validate_python_version_upper_bound():
   for frame_summary in traceback.extract_stack():
     head, tail = path_utils.split(frame_summary.filename)
     if "/pytype/" in head + "/" and (
-        tail.startswith("test_") or tail.endswith("_test.py")):
+        tail.startswith("test_") or tail.endswith("_test.py")
+    ):
       return False
   return True
 
@@ -54,18 +56,25 @@ def validate_version(python_version):
   if len(python_version) != 2:
     # This is typically validated in the option parser, but check here too in
     # case we get python_version via a different entry point.
-    raise UsageError("python_version must be <major>.<minor>: %r" %
-                     format_version(python_version))
+    raise UsageError(
+        "python_version must be <major>.<minor>: %r"
+        % format_version(python_version)
+    )
   elif python_version <= (2, 7):
-    raise UsageError("Python version %r is not supported. "
-                     "Use pytype release 2021.08.03 for Python 2 support." %
-                     format_version(python_version))
+    raise UsageError(
+        "Python version %r is not supported. "
+        "Use pytype release 2021.08.03 for Python 2 support."
+        % format_version(python_version)
+    )
   elif (2, 8) <= python_version < (3, 0):
-    raise UsageError("Python version %r is not a valid Python version." %
-                     format_version(python_version))
+    raise UsageError(
+        "Python version %r is not a valid Python version."
+        % format_version(python_version)
+    )
   elif (3, 0) <= python_version <= (3, 7):
     raise UsageError(
-        "Python versions 3.0 - 3.7 are not supported. Use 3.8 and higher.")
+        "Python versions 3.0 - 3.7 are not supported. Use 3.8 and higher."
+    )
   elif python_version > (3, 12) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
     # We have an explicit per-minor-version mapping in opcodes.py
     raise UsageError("Python versions > 3.12 are not yet supported.")
@@ -74,15 +83,15 @@ def validate_version(python_version):
 def strip_prefix(string, prefix):
   """Strip off prefix if it exists."""
   if string.startswith(prefix):
-    return string[len(prefix):]
+    return string[len(prefix) :]
   return string
 
 
 def maybe_truncate(s, length=30):
   """Truncate long strings (and append '...'), but leave short strings alone."""
   s = str(s)
-  if len(s) > length-3:
-    return s[0:length-3] + "..."
+  if len(s) > length - 3:
+    return s[0 : length - 3] + "..."
   else:
     return s
 
@@ -94,6 +103,7 @@ def pretty_conjunction(conjunction):
 
   Args:
     conjunction: List of strings.
+
   Returns:
     A pretty-printed string.
   """
@@ -112,6 +122,7 @@ def pretty_dnf(dnf):
 
   Args:
     dnf: A list of list of strings. (Disjunction of conjunctions of strings)
+
   Returns:
     A pretty-printed string.
   """
@@ -139,12 +150,12 @@ def native_str(s: Union[str, bytes], errors: str = "strict") -> str:
 
 def list_startswith(l, prefix):
   """Like str.startswith, but for lists."""
-  return l[:len(prefix)] == prefix
+  return l[: len(prefix)] == prefix
 
 
 def list_strip_prefix(l, prefix):
   """Remove prefix, if it's there."""
-  return l[len(prefix):] if list_startswith(l, prefix) else l
+  return l[len(prefix) :] if list_startswith(l, prefix) else l
 
 
 def invert_dict(d):
@@ -179,8 +190,12 @@ def unique_list(xs):
 
 
 def is_valid_name(name: str) -> bool:
-  return (all(c.isalnum() or c == "_" for c in name) and
-          not keyword.iskeyword(name) and bool(name) and not name[0].isdigit())
+  return (
+      all(c.isalnum() or c == "_" for c in name)
+      and not keyword.iskeyword(name)
+      and bool(name)
+      and not name[0].isdigit()
+  )
 
 
 class DynamicVar:
@@ -231,6 +246,7 @@ class AnnotatingDecorator:
     def decorate(f):
       self.lookup[f.__name__] = value
       return f
+
     return decorate
 
 

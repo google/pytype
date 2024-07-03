@@ -1,7 +1,6 @@
 """Implementation of named tuples."""
 
 import dataclasses
-
 from typing import Any, List, Optional
 
 from pytype import utils
@@ -79,8 +78,11 @@ class NamedTupleProperties:
 
     seen = set()
     for idx, f in enumerate(self.fields):
-      if (not utils.is_valid_name(f.name) or f.name.startswith("_") or
-          f.name in seen):
+      if (
+          not utils.is_valid_name(f.name)
+          or f.name.startswith("_")
+          or f.name in seen
+      ):
         if rename:
           f.name = "_%d" % idx
         else:
@@ -152,20 +154,24 @@ class _NamedTupleBuilderBase(abstract.PyTDFunction):
     self.match_args(node, raw_args)
 
     # namedtuple only has one signature
-    sig, = self.signatures
+    (sig,) = self.signatures
 
     try:
-      callargs = {name: abstract_utils.get_atomic_python_constant(var)
-                  for name, var, _ in sig.signature.iter_args(raw_args)}
+      callargs = {
+          name: abstract_utils.get_atomic_python_constant(var)
+          for name, var, _ in sig.signature.iter_args(raw_args)
+      }
       args = self.extract_args(node, callargs)
     except abstract_utils.ConversionError:
       raise _ArgsError()  # pylint: disable=raise-missing-from
     except _FieldMatchError as e:
       raise error_types.WrongArgTypes(
-          sig.signature, raw_args, self.ctx, e.param)
+          sig.signature, raw_args, self.ctx, e.param
+      )
 
     props = NamedTupleProperties.from_field_names(
-        args.name, args.field_names, self.ctx)
+        args.name, args.field_names, self.ctx
+    )
     try:
       props.validate_and_rename_fields(args.rename)
     except ValueError as e:
@@ -208,8 +214,9 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
       fields = utils.native_str(fields)
       field_names = fields.replace(",", " ").split()
     else:
-      field_names = [abstract_utils.get_atomic_python_constant(f)
-                     for f in fields]
+      field_names = [
+          abstract_utils.get_atomic_python_constant(f) for f in fields
+      ]
       field_names = [utils.native_str(f) for f in field_names]
 
     if "defaults" in callargs:
@@ -223,7 +230,8 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
     rename = callargs.get("rename", False)
 
     return _Args(
-        name=name, field_names=field_names, defaults=defaults, rename=rename)
+        name=name, field_names=field_names, defaults=defaults, rename=rename
+    )
 
   def call(self, node, func, args, alias_map=None):
     """Creates a namedtuple class definition."""
@@ -257,8 +265,10 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
     return self
 
   def _is_str_instance(self, val):
-    return (isinstance(val, abstract.Instance) and
-            val.full_name in ("builtins.str", "builtins.unicode"))
+    return isinstance(val, abstract.Instance) and val.full_name in (
+        "builtins.str",
+        "builtins.unicode",
+    )
 
   def extract_args(self, node, callargs):
     """Extracts the typename and fields arguments.
@@ -284,8 +294,9 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
       if isinstance(field, str):
         # Since str matches Sequence, we have to manually check for it.
         raise _FieldMatchError(self._fields_param)
-      if (len(field) != 2 or
-          any(not self._is_str_instance(v) for v in field[0].data)):
+      if len(field) != 2 or any(
+          not self._is_str_instance(v) for v in field[0].data
+      ):
         # Note that we don't need to check field[1] because both 'str'
         # (forward reference) and 'type' are valid for it.
         raise _FieldMatchError(self._fields_param)
@@ -297,7 +308,8 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
           typ,
           name_py_constant,
           self.ctx.vm.simple_stack(),
-          allowed_type_params=set())
+          allowed_type_params=set(),
+      )
       types.append(annot)
 
     return _Args(name=cls_name, field_names=names, field_types=types)
@@ -310,7 +322,8 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
 
     # fill in field types from annotations
     annots = self.ctx.annotation_utils.convert_annotations_list(
-        node, zip(args.field_names, args.field_types))
+        node, zip(args.field_names, args.field_types)
+    )
     for f in props.fields:
       f.typ = annots.get(f.name, self.ctx.convert.unsolvable)
 
@@ -322,9 +335,19 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
   """Factory for creating typing.NamedTuples by subclassing NamedTuple."""
 
   # attributes prohibited to set in NamedTuple class syntax
-  _prohibited = ("__new__", "__init__", "__slots__", "__getnewargs__",
-                 "_fields", "_field_defaults", "_field_types",
-                 "_make", "_replace", "_asdict", "_source")
+  _prohibited = (
+      "__new__",
+      "__init__",
+      "__slots__",
+      "__getnewargs__",
+      "_fields",
+      "_field_defaults",
+      "_field_types",
+      "_make",
+      "_replace",
+      "_asdict",
+      "_source",
+  )
 
   def __init__(self, ctx, module="typing"):
     pyval = ctx.loader.lookup_pytd(module, "NamedTuple")
@@ -344,17 +367,21 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     if namedargs and len(posargs) == 1:
       namedargs = [
           self.ctx.convert.build_tuple(
-              node, (self.ctx.convert.build_string(node, k), v))
+              node, (self.ctx.convert.build_string(node, k), v)
+          )
           for k, v in namedargs.items()
       ]
       namedargs = abstract.List(namedargs, self.ctx).to_variable(node)
       posargs += (namedargs,)
       args = function.Args(posargs)
     elif namedargs:
-      errmsg = ("Either list of fields or keywords can be provided to "
-                "NamedTuple, not both")
+      errmsg = (
+          "Either list of fields or keywords can be provided to "
+          "NamedTuple, not both"
+      )
       self.ctx.errorlog.invalid_namedtuple_arg(
-          self.ctx.vm.frames, err_msg=errmsg)
+          self.ctx.vm.frames, err_msg=errmsg
+      )
     return self.namedtuple.call(node, None, args, alias_map)
 
   def make_class(self, node, bases, f_locals):
@@ -377,13 +404,15 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         name,
         allow_methods=True,
         ordering=classgen.Ordering.FIRST_ANNOTATE,
-        ctx=self.ctx)
+        ctx=self.ctx,
+    )
     props = NamedTupleProperties(name=name, fields=[], bases=bases)
     stack = tuple(self.ctx.vm.frames)
     for k, local in cls_locals.items():
       assert local.typ
       t = self.ctx.annotation_utils.extract_annotation(
-          node, local.typ, k, stack)
+          node, local.typ, k, stack
+      )
       props.fields.append(Field(name=k, typ=t, default=f_locals.get(k)))
 
     # typing.NamedTuple doesn't support rename; invalid fields are an error.
@@ -400,16 +429,20 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
       # set the attribute without overriding special namedtuple attributes
       node, fields = self.ctx.attribute_handler.get_attribute(
-          node, cls_val, "_fields")
+          node, cls_val, "_fields"
+      )
       fields = abstract_utils.get_atomic_python_constant(fields, tuple)
-      fields = [abstract_utils.get_atomic_python_constant(field, str)
-                for field in fields]
+      fields = [
+          abstract_utils.get_atomic_python_constant(field, str)
+          for field in fields
+      ]
       for key in f_locals:
         if key in self._prohibited:
           self.ctx.errorlog.not_writable(self.ctx.vm.frames, cls_val, key)
-        if key not in abstract_utils.CLASS_LEVEL_IGNORE and  key not in fields:
+        if key not in abstract_utils.CLASS_LEVEL_IGNORE and key not in fields:
           node = self.ctx.attribute_handler.set_attribute(
-              node, cls_val, key, f_locals[key])
+              node, cls_val, key, f_locals[key]
+          )
 
     return node, cls_var
 
@@ -428,7 +461,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       else:
         cv = None
       if cv is not None:
-        typ, = cv
+        (typ,) = cv
         classvars.append((c.name, typ))
       else:
         # The field types may refer back to the class being built.
@@ -438,7 +471,8 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
           else:
             default = None
           fields.append(
-              Field(c.name, ctx.convert.constant_to_value(ct), default))
+              Field(c.name, ctx.convert.constant_to_value(ct), default)
+          )
 
     bases = []
     for x in pytd_cls.bases:
@@ -447,8 +481,10 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         # We need to set the generated class's _template directly here, since we
         # bypass the normal mechanism to copy a template from a pytd class to a
         # PyTDClass (see abstract._base._compute_template())
-        tmpl = [ctx.convert.constant_to_value(t.type_param)
-                for t in pytd_cls.template]
+        tmpl = [
+            ctx.convert.constant_to_value(t.type_param)
+            for t in pytd_cls.template
+        ]
         b.data[0]._template = tmpl  # pylint: disable=protected-access
       bases.append(b)
     props = NamedTupleProperties(cls_name, fields, bases)
@@ -467,14 +503,19 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     # Convert classvars, which might be recursively typed
     with ctx.allow_recursive_convert():
-      classvars = [(name, ctx.convert.constant_to_value(typ))
-                   for name, typ in classvars]
+      classvars = [
+          (name, ctx.convert.constant_to_value(typ)) for name, typ in classvars
+      ]
 
     # Add fields and classvars to the annotation dictionary
-    locals_ = {f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
-               for f in fields}
-    locals_.update({name: abstract_utils.Local(node, None, typ, None, ctx)
-                    for name, typ in classvars})
+    locals_ = {
+        f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
+        for f in fields
+    }
+    locals_.update({
+        name: abstract_utils.Local(node, None, typ, None, ctx)
+        for name, typ in classvars
+    })
     annots = abstract.AnnotationsDict(locals_, ctx).to_variable(node)
     cls.members["__annotations__"] = annots
 
@@ -501,10 +542,12 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         args = function.Args(posargs=(m_var,))
         if m.kind == pytd.MethodKind.CLASSMETHOD:
           _, m_var = special_builtins.ClassMethod.make(ctx).call(
-              node, meth, args)
+              node, meth, args
+          )
         elif m.kind == pytd.MethodKind.STATICMETHOD:
           _, m_var = special_builtins.StaticMethod.make(ctx).call(
-              node, meth, args)
+              node, meth, args
+          )
         cls.members[m.name] = m_var
 
     return cls
@@ -520,10 +563,9 @@ class _DictBuilder:
   def make(self, typ):
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
     # collections.pyi doesn't conform to that standard.
-    return abstract.ParameterizedClass(self.dict_cls, {
-        "K": self.ctx.convert.str_type,
-        "V": typ
-    }, self.ctx)
+    return abstract.ParameterizedClass(
+        self.dict_cls, {"K": self.ctx.convert.str_type, "V": typ}, self.ctx
+    )
 
 
 class NamedTupleClass(abstract.InterpreterClass):
@@ -546,7 +588,8 @@ class NamedTupleClass(abstract.InterpreterClass):
         short = t.scope
         param = t.name
         ival.instance_type_parameters.add_alias(
-            f"{short}.{param}", f"{long}.{param}", lambda x, y, z: x or y)
+            f"{short}.{param}", f"{long}.{param}", lambda x, y, z: x or y
+        )
     return inst
 
 
@@ -595,12 +638,13 @@ def _build_namedtuple(props, node, ctx):
   # The TypeParameter name is built from the class name and field names to avoid
   # name clashes with other namedtuples.
   cls_type_param_name = (
-      visitors.CreateTypeParametersForSignatures.PREFIX +
-      escape.pack_namedtuple(props.name, [f.name for f in props.fields]))
+      visitors.CreateTypeParametersForSignatures.PREFIX
+      + escape.pack_namedtuple(props.name, [f.name for f in props.fields])
+  )
   cls_type_param = abstract.TypeParameter(cls_type_param_name, ctx, bound=None)
-  cls_type = abstract.ParameterizedClass(ctx.convert.type_type,
-                                         {abstract_utils.T: cls_type_param},
-                                         ctx)
+  cls_type = abstract.ParameterizedClass(
+      ctx.convert.type_type, {abstract_utils.T: cls_type_param}, ctx
+  )
 
   params = [Param(f.name, f.typ) for f in props.fields]
   # The parameter types may refer back to the class being built.
@@ -616,17 +660,15 @@ def _build_namedtuple(props, node, ctx):
 
   # __init__
   members["__init__"] = overlay_utils.make_method(
-      ctx,
-      node,
-      name="__init__",
-      varargs=Param("args"),
-      kwargs=Param("kwargs"))
+      ctx, node, name="__init__", varargs=Param("args"), kwargs=Param("kwargs")
+  )
 
   heterogeneous_tuple_type_params = dict(enumerate(f.typ for f in props.fields))
   heterogeneous_tuple_type_params[abstract_utils.T] = field_types_union
   # Representation of the to-be-created NamedTuple as a typing.Tuple.
   heterogeneous_tuple_type = abstract.TupleClass(
-      ctx.convert.tuple_type, heterogeneous_tuple_type_params, ctx)
+      ctx.convert.tuple_type, heterogeneous_tuple_type_params, ctx
+  )
 
   # _make
   # _make is a classmethod, so it needs to be wrapped by
@@ -635,20 +677,25 @@ def _build_namedtuple(props, node, ctx):
   sized_cls = ctx.convert.lookup_value("typing", "Sized")
   iterable_type = abstract.ParameterizedClass(
       ctx.convert.lookup_value("typing", "Iterable"),
-      {abstract_utils.T: field_types_union}, ctx)
-  cls_type = abstract.ParameterizedClass(ctx.convert.type_type,
-                                         {abstract_utils.T: cls_type_param},
-                                         ctx)
+      {abstract_utils.T: field_types_union},
+      ctx,
+  )
+  cls_type = abstract.ParameterizedClass(
+      ctx.convert.type_type, {abstract_utils.T: cls_type_param}, ctx
+  )
   len_type = abstract.CallableClass(
-      ctx.convert.lookup_value("typing", "Callable"), {
+      ctx.convert.lookup_value("typing", "Callable"),
+      {
           0: sized_cls,
           abstract_utils.ARGS: sized_cls,
-          abstract_utils.RET: ctx.convert.int_type
-      }, ctx)
+          abstract_utils.RET: ctx.convert.int_type,
+      },
+      ctx,
+  )
   params = [
       Param("iterable", iterable_type),
       Param("new").unsolvable(ctx, node),
-      Param("len", len_type).unsolvable(ctx, node)
+      Param("len", len_type).unsolvable(ctx, node),
   ]
   make = overlay_utils.make_method(
       ctx,
@@ -656,10 +703,12 @@ def _build_namedtuple(props, node, ctx):
       name="_make",
       params=params,
       self_param=Param("cls", cls_type),
-      return_type=cls_type_param)
+      return_type=cls_type_param,
+  )
   make_args = function.Args(posargs=(make,))
   _, members["_make"] = ctx.special_builtins["classmethod"].call(
-      node, None, make_args)
+      node, None, make_args
+  )
 
   # _replace
   # Like __new__, it uses the _Tname TypeVar. We have to annotate the `self`
@@ -670,22 +719,23 @@ def _build_namedtuple(props, node, ctx):
       name="_replace",
       self_param=Param("self", cls_type_param),
       return_type=cls_type_param,
-      kwargs=Param("kwds", field_types_union))
+      kwargs=Param("kwds", field_types_union),
+  )
 
   # __getnewargs__
   members["__getnewargs__"] = overlay_utils.make_method(
-      ctx,
-      node,
-      name="__getnewargs__",
-      return_type=heterogeneous_tuple_type)
+      ctx, node, name="__getnewargs__", return_type=heterogeneous_tuple_type
+  )
 
   # __getstate__
   members["__getstate__"] = overlay_utils.make_method(
-      ctx, node, name="__getstate__")
+      ctx, node, name="__getstate__"
+  )
 
   # _asdict
   members["_asdict"] = overlay_utils.make_method(
-      ctx, node, name="_asdict", return_type=field_dict_cls)
+      ctx, node, name="_asdict", return_type=field_dict_cls
+  )
 
   # Finally, make the class.
   cls_dict = abstract.Dict(ctx)
@@ -714,7 +764,8 @@ def _build_namedtuple(props, node, ctx):
       name_var=ctx.convert.build_string(node, props.name),
       bases=final_bases,
       class_dict_var=cls_dict.to_variable(node),
-      class_type=NamedTupleClass,)
+      class_type=NamedTupleClass,
+  )
   node, cls_var = ctx.make_class(node, cls_props)
   cls = cls_var.data[0]
   # Now that the class has been made, we can complete the TypeParameter used
@@ -724,16 +775,15 @@ def _build_namedtuple(props, node, ctx):
   # set __new__.__defaults__
   defaults = [f.default for f in props.fields if f.default is not None]
   defaults = ctx.convert.build_tuple(node, defaults)
-  node, new_attr = ctx.attribute_handler.get_attribute(
-      node, cls, "__new__")
+  node, new_attr = ctx.attribute_handler.get_attribute(node, cls, "__new__")
   new_attr = abstract_utils.get_atomic_value(new_attr)
   node = ctx.attribute_handler.set_attribute(
-      node, new_attr, "__defaults__", defaults)
+      node, new_attr, "__defaults__", defaults
+  )
 
   # Store the original properties
   cls.props = props
-  cls.generated_members = (
-      set(members.keys()) - {x.name for x in props.fields})
+  cls.generated_members = set(members.keys()) - {x.name for x in props.fields}
 
   ctx.vm.trace_classdef(cls_var)
   return node, cls_var

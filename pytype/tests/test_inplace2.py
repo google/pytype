@@ -4,8 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class InplaceTest(test_base.BaseTest,
-                  test_utils.InplaceTestMixin):
+class InplaceTest(test_base.BaseTest, test_utils.InplaceTestMixin):
   """In-place operator tests."""
 
   # / changed its semantics in python3, so this is forked into two tests.

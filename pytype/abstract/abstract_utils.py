@@ -69,6 +69,7 @@ TYPE_GUARDS = {"typing.TypeGuard", "typing.TypeIs"}
 # so that dummy containers have a consistent type. It's not strictly necessary
 # to keep the wrapped object around, but it makes debugging easier.
 class DummyContainer:
+
   def __init__(self, container):
     self.container = container
 
@@ -128,9 +129,13 @@ class Local:
   """A possibly annotated local variable."""
 
   def __init__(
-      self, node: cfg.CFGNode, op: Optional[opcodes.Opcode],
-      typ: Optional[_BaseValueType], orig: Optional[cfg.Variable],
-      ctx: _ContextType):
+      self,
+      node: cfg.CFGNode,
+      op: Optional[opcodes.Opcode],
+      typ: Optional[_BaseValueType],
+      orig: Optional[cfg.Variable],
+      ctx: _ContextType,
+  ):
     self._ops = [op]
     self.final = False
     if typ:
@@ -224,6 +229,7 @@ def _isinstance(obj, name_or_names):
   # than calling isinstance.
   if not _ISINSTANCE_CACHE:
     from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
     for attr in dir(abstract):
       if attr[0].isupper():
         _ISINSTANCE_CACHE[attr] = getattr(abstract, attr)
@@ -237,6 +243,7 @@ def _isinstance(obj, name_or_names):
 def _make(cls_name, *args, **kwargs):
   """Make an instance of cls_name with the given arguments."""
   from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
   return getattr(abstract, cls_name)(*args, **kwargs)
 
 
@@ -248,7 +255,7 @@ class _None:
 def get_atomic_value(variable, constant_type=None, default=_None()):
   """Get the atomic value stored in this variable."""
   if len(variable.bindings) == 1:
-    v, = variable.bindings
+    (v,) = variable.bindings
     if isinstance(v.data, constant_type or object):
       return v.data  # success
   if not isinstance(default, _None):
@@ -261,7 +268,8 @@ def get_atomic_value(variable, constant_type=None, default=_None()):
   name = bindings[0].data.ctx.convert.constant_name(constant_type)
   raise ConversionError(
       "Cannot get atomic value %s from variable. %s %s"
-      % (name, variable, [b.data for b in bindings]))
+      % (name, variable, [b.data for b in bindings])
+  )
 
 
 def match_atomic_value(variable, typ=None):
@@ -281,6 +289,7 @@ def get_atomic_python_constant(variable, constant_type=None):
   Args:
     variable: A cfg.Variable. It can only have one possible value.
     constant_type: Optionally, the required type of the constant.
+
   Returns:
     A Python constant. (Typically, a string, a tuple, or a code object.)
   Raises:
@@ -330,10 +339,16 @@ def get_views(variables, node):
   try:
     combinations = cfg_utils.deep_variable_product(variables)
   except cfg_utils.TooComplexError:
-    log.info("get_views: too many binding combinations to generate accurate "
-             "views, falling back to unsolvable")
-    combinations = ((var.AddBinding(node.program.default_data, [], node)
-                     for var in variables),)
+    log.info(
+        "get_views: too many binding combinations to generate accurate "
+        "views, falling back to unsolvable"
+    )
+    combinations = (
+        (
+            var.AddBinding(node.program.default_data, [], node)
+            for var in variables
+        ),
+    )
   seen = []  # the accessed subsets of previously seen views
   for combination in combinations:
     view = {value.variable: value for value in combination}
@@ -355,16 +370,19 @@ def get_views(variables, node):
 
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
-  return (_isinstance(binding.data, "Class") and
-          binding.data.full_name == cls.full_name)
+  return (
+      _isinstance(binding.data, "Class")
+      and binding.data.full_name == cls.full_name
+  )
 
 
 def is_subclass(value, cls):
   """Whether value is a subclass of cls, modulo parameterization."""
   if _isinstance(value, "Union"):
     return any(is_subclass(v, cls) for v in value.options)
-  return (_isinstance(value, "Class") and
-          any(value_cls.full_name == cls.full_name for value_cls in value.mro))
+  return _isinstance(value, "Class") and any(
+      value_cls.full_name == cls.full_name for value_cls in value.mro
+  )
 
 
 def apply_mutations(node, get_mutations):
@@ -394,8 +412,10 @@ def get_mro_bases(bases):
     base = base_var.data[0]
     mro_bases.append(base)
     # check if it contains user-defined generic types
-    if (_isinstance(base, "ParameterizedClass") and
-        base.full_name != "typing.Generic"):
+    if (
+        _isinstance(base, "ParameterizedClass")
+        and base.full_name != "typing.Generic"
+    ):
       has_user_generic = True
   # if user-defined generic type exists, we won't add `typing.Generic` to
   # the final result list
@@ -417,6 +437,7 @@ def _merge_type(t0, t1, name, cls):
     t1: The second type.
     name: Type parameter name.
     cls: The class_mixin.Class on which any error should be reported.
+
   Returns:
     A type.
   Raises:
@@ -436,7 +457,8 @@ def _merge_type(t0, t1, name, cls):
 
 
 def parse_formal_type_parameters(
-    base, prefix, formal_type_parameters, container=None):
+    base, prefix, formal_type_parameters, container=None
+):
   """Parse type parameters from base class.
 
   Args:
@@ -451,6 +473,7 @@ def parse_formal_type_parameters(
   Raises:
     GenericTypeError: If the lazy types of type parameter don't match
   """
+
   def merge(t0, t1, name):
     return _merge_type(t0, t1, name, base)
 
@@ -460,7 +483,8 @@ def parse_formal_type_parameters(
     if _isinstance(base.base_cls, ("InterpreterClass", "PyTDClass")):
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
-          base.base_cls.all_formal_type_parameters, merge)
+          base.base_cls.all_formal_type_parameters, merge
+      )
     params = base.get_formal_type_parameters()
     if hasattr(container, "cls"):
       container_template = container.cls.template
@@ -473,7 +497,8 @@ def parse_formal_type_parameters(
         #  class Foo(List[U]): pass
         if prefix:
           formal_type_parameters.add_alias(
-              name, prefix + "." + param.name, merge)
+              name, prefix + "." + param.name, merge
+          )
         elif param in container_template:
           formal_type_parameters[name] = param
       else:
@@ -491,8 +516,7 @@ def parse_formal_type_parameters(
   else:
     if _isinstance(base, ("InterpreterClass", "PyTDClass")):
       # merge the type parameters info from base class
-      formal_type_parameters.merge_from(
-          base.all_formal_type_parameters, merge)
+      formal_type_parameters.merge_from(base.all_formal_type_parameters, merge)
     if base.template:
       # handle unbound type parameters
       for item in base.template:
@@ -531,7 +555,7 @@ def maybe_extract_tuple(t):
   values = t.data
   if len(values) > 1:
     return (t,)
-  v, = values
+  (v,) = values
   if not _isinstance(v, "Tuple"):
     return (t,)
   return v.pyval
@@ -585,8 +609,10 @@ def match_type_container(typ, container_type_name: Union[str, Tuple[str, ...]]):
     return None
   if isinstance(container_type_name, str):
     container_type_name = (container_type_name,)
-  if not (_isinstance(typ, "ParameterizedClass") and
-          typ.full_name in container_type_name):
+  if not (
+      _isinstance(typ, "ParameterizedClass")
+      and typ.full_name in container_type_name
+  ):
     return None
   param = typ.get_formal_type_parameter(T)
   return param
@@ -646,13 +672,11 @@ def is_var_indefinite_iterable(var):
 
 
 def is_dataclass(val: _BaseValueType) -> bool:
-  return (_isinstance(val, "Class") and
-          "__dataclass_fields__" in val.metadata)
+  return _isinstance(val, "Class") and "__dataclass_fields__" in val.metadata
 
 
 def is_attrs(val: _BaseValueType) -> bool:
-  return (_isinstance(val, "Class") and
-          "__attrs_attrs__" in val.metadata)
+  return _isinstance(val, "Class") and "__attrs_attrs__" in val.metadata
 
 
 def merged_type_parameter(node, var, param):
@@ -680,12 +704,14 @@ def unwrap_splat(var):
 def is_callable(value: _BaseValueType) -> bool:
   """Returns whether 'value' is a callable."""
   if _isinstance(
-      value, ("Function", "BoundFunction", "ClassMethod", "StaticMethod")):
+      value, ("Function", "BoundFunction", "ClassMethod", "StaticMethod")
+  ):
     return True
   if not _isinstance(value.cls, "Class"):
     return False
-  _, attr = value.ctx.attribute_handler.get_attribute(value.ctx.root_node,
-                                                      value.cls, "__call__")
+  _, attr = value.ctx.attribute_handler.get_attribute(
+      value.ctx.root_node, value.cls, "__call__"
+  )
   return attr is not None
 
 
@@ -714,7 +740,8 @@ def get_type_parameter_substitutions(
   for p in type_params:
     if _isinstance(val, "Class"):
       param_value = val.get_formal_type_parameter(p.name).instantiate(
-          val.ctx.root_node)
+          val.ctx.root_node
+      )
     else:
       param_value = val.get_instance_type_parameter(p.name)
     subst[p.full_name] = param_value
@@ -732,28 +759,34 @@ def build_generic_template(
   """Build a typing.Generic template from a sequence of type parameters."""
   if not all(is_type_variable(item) for item in type_params):
     base_type.ctx.errorlog.invalid_annotation(
-        base_type.ctx.vm.frames, base_type,
-        "Parameters to Generic[...] must all be type variables")
+        base_type.ctx.vm.frames,
+        base_type,
+        "Parameters to Generic[...] must all be type variables",
+    )
     type_params = [item for item in type_params if is_type_variable(item)]
 
   template = [item.name for item in type_params]
 
   if len(set(template)) != len(template):
     base_type.ctx.errorlog.invalid_annotation(
-        base_type.ctx.vm.frames, base_type,
-        "Parameters to Generic[...] must all be unique")
+        base_type.ctx.vm.frames,
+        base_type,
+        "Parameters to Generic[...] must all be unique",
+    )
 
   return template, type_params
 
 
 def is_generic_protocol(val: _BaseValueType) -> bool:
-  return (_isinstance(val, "ParameterizedClass") and
-          val.full_name == "typing.Protocol")
+  return (
+      _isinstance(val, "ParameterizedClass")
+      and val.full_name == "typing.Protocol"
+  )
 
 
 def combine_substs(
     substs1: Optional[Collection[Dict[str, cfg.Variable]]],
-    substs2: Optional[Collection[Dict[str, cfg.Variable]]]
+    substs2: Optional[Collection[Dict[str, cfg.Variable]]],
 ) -> Collection[Dict[str, cfg.Variable]]:
   """Combines the two collections of type parameter substitutions."""
   if substs1 and substs2:
@@ -793,8 +826,7 @@ def flatten(value, classes):
     # A tuple, need to process each element.
     ambiguous = False
     for var in value.pyval:
-      if (len(var.bindings) != 1 or
-          flatten(var.bindings[0].data, classes)):
+      if len(var.bindings) != 1 or flatten(var.bindings[0].data, classes):
         # There were either multiple bindings or ambiguity deeper in the
         # recursion.
         ambiguous = True
@@ -852,7 +884,7 @@ def unwrap_final(val):
   if _isinstance(val, "FinalAnnotation"):
     # Final type created via an annotation in the current module
     return val.annotation
-  elif (_isinstance(val, "Instance") and val.cls.full_name == "typing.Final"):
+  elif _isinstance(val, "Instance") and val.cls.full_name == "typing.Final":
     # Final types loaded from a pyi file get converted to abstract.Instance
     # with cls=typing.Final and instance type parameter T
     return get_atomic_value(val.get_instance_type_parameter(T))
@@ -864,12 +896,14 @@ def is_recursive_annotation(annot):
 
 
 def is_ellipsis(val):
-  return (val == val.ctx.convert.ellipsis or
-          (val.is_concrete and val.pyval == "..."))
+  return val == val.ctx.convert.ellipsis or (
+      val.is_concrete and val.pyval == "..."
+  )
 
 
 def update_args_dict(
-    args: _ArgsDictType, update: _ArgsDictType, node: cfg.CFGNode) -> None:
+    args: _ArgsDictType, update: _ArgsDictType, node: cfg.CFGNode
+) -> None:
   """Update a {str: Variable} dict by merging bindings."""
   for k, v in update.items():
     if k in args:
@@ -906,16 +940,19 @@ def get_generic_type(val: _BaseValueType) -> Optional[_ParameterizedClassType]:
       generic_cls = _make("ParameterizedClass", base_cls, params, ctx)
       if is_class:
         return _make(
-            "ParameterizedClass", ctx.convert.type_type, {T: generic_cls}, ctx)
+            "ParameterizedClass", ctx.convert.type_type, {T: generic_cls}, ctx
+        )
       else:
         return generic_cls
   return None
 
 
 def with_empty_substitutions(subst, pytd_type, node, ctx):
-  new_subst = {t.full_name: ctx.convert.empty.to_variable(node)
-               for t in pytd_utils.GetTypeParameters(pytd_type)
-               if t.full_name not in subst}
+  new_subst = {
+      t.full_name: ctx.convert.empty.to_variable(node)
+      for t in pytd_utils.GetTypeParameters(pytd_type)
+      if t.full_name not in subst
+  }
   return subst.copy(**new_subst)
 
 
@@ -926,16 +963,19 @@ def get_var_fullhash_component(
 
 
 def get_dict_fullhash_component(
-    vardict: Dict[str, cfg.Variable], *, names: Optional[Set[str]] = None,
-    seen: Optional[Set[_BaseValueType]] = None) -> Tuple[Any, ...]:
+    vardict: Dict[str, cfg.Variable],
+    *,
+    names: Optional[Set[str]] = None,
+    seen: Optional[Set[_BaseValueType]] = None,
+) -> Tuple[Any, ...]:
   """Hash a dictionary.
 
   This contains the keys and the full hashes of the data in the values.
 
   Arguments:
     vardict: A dictionary mapping str to Variable.
-    names: If this is non-None, the snapshot will include only those
-      dictionary entries whose keys appear in names.
+    names: If this is non-None, the snapshot will include only those dictionary
+      entries whose keys appear in names.
     seen: Optionally, a set of seen values for recursion detection.
 
   Returns:
@@ -943,8 +983,11 @@ def get_dict_fullhash_component(
   """
   if names is not None:
     vardict = {name: vardict[name] for name in names.intersection(vardict)}
-  return tuple(sorted((k, get_var_fullhash_component(v, seen))
-                      for k, v in vardict.items()))
+  return tuple(
+      sorted(
+          (k, get_var_fullhash_component(v, seen)) for k, v in vardict.items()
+      )
+  )
 
 
 def simplify_variable(var, node, ctx):

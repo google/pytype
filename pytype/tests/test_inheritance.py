@@ -15,13 +15,16 @@ class InheritanceTest(test_base.BaseTest):
       class Leaf(Base):
         lineno = 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Base:
         pass
       class Leaf(Base):
         lineno: int
         def get_lineno(self) -> int: ...
-    """)
+    """,
+    )
 
   def test_class_attributes(self):
     ty = self.Infer("""
@@ -41,7 +44,9 @@ class InheritanceTest(test_base.BaseTest):
       def by():
         return A.y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
        x: int
        y: int
@@ -51,7 +56,8 @@ class InheritanceTest(test_base.BaseTest):
       def bx() -> str: ...
       def ay() -> int: ...
       def by() -> int: ...
-    """)
+    """,
+    )
 
   def test_multiple_inheritance(self):
     ty = self.Infer("""
@@ -71,7 +77,9 @@ class InheritanceTest(test_base.BaseTest):
       def z():
         return D.z
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x: int
       class B(A):
@@ -83,7 +91,8 @@ class InheritanceTest(test_base.BaseTest):
       def x() -> int: ...
       def y() -> int: ...
       def z() -> complex: ...
-    """)
+    """,
+    )
 
   def test_inherit_from_builtins(self):
     ty = self.Infer("""
@@ -95,11 +104,14 @@ class InheritanceTest(test_base.BaseTest):
         return MyDict()
       f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class MyDict(dict):
         def __init__(self) -> None: ...
       def f() -> MyDict: ...
-    """)
+    """,
+    )
 
   def test_inherit_methods_from_object(self):
     # Test that even in the presence of multi-level inheritance,
@@ -117,13 +129,16 @@ class InheritanceTest(test_base.BaseTest):
         return "bla".__sizeof__()
       f(); g(); h()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A: ...
       class B(A): ...
       def f() -> int: ...
       def g() -> int: ...
       def h() -> int: ...
-    """)
+    """,
+    )
 
   def test_mro(self):
     ty = self.Infer("""
@@ -148,7 +163,9 @@ class InheritanceTest(test_base.BaseTest):
       def i():
         return D().b()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         def a(self) -> int: ...
       class B(A):
@@ -160,7 +177,8 @@ class InheritanceTest(test_base.BaseTest):
       def g() -> float: ...
       def h() -> str: ...
       def i() -> float: ...
-    """)
+    """,
+    )
 
   def test_ambiguous_base_class(self):
     self.Check("""

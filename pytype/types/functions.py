@@ -17,12 +17,13 @@ class Signature(abc.ABC):
       positional-only parameters and does NOT include keyword-only parameters.
     posonly_count: Number of positional-only parameters. (Python 3.8)
     varargs_name: Name of the varargs parameter. (The "args" in *args)
-    kwonly_params: Tuple of keyword-only parameters. (Python 3)
-      E.g. ("x", "y") for "def f(a, *, x, y=2)". These do NOT appear in
-      param_names. Ordered like in the source file.
+    kwonly_params: Tuple of keyword-only parameters. (Python 3) E.g. ("x", "y")
+      for "def f(a, *, x, y=2)". These do NOT appear in param_names. Ordered
+      like in the source file.
     kwargs_name: Name of the kwargs parameter. (The "kwargs" in **kwargs)
     posonly_params: Tuple of positional-only parameters
   """
+
   name: str
   param_names: Tuple[str, ...]
   posonly_count: int
@@ -32,7 +33,7 @@ class Signature(abc.ABC):
 
   @property
   def posonly_params(self):
-    return self.param_names[:self.posonly_count]
+    return self.param_names[: self.posonly_count]
 
   @abc.abstractmethod
   def has_default(self, name):
@@ -68,6 +69,7 @@ class Args:
 @dataclasses.dataclass(eq=True, frozen=True)
 class Arg:
   """A single function argument. Used in the matcher and for error handling."""
+
   name: str
   value: base.Variable
   typ: base.BaseValue

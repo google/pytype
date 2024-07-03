@@ -6,7 +6,6 @@ import types
 from typing import Any, Dict, FrozenSet, Tuple
 
 import pycnite
-
 from pytype import datatypes
 from pytype import utils
 from pytype.abstract import abstract
@@ -86,8 +85,18 @@ class Converter(utils.ContextWeakrefMixin):
 
     # Now fill primitive_classes with the real values using constant_to_value.
     primitive_classes = [
-        int, float, str, bytes, object, NoneType, complex, bool, slice,
-        types.CodeType, EllipsisType, super,
+        int,
+        float,
+        str,
+        bytes,
+        object,
+        NoneType,
+        complex,
+        bool,
+        slice,
+        types.CodeType,
+        EllipsisType,
+        super,
     ]
     self.primitive_classes = {
         v: self.constant_to_value(v) for v in primitive_classes
@@ -203,16 +212,18 @@ class Converter(utils.ContextWeakrefMixin):
     return self.primitive_instances[str].to_variable(node)
 
   def build_content(self, elements, discard_concrete_values=True):
-    if (len(elements) == 1 and (
-        not discard_concrete_values or
-        not any(v.is_concrete for v in elements[0].data))):
+    if len(elements) == 1 and (
+        not discard_concrete_values
+        or not any(v.is_concrete for v in elements[0].data)
+    ):
       return next(iter(elements))
     var = self.ctx.program.NewVariable()
     for v in elements:
       for b in v.bindings:
         if discard_concrete_values and b.data.is_concrete:
           var.PasteBindingWithNewData(
-              b, self.get_maybe_abstract_instance(b.data))
+              b, self.get_maybe_abstract_instance(b.data)
+          )
         else:
           var.PasteBinding(b)
     return var
@@ -249,7 +260,8 @@ class Converter(utils.ContextWeakrefMixin):
     content = list(content)  # content might be a generator
     value = abstract.Instance(self.set_type, self.ctx)
     value.merge_instance_type_parameter(
-        node, abstract_utils.T, self.build_content(content))
+        node, abstract_utils.T, self.build_content(content)
+    )
     return value.to_variable(node)
 
   def build_map(self, node):
@@ -328,7 +340,8 @@ class Converter(utils.ContextWeakrefMixin):
     unknown = self._create_new_unknown_value(action)
     v = self.ctx.program.NewVariable()
     val = v.AddBinding(
-        unknown, source_set=[source] if source else [], where=node)
+        unknown, source_set=[source] if source else [], where=node
+    )
     unknown.owner = val
     self.ctx.vm.trace_unknown(unknown.class_name, val)
     return v
@@ -336,8 +349,10 @@ class Converter(utils.ContextWeakrefMixin):
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""
     if not isinstance(arg_type, abstract.ParameterizedClass):
-      assert (isinstance(arg_type, abstract.Class) and
-              arg_type.full_name in ("builtins.dict", "builtins.tuple"))
+      assert isinstance(arg_type, abstract.Class) and arg_type.full_name in (
+          "builtins.dict",
+          "builtins.tuple",
+      )
       return None
     elif arg_type.base_cls is self.dict_type:
       return arg_type.get_formal_type_parameter(abstract_utils.V)
@@ -349,12 +364,13 @@ class Converter(utils.ContextWeakrefMixin):
       self,
       old_container: abstract.Class,
       new_container_module: str,
-      new_container_name: str
+      new_container_name: str,
   ) -> abstract.BaseValue:
     new_container = self.lookup_value(new_container_module, new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):
       return abstract.ParameterizedClass(
-          new_container, old_container.formal_type_parameters, self.ctx)
+          new_container, old_container.formal_type_parameters, self.ctx
+      )
     else:
       return new_container
 
@@ -380,6 +396,7 @@ class Converter(utils.ContextWeakrefMixin):
 
     Args:
       instances: An iterable of instances.
+
     Returns:
       An abstract.BaseValue created by merging the instances' classes.
     """
@@ -389,13 +406,22 @@ class Converter(utils.ContextWeakrefMixin):
     return self.merge_values(sorted(classes, key=lambda cls: cls.full_name))
 
   def convert_pytd_function(self, pytd_func, factory=abstract.PyTDFunction):
-    sigs = [abstract.PyTDSignature(pytd_func.name, sig, self.ctx)
-            for sig in pytd_func.signatures]
+    sigs = [
+        abstract.PyTDSignature(pytd_func.name, sig, self.ctx)
+        for sig in pytd_func.signatures
+    ]
     return factory(
-        pytd_func.name, sigs, pytd_func.kind, pytd_func.decorators, self.ctx)
+        pytd_func.name, sigs, pytd_func.kind, pytd_func.decorators, self.ctx
+    )
 
-  def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
-                      discard_concrete_values=False):
+  def constant_to_var(
+      self,
+      pyval,
+      subst=None,
+      node=None,
+      source_sets=None,
+      discard_concrete_values=False,
+  ):
     """Convert a constant to a Variable.
 
     This converts a constant to a cfg.Variable. Unlike constant_to_value, it
@@ -410,6 +436,7 @@ class Converter(utils.ContextWeakrefMixin):
       source_sets: An iterator over instances of SourceSet (or just tuples).
       discard_concrete_values: Whether concrete values should be discarded from
         type parameters.
+
     Returns:
       A cfg.Variable.
     Raises:
@@ -422,9 +449,12 @@ class Converter(utils.ContextWeakrefMixin):
 
     # These args never change in recursive calls
     kwargs = {
-        "subst": subst, "node": node, "source_sets": source_sets,
-        "discard_concrete_values": discard_concrete_values
+        "subst": subst,
+        "node": node,
+        "source_sets": source_sets,
+        "discard_concrete_values": discard_concrete_values,
     }
+
     def constant_to_value(new_pyval):
       # Call constant_to_value with the given subst and node
       return self.constant_to_value(new_pyval, subst, node)
@@ -435,8 +465,9 @@ class Converter(utils.ContextWeakrefMixin):
       return self.constant_to_var(pyval.type, **kwargs)
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
-      if (isinstance(pyval, abstract_utils.AsReturnValue) and
-          isinstance(cls, pytd.NothingType)):
+      if isinstance(pyval, abstract_utils.AsReturnValue) and isinstance(
+          cls, pytd.NothingType
+      ):
         return self.never.to_variable(node)
       else:
         return self.pytd_cls_to_instance_var(cls, **kwargs)
@@ -453,12 +484,15 @@ class Converter(utils.ContextWeakrefMixin):
       # tuples.
       content = (self.constant_to_var(v, **kwargs) for v in pyval)
       return self.build_tuple(self.ctx.root_node, content)
-    raise ValueError(
-        f"Cannot convert {pyval.__class__} to an abstract value")
+    raise ValueError(f"Cannot convert {pyval.__class__} to an abstract value")
 
   def pytd_cls_to_instance_var(
-      self, cls, subst=None, node=None, source_sets=None,
-      discard_concrete_values=False
+      self,
+      cls,
+      subst=None,
+      node=None,
+      source_sets=None,
+      discard_concrete_values=False,
   ):
     """Convert a constant instance to a Variable.
 
@@ -473,6 +507,7 @@ class Converter(utils.ContextWeakrefMixin):
       source_sets: An iterator over instances of SourceSet (or just tuples).
       discard_concrete_values: Whether concrete values should be discarded from
         type parameters.
+
     Returns:
       A cfg.Variable.
     Raises:
@@ -485,18 +520,22 @@ class Converter(utils.ContextWeakrefMixin):
 
     # These args never change in recursive calls
     kwargs = {
-        "subst": subst, "node": node, "source_sets": source_sets,
-        "discard_concrete_values": discard_concrete_values
+        "subst": subst,
+        "node": node,
+        "source_sets": source_sets,
+        "discard_concrete_values": discard_concrete_values,
     }
+
     def constant_to_instance_value(new_type):
       # Call constant_to_value with the given subst and node
       return self.constant_to_value(
-          abstract_utils.AsInstance(new_type), subst, node)
+          abstract_utils.AsInstance(new_type), subst, node
+      )
 
     if isinstance(cls, pytd.AnythingType):
       return self.unsolvable.to_variable(node)
     elif isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
-      param, = cls.parameters
+      (param,) = cls.parameters
       return self.pytd_cls_to_instance_var(param, **kwargs)
     var = self.ctx.program.NewVariable()
     for t in pytd_utils.UnpackUnion(cls):
@@ -559,9 +598,11 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       self._convert_cache[key] = None  # for recursion detection
       need_node = [False]  # mutable value that can be modified by get_node
+
       def get_node():
         need_node[0] = True
         return node
+
       recursive = isinstance(pyval, pytd.LateType) and pyval.recursive
       if recursive:
         context = self.ctx.allow_recursive_convert()
@@ -587,7 +628,8 @@ class Converter(utils.ContextWeakrefMixin):
         #     d = {"a": 1j}
         if recursive:
           annot = abstract.LateAnnotation(
-              pyval.name, self.ctx.vm.frames, self.ctx)
+              pyval.name, self.ctx.vm.frames, self.ctx
+          )
           annot.set_type(value)
           value = annot
         self._convert_cache[key] = value
@@ -600,8 +642,13 @@ class Converter(utils.ContextWeakrefMixin):
   def _create_module(self, ast):
     if not ast:
       raise abstract_utils.ModuleLoadError()
-    data = (ast.constants + ast.type_params + ast.classes +
-            ast.functions + ast.aliases)
+    data = (
+        ast.constants
+        + ast.type_params
+        + ast.classes
+        + ast.functions
+        + ast.aliases
+    )
     members = {}
     for val in data:
       name = utils.strip_prefix(val.name, f"{ast.name}.")
@@ -622,8 +669,10 @@ class Converter(utils.ContextWeakrefMixin):
       _, name = pyval.name.rsplit(".", 1)
       # Bad values should have been caught by visitors.VerifyEnumValues.
       assert cls.is_enum, f"Non-enum type used in Literal: {cls.official_name}"
-      assert name in cls, ("Literal enum refers to non-existent member "
-                           f"'{pyval.name}' of {cls.official_name}")
+      assert name in cls, (
+          "Literal enum refers to non-existent member "
+          f"'{pyval.name}' of {cls.official_name}"
+      )
       # The cls has already been converted, so don't try to convert the member.
       return abstract_utils.get_atomic_value(cls.members[name])
     if pyval == self.ctx.loader.lookup_pytd("builtins", "True"):
@@ -666,15 +715,17 @@ class Converter(utils.ContextWeakrefMixin):
         md = metadata.from_string(annotations[1])
         if md["tag"] == "attr.ib":
           ret = attr_overlay.AttribInstance.from_metadata(
-              self.ctx, self.ctx.root_node, typ, md)
+              self.ctx, self.ctx.root_node, typ, md
+          )
           return ret
         elif md["tag"] == "attr.s":
           ret = attr_overlay.Attrs.from_metadata(self.ctx, md)
           return ret
       except (IndexError, ValueError, TypeError, KeyError):
         details = "Wrong format for pytype_metadata."
-        self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames,
-                                             annotations[1], details)
+        self.ctx.errorlog.invalid_annotation(
+            self.ctx.vm.frames, annotations[1], details
+        )
         return typ
     else:
       return typ
@@ -682,8 +733,11 @@ class Converter(utils.ContextWeakrefMixin):
   def _maybe_load_from_overlay(self, module, member_name):
     # The typing module cannot be loaded until setup is complete and the first
     # VM frame is pushed.
-    if (module == "typing" and not self.ctx.vm.frame or
-        module not in overlay_dict.overlays):
+    if (
+        module == "typing"
+        and not self.ctx.vm.frame
+        or module not in overlay_dict.overlays
+    ):
       return None
     overlay = self.ctx.vm.import_module(module, module, 0, bypass_strict=True)
     if overlay.get_module(member_name) is not overlay:
@@ -695,14 +749,17 @@ class Converter(utils.ContextWeakrefMixin):
     instance = abstract.Instance(self.frozenset_type, self.ctx)
     for element in pyval:
       instance.merge_instance_type_parameter(
-          self.ctx.root_node, abstract_utils.T,
-          self.constant_to_var(element, {}))
+          self.ctx.root_node,
+          abstract_utils.T,
+          self.constant_to_var(element, {}),
+      )
     return instance
 
   def _tuple_literal_to_value(self, pyval: Tuple[Any, ...]):
     """Convert a literal tuple to an abstract value."""
     return self.tuple_to_value(
-        [self.constant_to_var(item, {}) for item in pyval])
+        [self.constant_to_var(item, {}) for item in pyval]
+    )
 
   def _pytd_class_to_value(self, pyval: pytd.Class, node):
     """Convert a pytd.Class to an abstract value."""
@@ -736,10 +793,13 @@ class Converter(utils.ContextWeakrefMixin):
         mycls = self.constant_to_value(cls, subst)
         if isinstance(mycls, typed_dict.TypedDictClass):
           instance = mycls.instantiate_value(self.ctx.root_node, None)
-        elif (isinstance(mycls, abstract.PyTDClass) and
-              mycls.pytd_cls.name in self.primitive_classes_by_name):
+        elif (
+            isinstance(mycls, abstract.PyTDClass)
+            and mycls.pytd_cls.name in self.primitive_classes_by_name
+        ):
           instance = self.primitive_instances[
-              self.primitive_classes_by_name[mycls.pytd_cls.name]]
+              self.primitive_classes_by_name[mycls.pytd_cls.name]
+          ]
         else:
           instance = abstract.Instance(mycls, self.ctx)
       log.info("New pytd instance for %s: %r", cls.name, instance)
@@ -770,21 +830,26 @@ class Converter(utils.ContextWeakrefMixin):
       parameters = pyval.parameters + (combined_parameter,)
     elif isinstance(pyval, pytd.CallableType):
       abstract_class = abstract.CallableClass
-      template = list(range(len(pyval.args))) + [abstract_utils.ARGS,
-                                                 abstract_utils.RET]
+      template = list(range(len(pyval.args))) + [
+          abstract_utils.ARGS,
+          abstract_utils.RET,
+      ]
       parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
     else:
-      if (self.ctx.options.use_fiddle_overlay and
-          fiddle_overlay.is_fiddle_buildable_pytd(pyval)):
+      if (
+          self.ctx.options.use_fiddle_overlay
+          and fiddle_overlay.is_fiddle_buildable_pytd(pyval)
+      ):
         # fiddle.Config[Foo] should call the constructor from the overlay, not
         # create a generic PyTDClass.
         node = get_node()
-        param, = pyval.parameters
+        (param,) = pyval.parameters
         underlying = self.constant_to_value(param, subst, node)
         subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
         try:
           return fiddle_overlay.BuildableType.make(
-              subclass_name, underlying, self.ctx)
+              subclass_name, underlying, self.ctx
+          )
         except KeyError:
           # We are in the middle of constructing the fiddle ast so
           # fiddle.Config does not exist yet. Continue constructing a generic
@@ -797,12 +862,14 @@ class Converter(utils.ContextWeakrefMixin):
         pyval_template = base.template
       template = tuple(t.name for t in pyval_template)
       parameters = pyval.parameters
-    assert (pyval.name in ("typing.Generic", "typing.Protocol") or
-            len(parameters) <= len(template))
+    assert pyval.name in ("typing.Generic", "typing.Protocol") or len(
+        parameters
+    ) <= len(template)
     # Delay type parameter loading to handle recursive types.
     # See the ParameterizedClass.formal_type_parameters() property.
     type_parameters = abstract_utils.LazyFormalTypeParameters(
-        template, parameters, subst)
+        template, parameters, subst
+    )
     return abstract_class(base_cls, type_parameters, self.ctx)
 
   def _pytd_generic_type_to_instance_value(
@@ -820,34 +887,38 @@ class Converter(utils.ContextWeakrefMixin):
       base_cls = base_type.cls
     assert isinstance(base_cls, pytd.Class), base_cls
     if base_cls.name == "builtins.type":
-      c, = cls.parameters
+      (c,) = cls.parameters
       if isinstance(c, pytd.TypeParameter):
         if not subst or c.full_name not in subst:
           raise self.TypeParameterError(c.full_name)
         # deformalize gets rid of any unexpected TypeVars, which can appear
         # if something is annotated as Type[T].
         return self.ctx.annotation_utils.deformalize(
-            self.merge_classes(subst[c.full_name].data))
+            self.merge_classes(subst[c.full_name].data)
+        )
       else:
         return self.constant_to_value(c, subst)
     elif isinstance(cls, pytd.TupleType):
       node = get_node()
       content = tuple(
-          self.pytd_cls_to_instance_var(p, subst, node)
-          for p in cls.parameters)
+          self.pytd_cls_to_instance_var(p, subst, node) for p in cls.parameters
+      )
       return self.tuple_to_value(content)
     elif isinstance(cls, pytd.CallableType):
       clsval = self.constant_to_value(cls, subst)
       return abstract.Instance(clsval, self.ctx)
-    elif (self.ctx.options.use_fiddle_overlay and
-          fiddle_overlay.is_fiddle_buildable_pytd(base_cls)):
+    elif (
+        self.ctx.options.use_fiddle_overlay
+        and fiddle_overlay.is_fiddle_buildable_pytd(base_cls)
+    ):
       # fiddle.Config[Foo] should call the constructor from the overlay, not
       # create a generic PyTDClass.
       node = get_node()
       underlying = self.constant_to_value(cls.parameters[0], subst, node)
       subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(base_cls)
       _, ret = fiddle_overlay.make_instance(
-          subclass_name, underlying, node, self.ctx)
+          subclass_name, underlying, node, self.ctx
+      )
       return ret
     else:
       clsval = self.constant_to_value(base_cls, subst)
@@ -900,7 +971,8 @@ class Converter(utils.ContextWeakrefMixin):
       # TODO(mdemello): We should never be dealing with a raw pycnite CodeType
       # at this point.
       return abstract.ConcreteValue(
-          pyval, self.primitive_classes[types.CodeType], self.ctx)
+          pyval, self.primitive_classes[types.CodeType], self.ctx
+      )
     elif pyval is super:
       return special_builtins.Super.make(self.ctx)
     elif pyval is object:
@@ -921,16 +993,18 @@ class Converter(utils.ContextWeakrefMixin):
       if isinstance(cls, pytd.ClassType):
         cls = cls.cls
       if isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
-        param, = cls.parameters
+        (param,) = cls.parameters
         return self.constant_to_value(abstract_utils.AsInstance(param), subst)
-      elif (isinstance(cls, pytd.GenericType) or
-            (isinstance(cls, pytd.Class) and cls.template)):
+      elif isinstance(cls, pytd.GenericType) or (
+          isinstance(cls, pytd.Class) and cls.template
+      ):
         # If we're converting a generic Class, need to create a new instance of
         # it. See test_classes.testGenericReinstantiated.
         if isinstance(cls, pytd.Class):
           params = tuple(t.type_param.upper_value for t in cls.template)
-          cls = pytd.GenericType(base_type=pytd.ClassType(cls.name, cls),
-                                 parameters=params)
+          cls = pytd.GenericType(
+              base_type=pytd.ClassType(cls.name, cls), parameters=params
+          )
         return self._pytd_generic_type_to_instance_value(cls, subst, get_node)
       elif isinstance(cls, pytd.Class):
         return self._pytd_class_to_instance_value(cls, subst)
@@ -944,7 +1018,8 @@ class Converter(utils.ContextWeakrefMixin):
       return self._tuple_literal_to_value(pyval)
     else:
       raise NotImplementedError(
-          f"Can't convert constant {type(pyval)} {pyval!r}")
+          f"Can't convert constant {type(pyval)} {pyval!r}"
+      )
 
   def _pytd_constant_to_value(self, pyval: pytd.Node, subst, get_node):
     """Convert a pytd type to an abstract value.
@@ -986,29 +1061,29 @@ class Converter(utils.ContextWeakrefMixin):
       return self.empty
     elif isinstance(pyval, pytd.AnythingType):
       return self.unsolvable
-    elif (isinstance(pyval, pytd.Constant) and
-          isinstance(pyval.type, pytd.AnythingType)):
+    elif isinstance(pyval, pytd.Constant) and isinstance(
+        pyval.type, pytd.AnythingType
+    ):
       # We allow "X = ... # type: Any" to declare X as a type.
       return self.unsolvable
-    elif (isinstance(pyval, pytd.Constant) and
-          isinstance(pyval.type, pytd.GenericType) and
-          pyval.type.name == "builtins.type"):
+    elif (
+        isinstance(pyval, pytd.Constant)
+        and isinstance(pyval.type, pytd.GenericType)
+        and pyval.type.name == "builtins.type"
+    ):
       # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
-      param, = pyval.type.parameters
+      (param,) = pyval.type.parameters
       return self.constant_to_value(param, subst)
     elif isinstance(pyval, pytd.UnionType):
-      options = [
-          self.constant_to_value(t, subst)
-          for t in pyval.type_list
-      ]
+      options = [self.constant_to_value(t, subst) for t in pyval.type_list]
       if len(options) > 1:
         return abstract.Union(options, self.ctx)
       else:
         return options[0]
     elif isinstance(pyval, (pytd.TypeParameter, pytd.ParamSpec)):
       constraints = tuple(
-          self.constant_to_value(c, {})
-          for c in pyval.constraints)
+          self.constant_to_value(c, {}) for c in pyval.constraints
+      )
       bound = pyval.bound and self.constant_to_value(pyval.bound, {})
       if isinstance(pyval, pytd.ParamSpec):
         cls = abstract.ParamSpec
@@ -1019,16 +1094,18 @@ class Converter(utils.ContextWeakrefMixin):
           self.ctx,
           constraints=constraints,
           bound=bound,
-          scope=pyval.scope)
+          scope=pyval.scope,
+      )
     elif isinstance(pyval, (pytd.ParamSpecArgs, pytd.ParamSpecKwargs)):
       # TODO(b/217789659): Support these.
       return self.unsolvable
     elif isinstance(pyval, pytd.Concatenate):
       params = [self.constant_to_value(p, subst) for p in pyval.parameters]
       return abstract.Concatenate(params, self.ctx)
-    elif (isinstance(pyval, pytd.GenericType) and
-          pyval.name == "typing.ClassVar"):
-      param, = pyval.parameters
+    elif (
+        isinstance(pyval, pytd.GenericType) and pyval.name == "typing.ClassVar"
+    ):
+      (param,) = pyval.parameters
       return self.constant_to_value(param, subst)
     elif isinstance(pyval, pytd.GenericType):
       return self._pytd_generic_type_to_value(pyval, subst, get_node)
@@ -1040,4 +1117,5 @@ class Converter(utils.ContextWeakrefMixin):
       return self._apply_metadata_annotations(typ, pyval.annotations)
     else:
       raise NotImplementedError(
-          f"Can't convert pytd constant {type(pyval)} {pyval!r}")
+          f"Can't convert pytd constant {type(pyval)} {pyval!r}"
+      )

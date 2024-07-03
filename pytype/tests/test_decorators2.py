@@ -24,18 +24,22 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
       class Foo:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, TypeVar
       Fn = TypeVar('Fn', bound=Callable)
       def decorate(fn: Fn) -> Fn: ...
       def f(x: int) -> str: ...
       class Foo: ...
-    """)
+    """,
+    )
     # Prints the inferred types as a stub file and tests that the decorator
     # works correctly when imported in another file.
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
 
         @foo.decorate
@@ -45,12 +49,17 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
         @foo.decorate
         class Bar:
           pass
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       def f(x: str) -> int: ...
       class Bar: ...
-    """)
+    """,
+    )
 
   def test_decorator_factory(self):
     ty = self.Infer("""
@@ -78,7 +87,9 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
       class Bar:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, TypeVar
       Fn = TypeVar('Fn', bound=Callable)
       def decorate(**options) -> Callable[[Fn], Fn]: ...
@@ -86,10 +97,12 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
       def g() -> float: ...
       class Foo: ...
       class Bar: ...
-    """)
+    """,
+    )
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
 
         @foo.decorate()
@@ -107,14 +120,19 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
         @foo.decorate(z=42)
         class Bar:
           pass
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       def f() -> None: ...
       def g(x: int, y: int) -> int: ...
       class Foo: ...
       class Bar: ...
-    """)
+    """,
+    )
 
   def test_identity_or_factory(self):
     ty = self.Infer("""
@@ -150,7 +168,9 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
       class Bar:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, overload, TypeVar
       Fn = TypeVar('Fn', bound=Callable)
 
@@ -163,10 +183,12 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
       def g(x: complex) -> float: ...
       class Foo: ...
       class Bar: ...
-    """)
+    """,
+    )
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
 
         @foo.decorate
@@ -184,14 +206,19 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
         @foo.decorate()
         class Bar:
           pass
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import foo
       def f(x: float) -> str: ...
       def g(x: int, y: float) -> float: ...
       class Foo: ...
       class Bar: ...
-    """)
+    """,
+    )
 
 
 class DecoratorsTest(test_base.BaseTest):
@@ -268,22 +295,28 @@ class DecoratorsTest(test_base.BaseTest):
       Foo().f(0)
       Foo.f(Foo(), 0)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Callable
       def decorate(f: Callable[[Any, int], int]) -> Callable[[Any, int], int]:
         ...
       class Foo:
         def f(self, _1: int) -> int: ...
-    """)
+    """,
+    )
 
   def test_instance_method_with_unannotated_decorator(self):
-    with self.DepTree([("lock.py", """
+    with self.DepTree([(
+        "lock.py",
+        """
       class Lock:
         def __call__(self, f):
           def wrapped(a, b):
             pass
           return wrapped
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import lock
         class Foo:
@@ -292,12 +325,15 @@ class DecoratorsTest(test_base.BaseTest):
             pass
         Foo().f(0)
       """)
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import lock
         from typing import Any
         class Foo:
           def f(self, _1) -> Any: ...
-      """)
+      """,
+      )
 
   def test_instance_method_from_generic_callable(self):
     ty = self.Infer("""
@@ -311,13 +347,16 @@ class DecoratorsTest(test_base.BaseTest):
           pass
       assert_type(Foo().f(), Foo)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, TypeVar
       T = TypeVar('T')
       def decorate(f) -> Callable[[T], T]: ...
       class Foo:
         def f(self: T) -> T: ...
-    """)
+    """,
+    )
 
   def test_typevar_in_decorated_function_in_function(self):
     self.Check("""

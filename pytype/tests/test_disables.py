@@ -53,7 +53,8 @@ class DisableTest(test_base.BaseTest):
       # pytype: enable=attribute-error
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Type checking", "e2": r"wrong-arg-types"})
+        errors, {"e1": r"Type checking", "e2": r"wrong-arg-types"}
+    )
     # late-directive is a warning
     self.assertFalse(errors.has_error())
 

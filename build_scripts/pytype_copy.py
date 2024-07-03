@@ -13,12 +13,23 @@ import sys
 
 def parse_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument("-s", "--src_dir", type=str, required=True,
-                      help="The source directory.")
-  parser.add_argument("-d", "--dst_dir", type=str, required=True,
-                      help="The destination directory.")
-  parser.add_argument("file_list", metavar="FILE", type=str, nargs="+",
-                      help="List of files to copy.")
+  parser.add_argument(
+      "-s", "--src_dir", type=str, required=True, help="The source directory."
+  )
+  parser.add_argument(
+      "-d",
+      "--dst_dir",
+      type=str,
+      required=True,
+      help="The destination directory.",
+  )
+  parser.add_argument(
+      "file_list",
+      metavar="FILE",
+      type=str,
+      nargs="+",
+      help="List of files to copy.",
+  )
   args = parser.parse_args()
   return args
 

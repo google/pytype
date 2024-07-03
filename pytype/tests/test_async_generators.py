@@ -62,7 +62,9 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         x = await func()
         yield x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, AsyncGenerator, Coroutine, Union
 
       x: AsyncGenerator[str, Any]
@@ -71,7 +73,8 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       def f(x) -> AsyncGenerator[Union[int, str], Any]: ...
       def func() -> Coroutine[Any, Any, str]: ...
       def gen() -> AsyncGenerator[Union[int, str], Any]: ...
-    """)
+    """,
+    )
 
   def test_annotation_error(self):
     errors = self.CheckWithErrors("""
@@ -93,10 +96,16 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         g = gen1()
         await g.asend("str")  # wrong-arg-types[e5]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"bool.*int", "e2": r"bool.*int", "e3": r"bool.*int",
-        "e4": r"AsyncGenerator.*AsyncIterable.*AsyncIterator",
-        "e5": r"int.*str"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"bool.*int",
+            "e2": r"bool.*int",
+            "e3": r"bool.*int",
+            "e4": r"AsyncGenerator.*AsyncIterable.*AsyncIterator",
+            "e5": r"int.*str",
+        },
+    )
 
   def test_match_base_class_error(self):
     errors = self.CheckWithErrors("""
@@ -137,9 +146,14 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       f5(gen())
       f6(gen())  # wrong-arg-types[e3]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"bool.*Union\[int, str\]", "e2": r"bool.*Union\[int, str\]",
-        "e3": r"bool.*Union\[int, str\]"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"bool.*Union\[int, str\]",
+            "e2": r"bool.*Union\[int, str\]",
+            "e3": r"bool.*Union\[int, str\]",
+        },
+    )
 
   def test_protocol(self):
     ty = self.Infer("""
@@ -185,7 +199,9 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
           await func()
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, AsyncIterable, AsyncIterator, AsyncContextManager, Coroutine, TypeVar
 
       _TAIterable = TypeVar('_TAIterable', bound=AIterable)
@@ -208,7 +224,8 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       def f3(x: AsyncContextManager) -> None: ...
       def f4() -> Coroutine[Any, Any, int]: ...
       def func() -> Coroutine[Any, Any, str]: ...
-    """)
+    """,
+    )
 
   def test_callable(self):
     self.Check("""
@@ -222,10 +239,13 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
     """)
 
   def test_callable_with_imported_func(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       async def f1(a: str) -> str:
         return a
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import Awaitable, Callable

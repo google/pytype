@@ -14,14 +14,18 @@ import sys
 
 import build_utils
 
+
 def parse_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument("-t", "--target", required=True, type=str,
-                      help="Name of the test target.")
-  parser.add_argument("-b", "--binary", required=True, type=str,
-                      help="Path to the test binary.")
-  parser.add_argument("-l", "--logfile", type=str,
-                      help="Path to log file to log test output.")
+  parser.add_argument(
+      "-t", "--target", required=True, type=str, help="Name of the test target."
+  )
+  parser.add_argument(
+      "-b", "--binary", required=True, type=str, help="Path to the test binary."
+  )
+  parser.add_argument(
+      "-l", "--logfile", type=str, help="Path to log file to log test output."
+  )
   return parser.parse_args()
 
 

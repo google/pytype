@@ -3,7 +3,6 @@
 import ast as astlib
 import dataclasses
 import textwrap
-
 from typing import Any, List, Optional, cast
 
 from pytype.pyi import types
@@ -38,7 +37,8 @@ class Mutator(visitors.Visitor):
       self.successful = True
       if p.optional:
         raise NotImplementedError(
-            f"Argument {p.name!r} cannot be both mutable and optional")
+            f"Argument {p.name!r} cannot be both mutable and optional"
+        )
       return p.Replace(mutated_type=self.new_type)
     else:
       return p
@@ -76,15 +76,18 @@ class NameAndSig(pytd_function.NameAndSig):
 
   @classmethod
   def from_function(
-      cls, function: astlib.FunctionDef, props: SigProperties) -> "NameAndSig":
+      cls, function: astlib.FunctionDef, props: SigProperties
+  ) -> "NameAndSig":
     """Constructor from an ast.FunctionDef node."""
     name = function.name
 
     decorators = cast(List[pytd.Alias], function.decorator_list)
     mutually_exclusive = {"property", "staticmethod", "classmethod"}
     if len({d.type.name for d in decorators} & mutually_exclusive) > 1:
-      raise _ParseError(f"'{name}' can be decorated with at most one of "
-                        "property, staticmethod, and classmethod")
+      raise _ParseError(
+          f"'{name}' can be decorated with at most one of "
+          "property, staticmethod, and classmethod"
+      )
 
     exceptions = []
     mutators = []
@@ -95,9 +98,12 @@ class NameAndSig(pytd_function.NameAndSig):
         mutators.append(x)
       elif isinstance(x, types.Ellipsis):
         pass
-      elif (isinstance(x, astlib.Expr) and
-            isinstance(x.value, astlib.Constant) and
-            isinstance(x.value.value, str) and i == 0):
+      elif (
+          isinstance(x, astlib.Expr)
+          and isinstance(x.value, astlib.Constant)
+          and isinstance(x.value.value, str)
+          and i == 0
+      ):
         # docstring
         pass
       else:
@@ -115,8 +121,11 @@ class NameAndSig(pytd_function.NameAndSig):
 
     # mutators
     # If `self` is generic, a type parameter is being mutated.
-    if (sig.params and sig.params[0].name == "self" and
-        isinstance(sig.params[0].type, pytd.GenericType)):
+    if (
+        sig.params
+        and sig.params[0].name == "self"
+        and isinstance(sig.params[0].type, pytd.GenericType)
+    ):
       mutators.append(Mutator("self", sig.params[0].type))
     for mutator in mutators:
       try:
@@ -126,25 +135,36 @@ class NameAndSig(pytd_function.NameAndSig):
       if not mutator.successful:
         raise _ParseError(f"No parameter named {mutator.name!r}")
 
-    return cls(name, sig, tuple(decorators), props.abstract, props.coroutine,
-               props.final, props.overload)
+    return cls(
+        name,
+        sig,
+        tuple(decorators),
+        props.abstract,
+        props.coroutine,
+        props.final,
+        props.overload,
+    )
 
 
 def _pytd_signature(
     function: astlib.FunctionDef,
     is_async: bool,
-    exceptions: Optional[List[pytd.Type]] = None
+    exceptions: Optional[List[pytd.Type]] = None,
 ) -> pytd.Signature:
   """Construct a pytd signature from an ast.FunctionDef node."""
   name = function.name
   args = function.args
   # Positional-only parameters are new in Python 3.8.
-  posonly_params = [Param.from_arg(a, pytd.ParameterKind.POSONLY)
-                    for a in getattr(args, "posonlyargs", ())]
-  pos_params = [Param.from_arg(a, pytd.ParameterKind.REGULAR)
-                for a in args.args]
-  kwonly_params = [Param.from_arg(a, pytd.ParameterKind.KWONLY)
-                   for a in args.kwonlyargs]
+  posonly_params = [
+      Param.from_arg(a, pytd.ParameterKind.POSONLY)
+      for a in getattr(args, "posonlyargs", ())
+  ]
+  pos_params = [
+      Param.from_arg(a, pytd.ParameterKind.REGULAR) for a in args.args
+  ]
+  kwonly_params = [
+      Param.from_arg(a, pytd.ParameterKind.KWONLY) for a in args.kwonlyargs
+  ]
   _apply_defaults(posonly_params + pos_params, args.defaults)
   _apply_defaults(kwonly_params, args.kw_defaults)
   all_params = posonly_params + pos_params + kwonly_params
@@ -153,11 +173,14 @@ def _pytd_signature(
   starstarargs = _pytd_starstar_param(args.kwarg)
   ret = pytd_function.pytd_return_type(name, function.returns, is_async)
   exceptions = exceptions or []
-  return pytd.Signature(params=params,
-                        return_type=ret,
-                        starargs=starargs,
-                        starstarargs=starstarargs,
-                        exceptions=tuple(exceptions), template=())
+  return pytd.Signature(
+      params=params,
+      return_type=ret,
+      starargs=starargs,
+      starstarargs=starstarargs,
+      exceptions=tuple(exceptions),
+      template=(),
+  )
 
 
 def _pytd_star_param(arg: astlib.arg) -> Optional[pytd.Parameter]:
@@ -166,14 +189,15 @@ def _pytd_star_param(arg: astlib.arg) -> Optional[pytd.Parameter]:
     return None
   # Temporary hack: until pytype supports Unpack, treat it as Any.
   unpack = parser_constants.EXTERNAL_NAME_PREFIX + "typing_extensions.Unpack"
-  if (isinstance(arg.annotation, pytd.GenericType) and
-      arg.annotation.base_type.name == unpack):
+  if (
+      isinstance(arg.annotation, pytd.GenericType)
+      and arg.annotation.base_type.name == unpack
+  ):
     arg.annotation = pytd.AnythingType()
   return pytd_function.pytd_star_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types
 
 
-def _pytd_starstar_param(
-    arg: Optional[astlib.arg]) -> Optional[pytd.Parameter]:
+def _pytd_starstar_param(arg: Optional[astlib.arg]) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a **kwargs argument."""
   if not arg:
     return None

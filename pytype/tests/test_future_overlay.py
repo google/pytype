@@ -11,8 +11,10 @@ class FutureUtilsTest(test_base.BaseTest):
     with test_utils.Tempdir() as d:
       d.create_file(
           "future/utils.pyi",
-          "def with_metaclass(meta: type, *bases: type) -> type: ...")
-      self.Check("""
+          "def with_metaclass(meta: type, *bases: type) -> type: ...",
+      )
+      self.Check(
+          """
           import abc
           from future.utils import with_metaclass
           class A:
@@ -30,7 +32,9 @@ class FutureUtilsTest(test_base.BaseTest):
               return self.foo
           x = Bar().get_foo()
           y = Bar().bar()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_missing_import(self):
     self.CheckWithErrors("""

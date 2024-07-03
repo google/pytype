@@ -4,8 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class ConcreteTest(test_base.BaseTest,
-                   test_utils.OperatorsTestMixin):
+class ConcreteTest(test_base.BaseTest, test_utils.OperatorsTestMixin):
   """Tests for operators on concrete values (no unknowns)."""
 
   def test_add(self):
@@ -45,12 +44,17 @@ class ConcreteTest(test_base.BaseTest,
     self.check_expr("x & y", ["x=1", "y=2"], "int")
 
   def test_frozenset_ops(self):
-    self.check_expr("x & y", ["x=frozenset()", "y=frozenset()"],
-                    "frozenset[nothing]")
-    self.check_expr("x - y", ["x=frozenset()", "y=frozenset()"],
-                    "frozenset[nothing]")
-    self.check_expr("x | y", ["x=frozenset([1.0])", "y=frozenset([2.2])"],
-                    "frozenset[float]")
+    self.check_expr(
+        "x & y", ["x=frozenset()", "y=frozenset()"], "frozenset[nothing]"
+    )
+    self.check_expr(
+        "x - y", ["x=frozenset()", "y=frozenset()"], "frozenset[nothing]"
+    )
+    self.check_expr(
+        "x | y",
+        ["x=frozenset([1.0])", "y=frozenset([2.2])"],
+        "frozenset[float]",
+    )
 
   def test_contains(self):
     self.check_expr("x in y", ["x=[1]", "y=[1, 2]"], "bool")
@@ -167,8 +171,7 @@ class ConcreteTest(test_base.BaseTest,
     """)
 
 
-class OverloadTest(test_base.BaseTest,
-                   test_utils.OperatorsTestMixin):
+class OverloadTest(test_base.BaseTest, test_utils.OperatorsTestMixin):
   """Tests for overloading operators."""
 
   def test_add(self):
@@ -217,8 +220,7 @@ class OverloadTest(test_base.BaseTest,
     self.check_unary("__nonzero__", "not", "bool")
 
 
-class ReverseTest(test_base.BaseTest,
-                  test_utils.OperatorsTestMixin):
+class ReverseTest(test_base.BaseTest, test_utils.OperatorsTestMixin):
   """Tests for reverse operators."""
 
   def test_add(self):
@@ -253,13 +255,17 @@ class ReverseTest(test_base.BaseTest,
 
   def test_custom(self):
     with test_utils.Tempdir() as d:
-      d.create_file("test.pyi", """
+      d.create_file(
+          "test.pyi",
+          """
         from typing import Tuple
         class Test():
           def __or__(self, other: Tuple[int, ...]) -> bool: ...
           def __ror__(self, other: Tuple[int, ...]) -> bool: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import test
         x = test.Test() | (1, 2)
         y = (1, 2) | test.Test()
@@ -267,15 +273,20 @@ class ReverseTest(test_base.BaseTest,
           return t | (1, 2)
         def g(t):
           return (1, 2) | t
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import test
         from typing import Any
         x = ...  # type: bool
         y = ...  # type: bool
         def f(t) -> Any: ...
         def g(t) -> Any: ...
-      """)
+      """,
+      )
 
   def test_custom_reverse_unused(self):
     self.Check("""
@@ -330,8 +341,7 @@ class ReverseTest(test_base.BaseTest,
     self.assertErrorRegexes(errors, {"e": r"real.*str"})
 
 
-class InplaceTest(test_base.BaseTest,
-                  test_utils.OperatorsTestMixin):
+class InplaceTest(test_base.BaseTest, test_utils.OperatorsTestMixin):
   """Tests for in-place operators."""
 
   def test_add(self):

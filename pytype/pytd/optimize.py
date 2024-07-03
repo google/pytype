@@ -1,9 +1,9 @@
 """Functions for optimizing pytd syntax trees.
 
-   pytd files come from various sources, and are typically redundant (duplicate
-   functions, different signatures saying the same thing, overlong type
-   disjunctions). The Visitors in this file remove various forms of these
-   redundancies.
+pytd files come from various sources, and are typically redundant (duplicate
+functions, different signatures saying the same thing, overlong type
+disjunctions). The Visitors in this file remove various forms of these
+redundancies.
 """
 
 import collections
@@ -27,12 +27,14 @@ class RenameUnknowns(visitors.Visitor):
     super().__init__()
     self.name_to_cls = {name: hash(cls) for name, cls in mapping.items()}
     self.cls_to_canonical_name = {
-        cls: name for name, cls in self.name_to_cls.items()}
+        cls: name for name, cls in self.name_to_cls.items()
+    }
 
   def VisitClassType(self, node):
     if escape.is_unknown(node.name):
       return pytd.ClassType(
-          self.cls_to_canonical_name[self.name_to_cls[node.name]], None)
+          self.cls_to_canonical_name[self.name_to_cls[node.name]], None
+      )
     else:
       return node
 
@@ -63,9 +65,12 @@ class NormalizeGenericSelfTypes(visitors.Visitor):
       return node
     signatures = []
     for sig in node.signatures:
-      if (sig.params and sig.params[0].name == "self" and
-          isinstance(sig.params[0].type, pytd.GenericType) and
-          sig.params[0].type.base_type.name == self.class_stack[-1]):
+      if (
+          sig.params
+          and sig.params[0].name == "self"
+          and isinstance(sig.params[0].type, pytd.GenericType)
+          and sig.params[0].type.base_type.name == self.class_stack[-1]
+      ):
         param = sig.params[0].Replace(type=sig.params[0].type.base_type)
         signatures.append(sig.Replace(params=(param,) + sig.params[1:]))
       else:
@@ -88,7 +93,8 @@ class RemoveDuplicates(visitors.Visitor):
   def VisitFunction(self, node):
     # We remove duplicates, but keep existing entries in the same order.
     return node.Replace(
-        signatures=tuple(pytd_utils.OrderedSet(node.signatures)))
+        signatures=tuple(pytd_utils.OrderedSet(node.signatures))
+    )
 
 
 class SimplifyUnions(visitors.Visitor):
@@ -129,9 +135,11 @@ class _ReturnsAndExceptions:
     if signature.return_type not in self.return_types:
       self.return_types.append(signature.return_type)
 
-    self.exceptions.extend(exception
-                           for exception in signature.exceptions
-                           if exception not in self.exceptions)
+    self.exceptions.extend(
+        exception
+        for exception in signature.exceptions
+        if exception not in self.exceptions
+    )
 
 
 class CombineReturnsAndExceptions(visitors.Visitor):
@@ -269,11 +277,14 @@ class CombineContainers(visitors.Visitor):
       type_list = []
       for t in union.type_list:
         if merge_tuples and isinstance(t, pytd.TupleType):
-          t = pytd.GenericType(base_type=t.base_type,
-                               parameters=(pytd_utils.JoinTypes(t.parameters),))
+          t = pytd.GenericType(
+              base_type=t.base_type,
+              parameters=(pytd_utils.JoinTypes(t.parameters),),
+          )
         elif merge_callables and isinstance(t, pytd.CallableType):
-          t = pytd.GenericType(base_type=t.base_type,
-                               parameters=(pytd.AnythingType(), t.ret))
+          t = pytd.GenericType(
+              base_type=t.base_type, parameters=(pytd.AnythingType(), t.ret)
+          )
         type_list.append(t)
       union = union.Replace(type_list=tuple(type_list))
     collect = {}
@@ -285,7 +296,8 @@ class CombineContainers(visitors.Visitor):
           has_redundant_base_types = True
           collect[key] = tuple(
               pytd_utils.JoinTypes([p1, p2])
-              for p1, p2 in zip(collect[key], t.parameters))
+              for p1, p2 in zip(collect[key], t.parameters)
+          )
         else:
           collect[key] = t.parameters
     if not has_redundant_base_types:
@@ -298,8 +310,9 @@ class CombineContainers(visitors.Visitor):
         if key in done:
           continue  # already added
         parameters = collect[key]
-        add = t.Replace(parameters=tuple(p.Visit(CombineContainers())
-                                         for p in parameters))
+        add = t.Replace(
+            parameters=tuple(p.Visit(CombineContainers()) for p in parameters)
+        )
         done.add(key)
       else:
         add = t
@@ -364,13 +377,11 @@ class SuperClassHierarchy:
 
   def HasSubClassInSet(self, cls, known):
     """Queries whether a subclass of a type is present in a given set."""
-    return any(sub in known
-               for sub in self._subclasses[cls])
+    return any(sub in known for sub in self._subclasses[cls])
 
   def HasSuperClassInSet(self, cls, known):
     """Queries whether a superclass of a type is present in a given set."""
-    return any(sub in known
-               for sub in self._superclasses[cls])
+    return any(sub in known for sub in self._superclasses[cls])
 
 
 class SimplifyUnionsWithSuperclasses(visitors.Visitor):
@@ -432,14 +443,17 @@ class FindCommonSuperClasses(visitors.Visitor):
 
     for t in union.type_list[1:]:
       intersection.intersection_update(
-          self.hierarchy.ExpandSuperClasses(str(t)))
+          self.hierarchy.ExpandSuperClasses(str(t))
+      )
 
     # Remove "redundant" superclasses, by removing everything from the tree
     # that's not a leaf. I.e., we don't need "object" if we have more
     # specialized types.
     new_type_list = tuple(
-        pytd.NamedType(cls) for cls in intersection
-        if not self.hierarchy.HasSubClassInSet(cls, intersection))
+        pytd.NamedType(cls)
+        for cls in intersection
+        if not self.hierarchy.HasSubClassInSet(cls, intersection)
+    )
 
     if not new_type_list:
       return union  # if types don't intersect, leave them alone
@@ -467,8 +481,9 @@ class CollapseLongUnions(visitors.Visitor):
     self.max_length = max_length
 
   def VisitUnionType(self, union):
-    if (len(union.type_list) > self.max_length and
-        not any(isinstance(t, pytd.Literal) for t in union.type_list)):
+    if len(union.type_list) > self.max_length and not any(
+        isinstance(t, pytd.Literal) for t in union.type_list
+    ):
       return self.generic_type
     elif self.generic_type in union.type_list:
       return pytd_utils.JoinTypes(union.type_list)
@@ -529,9 +544,7 @@ class AddInheritedMethods(visitors.Visitor):
     if any(base for base in cls.bases if isinstance(base, pytd.NamedType)):
       raise AssertionError("AddInheritedMethods needs a resolved AST")
     # Filter out only the types we can reason about.
-    bases = [base.cls
-             for base in cls.bases
-             if isinstance(base, pytd.ClassType)]
+    bases = [base.cls for base in cls.bases if isinstance(base, pytd.ClassType)]
     # Don't pull in methods that are named the same as existing methods in
     # this class, local methods override base class methods.
     names = {m.name for m in cls.methods} | {c.name for c in cls.constants}
@@ -547,8 +560,9 @@ class AddInheritedMethods(visitors.Visitor):
       for c in base.constants:
         if c.name not in names:
           new_constants.append(c)
-    return cls.Replace(methods=tuple(new_methods),
-                       constants=tuple(new_constants))
+    return cls.Replace(
+        methods=tuple(new_methods), constants=tuple(new_constants)
+    )
 
 
 class PullInMethodClasses(visitors.Visitor):
@@ -589,6 +603,7 @@ class PullInMethodClasses(visitors.Visitor):
 
     Arguments:
       sig: Function signature (instance of pytd.Signature)
+
     Returns:
       True if the signature has "self".
     """
@@ -605,7 +620,7 @@ class PullInMethodClasses(visitors.Visitor):
       return None
     if [f.name for f in cls.methods] != ["__call__"]:
       return None
-    method, = cls.methods
+    (method,) = cls.methods
     return cls if all(self._HasSelf(sig) for sig in method.signatures) else None
 
   def _CanDelete(self, cls):
@@ -616,6 +631,7 @@ class PullInMethodClasses(visitors.Visitor):
 
     Arguments:
       cls: A pytd.Class.
+
     Returns:
       True if we can delete this class.
     """
@@ -632,8 +648,9 @@ class PullInMethodClasses(visitors.Visitor):
       self._module = module
 
   def VisitTypeDeclUnit(self, unit):
-    return unit.Replace(classes=tuple(c for c in unit.classes
-                                      if not self._CanDelete(c)))
+    return unit.Replace(
+        classes=tuple(c for c in unit.classes if not self._CanDelete(c))
+    )
 
   def VisitClassType(self, t):
     self._total_count[t.name] += 1
@@ -662,8 +679,9 @@ class PullInMethodClasses(visitors.Visitor):
         new_methods.append(new_method.Visit(adjust_self))
       else:
         new_constants.append(const)  # keep
-    return cls.Replace(constants=tuple(new_constants),
-                       methods=tuple(new_methods))
+    return cls.Replace(
+        constants=tuple(new_constants), methods=tuple(new_methods)
+    )
 
 
 class AbsorbMutableParameters(visitors.Visitor):
@@ -685,8 +703,9 @@ class AbsorbMutableParameters(visitors.Visitor):
     if p.mutated_type is None:
       return p
     else:
-      return p.Replace(type=pytd_utils.JoinTypes([p.type, p.mutated_type]),
-                       mutated_type=None)
+      return p.Replace(
+          type=pytd_utils.JoinTypes([p.type, p.mutated_type]), mutated_type=None
+      )
 
 
 class SimplifyContainers(visitors.Visitor):
@@ -813,18 +832,22 @@ class MergeTypeParameters(TypeParameterScope):
     Args:
       item: A pytd.TemplateItem
       substitutions: A dictionary to update with what we replaced.
+
     Returns:
       Either [item] or [].
     """
     containing_union = self._AllContaining(item.type_param)
     if not containing_union:
       return [item]
-    class_type_parameters = [type_param
-                             for type_param in containing_union
-                             if self.IsClassTypeParameter(type_param)]
+    class_type_parameters = [
+        type_param
+        for type_param in containing_union
+        if self.IsClassTypeParameter(type_param)
+    ]
     if class_type_parameters:
       substitutions[item.type_param] = pytd_utils.JoinTypes(
-          class_type_parameters)
+          class_type_parameters
+      )
       return []
     else:
       # It's a function type parameter that appears in a union with other
@@ -839,35 +862,39 @@ class MergeTypeParameters(TypeParameterScope):
     if sig.template == new_template:
       return sig  # Nothing changed.
     else:
-      return sig.Replace(template=tuple(new_template)).Visit(
-          visitors.ReplaceTypeParameters(substitutions)).Visit(SimplifyUnions())
+      return (
+          sig.Replace(template=tuple(new_template))
+          .Visit(visitors.ReplaceTypeParameters(substitutions))
+          .Visit(SimplifyUnions())
+      )
 
 
-def Optimize(node,
-             deps=None,
-             lossy=False,
-             use_abcs=False,
-             max_union=7,
-             remove_mutable=False,
-             can_do_lookup=True):
+def Optimize(
+    node,
+    deps=None,
+    lossy=False,
+    use_abcs=False,
+    max_union=7,
+    remove_mutable=False,
+    can_do_lookup=True,
+):
   """Optimize a PYTD tree.
 
   Tries to shrink a PYTD tree by applying various optimizations.
 
   Arguments:
-    node: A pytd node to be optimized. It won't be modified - this function
-        will return a new node.
+    node: A pytd node to be optimized. It won't be modified - this function will
+      return a new node.
     deps: Definitions of all of the external types in node.
     lossy: Allow optimizations that change the meaning of the pytd.
-    use_abcs: Use abstract base classes to represent unions like
-        e.g. "Union[float, int]" as "Real".
-    max_union: How many types we allow in a union before we simplify
-        it to just "object".
-    remove_mutable: Whether to simplify mutable parameters to normal
-        parameters.
+    use_abcs: Use abstract base classes to represent unions like e.g.
+      "Union[float, int]" as "Real".
+    max_union: How many types we allow in a union before we simplify it to just
+      "object".
+    remove_mutable: Whether to simplify mutable parameters to normal parameters.
     can_do_lookup: True: We're either allowed to try to resolve NamedType
-        instances in the AST, or the AST is already resolved. False: Skip any
-        optimizations that would require NamedTypes to be resolved.
+      instances in the AST, or the AST is already resolved. False: Skip any
+      optimizations that would require NamedTypes to be resolved.
 
   Returns:
     An optimized node.

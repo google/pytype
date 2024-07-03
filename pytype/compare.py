@@ -5,13 +5,15 @@ from pytype.abstract import abstract_utils
 from pytype.pytd import slots
 
 # Equality classes.
-NUMERIC = frozenset({"builtins.bool", "builtins.int", "builtins.float",
-                     "builtins.complex"})
+NUMERIC = frozenset(
+    {"builtins.bool", "builtins.int", "builtins.float", "builtins.complex"}
+)
 STRING = frozenset({"builtins.str", "builtins.unicode"})
 
 # Fully qualified names of types that are parameterized containers.
-_CONTAINER_NAMES = frozenset({
-    "builtins.list", "builtins.set", "builtins.frozenset"})
+_CONTAINER_NAMES = frozenset(
+    {"builtins.list", "builtins.set", "builtins.frozenset"}
+)
 
 
 class CmpTypeError(Exception):
@@ -64,9 +66,11 @@ def _compare_primitive_constant(ctx, op, left, right):
 def _compare_primitive(op, left, right):
   # Determines when primitives are definitely not equal by checking for
   # compatibility of their types.
-  if (_is_equality_cmp(op) and
-      isinstance(right, abstract.Instance) and
-      _incompatible(left.full_name, right.full_name)):
+  if (
+      _is_equality_cmp(op)
+      and isinstance(right, abstract.Instance)
+      and _incompatible(left.full_name, right.full_name)
+  ):
     return op != slots.EQ
   return None
 
@@ -77,7 +81,8 @@ def _get_constant_tuple_prefix(value: abstract.Tuple):
   for element_var in value.pyval:
     try:
       element = abstract_utils.get_atomic_python_constant(
-          element_var, tuple(value.ctx.convert.primitive_classes))
+          element_var, tuple(value.ctx.convert.primitive_classes)
+      )
     except abstract_utils.ConversionError:
       return tuple(elements)
     elements.append(element)
@@ -123,8 +128,9 @@ def _compare_constant_tuple_prefix(op, prefix, constant_tuple, reverse):
 
 def _compare_as_constant_tuples(op, left, right):
   """Checks if the values are constant tuples and compares them if so."""
-  if (not isinstance(left, abstract.Tuple) or
-      not isinstance(right, abstract.Tuple)):
+  if not isinstance(left, abstract.Tuple) or not isinstance(
+      right, abstract.Tuple
+  ):
     return None
   # For each tuple, get the longest prefix of constant elements. For example:
   #   Tuple(PythonConstant(2), Instance(int), PythonConstant(3))
@@ -156,18 +162,23 @@ def _compare_tuple(op, left, right):
   if ret is not None:
     return ret
   # Determines when tuples are definitely not equal by checking their lengths.
-  if (_is_equality_cmp(op) and
-      isinstance(right, abstract.Tuple) and
-      left.tuple_length != right.tuple_length):
+  if (
+      _is_equality_cmp(op)
+      and isinstance(right, abstract.Tuple)
+      and left.tuple_length != right.tuple_length
+  ):
     return op != slots.EQ
   return None
 
 
 def _compare_dict(op, left, right):
   # Determines when dicts are definitely not equal by checking their key sets.
-  if (_is_equality_cmp(op) and left.is_concrete and
-      abstract_utils.is_concrete_dict(right) and
-      set(left.pyval) != set(right.pyval)):
+  if (
+      _is_equality_cmp(op)
+      and left.is_concrete
+      and abstract_utils.is_concrete_dict(right)
+      and set(left.pyval) != set(right.pyval)
+  ):
     return op != slots.EQ
   return None
 
@@ -183,7 +194,8 @@ def _compare_class(op, left, right):
 
 
 def _compare_sequence_length(
-    op, left: abstract.SequenceLength, right: abstract.ConcreteValue):
+    op, left: abstract.SequenceLength, right: abstract.ConcreteValue
+):
   """Compare sequence lengths for pattern matching."""
   assert isinstance(right, abstract.ConcreteValue)
   if op == slots.EQ:
@@ -237,8 +249,9 @@ def compatible_with(value, logical_value):
     # Always compatible with False. Compatible with True only if type
     # parameters have been established (meaning that the dict can be
     # non-empty).
-    return (not logical_value or
-            bool(value.get_instance_type_parameter(abstract_utils.K).bindings))
+    return not logical_value or bool(
+        value.get_instance_type_parameter(abstract_utils.K).bindings
+    )
   elif isinstance(value, abstract.LazyConcreteDict):
     return value.is_empty() != logical_value
   elif isinstance(value, abstract.PythonConstant):
@@ -247,9 +260,9 @@ def compatible_with(value, logical_value):
     name = value.full_name
     if logical_value and name in _CONTAINER_NAMES:
       # Containers with unset parameters cannot match True.
-      ret = (
-          value.has_instance_type_parameter(abstract_utils.T) and
-          bool(value.get_instance_type_parameter(abstract_utils.T).bindings))
+      ret = value.has_instance_type_parameter(abstract_utils.T) and bool(
+          value.get_instance_type_parameter(abstract_utils.T).bindings
+      )
       return ret
     elif name == "builtins.NoneType":
       # NoneType instances cannot match True.
@@ -257,8 +270,7 @@ def compatible_with(value, logical_value):
     elif name in NUMERIC:
       # Numeric types can match both True and False
       return True
-    elif (isinstance(value.cls, abstract.Class) and
-          not value.cls.overrides_bool):
+    elif isinstance(value.cls, abstract.Class) and not value.cls.overrides_bool:
       if getattr(value.cls, "template", None):
         # A parameterized class can match both True and False, since it might be
         # an empty container.
@@ -276,7 +288,11 @@ def compatible_with(value, logical_value):
 
 
 def compatible_with_none(value):
-  return (value.full_name == "builtins.NoneType" or
-          isinstance(value, (abstract.AMBIGUOUS_OR_EMPTY,
-                             abstract.TypeParameterInstance,
-                             abstract.ParamSpecInstance)))
+  return value.full_name == "builtins.NoneType" or isinstance(
+      value,
+      (
+          abstract.AMBIGUOUS_OR_EMPTY,
+          abstract.TypeParameterInstance,
+          abstract.ParamSpecInstance,
+      ),
+  )

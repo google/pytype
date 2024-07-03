@@ -4,13 +4,13 @@
 class BaseVisitor:
   """A base class for writing AST visitors.
 
-    Subclasses should define {visit,enter,leave}_X to process nodes of type X.
-    If a visit method returns a non-None value, the visited node is replaced
-    with that value.
+  Subclasses should define {visit,enter,leave}_X to process nodes of type X.
+  If a visit method returns a non-None value, the visited node is replaced
+  with that value.
 
-    Attributes:
-      _ast: Any module whose interface matches the standard ast library, such as
-        typed_ast. The same module must be used to generate the AST to visit.
+  Attributes:
+    _ast: Any module whose interface matches the standard ast library, such as
+      typed_ast. The same module must be used to generate the AST to visit.
   """
 
   def __init__(self, ast, visit_decorators=True):

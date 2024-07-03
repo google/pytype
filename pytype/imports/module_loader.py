@@ -49,8 +49,9 @@ class _PathFinder:
       elif self.options.imports_map is None and path_utils.isdir(path):
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
-        log.debug("Created empty module %r with path %r",
-                  module_name, init_path)
+        log.debug(
+            "Created empty module %r with path %r", module_name, init_path
+        )
         full_path = path_utils.join(path, "__init__.pyi")
         return full_path, False
       else:  # Not a directory
@@ -104,14 +105,18 @@ class ModuleLoader(base.ModuleLoader):
     """Load a file and parse it into a pytd AST."""
     with self.options.open_function(mod_info.filename, "r") as f:
       mod_ast = parser.parse_string(
-          f.read(), filename=mod_info.filename, name=mod_info.module_name,
-          options=parser.PyiOptions.from_toplevel_options(self.options))
+          f.read(),
+          filename=mod_info.filename,
+          name=mod_info.module_name,
+          options=parser.PyiOptions.from_toplevel_options(self.options),
+      )
     return mod_ast
 
   def _load_pickle(self, mod_info: base.ModuleInfo):
     """Load and unpickle a serialized pytd AST."""
     return pickle_utils.LoadAst(
-        mod_info.filename, open_function=self.options.open_function)
+        mod_info.filename, open_function=self.options.open_function
+    )
 
   def load_ast(self, mod_info: base.ModuleInfo):
     if file_utils.is_pickle(mod_info.filename):
@@ -120,10 +125,15 @@ class ModuleLoader(base.ModuleLoader):
       return self._load_pyi(mod_info)
 
   def log_module_not_found(self, module_name: str):
-    log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name, self.options.pythonpath,
-                f"{len(self.options.imports_map)} items" if
-                self.options.imports_map is not None else "none")
+    log.warning(
+        "Couldn't import module %s %r in (path=%r) imports_map: %s",
+        module_name,
+        module_name,
+        self.options.pythonpath,
+        f"{len(self.options.imports_map)} items"
+        if self.options.imports_map is not None
+        else "none",
+    )
 
   def get_unused_imports_map_paths(self) -> Set[str]:
     if not self.options.imports_map:

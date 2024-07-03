@@ -26,15 +26,18 @@ _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 def _matches_generator_helper(type_obj, allowed_types):
   """Check if type_obj matches a Generator/AsyncGenerator type."""
   if isinstance(type_obj, _typing.Union):
-    return all(_matches_generator_helper(sub_type, allowed_types)
-               for sub_type in type_obj.options)
+    return all(
+        _matches_generator_helper(sub_type, allowed_types)
+        for sub_type in type_obj.options
+    )
   else:
     base_cls = type_obj
     if isinstance(type_obj, _classes.ParameterizedClass):
       base_cls = type_obj.base_cls
-    return ((isinstance(base_cls, _classes.PyTDClass) and
-             base_cls.name in allowed_types) or
-            _isinstance(base_cls, "AMBIGUOUS_OR_EMPTY"))
+    return (
+        isinstance(base_cls, _classes.PyTDClass)
+        and base_cls.name in allowed_types
+    ) or _isinstance(base_cls, "AMBIGUOUS_OR_EMPTY")
 
 
 def _matches_generator(type_obj):
@@ -49,10 +52,13 @@ def _matches_async_generator(type_obj):
 
 def _hash_all_dicts(*hash_args):
   """Convenience method for hashing a sequence of dicts."""
-  components = (abstract_utils.get_dict_fullhash_component(d, names=n)
-                for d, n in hash_args)
+  components = (
+      abstract_utils.get_dict_fullhash_component(d, names=n)
+      for d, n in hash_args
+  )
   return hashlib.md5(
-      b"".join(str(hash(c)).encode("utf-8") for c in components)).digest()
+      b"".join(str(hash(c)).encode("utf-8") for c in components)
+  ).digest()
 
 
 def _check_classes(var, check):
@@ -83,16 +89,28 @@ class InterpreterFunction(_function_base.SignedFunction):
   Attributes:
     name: Function name. Might just be something like "<lambda>".
     code: A code object.
-    closure: Tuple of cells (cfg.Variable) containing the free variables
-      this closure binds to.
+    closure: Tuple of cells (cfg.Variable) containing the free variables this
+      closure binds to.
     ctx: context.Context instance.
   """
 
   _function_cache = {}
 
   @classmethod
-  def make(cls, name, *, def_opcode, code, f_locals, f_globals, defaults,
-           kw_defaults, closure, annotations, ctx):
+  def make(
+      cls,
+      name,
+      *,
+      def_opcode,
+      code,
+      f_locals,
+      f_globals,
+      defaults,
+      kw_defaults,
+      closure,
+      annotations,
+      ctx,
+  ):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -121,21 +139,46 @@ class InterpreterFunction(_function_base.SignedFunction):
       local_members = {}
     else:
       local_members = f_locals.members
-    key = (name, code,
-           _hash_all_dicts(
-               (f_globals.members, set(code.names)),
-               (local_members, set(local_members) - set(code.varnames)),
-               ({key: ctx.program.NewVariable([value], [], ctx.root_node)
-                 for key, value in annotations.items()}, None),
-               (dict(enumerate(ctx.program.NewVariable([f], [], ctx.root_node)
-                               for f in overloads)), None),
-               (dict(enumerate(defaults)), None),
-               (dict(enumerate(closure or ())), None)))
+    key = (
+        name,
+        code,
+        _hash_all_dicts(
+            (f_globals.members, set(code.names)),
+            (local_members, set(local_members) - set(code.varnames)),
+            (
+                {
+                    key: ctx.program.NewVariable([value], [], ctx.root_node)
+                    for key, value in annotations.items()
+                },
+                None,
+            ),
+            (
+                dict(
+                    enumerate(
+                        ctx.program.NewVariable([f], [], ctx.root_node)
+                        for f in overloads
+                    )
+                ),
+                None,
+            ),
+            (dict(enumerate(defaults)), None),
+            (dict(enumerate(closure or ())), None),
+        ),
+    )
     if key not in cls._function_cache:
-      cls._function_cache[key] = cls(name, def_opcode, code, f_locals,
-                                     f_globals, defaults, kw_defaults, closure,
-                                     annotations,
-                                     overloads, ctx)
+      cls._function_cache[key] = cls(
+          name,
+          def_opcode,
+          code,
+          f_locals,
+          f_globals,
+          defaults,
+          kw_defaults,
+          closure,
+          annotations,
+          overloads,
+          ctx,
+      )
     elif closure:
       # Reusing the old closure variables would lead to the closure containing
       # future values, such as Deleted.
@@ -144,8 +187,20 @@ class InterpreterFunction(_function_base.SignedFunction):
     ctx.vm.frame.functions_created_in_frame[f.name.rsplit(".")[-1]].append(f)
     return f
 
-  def __init__(self, name, def_opcode, code, f_locals, f_globals, defaults,
-               kw_defaults, closure, annotations, overloads, ctx):
+  def __init__(
+      self,
+      name,
+      def_opcode,
+      code,
+      f_locals,
+      f_globals,
+      defaults,
+      kw_defaults,
+      closure,
+      annotations,
+      overloads,
+      ctx,
+  ):
     log.debug("Creating InterpreterFunction %r for %r", name, code.name)
     self.bound_class = _function_base.BoundInterpreterFunction
     self.doc = code.consts[0] if code.consts else None
@@ -179,7 +234,8 @@ class InterpreterFunction(_function_base.SignedFunction):
           abstract_utils.V: signature.annotations["return"],
       }
       coroutine_type = _classes.ParameterizedClass(
-          ctx.convert.coroutine_type, params, ctx)
+          ctx.convert.coroutine_type, params, ctx
+      )
       signature.annotations["return"] = coroutine_type
     self._check_signature()
     self._update_signature_scope_from_closure()
@@ -202,7 +258,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     for ann in self.signature.annotations.values():
       if isinstance(ann, _typing.FinalAnnotation):
         self.ctx.errorlog.invalid_final_type(
-            self.ctx.vm.simple_stack(self.def_opcode))
+            self.ctx.vm.simple_stack(self.def_opcode)
+        )
     if not self.signature.has_return_annotation:
       return
     ret_type = self.signature.annotations["return"]
@@ -210,45 +267,54 @@ class InterpreterFunction(_function_base.SignedFunction):
     if self.code.has_generator():
       if not _matches_generator(ret_type):
         self.ctx.errorlog.bad_yield_annotation(
-            self.ctx.vm.frames, self.signature.name, ret_type, is_async=False)
+            self.ctx.vm.frames, self.signature.name, ret_type, is_async=False
+        )
     elif self.code.has_async_generator():
       if not _matches_async_generator(ret_type):
         self.ctx.errorlog.bad_yield_annotation(
-            self.ctx.vm.frames, self.signature.name, ret_type, is_async=True)
+            self.ctx.vm.frames, self.signature.name, ret_type, is_async=True
+        )
     elif ret_type.full_name in abstract_utils.TYPE_GUARDS:
       valid = True
       if self.signature.mandatory_param_count() < 1:
         guard = ret_type.full_name
         self.ctx.errorlog.invalid_function_definition(
             self.ctx.vm.frames,
-            f"A {guard} function must have at least one required parameter")
+            f"A {guard} function must have at least one required parameter",
+        )
         valid = False
       if not isinstance(ret_type, _classes.ParameterizedClass):
         self.ctx.errorlog.invalid_annotation(
-            self.ctx.vm.frames, ret_type, "Expected 1 parameter, got 0")
+            self.ctx.vm.frames, ret_type, "Expected 1 parameter, got 0"
+        )
         valid = False
-      if (valid and ret_type.name == "TypeIs" and
-          self.signature.param_names[0] in self.signature.annotations):
+      if (
+          valid
+          and ret_type.name == "TypeIs"
+          and self.signature.param_names[0] in self.signature.annotations
+      ):
         # Check that the TypeIs parameter is consistent with the function's
         # input type.
         guard_type = ret_type.formal_type_parameters[abstract_utils.T]
         guard_var = guard_type.instantiate(self.ctx.root_node)
         input_type = self.signature.annotations[self.signature.param_names[0]]
         m = self.ctx.matcher(self.ctx.root_node).compute_one_match(
-            guard_var, input_type)
+            guard_var, input_type
+        )
         if not m.success:
           guard_pytd = pytd_utils.Print(guard_type.to_pytd_type_of_instance())
           input_pytd = pytd_utils.Print(input_type.to_pytd_type_of_instance())
           self.ctx.errorlog.invalid_function_definition(
               self.ctx.vm.frames,
               f"TypeIs[{guard_pytd}] is not consistent with input type "
-              f"{input_pytd}")
+              f"{input_pytd}",
+          )
 
   def _build_signature(self, name, annotations):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
-    kwonly = set(self.code.varnames[self.code.argcount:self.nonstararg_count])
+    kwonly = set(self.code.varnames[self.code.argcount : self.nonstararg_count])
     arg_pos = self.nonstararg_count
     if self.has_varargs():
       vararg_name = self.code.varnames[arg_pos]
@@ -256,18 +322,20 @@ class InterpreterFunction(_function_base.SignedFunction):
     if self.has_kwargs():
       kwarg_name = self.code.varnames[arg_pos]
       arg_pos += 1
-    defaults = dict(zip(
-        self.get_positional_names()[-len(self.defaults):], self.defaults))
+    defaults = dict(
+        zip(self.get_positional_names()[-len(self.defaults) :], self.defaults)
+    )
     defaults.update(self.kw_defaults)
     return function.Signature(
         name,
-        tuple(self.code.varnames[:self.code.argcount]),
+        tuple(self.code.varnames[: self.code.argcount]),
         self.posonlyarg_count,
         vararg_name,
         tuple(kwonly),
         kwarg_name,
         defaults,
-        annotations)
+        annotations,
+    )
 
   def _update_signature_scope_from_closure(self):
     # If this is a nested function in an instance method and the nested function
@@ -279,7 +347,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     maybe_instance = self.closure[0]
     try:
       instance = abstract_utils.get_atomic_value(
-          maybe_instance, _instance_base.Instance)
+          maybe_instance, _instance_base.Instance
+      )
     except abstract_utils.ConversionError:
       return
     if isinstance(instance.cls, _classes.InterpreterClass):
@@ -307,21 +376,30 @@ class InterpreterFunction(_function_base.SignedFunction):
     if all_type_parameters:
       for key, value in last_frame.f_locals.pyval.items():
         value = abstract_utils.get_atomic_value(
-            value, default=self.ctx.convert.unsolvable)
-        if (isinstance(value, _classes.InterpreterClass) and value.template and
-            key == value.name):
+            value, default=self.ctx.convert.unsolvable
+        )
+        if (
+            isinstance(value, _classes.InterpreterClass)
+            and value.template
+            and key == value.name
+        ):
           # `value` is a nested class definition.
           inner_cls_types = value.collect_inner_cls_types()
-          inner_cls_types.update([(value, item.with_scope(None))
-                                  for item in value.template])
+          inner_cls_types.update(
+              [(value, item.with_scope(None)) for item in value.template]
+          )
           # Report errors in a deterministic order.
           for cls, item in sorted(inner_cls_types, key=lambda typ: typ[1].name):
             if item in all_type_parameters:
               self.ctx.errorlog.invalid_annotation(
-                  self.ctx.vm.simple_stack(self.get_first_opcode()), item,
-                  ("Function [%s] and its nested generic class [%s] cannot use "
-                   "the same type variable %s") %
-                  (self.full_name, cls.full_name, item.name))
+                  self.ctx.vm.simple_stack(self.get_first_opcode()),
+                  item,
+                  (
+                      "Function [%s] and its nested generic class [%s] cannot"
+                      " use the same type variable %s"
+                  )
+                  % (self.full_name, cls.full_name, item.name),
+              )
 
   def signature_functions(self):
     """Get the functions that describe this function's signature."""
@@ -389,8 +467,12 @@ class InterpreterFunction(_function_base.SignedFunction):
       return False
     if self.signature.has_param_annotations:
       return False
-    return (len(args.posargs) == 4 and not args.has_namedargs() and
-            not args.starargs and not args.starstarargs)
+    return (
+        len(args.posargs) == 4
+        and not args.has_namedargs()
+        and not args.starargs
+        and not args.starstarargs
+    )
 
   def _fix_args_for_unannotated_contextmanager_exit(self, node, func, args):
     """Adjust argument types for a contextmanager's __exit__ method."""
@@ -404,11 +486,13 @@ class InterpreterFunction(_function_base.SignedFunction):
     # for both possibilities.
     exception_type = self.ctx.convert.lookup_value("builtins", "BaseException")
     arg1 = self.ctx.program.NewVariable(
-        [exception_type, self.ctx.convert.none], [], node)
+        [exception_type, self.ctx.convert.none], [], node
+    )
     arg2 = exception_type.instantiate(node)
     arg2.AddBinding(self.ctx.convert.none, [], node)
     arg3 = self.ctx.program.NewVariable(
-        [self.ctx.convert.unsolvable, self.ctx.convert.none], [], node)
+        [self.ctx.convert.unsolvable, self.ctx.convert.none], [], node
+    )
     return function.Args(posargs=(args.posargs[0], arg1, arg2, arg3))
 
   def _hash_call(self, callargs, frame):
@@ -420,9 +504,11 @@ class InterpreterFunction(_function_base.SignedFunction):
       # key computed in the next branch.
       log.info("cache-return set for function %s", self.name)
       callkey = 0x12345678
-    elif (self.ctx.options.skip_repeat_calls and
-          ("self" not in callargs or not self.ctx.callself_stack or
-           callargs["self"].data != self.ctx.callself_stack[-1].data)):
+    elif self.ctx.options.skip_repeat_calls and (
+        "self" not in callargs
+        or not self.ctx.callself_stack
+        or callargs["self"].data != self.ctx.callself_stack[-1].data
+    ):
       if frame.f_locals == self.ctx.convert.unsolvable:
         local_members = {}
       else:
@@ -430,7 +516,8 @@ class InterpreterFunction(_function_base.SignedFunction):
       callkey = _hash_all_dicts(
           (callargs, None),
           (frame.f_globals.members, set(self.code.names)),
-          (local_members, set(local_members) - set(self.code.varnames)))
+          (local_members, set(local_members) - set(self.code.varnames)),
+      )
     else:
       # Make the callkey the number of times this function has been called so
       # that no call has the same key as a previous one.
@@ -453,7 +540,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     pspec_match = abstract_utils.get_atomic_value(data)
     return_value = callable_type.formal_type_parameters[abstract_utils.RET]
     return function.build_paramspec_signature(
-        pspec_match, r_args, return_value, self.ctx)
+        pspec_match, r_args, return_value, self.ctx
+    )
 
   def _handle_paramspec(self, sig, annotations, substs, callargs):
     if not sig.has_return_annotation:
@@ -472,8 +560,9 @@ class InterpreterFunction(_function_base.SignedFunction):
           param_annot = self.ctx.pytd_convert.signature_to_callable(param_sig)
           annotations[name] = param_annot
 
-  def call(self, node, func, args, alias_map=None, new_locals=False,
-           frame_substs=()):
+  def call(
+      self, node, func, args, alias_map=None, new_locals=False, frame_substs=()
+  ):
     if self.is_overload:
       raise error_types.NotCallable(self)
     args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
@@ -493,14 +582,17 @@ class InterpreterFunction(_function_base.SignedFunction):
     # precedence over higher ones.
     for frame in reversed(self.ctx.vm.frames):
       annotation_substs = abstract_utils.combine_substs(
-          frame.substs, annotation_substs)
+          frame.substs, annotation_substs
+      )
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.ctx.annotation_utils.sub_annotations(
-        node, annotations, annotation_substs, instantiate_unbound=False)
+        node, annotations, annotation_substs, instantiate_unbound=False
+    )
 
-    if (self.ctx.vm.is_at_maximum_depth() and
-        not self.name.endswith(".__init__")):
+    if self.ctx.vm.is_at_maximum_depth() and not self.name.endswith(
+        ".__init__"
+    ):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
       if "return" not in annotations:
@@ -513,8 +605,12 @@ class InterpreterFunction(_function_base.SignedFunction):
     first_arg = sig.get_first_arg(callargs)
     if first_arg and sig.has_return_annotation:
       typeguard_return = function.handle_typeguard(
-          node, function.AbstractReturnType(annotations["return"], self.ctx),
-          first_arg, self.ctx, func_name=self.name)
+          node,
+          function.AbstractReturnType(annotations["return"], self.ctx),
+          first_arg,
+          self.ctx,
+          func_name=self.name,
+      )
     else:
       typeguard_return = None
     if sig.has_param_annotations:
@@ -525,25 +621,30 @@ class InterpreterFunction(_function_base.SignedFunction):
           container = None
         else:
           cls = maybe_container.cls
-          if (isinstance(cls, _classes.InterpreterClass) or
-              isinstance(cls, _classes.ParameterizedClass) and
-              isinstance(cls.base_cls, _classes.InterpreterClass)):
+          if (
+              isinstance(cls, _classes.InterpreterClass)
+              or isinstance(cls, _classes.ParameterizedClass)
+              and isinstance(cls.base_cls, _classes.InterpreterClass)
+          ):
             container = maybe_container
           else:
             container = None
       else:
         container = None
       for name in callargs:
-        if (name in annotations and (not self.is_attribute_of_class or
-                                     self.argcount(node) == 0 or
-                                     name != sig.param_names[0])):
+        if name in annotations and (
+            not self.is_attribute_of_class
+            or self.argcount(node) == 0
+            or name != sig.param_names[0]
+        ):
           extra_key = (self.get_first_opcode(), name)
           node, callargs[name] = self.ctx.annotation_utils.init_annotation(
               node,
               name,
               annotations[name],
               container=container,
-              extra_key=extra_key)
+              extra_key=extra_key,
+          )
     mutations = self._mutations_generator(node, self_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     if substs:
@@ -559,7 +660,8 @@ class InterpreterFunction(_function_base.SignedFunction):
           new_locals=new_locals,
           func=func,
           first_arg=self_arg or first_arg,
-          substs=frame_substs)
+          substs=frame_substs,
+      )
     except self.ctx.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
@@ -575,11 +677,13 @@ class InterpreterFunction(_function_base.SignedFunction):
     # We should avoid checking the return value against any return annotation
     # when we are analyzing an attribute of a protocol or an abstract class's
     # abstract method.
-    check_return = (not (self.is_attribute_of_class and caller_is_protocol) and
-                    not (caller_is_abstract and self.is_abstract))
+    check_return = not (
+        self.is_attribute_of_class and caller_is_protocol
+    ) and not (caller_is_abstract and self.is_abstract)
     if sig.has_return_annotation or not check_return:
-      frame.allowed_returns = annotations.get("return",
-                                              self.ctx.convert.unsolvable)
+      frame.allowed_returns = annotations.get(
+          "return", self.ctx.convert.unsolvable
+      )
       frame.check_return = check_return
     callkey_pre = self._hash_call(callargs, frame)
     if callkey_pre in self._call_cache:
@@ -595,8 +699,11 @@ class InterpreterFunction(_function_base.SignedFunction):
         # --quick constrains the maximum depth.
         log.info(
             "Reanalyzing %r because we can traverse deeper; "
-            "remaining_depth = %d, old_remaining_depth = %d", self.name,
-            self.ctx.vm.remaining_depth(), old_remaining_depth)
+            "remaining_depth = %d, old_remaining_depth = %d",
+            self.name,
+            self.ctx.vm.remaining_depth(),
+            old_remaining_depth,
+        )
       else:
         log.info("Skipping call to %r and using cached return", self.name)
         ret = typeguard_return or old_ret.AssignToNewVariable(node)
@@ -630,11 +737,9 @@ class InterpreterFunction(_function_base.SignedFunction):
       annotated_locals = {}
       for name, annot in annotations.items():
         if name != "return" and annot == self.ctx.convert.unsolvable:
-          annotated_locals[name] = abstract_utils.Local(node,
-                                                        self.get_first_opcode(),
-                                                        annot,
-                                                        callargs.get(name),
-                                                        self.ctx)
+          annotated_locals[name] = abstract_utils.Local(
+              node, self.get_first_opcode(), annot, callargs.get(name), self.ctx
+          )
       # Log start and end of running the function frame, for quick profiling
       indent = "  " * (len(self.ctx.vm.frames) - 1)
       log.info("%s Start running frame for %r", indent, self.name)
@@ -667,8 +772,10 @@ class InterpreterFunction(_function_base.SignedFunction):
         combinations = [combination]
         ret = self.ctx.new_unsolvable(node_after_call)
       else:
-        if any(retval == self.ctx.convert.unsolvable
-               for retval in ret.Data(node_after_call)):
+        if any(
+            retval == self.ctx.convert.unsolvable
+            for retval in ret.Data(node_after_call)
+        ):
           ret = self.ctx.new_unsolvable(node_after_call)
       for combination in combinations:
         for return_value in ret.bindings:
@@ -678,11 +785,15 @@ class InterpreterFunction(_function_base.SignedFunction):
             # This combination yields a signature we already know is possible
             continue
           # Optimization: when only one combination exists, assume it's visible.
-          if (len(combinations) == 1 and len(ret.bindings) == 1 or
-              node_after_call.HasCombination(values)):
+          if (
+              len(combinations) == 1
+              and len(ret.bindings) == 1
+              or node_after_call.HasCombination(values)
+          ):
             signature_data.add(data)
             all_combinations.append(
-                (node_after_call, combination, return_value))
+                (node_after_call, combination, return_value)
+            )
     if not all_combinations:
       # Fallback: Generate signatures only from the definition of the
       # method, not the way it's being used.
@@ -693,15 +804,14 @@ class InterpreterFunction(_function_base.SignedFunction):
     return all_combinations
 
   def get_positional_names(self):
-    return list(self.code.varnames[:self.code.argcount])
+    return list(self.code.varnames[: self.code.argcount])
 
   def get_nondefault_params(self):
     for i in range(self.nonstararg_count):
       yield self.code.varnames[i], i >= self.code.argcount
 
   def get_kwonly_names(self):
-    return list(
-        self.code.varnames[self.code.argcount:self.nonstararg_count])
+    return list(self.code.varnames[self.code.argcount : self.nonstararg_count])
 
   def get_parameters(self):
     default_pos = self.code.argcount - len(self.defaults)
@@ -733,7 +843,8 @@ class InterpreterFunction(_function_base.SignedFunction):
             self.ctx.vm.simple_stack(self.get_first_opcode()),
             self.signature.annotations[self_name],
             details="Cannot annotate self argument of __init__",
-            name=self_name)
+            name=self_name,
+        )
         self.signature.del_annotation(self_name)
     for f in self._all_overloads:
       f.is_attribute_of_class = True
@@ -766,12 +877,12 @@ class InterpreterFunction(_function_base.SignedFunction):
     return self.code.consts[ops[op_with_ret_value].arg] is None
 
   def get_self_type_param(self):
-    if (param := super().get_self_type_param()):
+    if param := super().get_self_type_param():
       return param
     if self.is_overload:
       return None
     for f in self._all_overloads:
-      if (param := f.get_self_type_param()):
+      if param := f.get_self_type_param():
         return param
     return None
 

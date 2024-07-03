@@ -8,13 +8,16 @@ class MixinMetaTest(unittest.TestCase):
 
   def test_mixin_super(self):
     """Test the imitation 'super' method on MixinMeta."""
+
     # pylint: disable=g-wrong-blank-lines,undefined-variable
     class A:
+
       def f(self, x):
         return x
 
     class MyMixin(metaclass=mixin.MixinMeta):
       overloads = ("f",)
+
       def f(self, x):
         if x == 0:
           return "hello"
@@ -22,6 +25,7 @@ class MixinMetaTest(unittest.TestCase):
 
     class B(A, MyMixin):
       pass
+
     # pylint: enable=g-wrong-blank-lines,undefined-variable
 
     b = B()
@@ -36,8 +40,10 @@ class PythonDictTest(unittest.TestCase):
   def test_wraps_dict(self):
     # pylint: disable=g-wrong-blank-lines,undefined-variable
     class A(mixin.PythonDict):
+
       def __init__(self, pyval):
         mixin.PythonDict.init_mixin(self, pyval)
+
     # pylint: enable=g-wrong-blank-lines,undefined-variable
 
     a = A({"foo": 1, "bar": 2})
@@ -52,6 +58,7 @@ class PythonDictTest(unittest.TestCase):
     self.assertCountEqual(a.keys(), ["foo", "bar"])
     self.assertCountEqual(a.values(), [1, 2])
     self.assertCountEqual(a.items(), [("foo", 1), ("bar", 2)])
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -20,8 +20,9 @@ class PythonExeTest(unittest.TestCase):
         ("[OS-Y 64-bit] Python 3.9.1", (3, 9)),
     )
     for version_str, expected in test_cases:
-      self.assertEqual(expected,
-                       compiler._parse_exe_version_string(version_str))
+      self.assertEqual(
+          expected, compiler._parse_exe_version_string(version_str)
+      )
 
   def test_get_python_exe_version(self):
     version = compiler._get_python_exe_version(["python"])
@@ -34,7 +35,7 @@ class PythonExeTest(unittest.TestCase):
     # in the pytype/ src directory, we pick an existing file to pretend to be a
     # Python exe.
     compiler._CUSTOM_PYTHON_EXES = {(3, 10): "utils.py"}
-    (exe,), = compiler._get_python_exes((3, 10))
+    ((exe,),) = compiler._get_python_exes((3, 10))
     self.assertEqual(os.path.basename(exe), "utils.py")
     compiler._CUSTOM_PYTHON_EXES = temp
 

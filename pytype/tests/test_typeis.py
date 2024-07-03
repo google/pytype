@@ -57,10 +57,13 @@ class TypeIsTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["TypeIs[str]", "input type int"]})
 
   def test_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing_extensions import TypeIs
       def is_str(val: object) -> TypeIs[str]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import Union
@@ -77,11 +80,14 @@ class TypeIsTest(test_base.BaseTest):
       """)
 
   def test_reingest(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       from typing_extensions import TypeIs
       def is_str(val: object) -> TypeIs[str]:
         return isinstance(val, str)
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(val: object):

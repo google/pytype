@@ -87,8 +87,7 @@ class NamedTupleTest(test_base.BaseTest):
         """)
 
   def test_empty_args(self):
-    self.Check(
-        """
+    self.Check("""
         import typing
         X = typing.NamedTuple("X", [])
         """)
@@ -117,10 +116,7 @@ class NamedTupleTest(test_base.BaseTest):
       X = NamedTuple("X", "a b")  # wrong-arg-types[e1]
       Y = NamedTuple("Y", ["ab"])  # wrong-arg-types[e2]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Tuple.*str",
-        "e2": r"Tuple.*str"
-    })
+    self.assertErrorRegexes(errors, {"e1": r"Tuple.*str", "e2": r"Tuple.*str"})
 
   def test_typevar(self):
     self.Check("""
@@ -145,10 +141,13 @@ class NamedTupleTest(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      self.Check("""
+      self.Check(
+          """
         import foo
         assert_type(foo.X(a=__any_object__).a(4.2), float)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_fields(self):
     self.Check("""
@@ -171,31 +170,44 @@ class NamedTupleTest(test_base.BaseTest):
 
   def test_unpacking(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import NamedTuple
         X = NamedTuple("X", [('a', str), ('b', int)])
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         v = None  # type: foo.X
         a, b = v
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Union
         v = ...  # type: foo.namedtuple_X_0
         a = ...  # type: str
         b = ...  # type: int
-      """)
+      """,
+      )
 
   def test_bad_unpacking(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import NamedTuple
         X = NamedTuple("X", [('a', str), ('b', int)])
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         v = None  # type: foo.X
         _, _, too_many = v  # bad-unpacking
@@ -203,7 +215,9 @@ class NamedTupleTest(test_base.BaseTest):
         a: float
         b: str
         a, b = v  # annotation-type-mismatch # annotation-type-mismatch
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_is_tuple_type_and_superclasses(self):
     """Test that a NamedTuple (function syntax) behaves like a tuple."""
@@ -287,12 +301,15 @@ class NamedTupleTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import NamedTuple
       X = NamedTuple("X", [('a', int), ('b', str)])""")
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import NamedTuple
       class X(NamedTuple):
           a: int
           b: str
-      """)
+      """,
+    )
 
 
 if __name__ == "__main__":

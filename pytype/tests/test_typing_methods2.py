@@ -9,14 +9,18 @@ class TypingMethodsTest(test_base.BaseTest):
 
   def test_mapping(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Mapping
         K = TypeVar("K")
         V = TypeVar("V")
         class MyDict(Mapping[K, V]): ...
         def f() -> MyDict[str, int]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import foo
         m = foo.f()
         a = m.copy()
@@ -26,8 +30,12 @@ class TypingMethodsTest(test_base.BaseTest):
         e = [x for x in m.items()]
         f = [x for x in m.keys()]
         g = [x for x in m.values()]
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import List, Tuple, Union
         import foo
         m = ...  # type: foo.MyDict[str, int]
@@ -38,19 +46,26 @@ class TypingMethodsTest(test_base.BaseTest):
         e = ...  # type: List[Tuple[str, int]]
         f = ...  # type: List[str]
         g = ...  # type: List[int]
-      """)
+      """,
+      )
 
   def test_supportsbytes(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import SupportsBytes
         def f() -> SupportsBytes: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         x = foo.f()
         bytes(x)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_assert_never(self):
     self.Check("""
@@ -76,7 +91,8 @@ class TypingMethodsTest(test_base.BaseTest):
           assert_never("oops!")  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected", "empty", "Actual", "str"]})
+        errors, {"e": ["Expected", "empty", "Actual", "str"]}
+    )
 
 
 if __name__ == "__main__":

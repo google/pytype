@@ -97,19 +97,24 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
   Raises:
     TooComplexError: If we expanded too many values.
   """
-  return _deep_values_list_product([v.bindings for v in variables], set(),
-                                   ComplexityLimit(limit))
+  return _deep_values_list_product(
+      [v.bindings for v in variables], set(), ComplexityLimit(limit)
+  )
 
 
 def _deep_values_list_product(values_list, seen, complexity_limit):
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
-    extra_params = [value for entry in row if entry not in seen  # pylint: disable=g-complex-comprehension
-                    for value in entry.data.unique_parameter_values()]
-    extra_values = (extra_params and
-                    _deep_values_list_product(extra_params, seen.union(row),
-                                              complexity_limit))
+    extra_params = [
+        value
+        for entry in row
+        if entry not in seen  # pylint: disable=g-complex-comprehension
+        for value in entry.data.unique_parameter_values()
+    ]
+    extra_values = extra_params and _deep_values_list_product(
+        extra_params, seen.union(row), complexity_limit
+    )
     if extra_values:
       for new_row in extra_values:
         result.append(row + new_row)
@@ -138,8 +143,12 @@ def variable_product_dict(variabledict, limit=DEEP_VARIABLE_LIMIT):
   Returns:
     A list of dicts with Value values.
   """
-  return [dict(d) for d in _variable_product_items(variabledict.items(),
-                                                   ComplexityLimit(limit))]
+  return [
+      dict(d)
+      for d in _variable_product_items(
+          variabledict.items(), ComplexityLimit(limit)
+      )
+  ]
 
 
 def merge_variables(program, node, variables):
@@ -153,6 +162,7 @@ def merge_variables(program, node, variables):
     program: A cfg.Program instance.
     node: The current CFG node.
     variables: A list of cfg.Variables.
+
   Returns:
     A cfg.Variable.
   """
@@ -174,6 +184,7 @@ def merge_bindings(program, node, bindings):
     program: A cfg.Program instance.
     node: The current CFG node.
     bindings: A list of cfg.Bindings.
+
   Returns:
     A cfg.Variable.
   """
@@ -215,6 +226,7 @@ def compute_predecessors(nodes):
 
   Args:
     nodes: A list of nodes or blocks.
+
   Returns:
     A dictionary that maps each node to a set of all the nodes that can reach
     that node.
@@ -260,6 +272,7 @@ def order_nodes(nodes):
   Args:
     nodes: A list of nodes or blocks. They have two attributes: "incoming" and
       "outgoing". Both are lists of other nodes.
+
   Returns:
     A list of nodes in the proper order.
   """
@@ -267,16 +280,21 @@ def order_nodes(nodes):
     return []
   root = nodes[0]
   predecessor_map = compute_predecessors(nodes)
-  dead = {node for node, predecessors in predecessor_map.items()
-          if root not in predecessors}
+  dead = {
+      node
+      for node, predecessors in predecessor_map.items()
+      if root not in predecessors
+  }
   queue = {root: predecessor_map[root]}
   order = []
   seen = set()
   while queue:
     # Find node with minimum amount of predecessors that's connected to a node
     # we already processed.
-    _, _, node = min((len(predecessors), node.id, node)
-                     for node, predecessors in queue.items())
+    _, _, node = min(
+        (len(predecessors), node.id, node)
+        for node, predecessors in queue.items()
+    )
     del queue[node]
     if node in seen:
       continue
@@ -305,10 +323,11 @@ def topological_sort(nodes):
   If there are multiple ways to sort the list, a random one is picked.
 
   Args:
-    nodes: A sequence of nodes. Each node may have an attribute "incoming",
-      a list of nodes (every node in this list needs to be in "nodes"). If
-      "incoming" is not there, it's assumed to be empty. The list of nodes
-      can't have duplicates.
+    nodes: A sequence of nodes. Each node may have an attribute "incoming", a
+      list of nodes (every node in this list needs to be in "nodes"). If
+      "incoming" is not there, it's assumed to be empty. The list of nodes can't
+      have duplicates.
+
   Yields:
     The nodes in their topological order.
   Raises:

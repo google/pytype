@@ -41,8 +41,12 @@ class TestFolding(test_base.UnitTest):
   def _compile(self, src, mode="exec"):
     exe = (["python" + ".".join(map(str, self.python_version))], [])
     pyc_data = compiler.compile_src_string_to_pyc_string(
-        src, filename="test_input.py", python_version=self.python_version,
-        python_exe=exe, mode=mode)
+        src,
+        filename="test_input.py",
+        python_version=self.python_version,
+        python_exe=exe,
+        mode=mode,
+    )
     code = pyc.parse_pyc_string(pyc_data)
     code, _ = blocks.process_code(code)
     return code
@@ -71,22 +75,22 @@ class TestFolding(test_base.UnitTest):
 
   def test_basic(self):
     actual = self._process("a = [1, 2, 3]")
-    self.assertCountEqual(actual, [
-        (1, ("list", int), [1, 2, 3], [int, int, int])
-    ])
+    self.assertCountEqual(
+        actual, [(1, ("list", int), [1, 2, 3], [int, int, int])]
+    )
 
   def test_union(self):
     actual = self._process("a = [1, 2, '3']")
-    self.assertCountEqual(actual, [
-        (1, ("list", (int, str)), [1, 2, "3"], [int, int, str])
-    ])
+    self.assertCountEqual(
+        actual, [(1, ("list", (int, str)), [1, 2, "3"], [int, int, str])]
+    )
 
   @test_utils.skipBeforePy((3, 9), "Test for new LIST_EXTEND opcode in 3.9")
   def test_str_to_list(self):
     actual = self._process("a = [*'abc']")
-    self.assertCountEqual(actual, [
-        (1, ("list", str), ["a", "b", "c"], [str, str, str])
-    ])
+    self.assertCountEqual(
+        actual, [(1, ("list", str), ["a", "b", "c"], [str, str, str])]
+    )
 
   @test_utils.skipBeforePy((3, 9), "Test for new LIST_EXTEND opcode in 3.9")
   def test_bad_extend(self):
@@ -95,9 +99,15 @@ class TestFolding(test_base.UnitTest):
 
   def test_map(self):
     actual = self._process("a = {'x': 1, 'y': '2'}")
-    self.assertCountEqual(actual, [
-        (1, ("map", str, (int, str)), {"x": 1, "y": "2"}, {"x": int, "y": str})
-    ])
+    self.assertCountEqual(
+        actual,
+        [(
+            1,
+            ("map", str, (int, str)),
+            {"x": 1, "y": "2"},
+            {"x": int, "y": str},
+        )],
+    )
 
   def test_tuple(self):
     actual = self._process("a = (1, '2', True)")
@@ -108,21 +118,23 @@ class TestFolding(test_base.UnitTest):
     actual = self._process("a = [(1, '2', 3), (4, '5', 6)]")
     val = [(1, "2", 3), (4, "5", 6)]
     elements = [("tuple", int, str, int), ("tuple", int, str, int)]
-    self.assertCountEqual(actual, [
-        (1, ("list", ("tuple", int, str, int)), val, elements)
-    ])
+    self.assertCountEqual(
+        actual, [(1, ("list", ("tuple", int, str, int)), val, elements)]
+    )
 
   def test_list_of_varied_tuple(self):
     actual = self._process("a = [(1, '2', 3), ('4', '5', 6)]")
     val = [(1, "2", 3), ("4", "5", 6)]
-    elements = [("tuple", int, str, int),
-                ("tuple", str, str, int)]
-    self.assertCountEqual(actual, [
-        (1, ("list", (
-            ("tuple", int, str, int),
-            ("tuple", str, str, int)
-        )), val, elements)
-    ])
+    elements = [("tuple", int, str, int), ("tuple", str, str, int)]
+    self.assertCountEqual(
+        actual,
+        [(
+            1,
+            ("list", (("tuple", int, str, int), ("tuple", str, str, int))),
+            val,
+            elements,
+        )],
+    )
 
   def test_nested(self):
     actual = self._process("""
@@ -135,18 +147,13 @@ class TestFolding(test_base.UnitTest):
     val = {
         "x": [(1, "2", 3), ("4", "5", 6)],
         "y": [{"a": "b"}, {"c": "d"}],
-        ("p", "q"): "r"
+        ("p", "q"): "r",
     }
-    x = ("list", (
-        ("tuple", int, str, int),
-        ("tuple", str, str, int)
-    ))
+    x = ("list", (("tuple", int, str, int), ("tuple", str, str, int)))
     y = ("list", ("map", str, str))
     k = (("tuple", str, str), str)
     elements = {"x": x, "y": y, ("p", "q"): str}
-    self.assertCountEqual(actual, [
-        (1, ("map", k, (y, x, str)), val, elements)
-    ])
+    self.assertCountEqual(actual, [(1, ("map", k, (y, x, str)), val, elements)])
 
   def test_partial(self):
     actual = self._process("""
@@ -158,9 +165,9 @@ class TestFolding(test_base.UnitTest):
     """)
     val = [{"a": "b"}, {"c": "d"}]
     map_type = ("map", str, str)
-    self.assertCountEqual(actual, [
-        (4, ("list", map_type), val, [map_type, map_type])
-    ])
+    self.assertCountEqual(
+        actual, [(4, ("list", map_type), val, [map_type, map_type])]
+    )
 
   def test_nested_partial(self):
     # Test that partial expressions get cleaned off the stack properly. The 'if'
@@ -237,13 +244,15 @@ class TypeBuilderTest(TypeBuilderTestBase):
     typ = constant_folding.from_literal(typ)
     const = constant_folding._Constant(typ, None, None, None)
     _, var = constant_folding.build_folded_type(self.ctx, self.state, const)
-    val, = var.data
+    (val,) = var.data
     return val
 
   def _is_primitive(self, val, cls):
-    return (isinstance(val, abstract.Instance) and
-            isinstance(val.cls, abstract.PyTDClass) and
-            val.cls.pytd_cls.name == "builtins." + cls)
+    return (
+        isinstance(val, abstract.Instance)
+        and isinstance(val.cls, abstract.PyTDClass)
+        and val.cls.pytd_cls.name == "builtins." + cls
+    )
 
   def test_prim(self):
     val = self._convert(("prim", str))

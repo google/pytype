@@ -1,7 +1,6 @@
 """Utilities for quoting, name-mangling, etc."""
 
 import re
-
 from typing import List
 
 
@@ -21,7 +20,7 @@ def pack_partial(name: str) -> str:
 def unpack_partial(name: str) -> str:
   """Convert e.g. "~int" to "int"."""
   assert name.startswith(PARTIAL)
-  return name[len(PARTIAL):].replace(PARTIAL, ".")
+  return name[len(PARTIAL) :].replace(PARTIAL, ".")
 
 
 def is_partial(cls) -> bool:

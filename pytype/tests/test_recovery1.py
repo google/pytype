@@ -11,48 +11,70 @@ class RecoveryTests(test_base.BaseTest):
   """
 
   def test_bad_subtract(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         t = 0.0
         return t - ("bla" - t)
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_inherit_from_instance(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       class Foo(3):
         pass
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class Foo(Any):
         pass
-    """)
+    """,
+    )
 
   def test_name_error(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       x = foobar
       class A(x):
         pass
       pow(A(), 2)
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       x = ...  # type: Any
       class A(Any):
         pass
-    """)
+    """,
+    )
 
   def test_object_attr(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       object.bla(int)
-    """)
+    """,
+    )
 
   def test_attr_error(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       class A:
         pass
       x = A.x
@@ -62,8 +84,12 @@ class RecoveryTests(test_base.BaseTest):
       object.bar(int)
       class C:
         pass
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         pass
@@ -73,19 +99,26 @@ class RecoveryTests(test_base.BaseTest):
       y = ...  # type: Any
       class C:
         pass
-    """)
+    """,
+    )
 
   def test_wrong_call(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f():
         pass
       f("foo")
       x = 3
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f() -> None: ...
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_duplicate_identifier(self):
     ty = self.Infer("""
@@ -95,12 +128,15 @@ class RecoveryTests(test_base.BaseTest):
         def foo(self):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class A:
         foo = ...  # type: Any
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_method_with_unknown_decorator(self):
     self.InferWithErrors("""

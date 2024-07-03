@@ -100,11 +100,14 @@ class ContainerTest(test_base.BaseTest):
       for x, in layers:
         layers[0] = x,
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Tuple
       layers = ...  # type: List[Tuple[Tuple[()]]]
       x = ...  # type: Tuple[()]
-    """)
+    """,
+    )
 
   def test_list_concat(self):
     ty = self.Infer("""
@@ -139,12 +142,15 @@ class ContainerTest(test_base.BaseTest):
       l = []
       l.append(x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, List, Union
       x = ...  # type: Union[int, float]
       y = ...  # type: Any
       l = ...  # type: List[Union[int, float]]
-    """)
+    """,
+    )
 
   def test_list_concat_unlike(self):
     ty = self.Infer("""
@@ -168,12 +174,15 @@ class ContainerTest(test_base.BaseTest):
         return __any_object__("name")
       f(); g(); h()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f() -> Any: ...
       def g() -> Any: ...
       def h() -> Any: ...
-    """)
+    """,
+    )
 
   def test_dict_literal(self):
     ty = self.Infer("""
@@ -223,20 +232,26 @@ class ContainerTest(test_base.BaseTest):
       d = {}
       d.update({"a": 1}, b=2j)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       d = ...  # type: Dict[str, Union[int, complex]]
-    """)
+    """,
+    )
 
   def test_ambiguous_dict_update(self):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1} if __random__ else {"b": 2j}, c=3.0)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict, Union
       d = ...  # type: Dict[str, Union[int, float, complex]]
-    """)
+    """,
+    )
 
   def test_for_iter(self):
     ty = self.Infer("""
@@ -256,13 +271,16 @@ class ContainerTest(test_base.BaseTest):
 
       f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         parent: int | str
         def __init__(self) -> None: ...
       def set_parent(l) -> None: ...
       def f() -> int | str: ...
-    """)
+    """,
+    )
 
   def test_overloading(self):
     ty = self.Infer("""
@@ -293,7 +311,9 @@ class ContainerTest(test_base.BaseTest):
 
       f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Base:
         parent: None
         children: tuple[()]
@@ -306,7 +326,8 @@ class ContainerTest(test_base.BaseTest):
         foobar: int
         def __init__(self) -> None: ...
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_class_attr(self):
     ty = self.Infer("""
@@ -322,12 +343,15 @@ class ContainerTest(test_base.BaseTest):
 
       f()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Node:
         children: tuple[()] | list[Node]
         foobar: int
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_heterogeneous(self):
     ty = self.Infer("""
@@ -365,31 +389,40 @@ class ContainerTest(test_base.BaseTest):
       entry = d["a"]
       open('%s' % entry, 'w')
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       d = ...  # type: Dict[str, str]
       entry = ...  # type: str
-    """)
+    """,
+    )
 
   def test_dict_init(self):
     ty = self.Infer("""
       def f():
         return dict([])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       def f() -> Dict[nothing, nothing]: ...
-    """)
+    """,
+    )
 
   def test_dict_tuple_init(self):
     ty = self.Infer("""
       def f():
         return dict([("foo", "foo")])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       def f() -> Dict[str, str]: ...
-    """)
+    """,
+    )
 
   def test_empty_tuple_as_arg(self):
     ty = self.Infer("""
@@ -399,23 +432,30 @@ class ContainerTest(test_base.BaseTest):
         else:
           return 3j
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       def f(x) -> Union[bool, complex]: ...
-    """)
+    """,
+    )
 
   def test_empty_type_param_as_arg(self):
     ty = self.Infer("""
       def f():
         return sum(map(int, ()))
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       def f() -> Any: ...
-    """)
+    """,
+    )
 
   def test_access_empty_dict_in_if(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       class Foo:
         pass
 
@@ -427,13 +467,18 @@ class ContainerTest(test_base.BaseTest):
           e = d[key]
         e.next = None
         return e
-    """, report_errors=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        report_errors=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         next = ...  # type: NoneType
 
       def f(key) -> Foo: ...
-    """)
+    """,
+    )
 
   def test_cascade(self):
     ty = self.Infer("""
@@ -443,11 +488,14 @@ class ContainerTest(test_base.BaseTest):
         x = 3.14
       y = divmod(x, x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple, Union
       x = ...  # type: Union[float, int]
       y = ...  # type: Tuple[Union[float, int], Union[float, int]]
-    """)
+    """,
+    )
 
   def test_maybe_any(self):
     ty = self.Infer("""
@@ -457,11 +505,14 @@ class ContainerTest(test_base.BaseTest):
         x = 1
       y = divmod(x, 3.14)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Tuple
       x = ...  # type: Any
       y = ...  # type: Tuple[Any, Any]
-    """)
+    """,
+    )
 
   def test_index(self):
     ty = self.Infer("""
@@ -474,11 +525,14 @@ class ContainerTest(test_base.BaseTest):
         l[pos] += 1
         return l
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       # The element types aren't more precise since the solver doesn't know
       # which element of the list gets modified.
       def f() -> list: ...
-    """)
+    """,
+    )
 
   def test_circular_reference_list(self):
     ty = self.Infer("""
@@ -487,10 +541,13 @@ class ContainerTest(test_base.BaseTest):
         lst.append(lst)
         return lst
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       def f() -> List[list]: ...
-    """)
+    """,
+    )
 
   def test_circular_reference_dictionary(self):
     ty = self.Infer("""
@@ -506,12 +563,15 @@ class ContainerTest(test_base.BaseTest):
         s['$end'] = g
         return s1
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       # TODO(b/159069936): This should be "Dict[str, none]". s1 above can never
       # contain another dictionary.
       def f() -> Dict[str, Union[None, dict]]: ...
-    """)
+    """,
+    )
 
   def test_eq_operator_on_item_from_empty_dict(self):
     self.Check("""
@@ -528,14 +588,17 @@ class ContainerTest(test_base.BaseTest):
       mymap[str()] = 3j
       b2 = mymap['b']
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict, Union
       mymap = ...  # type: Dict[str, Union[int, float, complex]]
       a = ...  # type: float
       b1 = ...  # type: int
       c = ...  # type: Any
       b2 = ...  # type: Union[int, float, complex]
-    """)
+    """,
+    )
 
   def test_dict_or_any(self):
     self.Check("""
@@ -552,11 +615,14 @@ class ContainerTest(test_base.BaseTest):
       v = {}
       a = v.__getitem__("a")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict
       v: Dict[nothing, nothing]
       a: Any
-    """)
+    """,
+    )
 
   def test_empty_list(self):
     ty = self.Infer("""
@@ -571,25 +637,34 @@ class ContainerTest(test_base.BaseTest):
           oldest = cache["lru"].pop(0)
           return oldest
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict, Union
       cache = ...  # type: Dict[str, Union[Dict[nothing, nothing], list]]
       def read(path) -> None: ...
-    """)
+    """,
+    )
 
   def test_recursive_definition_and_conflict(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic, TypeVar
         T = TypeVar("T")
         class Foo(Generic[T]): ...
         class Bar(Generic[T]): ...
         class Baz(Foo[Baz], Bar[str]): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.Baz()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_foo(self):
     _ = self.Infer("""
@@ -605,11 +680,14 @@ class ContainerTest(test_base.BaseTest):
       empty = []
       y = [list(x) for x in empty]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       empty = ...  # type: List[nothing]
       y = ...  # type: List[List[nothing]]
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

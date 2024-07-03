@@ -26,8 +26,15 @@ class ParserTestBase(test_base.UnitTest):
     ast = parser.parse_string(src, name=name, options=self.options)
     return ast
 
-  def check(self, src, expected=None, prologue=None, name=None,
-            version=None, platform="linux"):
+  def check(
+      self,
+      src,
+      expected=None,
+      prologue=None,
+      name=None,
+      version=None,
+      platform="linux",
+  ):
     """Check the parsing of src.
 
     This checks that parsing the source and then printing the resulting
@@ -35,12 +42,12 @@ class ParserTestBase(test_base.UnitTest):
 
     Args:
       src: A source string.
-      expected: Optional expected result string.  If not provided, src is
-        used instead.  The special value IGNORE can be used to skip
-        checking the parsed results against expected text.
-      prologue: An optional prologue to be prepended to the expected text
-        before comparison.  Useful for imports that are introduced during
-        printing the AST.
+      expected: Optional expected result string.  If not provided, src is used
+        instead.  The special value IGNORE can be used to skip checking the
+        parsed results against expected text.
+      prologue: An optional prologue to be prepended to the expected text before
+        comparison.  Useful for imports that are introduced during printing the
+        AST.
       name: The name of the module.
       version: A python version tuple (None for default value).
       platform: A platform string (defaults to "linux").

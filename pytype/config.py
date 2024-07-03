@@ -19,12 +19,16 @@ from pytype import utils
 from pytype.errors import errors
 from pytype.pyc import compiler
 from pytype.typegraph import cfg_utils
-
 from typing_extensions import Literal
 
 
-LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
-              logging.DEBUG]
+LOG_LEVELS = [
+    logging.CRITICAL,
+    logging.ERROR,
+    logging.WARNING,
+    logging.INFO,
+    logging.DEBUG,
+]
 
 uses = utils.AnnotatingDecorator()  # model relationship between options
 
@@ -42,12 +46,16 @@ class Options:
   _HAS_DYNAMIC_ATTRIBUTES = True
 
   @overload
-  def __init__(
-      self, argv_or_options: List[str], command_line: Literal[True]): ...
+  def __init__(self, argv_or_options: List[str], command_line: Literal[True]):
+    ...
 
   @overload
-  def __init__(self, argv_or_options: argparse.Namespace,
-               command_line: Literal[False] = ...): ...
+  def __init__(
+      self,
+      argv_or_options: argparse.Namespace,
+      command_line: Literal[False] = ...,
+  ):
+    ...
 
   def __init__(self, argv_or_options, command_line=False):
     """Parse and encapsulate the configuration options.
@@ -59,8 +67,7 @@ class Options:
 
     Args:
       argv_or_options: Either sys.argv[1:] (sys.argv[0] is the main script), or
-                       already parsed options object returned by
-                       ArgumentParser.parse_args.
+        already parsed options object returned by ArgumentParser.parse_args.
       command_line: Set this to true when argv_or_options == sys.argv[1:].
 
     Raises:
@@ -74,16 +81,20 @@ class Options:
       options = argument_parser.parse_args(argv_or_options)
     else:
       if isinstance(argv_or_options, list):
-        raise TypeError("Do not construct an Options object directly; call "
-                        "Options.create() instead.")
+        raise TypeError(
+            "Do not construct an Options object directly; call "
+            "Options.create() instead."
+        )
       options = argv_or_options
     for name, default in _LIBRARY_ONLY_OPTIONS.items():
       if not hasattr(options, name):
         setattr(options, name, default)
     names = set(vars(options))
-    opt_map = {k: v.option_strings[-1]
-               for k, v in argument_parser.actions.items()
-               if v.option_strings}
+    opt_map = {
+        k: v.option_strings[-1]
+        for k, v in argument_parser.actions.items()
+        if v.option_strings
+    }
     try:
       Postprocessor(names, opt_map, options, self).process()
     except PostprocessingError as e:
@@ -96,12 +107,12 @@ class Options:
   def create(cls, input_filename=None, **kwargs):
     """Create options from kwargs."""
     argument_parser = make_parser()
-    unknown_options = (set(kwargs) - set(argument_parser.actions) -
-                       set(_LIBRARY_ONLY_OPTIONS))
+    unknown_options = (
+        set(kwargs) - set(argument_parser.actions) - set(_LIBRARY_ONLY_OPTIONS)
+    )
     if unknown_options:
       raise ValueError(f"Unrecognized options: {', '.join(unknown_options)}")
-    options = argument_parser.parse_args(
-        [input_filename or "dummy_input_file"])
+    options = argument_parser.parse_args([input_filename or "dummy_input_file"])
     for k, v in kwargs.items():
       setattr(options, k, v)
     return cls(options)
@@ -119,8 +130,7 @@ class Options:
     return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
   def __repr__(self):
-    return "\n".join(
-        [f"{k}: {v!r}" for k, v in sorted(self.as_dict().items())])
+    return "\n".join([f"{k}: {v!r}" for k, v in sorted(self.as_dict().items())])
 
 
 def make_parser():
@@ -134,15 +144,15 @@ def base_parser():
   """Use argparse to make a parser for configuration options."""
   parser = argparse.ArgumentParser(
       usage="%(prog)s [options] input",
-      description="Infer/check types in a Python module")
+      description="Infer/check types in a Python module",
+  )
   return datatypes.ParserWrapper(parser)
 
 
 def add_all_pytype_options(o):
   """Add all pytype options to the given parser."""
   # Input files
-  o.add_argument(
-      "input", nargs="*", help="File to process")
+  o.add_argument("input", nargs="*", help="File to process")
 
   # Modes
   add_modes(o)
@@ -184,8 +194,9 @@ class _Arg:
 
 def _flag(opt, default, help_text):
   dest = opt.lstrip("-").replace("-", "_")
-  return _Arg(opt, dest=dest, default=default, help=help_text,
-              action="store_true")
+  return _Arg(
+      opt, dest=dest, default=default, help=help_text, action="store_true"
+  )
 
 
 def add_options(o, arglist):
@@ -195,270 +206,489 @@ def add_options(o, arglist):
 
 MODES = [
     _Arg(
-        "-C", "--check", action="store_true",
-        dest="check", default=None,
-        help=("Don't do type inference. Only check for type errors.")),
+        "-C",
+        "--check",
+        action="store_true",
+        dest="check",
+        default=None,
+        help="Don't do type inference. Only check for type errors.",
+    ),
     _Arg(
-        "-o", "--output", type=str, action="store",
-        dest="output", default=None,
-        help=("Output file. Use '-' for stdout.")),
+        "-o",
+        "--output",
+        type=str,
+        action="store",
+        dest="output",
+        default=None,
+        help="Output file. Use '-' for stdout.",
+    ),
 ]
 
 
 BASIC_OPTIONS = [
     _Arg(
-        "-d", "--disable", action="store",
-        dest="disable", default=None,
-        help="Comma-separated list of error names to ignore."),
+        "-d",
+        "--disable",
+        action="store",
+        dest="disable",
+        default=None,
+        help="Comma-separated list of error names to ignore.",
+    ),
     _Arg(
-        "--no-report-errors", action="store_false",
-        dest="report_errors", default=True,
-        help="Don't report errors."),
+        "--no-report-errors",
+        action="store_false",
+        dest="report_errors",
+        default=True,
+        help="Don't report errors.",
+    ),
     _Arg(
-        "-V", "--python_version", type=str, action="store",
-        dest="python_version", default=None,
-        help='Python version to emulate ("major.minor", e.g. "3.10")'),
+        "-V",
+        "--python_version",
+        type=str,
+        action="store",
+        dest="python_version",
+        default=None,
+        help='Python version to emulate ("major.minor", e.g. "3.10")',
+    ),
     _Arg(
-        "--platform", type=str, action="store", dest="platform",
+        "--platform",
+        type=str,
+        action="store",
+        dest="platform",
         default=sys.platform,
-        help='Platform to emulate (e.g., "linux", "win32").'),
+        help='Platform to emulate (e.g., "linux", "win32").',
+    ),
 ]
 
 
 _OPT_IN_FEATURES = [
     # Feature flags that are not experimental, but are too strict to default
     # to True and are therefore left as opt-in features for users to enable.
-    _flag("--no-return-any", False,
-          "Do not allow Any as a return type."),
-    _flag("--require-override-decorator", False,
-          "Require decoration with @typing.override when overriding a method "
-          "or nested class attribute of a parent class."),
+    _flag("--no-return-any", False, "Do not allow Any as a return type."),
+    _flag(
+        "--require-override-decorator",
+        False,
+        "Require decoration with @typing.override when overriding a method "
+        "or nested class attribute of a parent class.",
+    ),
 ]
 
 
 FEATURE_FLAGS = [
-    _flag("--bind-decorated-methods", False,
-          "Bind 'self' in methods with non-transparent decorators."),
+    _flag(
+        "--bind-decorated-methods",
+        False,
+        "Bind 'self' in methods with non-transparent decorators.",
+    ),
     _flag("--none-is-not-bool", False, "Don't allow None to match bool."),
-    _flag("--overriding-renamed-parameter-count-checks", False,
-          "Enable parameter count checks for overriding methods with "
-          "renamed arguments."),
-    _flag("--strict-none-binding", False,
-          "Variables initialized as None retain their None binding."),
-    _flag("--use-fiddle-overlay", False,
-          "Support the third-party fiddle library."),
+    _flag(
+        "--overriding-renamed-parameter-count-checks",
+        False,
+        "Enable parameter count checks for overriding methods with "
+        "renamed arguments.",
+    ),
+    _flag(
+        "--strict-none-binding",
+        False,
+        "Variables initialized as None retain their None binding.",
+    ),
+    _flag(
+        "--use-fiddle-overlay", False, "Support the third-party fiddle library."
+    ),
 ] + _OPT_IN_FEATURES
 
 
 EXPERIMENTAL_FLAGS = [
-    _flag("--precise-return", False,
-          "Infer precise return types even for invalid function calls."),
-    _flag("--protocols", False,
-          "Solve unknown types to label with structural types."),
-    _flag("--strict-import", False,
-          "Only load submodules that are explicitly imported."),
-    _flag("--strict-parameter-checks", False,
-          "Enable exhaustive checking of function parameter types."),
-    _flag("--strict-primitive-comparisons", False,
-          "Emit errors for comparisons between incompatible primitive types."),
-    _flag("--strict-undefined-checks", False,
-          "Check that variables are defined in all possible code paths."),
-    _Arg("-R", "--use-rewrite", action="store_true", dest="use_rewrite",
-         default=False, help="FOR TESTING ONLY. Use pytype/rewrite/."),
+    _flag(
+        "--precise-return",
+        False,
+        "Infer precise return types even for invalid function calls.",
+    ),
+    _flag(
+        "--protocols",
+        False,
+        "Solve unknown types to label with structural types.",
+    ),
+    _flag(
+        "--strict-import",
+        False,
+        "Only load submodules that are explicitly imported.",
+    ),
+    _flag(
+        "--strict-parameter-checks",
+        False,
+        "Enable exhaustive checking of function parameter types.",
+    ),
+    _flag(
+        "--strict-primitive-comparisons",
+        False,
+        "Emit errors for comparisons between incompatible primitive types.",
+    ),
+    _flag(
+        "--strict-undefined-checks",
+        False,
+        "Check that variables are defined in all possible code paths.",
+    ),
+    _Arg(
+        "-R",
+        "--use-rewrite",
+        action="store_true",
+        dest="use_rewrite",
+        default=False,
+        help="FOR TESTING ONLY. Use pytype/rewrite/.",
+    ),
 ]
 
 
 SUBTOOLS = [
     _Arg(
-        "--generate-builtins", action="store",
-        dest="generate_builtins", default=None,
-        help="Precompile builtins pyi and write to the given file."),
+        "--generate-builtins",
+        action="store",
+        dest="generate_builtins",
+        default=None,
+        help="Precompile builtins pyi and write to the given file.",
+    ),
     _Arg(
-        "--parse-pyi", action="store_true",
-        dest="parse_pyi", default=False,
-        help="Try parsing a PYI file. For testing of typeshed."),
+        "--parse-pyi",
+        action="store_true",
+        dest="parse_pyi",
+        default=False,
+        help="Try parsing a PYI file. For testing of typeshed.",
+    ),
 ]
 
 
 PICKLE_OPTIONS = [
     _Arg(
-        "--pickle-output", action="store_true", default=False,
+        "--pickle-output",
+        action="store_true",
+        default=False,
         dest="pickle_output",
-        help=("Save the ast representation of the inferred pyi as a pickled "
-              "file to the destination filename in the --output parameter.")),
+        help=(
+            "Save the ast representation of the inferred pyi as a pickled "
+            "file to the destination filename in the --output parameter."
+        ),
+    ),
     _Arg(
-        "--use-pickled-files", action="store_true", default=False,
+        "--use-pickled-files",
+        action="store_true",
+        default=False,
         dest="use_pickled_files",
-        help=("Use pickled pyi files instead of pyi files. This will check "
-              "if a file 'foo.bar.pyi.pickled' is present next to "
-              "'foo.bar.pyi' and load it instead. This will load the pickled "
-              "file without further verification. Allowing untrusted pickled "
-              "files into the code tree can lead to arbitrary code "
-              "execution!")),
+        help=(
+            "Use pickled pyi files instead of pyi files. This will check "
+            "if a file 'foo.bar.pyi.pickled' is present next to "
+            "'foo.bar.pyi' and load it instead. This will load the pickled "
+            "file without further verification. Allowing untrusted pickled "
+            "files into the code tree can lead to arbitrary code "
+            "execution!"
+        ),
+    ),
     _Arg(
-        "--precompiled-builtins", action="store",
-        dest="precompiled_builtins", default=None,
-        help="Use the supplied file as precompiled builtins pyi."),
+        "--precompiled-builtins",
+        action="store",
+        dest="precompiled_builtins",
+        default=None,
+        help="Use the supplied file as precompiled builtins pyi.",
+    ),
     _Arg(
-        "--pickle-metadata", type=str, action="store",
-        dest="pickle_metadata", default=None,
-        help=("Comma-separated list of metadata strings to be saved in the "
-              "pickled file.")),
+        "--pickle-metadata",
+        type=str,
+        action="store",
+        dest="pickle_metadata",
+        default=None,
+        help=(
+            "Comma-separated list of metadata strings to be saved in the "
+            "pickled file."
+        ),
+    ),
 ]
 
 
 INFRASTRUCTURE_OPTIONS = [
     _Arg(
-        "--imports_info", type=str, action="store",
-        dest="imports_map", default=None,
-        help=("Information for mapping import .pyi to files. "
-              "This options is incompatible with --pythonpath.")),
+        "--imports_info",
+        type=str,
+        action="store",
+        dest="imports_map",
+        default=None,
+        help=(
+            "Information for mapping import .pyi to files. "
+            "This options is incompatible with --pythonpath."
+        ),
+    ),
     _Arg(
-        "--unused_imports_info_files", type=str, action="store",
-        dest="unused_imports_info_files", default=None,
-        help=("File to write unused files provided by --imports_info. "
-              "The paths written are relative to the current directory. "
-              "This option is incompatible with --pythonpath.")),
+        "--unused_imports_info_files",
+        type=str,
+        action="store",
+        dest="unused_imports_info_files",
+        default=None,
+        help=(
+            "File to write unused files provided by --imports_info. "
+            "The paths written are relative to the current directory. "
+            "This option is incompatible with --pythonpath."
+        ),
+    ),
     _Arg(
-        "-M", "--module-name", action="store",
-        dest="module_name", default=None,
-        help=("Name of the module we're analyzing. For __init__.py files the "
-              "package should be suffixed with '.__init__'. "
-              "E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'")),
+        "-M",
+        "--module-name",
+        action="store",
+        dest="module_name",
+        default=None,
+        help=(
+            "Name of the module we're analyzing. For __init__.py files the "
+            "package should be suffixed with '.__init__'. "
+            "E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'"
+        ),
+    ),
     # TODO(b/68306233): Get rid of nofail.
     _Arg(
-        "--nofail", action="store_true",
-        dest="nofail", default=False,
-        help=("Don't allow pytype to fail.")),
+        "--nofail",
+        action="store_true",
+        dest="nofail",
+        default=False,
+        help="Don't allow pytype to fail.",
+    ),
     _Arg(
-        "--return-success", action="store_true",
-        dest="return_success", default=False,
-        help="Report all errors but exit with a success code."),
+        "--return-success",
+        action="store_true",
+        dest="return_success",
+        default=False,
+        help="Report all errors but exit with a success code.",
+    ),
     _Arg(
-        "--output-errors-csv", type=str, action="store",
-        dest="output_errors_csv", default=None,
-        help=("Outputs the error contents to a csv file")),
+        "--output-errors-csv",
+        type=str,
+        action="store",
+        dest="output_errors_csv",
+        default=None,
+        help="Outputs the error contents to a csv file",
+    ),
     _Arg(
-        "-P", "--pythonpath", type=str, action="store",
-        dest="pythonpath", default="",
-        help=("Directories for reading dependencies - a list of paths "
-              "separated by '%s'. The files must have been generated "
-              "by running pytype on dependencies of the file(s) "
-              "being analyzed. That is, if an input .py file has an "
-              "'import path.to.foo', and pytype has already been run "
-              "with 'pytype path.to.foo.py -o "
-              "$OUTDIR/path/to/foo.pyi', "
-              "then pytype should be invoked with $OUTDIR in "
-              "--pythonpath. This option is incompatible with "
-              "--imports_info and --generate_builtins.") % os.pathsep),
+        "-P",
+        "--pythonpath",
+        type=str,
+        action="store",
+        dest="pythonpath",
+        default="",
+        help=(
+            "Directories for reading dependencies - a list of paths "
+            "separated by '%s'. The files must have been generated "
+            "by running pytype on dependencies of the file(s) "
+            "being analyzed. That is, if an input .py file has an "
+            "'import path.to.foo', and pytype has already been run "
+            "with 'pytype path.to.foo.py -o "
+            "$OUTDIR/path/to/foo.pyi', "
+            "then pytype should be invoked with $OUTDIR in "
+            "--pythonpath. This option is incompatible with "
+            "--imports_info and --generate_builtins."
+        )
+        % os.pathsep,
+    ),
     _Arg(
-        "--touch", type=str, action="store",
-        dest="touch", default=None,
-        help="Output file to touch when exit status is ok."),
+        "--touch",
+        type=str,
+        action="store",
+        dest="touch",
+        default=None,
+        help="Output file to touch when exit status is ok.",
+    ),
     _Arg(
-        "-e", "--enable-only", action="store",
-        dest="enable_only", default=None,
-        help="Comma-separated list of error names to enable checking for."),
+        "-e",
+        "--enable-only",
+        action="store",
+        dest="enable_only",
+        default=None,
+        help="Comma-separated list of error names to enable checking for.",
+    ),
     # TODO(rechen): --analyze-annotated and --quick would make more sense as
     # basic options but are currently used by pytype-all in a way that isn't
     # easily configurable.
     _Arg(
-        "--analyze-annotated", action="store_true",
-        dest="analyze_annotated", default=None,
-        help=("Analyze methods with return annotations. By default, "
-              "on for checking and off for inference.")),
+        "--analyze-annotated",
+        action="store_true",
+        dest="analyze_annotated",
+        default=None,
+        help=(
+            "Analyze methods with return annotations. By default, "
+            "on for checking and off for inference."
+        ),
+    ),
     _Arg(
-        "-Z", "--quick", action="store_true",
-        dest="quick", default=None,
-        help=("Only do an approximation.")),
+        "-Z",
+        "--quick",
+        action="store_true",
+        dest="quick",
+        default=None,
+        help="Only do an approximation.",
+    ),
     _Arg(
-        "--color", action="store", choices=["always", "auto", "never"],
+        "--color",
+        action="store",
+        choices=["always", "auto", "never"],
         default="auto",
-        help="Choose never to disable color in the shell output."),
+        help="Choose never to disable color in the shell output.",
+    ),
     _Arg(
-        "--no-validate-version", action="store_false", dest="validate_version",
-        default=True, help="Don't validate the Python version."),
+        "--no-validate-version",
+        action="store_false",
+        dest="validate_version",
+        default=True,
+        help="Don't validate the Python version.",
+    ),
 ]
 
 
 DEBUG_OPTIONS = [
     _Arg(
-        "--check_preconditions", action="store_true",
-        dest="check_preconditions", default=False,
-        help=("Enable checking of preconditions.")),
+        "--check_preconditions",
+        action="store_true",
+        dest="check_preconditions",
+        default=False,
+        help="Enable checking of preconditions.",
+    ),
     _Arg(
-        "--metrics", type=str, action="store",
-        dest="metrics", default=None,
-        help="Write a metrics report to the specified file."),
+        "--metrics",
+        type=str,
+        action="store",
+        dest="metrics",
+        default=None,
+        help="Write a metrics report to the specified file.",
+    ),
     _Arg(
-        "--no-skip-calls", action="store_false",
-        dest="skip_repeat_calls", default=True,
-        help=("Don't reuse the results of previous function calls.")),
+        "--no-skip-calls",
+        action="store_false",
+        dest="skip_repeat_calls",
+        default=True,
+        help="Don't reuse the results of previous function calls.",
+    ),
     _Arg(
-        "-T", "--no-typeshed", action="store_false",
-        dest="typeshed", default=None,
-        help=("Do not use typeshed to look up types in the Python stdlib. "
-              "For testing.")),
+        "-T",
+        "--no-typeshed",
+        action="store_false",
+        dest="typeshed",
+        default=None,
+        help=(
+            "Do not use typeshed to look up types in the Python stdlib. "
+            "For testing."
+        ),
+    ),
     _Arg(
-        "--output-debug", type=str, action="store",
-        dest="output_debug", default=None,
-        help="Output debugging data (use - to add this output to the log)."),
+        "--output-debug",
+        type=str,
+        action="store",
+        dest="output_debug",
+        default=None,
+        help="Output debugging data (use - to add this output to the log).",
+    ),
     _Arg(
-        "--profile", type=str, action="store",
-        dest="profile", default=None,
-        help="Profile pytype and output the stats to the specified file."),
+        "--profile",
+        type=str,
+        action="store",
+        dest="profile",
+        default=None,
+        help="Profile pytype and output the stats to the specified file.",
+    ),
     _Arg(
-        "-v", "--verbosity", type=int, action="store",
-        dest="verbosity", default=1,
-        help=("Set logging verbosity: "
-              "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug")),
+        "-v",
+        "--verbosity",
+        type=int,
+        action="store",
+        dest="verbosity",
+        default=1,
+        help=(
+            "Set logging verbosity: "
+            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"
+        ),
+    ),
     _Arg(
-        "-S", "--timestamp-logs", action="store_true",
-        dest="timestamp_logs", default=None,
-        help=("Add timestamps to the logs")),
+        "-S",
+        "--timestamp-logs",
+        action="store_true",
+        dest="timestamp_logs",
+        default=None,
+        help="Add timestamps to the logs",
+    ),
     _Arg(
-        "--debug-logs", action="store_true",
-        dest="debug_logs", default=None,
-        help=("Add debugging information to the logs")),
+        "--debug-logs",
+        action="store_true",
+        dest="debug_logs",
+        default=None,
+        help="Add debugging information to the logs",
+    ),
     _Arg(
-        "--exec-log", type=str, action="store",
-        dest="exec_log", default=None,
-        help=("Write pytype execution details to the specified file.")),
+        "--exec-log",
+        type=str,
+        action="store",
+        dest="exec_log",
+        default=None,
+        help="Write pytype execution details to the specified file.",
+    ),
     _Arg(
-        "--verify-pickle", action="store_true", default=False,
+        "--verify-pickle",
+        action="store_true",
+        default=False,
         dest="verify_pickle",
-        help=("Loads the generated PYI file and compares it with the abstract "
-              "syntax tree written as pickled output. This will raise an "
-              "uncaught AssertionError if the two ASTs are not the same. The "
-              "option is intended for debugging.")),
+        help=(
+            "Loads the generated PYI file and compares it with the abstract "
+            "syntax tree written as pickled output. This will raise an "
+            "uncaught AssertionError if the two ASTs are not the same. The "
+            "option is intended for debugging."
+        ),
+    ),
     _Arg(
-        "--memory-snapshots", action="store_true", default=False,
+        "--memory-snapshots",
+        action="store_true",
+        default=False,
         dest="memory_snapshots",
-        help=("Enable tracemalloc snapshot metrics. Currently requires "
-              "a version of Python with tracemalloc patched in.")),
+        help=(
+            "Enable tracemalloc snapshot metrics. Currently requires "
+            "a version of Python with tracemalloc patched in."
+        ),
+    ),
     _Arg(
-        "--show-config", action="store_true",
-        dest="show_config", default=None,
-        help=("Display all config variables and exit.")),
+        "--show-config",
+        action="store_true",
+        dest="show_config",
+        default=None,
+        help="Display all config variables and exit.",
+    ),
     _Arg(
-        "--version", action="store_true",
-        dest="version", default=None,
-        help=("Display pytype version and exit.")),
+        "--version",
+        action="store_true",
+        dest="version",
+        default=None,
+        help="Display pytype version and exit.",
+    ),
     # Timing out kills pytype with an error code. Useful for determining whether
     # pytype is fast enough to be enabled for a particular target.
     _Arg(
-        "--timeout", type=int, action="store", dest="timeout", default=None,
-        help="In seconds. Abort after the given time has elapsed."),
+        "--timeout",
+        type=int,
+        action="store",
+        dest="timeout",
+        default=None,
+        help="In seconds. Abort after the given time has elapsed.",
+    ),
     _Arg(
-        "--debug", action="store_true",
-        dest="debug", default=None,
-        help=("Flag used internally by some of pytype's subtools")),
+        "--debug",
+        action="store_true",
+        dest="debug",
+        default=None,
+        help="Flag used internally by some of pytype's subtools",
+    ),
 ]
 
 
-ALL_OPTIONS = (MODES + BASIC_OPTIONS + SUBTOOLS + PICKLE_OPTIONS +
-               INFRASTRUCTURE_OPTIONS + DEBUG_OPTIONS +
-               FEATURE_FLAGS + EXPERIMENTAL_FLAGS)
+ALL_OPTIONS = (
+    MODES
+    + BASIC_OPTIONS
+    + SUBTOOLS
+    + PICKLE_OPTIONS
+    + INFRASTRUCTURE_OPTIONS
+    + DEBUG_OPTIONS
+    + FEATURE_FLAGS
+    + EXPERIMENTAL_FLAGS
+)
 
 
 def args_map():
@@ -478,9 +708,12 @@ def add_basic_options(o):
 
 def add_feature_flags(o):
   """Add flags for experimental and temporarily gated features."""
+
   def flag(arg, temporary, experimental):
-    temp = ("This flag is temporary and will be removed once this "
-            "behavior is enabled by default.")
+    temp = (
+        "This flag is temporary and will be removed once this "
+        "behavior is enabled by default."
+    )
     help_text = arg.get("help")
     if temporary:
       help_text = f"{help_text} {temp}"
@@ -552,20 +785,26 @@ class Postprocessor:
     # them outside of the normal flow.
     if hasattr(self.input_options, "input"):
       self.input_options.input, output = self._parse_arguments(
-          self.input_options.input)
+          self.input_options.input
+      )
     else:
       output = None
     if output and "output" in self.names:
       if getattr(self.input_options, "output", None):
         self.error("x:y notation not allowed with -o")
       self.input_options.output = output
+
     # prepare function objects for topological sort:
     class Node:  # pylint: disable=g-wrong-blank-lines
+
       def __init__(self, name, processor):  # pylint: disable=g-wrong-blank-lines
         self.name = name
         self.processor = processor
-    nodes = {name: Node(name, getattr(self, "_store_" + name, None))
-             for name in self.names}
+
+    nodes = {
+        name: Node(name, getattr(self, "_store_" + name, None))
+        for name in self.names
+    }
     for f in nodes.values():
       if f.processor:
         # option has a _store_{name} method
@@ -636,8 +875,10 @@ class Postprocessor:
   def _store_pickle_output(self, pickle_output):
     if pickle_output:
       if not file_utils.is_pickle(self.output_options.output):
-        self.error(f"Must specify {file_utils.PICKLE_EXT} file for --output",
-                   "pickle-output")
+        self.error(
+            f"Must specify {file_utils.PICKLE_EXT} file for --output",
+            "pickle-output",
+        )
     self.output_options.pickle_output = pickle_output
 
   @uses(["output", "+pickle_output"])
@@ -646,7 +887,8 @@ class Postprocessor:
       self.output_options.verify_pickle = None
     else:
       self.output_options.verify_pickle = self.output_options.output.replace(
-          file_utils.PICKLE_EXT, ".pyi")
+          file_utils.PICKLE_EXT, ".pyi"
+      )
 
   @uses(["-input", "show_config", "-pythonpath", "version"])
   def _store_generate_builtins(self, generate_builtins):
@@ -654,9 +896,11 @@ class Postprocessor:
     if generate_builtins:
       # Set the default pythonpath to [] rather than [""]
       self.output_options.pythonpath = []
-    elif (not self.output_options.input and
-          not self.output_options.show_config and
-          not self.output_options.version):
+    elif (
+        not self.output_options.input
+        and not self.output_options.show_config
+        and not self.output_options.version
+    ):
       self.error("Need a filename.")
     self.output_options.generate_builtins = generate_builtins
 
@@ -694,7 +938,8 @@ class Postprocessor:
       version = sys.version_info[:2]
     if len(version) != 2:
       self.error(
-          f"--python_version must be <major>.<minor>: {python_version!r}")
+          f"--python_version must be <major>.<minor>: {python_version!r}"
+      )
     # Check that we have a version supported by pytype.
     if self.output_options.validate_version:
       utils.validate_version(version)
@@ -716,7 +961,8 @@ class Postprocessor:
     """Process the 'enable-only' option."""
     if enable_only:
       self.output_options.disable = list(
-          errors.get_error_names_set() - set(enable_only.split(",")))
+          errors.get_error_names_set() - set(enable_only.split(","))
+      )
     else:
       # We set the field to an empty list as clients using this postprocessor
       # expect a list.
@@ -737,7 +983,8 @@ class Postprocessor:
       with verbosity_from(self.output_options):
         builder = imports_map_loader.ImportsMapBuilder(self.output_options)
         self.output_options.imports_map = builder.build_from_items(
-            imports_map_items)
+            imports_map_items
+        )
     else:
       # This option sets imports_map first, before _store_imports_map.
       self.output_options.imports_map = None
@@ -757,22 +1004,22 @@ class Postprocessor:
 
   def _store_color(self, color):
     if color not in ("always", "auto", "never"):
-      raise ValueError(f"--color flag allows only 'always', 'auto' or 'never', "
-                       f"not {color!r}")
+      raise ValueError(
+          f"--color flag allows only 'always', 'auto' or 'never', not {color!r}"
+      )
 
-    self.output_options.color = (
-        sys.platform in ("linux", "cygwin", "darwin") and
-        (
-            color == "always" or
-            (color == "auto" and sys.stderr.isatty())
-        )
-    )
+    self.output_options.color = sys.platform in (
+        "linux",
+        "cygwin",
+        "darwin",
+    ) and (color == "always" or (color == "auto" and sys.stderr.isatty()))
 
   @uses(["input", "pythonpath"])
   def _store_module_name(self, module_name):
     if module_name is None:
       module_name = module_utils.get_module_name(
-          self.output_options.input, self.output_options.pythonpath)
+          self.output_options.input, self.output_options.pythonpath
+      )
     self.output_options.module_name = module_name
 
   @uses(["check"])
@@ -787,15 +1034,17 @@ class Postprocessor:
       self.error("Can only process one file at a time.")
     if not arguments:
       return None, None
-    item, = arguments
+    (item,) = arguments
     split = tuple(item.split(os.pathsep))
     if len(split) == 1:
       return item, None
     elif len(split) == 2:
       return split
     else:
-      self.error("Argument %r is not a pair of non-empty file names "
-                 "separated by %r" % (item, os.pathsep))
+      self.error(
+          "Argument %r is not a pair of non-empty file names separated by %r"
+          % (item, os.pathsep)
+      )
 
   def _store_pickle_metadata(self, pickle_metadata):
     if pickle_metadata:
@@ -817,8 +1066,10 @@ def _set_verbosity(verbosity, timestamp_logs, debug_logs):
     logging.getLogger().setLevel(basic_logging_level)
   else:
     if debug_logs:
-      fmt = (":%(relativeCreated)f:%(levelname)s:%(name)s:%(funcName)s:"
-             "%(lineno)s: %(message)s")
+      fmt = (
+          ":%(relativeCreated)f:%(levelname)s:%(name)s:%(funcName)s:"
+          "%(lineno)s: %(message)s"
+      )
     else:
       fmt = "%(levelname)s:%(name)s %(message)s"
       if timestamp_logs:

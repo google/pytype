@@ -28,5 +28,6 @@ class CompileToPycTest(test_base.BaseTest):
         return "1".hello  # attribute-error
     """)
 
+
 if __name__ == "__main__":
   test_base.main()

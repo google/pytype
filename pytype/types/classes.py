@@ -4,7 +4,6 @@ import abc
 import dataclasses
 from typing import Any, Mapping, Sequence
 
-
 from pytype.types import base
 
 

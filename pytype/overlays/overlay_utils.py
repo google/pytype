@@ -53,17 +53,19 @@ class TypingContainer(abstract.AnnotationContainer):
     super().__init__(name, ctx, base)
 
 
-def make_method(ctx,
-                node,
-                name,
-                params=None,
-                posonly_count=0,
-                kwonly_params=None,
-                return_type=None,
-                self_param=None,
-                varargs=None,
-                kwargs=None,
-                kind=pytd.MethodKind.METHOD):
+def make_method(
+    ctx,
+    node,
+    name,
+    params=None,
+    posonly_count=0,
+    kwonly_params=None,
+    return_type=None,
+    self_param=None,
+    varargs=None,
+    kwargs=None,
+    kind=pytd.MethodKind.METHOD,
+):
   """Make a method from params.
 
   Args:
@@ -133,7 +135,8 @@ def make_method(ctx,
       kwargs_name=kwargs_name,
       defaults=defaults,
       annotations=annotations,
-      ctx=ctx)
+      ctx=ctx,
+  )
 
   # Check that the constructed function has a valid signature
   ret.signature.check_defaults(ctx)

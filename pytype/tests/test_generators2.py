@@ -56,12 +56,15 @@ class GeneratorFeatureTest(test_base.BaseTest):
       x = f(2)
       y = f(1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Generator, Union
       def f(x) -> Generator[Union[int, str], Any, Union[int, str]]: ...
       x = ...  # type: Generator[str, Any, str]
       y = ...  # type: Generator[int, Any, int]
-    """)
+    """,
+    )
 
   def test_yield_type_infer(self):
     ty = self.Infer("""
@@ -72,11 +75,14 @@ class GeneratorFeatureTest(test_base.BaseTest):
         x = "str"
         yield x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Generator, Union
 
       def gen() -> Generator[Union[int, str], Any, None]: ...
-    """)
+    """,
+    )
 
   def test_send_ret_type(self):
     ty = self.Infer("""
@@ -85,10 +91,13 @@ class GeneratorFeatureTest(test_base.BaseTest):
         x = yield "5"
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Generator
       def f() -> Generator[str, int, Any]: ...
-    """)
+    """,
+    )
 
   def test_parameter_count(self):
     _, errors = self.InferWithErrors("""
@@ -104,9 +113,13 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def func3() -> Generator[int]:  # invalid-annotation[e2]
         yield 5
     """)
-    self.assertErrorSequences(errors, {
-        "e1": ["generator[int, int]", "generator[_T, _T2, _V]", "3", "2"],
-        "e2": ["generator[int]", "generator[_T, _T2, _V]", "3", "1"]})
+    self.assertErrorSequences(
+        errors,
+        {
+            "e1": ["generator[int, int]", "generator[_T, _T2, _V]", "3", "2"],
+            "e2": ["generator[int]", "generator[_T, _T2, _V]", "3", "1"],
+        },
+    )
 
   def test_hidden_fields(self):
     self.Check("""
@@ -134,15 +147,19 @@ class GeneratorFeatureTest(test_base.BaseTest):
   def test_empty_yield_from(self):
     # Regression test for https://github.com/google/pytype/issues/978.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import abc
         from typing import Any, AsyncContextManager, Coroutine
         class Connection(AsyncContextManager): ...
         class ConnectionFactory(metaclass=abc.ABCMeta):
           @abc.abstractmethod
           def new(self) -> Coroutine[Any, Any, Connection]: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Any
         from foo import ConnectionFactory
         class RetryingConnection:
@@ -152,7 +169,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
             conn_fut = self._connection_factory.new()
             async with (await conn_fut) as connection:
               await connection
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_yield_from(self):
     ty = self.Infer("""
@@ -161,11 +180,14 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def bar():
         yield from foo()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Generator
       def foo() -> Generator[str, Any, None]: ...
       def bar() -> Generator[str, Any, None]: ...
-    """)
+    """,
+    )
 
   def test_yield_from_check_return(self):
     self.CheckWithErrors("""

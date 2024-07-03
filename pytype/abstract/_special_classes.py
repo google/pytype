@@ -14,13 +14,15 @@ def build_class(node, props, kwargs, ctx):
       continue
     if base.is_enum:
       enum_base = abstract_utils.get_atomic_value(
-          ctx.vm.loaded_overlays["enum"].members["Enum"])
+          ctx.vm.loaded_overlays["enum"].members["Enum"]
+      )
       return enum_base.make_class(node, props)
     elif base.full_name == "typing.NamedTuple":
       return base.make_class(node, props.bases, props.class_dict_var)
     elif base.is_typed_dict_class:
       return base.make_class(
-          node, props.bases, props.class_dict_var, total=kwargs.get("total"))
+          node, props.bases, props.class_dict_var, total=kwargs.get("total")
+      )
     elif "__dataclass_transform__" in base.metadata:
       node, cls_var = ctx.make_class(node, props)
       return ctx.convert.apply_dataclass_transform(cls_var, node)
@@ -72,14 +74,17 @@ class _TypedDictBuilder(_Builder):
     return c.name in self.CLASSES
 
   def matches_base(self, c):
-    return any(isinstance(b, pytd.ClassType) and self.matches_class(b)
-               for b in c.bases)
+    return any(
+        isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases
+    )
 
   def matches_mro(self, c):
     # Check if we have typed dicts in the MRO by seeing if we have already
     # created a TypedDictClass for one of the ancestor classes.
-    return any(isinstance(b, class_mixin.Class) and b.is_typed_dict_class
-               for b in c.mro)
+    return any(
+        isinstance(b, class_mixin.Class) and b.is_typed_dict_class
+        for b in c.mro
+    )
 
   def make_base_class(self):
     return self.convert.make_typed_dict_builder()
@@ -97,8 +102,9 @@ class _NamedTupleBuilder(_Builder):
     return c.name in self.CLASSES
 
   def matches_base(self, c):
-    return any(isinstance(b, pytd.ClassType) and self.matches_class(b)
-               for b in c.bases)
+    return any(
+        isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases
+    )
 
   def matches_mro(self, c):
     # We only create namedtuples by direct inheritance

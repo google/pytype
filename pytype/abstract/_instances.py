@@ -32,13 +32,18 @@ def _get_concrete_sequence_fullhash(seq, seen):
   elif id(seq) in seen:
     return seq.get_default_fullhash()
   seen.add(id(seq))
-  return hash((type(seq),) +
-              tuple(abstract_utils.get_var_fullhash_component(var, seen)
-                    for var in seq.pyval))
+  return hash(
+      (type(seq),)
+      + tuple(
+          abstract_utils.get_var_fullhash_component(var, seen)
+          for var in seq.pyval
+      )
+  )
 
 
 class LazyConcreteDict(
-    _instance_base.SimpleValue, mixin.PythonConstant, mixin.LazyMembers):
+    _instance_base.SimpleValue, mixin.PythonConstant, mixin.LazyMembers
+):
   """Dictionary with lazy values."""
 
   def __init__(self, name, member_map, ctx):
@@ -77,7 +82,8 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
     """Called to convert the items in _member_map to cfg.Variable."""
     if isinstance(member, pytd.Alias) and isinstance(member.type, pytd.Module):
       module = self.ctx.vm.import_module(
-          member.type.module_name, member.type.module_name, 0)
+          member.type.module_name, member.type.module_name, 0
+      )
       if not module:
         raise abstract_utils.ModuleLoadError()
       return module.to_variable(self.ctx.root_node)
@@ -97,7 +103,7 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
 
   @module.setter
   def module(self, m):
-    assert (m is None or m == self.ast.name), (m, self.ast.name)
+    assert m is None or m == self.ast.name, (m, self.ast.name)
 
   @property
   def full_name(self):
@@ -121,8 +127,9 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
         if len(f.signatures) != 1:
           log.warning("overloaded module-level __getattr__ (in %s)", self.name)
         elif f.signatures[0].return_type != pytd.AnythingType():
-          log.warning("module-level __getattr__ doesn't return Any (in %s)",
-                      self.name)
+          log.warning(
+              "module-level __getattr__ doesn't return Any (in %s)", self.name
+          )
         return True
       else:
         log.warning("__getattr__ in %s is not a function", self.name)
@@ -130,8 +137,9 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
 
   def get_submodule(self, node, name):
     full_name = self.name + "." + name
-    mod = self.ctx.vm.import_module(full_name, full_name,
-                                    0)  # 0: absolute import
+    mod = self.ctx.vm.import_module(
+        full_name, full_name, 0
+    )  # 0: absolute import
     if mod is not None:
       return mod.to_variable(node)
     elif self.has_getattr():
@@ -155,12 +163,15 @@ class Coroutine(_instance_base.Instance):
 
   def __init__(self, ctx, ret_var, node):
     super().__init__(ctx.convert.coroutine_type, ctx)
-    self.merge_instance_type_parameter(node, abstract_utils.T,
-                                       self.ctx.new_unsolvable(node))
-    self.merge_instance_type_parameter(node, abstract_utils.T2,
-                                       self.ctx.new_unsolvable(node))
     self.merge_instance_type_parameter(
-        node, abstract_utils.V, ret_var.AssignToNewVariable(node))
+        node, abstract_utils.T, self.ctx.new_unsolvable(node)
+    )
+    self.merge_instance_type_parameter(
+        node, abstract_utils.T2, self.ctx.new_unsolvable(node)
+    )
+    self.merge_instance_type_parameter(
+        node, abstract_utils.V, ret_var.AssignToNewVariable(node)
+    )
 
 
 class Iterator(_instance_base.Instance, mixin.HasSlots):
@@ -197,20 +208,24 @@ class BaseGenerator(_instance_base.Instance):
           type_params.append(abstract_utils.V)
         for param_name in type_params:
           param_var = self.ctx.vm.init_class(
-              node, ret_type.get_formal_type_parameter(param_name))
+              node, ret_type.get_formal_type_parameter(param_name)
+          )
           self.merge_instance_type_parameter(node, param_name, param_var)
       else:
         # infer the type parameters based on the collected type information.
         self.merge_instance_type_parameter(
-            node, abstract_utils.T, self.frame.yield_variable)
+            node, abstract_utils.T, self.frame.yield_variable
+        )
         # For T2 type, it can not be decided until the send/asend function is
         # called later on. So set T2 type as ANY so that the type check will
         # not fail when the function is called afterwards.
-        self.merge_instance_type_parameter(node, abstract_utils.T2,
-                                           self.ctx.new_unsolvable(node))
+        self.merge_instance_type_parameter(
+            node, abstract_utils.T2, self.ctx.new_unsolvable(node)
+        )
         if self.is_return_allowed:
           self.merge_instance_type_parameter(
-              node, abstract_utils.V, self.frame.return_variable)
+              node, abstract_utils.V, self.frame.return_variable
+          )
       self.runs += 1
     return node, self.get_instance_type_parameter(abstract_utils.T)
 
@@ -224,8 +239,9 @@ class AsyncGenerator(BaseGenerator):
   """A representation of instances of async generators."""
 
   def __init__(self, async_generator_frame, ctx):
-    super().__init__(ctx.convert.async_generator_type, async_generator_frame,
-                     ctx, False)
+    super().__init__(
+        ctx.convert.async_generator_type, async_generator_frame, ctx, False
+    )
 
 
 class Generator(BaseGenerator):
@@ -259,8 +275,8 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     combined_content = ctx.convert.build_content(content)
     class_params = {
         name: ctx.convert.merge_classes(instance_param.data)
-        for name, instance_param in tuple(enumerate(content)) +
-        ((abstract_utils.T, combined_content),)
+        for name, instance_param in tuple(enumerate(content))
+        + ((abstract_utils.T, combined_content),)
     }
     cls = _make("TupleClass", ctx.convert.tuple_type, class_params, ctx)
     super().__init__(cls, ctx)
@@ -272,8 +288,9 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     self.is_unpacked_function_args = False
 
   def str_of_constant(self, printer):
-    content = ", ".join(" or ".join(_var_map(printer, val))
-                        for val in self.pyval)
+    content = ", ".join(
+        " or ".join(_var_map(printer, val)) for val in self.pyval
+    )
     if self.tuple_length == 1:
       content += ","
     return f"({content})"
@@ -296,8 +313,9 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     if self._is_recursive() or other._is_recursive():
       return self._hash == other._hash
     # Otherwise do an elementwise comparison.
-    return all(e.data == other_e.data
-               for e, other_e in zip(self.pyval, other.pyval))
+    return all(
+        e.data == other_e.data for e, other_e in zip(self.pyval, other.pyval)
+    )
 
   def __hash__(self):
     if self._hash is None:
@@ -305,8 +323,9 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
       # tuple containing itself, so we approximate the inner values with their
       # full names.
       approximate_hash = lambda var: tuple(v.full_name for v in var.data)
-      self._hash = hash((self.tuple_length,) +
-                        tuple(approximate_hash(e) for e in self.pyval))
+      self._hash = hash(
+          (self.tuple_length,) + tuple(approximate_hash(e) for e in self.pyval)
+      )
     return self._hash
 
   def get_fullhash(self, seen=None):
@@ -327,8 +346,9 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     self.set_native_slot("__getslice__", self.getslice_slot)
 
   def str_of_constant(self, printer):
-    return "[%s]" % ", ".join(" or ".join(_var_map(printer, val))
-                              for val in self.pyval)
+    return "[%s]" % ", ".join(
+        " or ".join(_var_map(printer, val)) for val in self.pyval
+    )
 
   def __repr__(self):
     if self.is_concrete:
@@ -381,8 +401,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     If data is an Instance of int, None is returned.
 
     Args:
-      data: The object to extract from. Usually a ConcreteValue or an
-        Instance.
+      data: The object to extract from. Usually a ConcreteValue or an Instance.
 
     Returns:
       The value (an int or None) of the index.
@@ -417,8 +436,9 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     results = []
     unresolved = False
     if self.is_concrete:
-      for start_val, end_val in cfg_utils.variable_product([start_var,
-                                                            end_var]):
+      for start_val, end_val in cfg_utils.variable_product(
+          [start_var, end_var]
+      ):
         try:
           start = self._get_index(start_val.data)
           end = self._get_index(end_val.data)
@@ -426,7 +446,8 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
           unresolved = True
         else:
           results.append(
-              List(self.pyval[start:end], self.ctx).to_variable(node))
+              List(self.pyval[start:end], self.ctx).to_variable(node)
+          )
     if unresolved or not self.is_concrete:
       results.append(ret)
     return node, self.ctx.join_variables(node, results)
@@ -456,8 +477,10 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     # self.pyval is only populated for string keys.
     if not self.is_concrete:
       return "{...: ...}"
-    pairs = [f"{name!r}: {' or '.join(_var_map(printer, value))}"
-             for name, value in self.pyval.items()]
+    pairs = [
+        f"{name!r}: {' or '.join(_var_map(printer, value))}"
+        for name, value in self.pyval.items()
+    ]
     return "{" + ", ".join(pairs) + "}"
 
   def __repr__(self):
@@ -476,8 +499,10 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     elif id(self) in seen:
       return self.get_default_fullhash()
     seen.add(id(self))
-    return hash((type(self),) + abstract_utils.get_dict_fullhash_component(
-        self.pyval, seen=seen))
+    return hash(
+        (type(self),)
+        + abstract_utils.get_dict_fullhash_component(self.pyval, seen=seen)
+    )
 
   def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""
@@ -537,9 +562,11 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
     return self.call_pytd(
-        node, "__setitem__",
+        node,
+        "__setitem__",
         abstract_utils.abstractify_variable(name_var, self.ctx),
-        abstract_utils.abstractify_variable(value_var, self.ctx))
+        abstract_utils.abstractify_variable(value_var, self.ctx),
+    )
 
   def setdefault_slot(self, node, name_var, value_var=None):
     if value_var is None:
@@ -612,15 +639,19 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     return node, ret
 
   def update(
-      self, node: cfg.CFGNode,
+      self,
+      node: cfg.CFGNode,
       other_dict: Union["Dict", _Dict[str, cfg.Variable], _base.BaseValue],
-      omit: _Tuple[str, ...] = ()) -> None:
+      omit: _Tuple[str, ...] = (),
+  ) -> None:
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():
         if key not in omit:
           self.set_str_item(node, key, value)
-    if (isinstance(other_dict, _instance_base.Instance) and
-        other_dict.full_name == "builtins.dict"):
+    if (
+        isinstance(other_dict, _instance_base.Instance)
+        and other_dict.full_name == "builtins.dict"
+    ):
       self.is_concrete &= other_dict.is_concrete
       for param in (abstract_utils.K, abstract_utils.V):
         param_value = other_dict.get_instance_type_parameter(param, node)

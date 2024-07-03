@@ -12,8 +12,10 @@ from pytype.pytd import pytd
 # TODO(rechen): IsNamedTuple is being used to disable visitors that shouldn't
 # operate on generated classes. Should we do the same for dataclasses and attrs?
 def IsNamedTuple(node: pytd.Class):
-  return any(base.name in ("collections.namedtuple", "typing.NamedTuple")
-             for base in node.bases)
+  return any(
+      base.name in ("collections.namedtuple", "typing.NamedTuple")
+      for base in node.bases
+  )
 
 
 class CanonicalOrderingVisitor(base_visitor.Visitor):
@@ -24,18 +26,21 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
   """
 
   def VisitTypeDeclUnit(self, node):
-    return pytd.TypeDeclUnit(name=node.name,
-                             constants=tuple(sorted(node.constants)),
-                             type_params=tuple(sorted(node.type_params)),
-                             functions=tuple(sorted(node.functions)),
-                             classes=tuple(sorted(node.classes)),
-                             aliases=tuple(sorted(node.aliases)))
+    return pytd.TypeDeclUnit(
+        name=node.name,
+        constants=tuple(sorted(node.constants)),
+        type_params=tuple(sorted(node.type_params)),
+        functions=tuple(sorted(node.functions)),
+        classes=tuple(sorted(node.classes)),
+        aliases=tuple(sorted(node.aliases)),
+    )
 
   def _PreserveConstantsOrdering(self, node):
     # If we have a dataclass-like decorator we need to preserve the order of the
     # class attributes, otherwise inheritance will not work correctly.
-    if any(x.name in ("attr.s", "dataclasses.dataclass")
-           for x in node.decorators):
+    if any(
+        x.name in ("attr.s", "dataclasses.dataclass") for x in node.decorators
+    ):
       return True
     # The order of a namedtuple's fields should always be preserved.
     return IsNamedTuple(node)
@@ -54,12 +59,14 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
         decorators=tuple(sorted(node.decorators)),
         classes=tuple(sorted(node.classes)),
         slots=tuple(sorted(node.slots)) if node.slots is not None else None,
-        template=node.template)
+        template=node.template,
+    )
 
   def VisitSignature(self, node):
     return node.Replace(
         template=tuple(sorted(node.template)),
-        exceptions=tuple(sorted(node.exceptions)))
+        exceptions=tuple(sorted(node.exceptions)),
+    )
 
   def VisitUnionType(self, node):
     return pytd.UnionType(tuple(sorted(node.type_list)))
@@ -124,10 +131,10 @@ class RenameModuleVisitor(base_visitor.Visitor):
     """Constructor.
 
     Args:
-      old_module_name: The old name of the module as a string,
-        e.g. "foo.bar.module1"
-      new_module_name: The new name of the module as a string,
-        e.g. "barfoo.module2"
+      old_module_name: The old name of the module as a string, e.g.
+        "foo.bar.module1"
+      new_module_name: The new name of the module as a string, e.g.
+        "barfoo.module2"
 
     Raises:
       ValueError: If the old_module name is an empty string.

@@ -8,6 +8,7 @@ def make_quick(func):
   def wrapper(*args, **kwargs):
     kwargs["quick"] = True
     return func(*args, **kwargs)
+
   return wrapper
 
 
@@ -22,11 +23,15 @@ class QuickTest(test_base.BaseTest):
 
   def test_multiple_returns(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def add(x: int, y: int) -> int: ...
         def add(x: int,  y: float) -> float: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         def f1():
           f2()
@@ -34,16 +39,22 @@ class QuickTest(test_base.BaseTest):
           return foo.add(42, f3())
         def f3():
           return 42
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_multiple_returns_container(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Tuple
         def concat(x: int, y: int) -> Tuple[int, int]: ...
         def concat(x: int, y: float) -> Tuple[int, float]: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Tuple
         import foo
         def f1():
@@ -52,7 +63,9 @@ class QuickTest(test_base.BaseTest):
           return foo.concat(42, f3())
         def f3():
           return 42
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_noreturn(self):
     self.Check("""

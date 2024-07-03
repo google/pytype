@@ -12,9 +12,12 @@ class TestMethods(test_base.BaseTest):
       def __init__(self: int):
         return self
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def __init__(self: int) -> int: ...
-    """)
+    """,
+    )
 
   def test_annotated_self(self):
     errors = self.CheckWithErrors("""
@@ -56,15 +59,19 @@ class TestMethods(test_base.BaseTest):
 
   def test_use_abstract_classmethod(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import abc
 
         class Foo(metaclass=abc.ABCMeta):
           @abc.abstractmethod
           @classmethod
           def foo(cls, value) -> int: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import collections
         import foo
 
@@ -75,14 +82,17 @@ class TestMethods(test_base.BaseTest):
 
           def f(self) -> collections.OrderedDict[str, foo.Foo]:
             return __any_object__
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_max_depth(self):
     # pytype hits max depth in A.cmp() when trying to instantiate `other`,
     # leading to the FromInt() call in __init__ being skipped and pytype
     # thinking that other.x is an int. If max depth is raised, pytype correctly
     # sees that self.x will be a str, and no error is raised.
-    self.CheckWithErrors("""
+    self.CheckWithErrors(
+        """
       from typing import Any, Union
 
       class A:
@@ -98,7 +108,9 @@ class TestMethods(test_base.BaseTest):
 
         def Upper(self) -> str:
           return self.x.upper()  # attribute-error
-    """, maximum_depth=2)
+    """,
+        maximum_depth=2,
+    )
 
   def test_call_dispatch(self):
     self.Check("""
@@ -184,14 +196,17 @@ class TestMethodsPy3(test_base.BaseTest):
           self._fn1(x)
           self._fn2(x=x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any
       class C:
         def __init__(self, fn1, fn2) -> None: ...
         def f(self, x) -> None: ...
         def _fn1(self, _1) -> Any: ...
         def _fn2(self, x) -> Any: ...
-    """)
+    """,
+    )
 
   def test_func(self):
     ty = self.Infer("""
@@ -200,11 +215,14 @@ class TestMethodsPy3(test_base.BaseTest):
           pass
       f = Foo().f.__func__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def f(self) -> None: ...
       def f(self: Foo) -> None: ...
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

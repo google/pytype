@@ -43,7 +43,8 @@ class TypeGraph:
       if node in ignored:
         continue
       self.add_node(
-          node, label=f"<{node.id}>{node.name}", shape="polygon", sides=4)
+          node, label=f"<{node.id}>{node.name}", shape="polygon", sides=4
+      )
       for other in node.outgoing:
         self.add_edge(node, other, penwidth=2.0)
 
@@ -60,8 +61,12 @@ class TypeGraph:
       if all(_is_constant(value) for value in variable.bindings):
         continue
       self.add_node(
-          variable, label=f"v{variable.id}", shape="polygon", sides=4,
-          distortion=.1)
+          variable,
+          label=f"v{variable.id}",
+          shape="polygon",
+          sides=4,
+          distortion=0.1,
+      )
       for val in variable.bindings:
         label = f"{obj_repr(val)}@0x{id(val.data):x}"
         color = "white" if val.origins else "red"
@@ -74,8 +79,9 @@ class TypeGraph:
             self.add_node(srcs, label="")
             self.add_edge(val, srcs, color="pink", arrowhead="none", weight=40)
             if origin.where not in ignored:
-              self.add_edge(origin.where, srcs, arrowhead="none",
-                            style="dotted", weight=5)
+              self.add_edge(
+                  origin.where, srcs, arrowhead="none", style="dotted", weight=5
+              )
             for src in srcs:
               self.add_edge(src, srcs, color="lightblue", weight=2)
 
@@ -83,7 +89,9 @@ class TypeGraph:
 def write_svg_from_dot(svg_file, dot):
   with subprocess.Popen(
       ["/usr/bin/dot", "-T", "svg", "-o", svg_file],
-      stdin=subprocess.PIPE, universal_newlines=True) as proc:
+      stdin=subprocess.PIPE,
+      universal_newlines=True,
+  ) as proc:
     (_, stderr) = proc.communicate(dot)
   if stderr:
     log.info("Failed to create %s: %s", svg_file, stderr)

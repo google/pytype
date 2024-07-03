@@ -15,14 +15,17 @@ class SlotsTest(test_base.BaseTest):
           self.bar = 2
           self.baz = 4
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         __slots__ = ["foo", "bar", "baz"]
         foo = ...  # type: int
         bar = ...  # type: int
         baz = ...  # type: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_ambiguous_slot(self):
     ty = self.Infer("""
@@ -31,11 +34,14 @@ class SlotsTest(test_base.BaseTest):
         def __init__(self):
           self.foo = 1
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         foo = ...  # type: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_ambiguous_slot_entry(self):
     self.Check("""
@@ -60,10 +66,13 @@ class SlotsTest(test_base.BaseTest):
       class Foo:
         __slots__ = ["foo", "bar"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         __slots__ = ["foo", "bar"]
-    """)
+    """,
+    )
 
   def test_slot_with_non_strings(self):
     _, errors = self.InferWithErrors("""
@@ -85,10 +94,13 @@ class SlotsTest(test_base.BaseTest):
         def __init__(self):
           self.__slots__ = ["foo"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_slot_as_late_class_attribute(self):
     ty = self.Infer("""
@@ -98,10 +110,13 @@ class SlotsTest(test_base.BaseTest):
       # Note this doesn't actually do anything! Python ignores the next line.
       Foo.__slots__ = ["foo"]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         pass
-    """)
+    """,
+    )
 
   def test_assign_attribute(self):
     _, errors = self.InferWithErrors("""

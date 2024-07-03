@@ -34,13 +34,16 @@ class AnyStrTest(test_base.BaseTest):
     """)
 
   def test_anystr_in_closure(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       from typing import AnyStr, Dict, Optional
       def foo(d: Dict[unicode, Optional[AnyStr]] = None):
         def bar() -> Optional[AnyStr]:
           return __any_object__
         d[__any_object__] = bar()
-    """)
+    """,
+    )
 
   def test_missing_import(self):
     self.CheckWithErrors("""
@@ -49,13 +52,16 @@ class AnyStrTest(test_base.BaseTest):
     """)
 
   def test_generic_inheritance(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import AnyStr, Generic
       class Foo(Generic[AnyStr]):
         @property
         def name(self) -> AnyStr | None: ...
       def dofoo() -> Foo[str]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         assert_type(foo.dofoo().name, 'Optional[str]')
@@ -71,27 +77,39 @@ class AnyStrTestPy3(test_base.BaseTest):
       def f(x: AnyStr) -> AnyStr:
         return __any_object__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar
       AnyStr = TypeVar("AnyStr", str, bytes)
       def f(x: AnyStr) -> AnyStr: ...
-    """)
+    """,
+    )
     self.assertTrue(ty.Lookup("f").signatures[0].template)
 
   def test_anystr_function_import(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         from typing import AnyStr
         def f(x: AnyStr) -> AnyStr: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         from a import f
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import TypesVar
         AnyStr = TypeVar("AnyStr", str, bytes)
         def f(x: AnyStr) -> AnyStr: ...
-      """)
+      """,
+      )
 
   def test_use_anystr_constraints(self):
     ty, errors = self.InferWithErrors("""
@@ -101,13 +119,16 @@ class AnyStrTestPy3(test_base.BaseTest):
       v1 = f(__any_object__, u"")  # ok
       v2 = f(__any_object__, 42)  # wrong-arg-types[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, TypeVar
       AnyStr = TypeVar("AnyStr", str, bytes)
       def f(x: AnyStr, y: AnyStr) -> AnyStr: ...
       v1 = ...  # type: str
       v2 = ...  # type: Any
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
   def test_constraint_mismatch(self):
@@ -119,7 +140,8 @@ class AnyStrTestPy3(test_base.BaseTest):
       f(b"", b"")  # ok
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*y: str.*Actual.*y: bytes"})
+        errors, {"e": r"Expected.*y: str.*Actual.*y: bytes"}
+    )
 
   def test_custom_generic(self):
     ty = self.Infer("""
@@ -127,11 +149,14 @@ class AnyStrTestPy3(test_base.BaseTest):
       class Foo(Generic[AnyStr]):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Generic, TypeVar
       AnyStr = TypeVar('AnyStr', str, bytes)
       class Foo(Generic[AnyStr]): ...
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

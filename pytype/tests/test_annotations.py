@@ -32,18 +32,24 @@ class AnnotationTest(test_base.BaseTest):
       def bar(p1: str, p2: complex) -> int:
          return 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def bar(p1: str, p2: complex) -> int: ...
-    """)
+    """,
+    )
 
   def test_deep(self):
     ty = self.Infer("""
       def bar(p1: str, p2: complex) -> None:
          pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def bar(p1: str, p2: complex) -> None: ...
-    """)
+    """,
+    )
 
   def test_union(self):
     ty = self.Infer("""
@@ -51,11 +57,14 @@ class AnnotationTest(test_base.BaseTest):
       def foo(x: typing.Union[int, float], y: int):
         return x + y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import typing
       from typing import Union
       def foo(x: Union[int, float], y:int) -> Union[int, float]: ...
-    """)
+    """,
+    )
 
   def test_call_error(self):
     _, errors = self.InferWithErrors("""
@@ -102,10 +111,13 @@ class AnnotationTest(test_base.BaseTest):
           y = "foo"
         x.append(y)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
         from typing import List
         def foo(l1: List[int], l2: List[str], b) -> None: ...
-    """)
+    """,
+    )
 
   def test_analyze_init(self):
     ty = self.Infer("""
@@ -114,11 +126,14 @@ class AnnotationTest(test_base.BaseTest):
         def f(self, x: List[int]):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       class Foo:
         def f(self, x: List[int]) -> None: ...
-    """)
+    """,
+    )
 
   def test_string_annotation(self):
     ty = self.Infer("""
@@ -126,9 +141,12 @@ class AnnotationTest(test_base.BaseTest):
         c += 1
         return
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_unicode_annotation(self):
     ty = self.Infer("""
@@ -136,9 +154,12 @@ class AnnotationTest(test_base.BaseTest):
         c += 1
         return
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_future_unicode_literal_annotation(self):
     ty = self.Infer("""
@@ -147,9 +168,12 @@ class AnnotationTest(test_base.BaseTest):
         c += 1
         return
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(c: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_typing_only_import(self):
     ty = self.Infer("""
@@ -159,11 +183,14 @@ class AnnotationTest(test_base.BaseTest):
       def f(c: "calendar.Calendar") -> int:
         return c.getfirstweekday()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import calendar
       import typing
       def f(c: calendar.Calendar) -> int: ...
-    """)
+    """,
+    )
 
   def test_ambiguous_annotation(self):
     _, errors = self.InferWithErrors("""
@@ -172,11 +199,15 @@ class AnnotationTest(test_base.BaseTest):
       def foo(x: "int if __random__ else float"):  # invalid-annotation[e2]
         return x
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"float or int.*x.*constant",
-        # For a late annotation, we print the string literal, which is why the
-        # types below are not in alphabetical order.
-        "e2": r"int.*float.*x.*constant"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"float or int.*x.*constant",
+            # For a late annotation, we print the string literal, which is why the
+            # types below are not in alphabetical order.
+            "e2": r"int.*float.*x.*constant",
+        },
+    )
 
   def test_bad_string_annotation(self):
     _, errors = self.InferWithErrors("""
@@ -199,11 +230,17 @@ class AnnotationTest(test_base.BaseTest):
         else:
           return 3j  # bad-return-type[e2]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Expected.*int.*Actual.*str",
-                                     "e2": r"Expected.*int.*Actual.*complex"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Expected.*int.*Actual.*str",
+            "e2": r"Expected.*int.*Actual.*complex",
+        },
+    )
 
   @test_utils.skipIfPy(
-      (3, 10), reason="Logs one error for all bad returns in <=3.9, >=3.11")
+      (3, 10), reason="Logs one error for all bad returns in <=3.9, >=3.11"
+  )
   def test_ambiguous_return(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str) -> int:
@@ -214,10 +251,12 @@ class AnnotationTest(test_base.BaseTest):
         return y  # bad-return-type[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*int.*Actual.*Union(?=.*complex).*str"})
+        errors, {"e": r"Expected.*int.*Actual.*Union(?=.*complex).*str"}
+    )
 
   @test_utils.skipUnlessPy(
-      (3, 10), reason="Logs one error per bad return in 3.10")
+      (3, 10), reason="Logs one error per bad return in 3.10"
+  )
   def test_ambiguous_return_310(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str) -> int:
@@ -228,8 +267,12 @@ class AnnotationTest(test_base.BaseTest):
         return y  # bad-return-type[e1]  # bad-return-type[e2]
     """)
     self.assertErrorSequences(
-        errors, {"e1": ["Expected: int", "Actually returned: str"],
-                 "e2": ["Expected: int", "Actually returned: complex"]})
+        errors,
+        {
+            "e1": ["Expected: int", "Actually returned: str"],
+            "e2": ["Expected: int", "Actually returned: complex"],
+        },
+    )
 
   def test_default_return(self):
     ty = self.Infer("""
@@ -238,10 +281,13 @@ class AnnotationTest(test_base.BaseTest):
           default.upper
           return default
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def bar(self, x: float, default=...) -> str: ...
-    """)
+    """,
+    )
 
   def test_nocompat_bool(self):
     self.CheckWithErrors("""
@@ -267,11 +313,14 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_unsolvable(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       import unknown_module
       def f(x: unknown_module.Iterable):
         pass
-    """)
+    """,
+    )
 
   def test_any(self):
     ty = self.Infer("""
@@ -280,10 +329,13 @@ class AnnotationTest(test_base.BaseTest):
         pass
       x = f(3)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x) -> None: ...
       x = ...  # type: None
-    """)
+    """,
+    )
 
   def test_dict(self):
     self.InferWithErrors("""
@@ -338,12 +390,15 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_generic_and_typevar(self):
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       import typing
       _T = typing.TypeVar("_T")
       class A(typing.Generic[_T]):
         ...
-    """)
+    """,
+    )
 
   def test_jump_into_class_through_annotation(self):
     self.Check("""
@@ -440,21 +495,30 @@ class AnnotationTest(test_base.BaseTest):
 
   def test_unknown_argument(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
+      d.create_file(
+          "a.pyi",
+          """
         def factory() -> type: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import a
         A = a.factory()
         def f(x: A):
           return x.name
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import a
         from typing import Any
         A = ...  # type: Any
         def f(x) -> Any: ...
-      """)
+      """,
+      )
 
   def test_bad_call_no_kwarg(self):
     ty, errors = self.InferWithErrors("""
@@ -470,10 +534,13 @@ class AnnotationTest(test_base.BaseTest):
         return path
 
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo() -> None: ...
       def bar(path: str, **kwargs) -> str: ...
-    """)
+    """,
+    )
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
 
@@ -491,15 +558,19 @@ class AnnotationTest(test_base.BaseTest):
         return path
 
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def foo() -> None: ...
       def bar(path: str, **kwargs) -> str: ...
-    """)
+    """,
+    )
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
 
   def test_skip_functions_with_annotations(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       _analyzed_baz = None
       class Foo:
         def __init__(self):
@@ -509,8 +580,12 @@ class AnnotationTest(test_base.BaseTest):
       def baz(x: int) -> None:
         global _analyzed_baz
         _analyzed_baz = 3
-    """, analyze_annotated=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        analyze_annotated=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       _analyzed_baz = ... # type: None
       class Foo:
         # We expect to *not* see _analyzed_bar here, because it's an attribute
@@ -519,7 +594,8 @@ class AnnotationTest(test_base.BaseTest):
         def __init__(self) -> None: ...
         def bar(self, x: int) -> None: ...
       def baz(x: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_annotated_init(self):
     ty = self.Infer("""
@@ -527,11 +603,14 @@ class AnnotationTest(test_base.BaseTest):
         def __init__(self, x: str):
           self.x = x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x = ...  # type: str
         def __init__(self, x: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_union_instantiation(self):
     # If unions are not instantiated properly, the call to x.value will
@@ -564,13 +643,16 @@ class AnnotationTest(test_base.BaseTest):
         return v.x  # attribute-error[e]
       f(A())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Union
       class A: ...
       class B:
         x = ...  # type: int
       def f(v: Union[A, B]) -> int: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"x.*A"})
 
   def test_tuple(self):
@@ -581,12 +663,15 @@ class AnnotationTest(test_base.BaseTest):
         return x
       x = g(f()[1])
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple
       def f() -> Tuple[int, str]: ...
       def g(x: str) -> str: ...
       x = ...  # type: str
-    """)
+    """,
+    )
 
   def test_optional_arg(self):
     self.Check("""
@@ -622,9 +707,13 @@ class AnnotationTest(test_base.BaseTest):
       def h(x: List[Union[int, str]]):  # okay
         pass
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"List\[int\] or List\[str\].*constant",
-        "e2": r"int or str.*constant"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"List\[int\] or List\[str\].*constant",
+            "e2": r"int or str.*constant",
+        },
+    )
 
   def test_kwargs(self):
     ty, errors = self.InferWithErrors("""
@@ -641,16 +730,23 @@ class AnnotationTest(test_base.BaseTest):
       f("", **g())  # wrong-arg-types[e1]
       f("", **h())  # wrong-arg-types[e2]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict
       def f(x, **kwargs: int) -> Dict[str, int]: ...
       def g() -> Dict[str, float]: ...
       def h() -> Dict[float, int]: ...
-    """)
-    error1 = (r"Expected.*Mapping\[str, int\].*"
-              r"Actually passed.*Dict\[str, float\]")
-    error2 = (r"Expected.*Mapping\[str, int\].*"
-              r"Actually passed.*Dict\[float, int\]")
+    """,
+    )
+    error1 = (
+        r"Expected.*Mapping\[str, int\].*"
+        r"Actually passed.*Dict\[str, float\]"
+    )
+    error2 = (
+        r"Expected.*Mapping\[str, int\].*"
+        r"Actually passed.*Dict\[float, int\]"
+    )
     self.assertErrorRegexes(errors, {"e1": error1, "e2": error2})
 
   @test_base.skip("Types not checked due to function.Args.simplify")
@@ -678,13 +774,16 @@ class AnnotationTest(test_base.BaseTest):
       v1 = f()
       v2 = g()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A: ...
       def f(*args: A) -> A: ...
       def g(**kwargs: A) -> A: ...
       v1 = ...  # type: A
       v2 = ...  # type: A
-    """)
+    """,
+    )
 
   def test_use_varargs_and_kwargs_in_forward_references(self):
     self.Check("""
@@ -710,7 +809,9 @@ class AnnotationTest(test_base.BaseTest):
       v1 = f().x  # attribute-error[e]
       v2 = g()[0]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List, Union
       class A:
         x = ...  # type: int
@@ -718,7 +819,8 @@ class AnnotationTest(test_base.BaseTest):
       def g() -> List[None]: ...
       v1 = ...  # type: int
       v2 = ...  # type: None
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"x.*None"})
 
   def test_match_late_annotation(self):
@@ -765,14 +867,17 @@ class AnnotationTest(test_base.BaseTest):
           return A()
       x = A.New().x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
         @staticmethod
         def New() -> A: ...
       x = ...  # type: int
-    """)
+    """,
+    )
 
   def test_return_annotation2(self):
     ty = self.Infer("""
@@ -785,14 +890,17 @@ class AnnotationTest(test_base.BaseTest):
       def f():
         return A.New().x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
         @staticmethod
         def New() -> A: ...
       def f() -> int: ...
-    """)
+    """,
+    )
 
   def test_deeply_nested_annotation(self):
     self.Check("""
@@ -822,14 +930,17 @@ class AnnotationTest(test_base.BaseTest):
       def get_foo() -> int:
         return new_x().foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def new_x() -> X: ...
       def get_foo() -> int: ...
 
       class X:
         foo = ...  # type: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_change_annotated_arg(self):
     ty, _ = self.InferWithErrors("""
@@ -839,11 +950,14 @@ class AnnotationTest(test_base.BaseTest):
         return x
       v = f({"a": "b"})
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Dict, Union
       def f(x: Dict[str, str]) -> Dict[Union[str, bool], Union[str, int]]: ...
       v = ...  # type: Dict[Union[str, bool], Union[str, int]]
-    """)
+    """,
+    )
 
   def test_inner_string_annotation(self):
     ty = self.Infer("""
@@ -853,13 +967,16 @@ class AnnotationTest(test_base.BaseTest):
       class A:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
 
       def f(x: List[A]) -> int: ...
 
       class A: ...
-    """)
+    """,
+    )
 
   def test_type_alias_annotation(self):
     ty = self.Infer("""
@@ -871,14 +988,17 @@ class AnnotationTest(test_base.BaseTest):
       class A:
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       ListA = ...  # type: str
       TypeA = ...  # type: str
       def f(x: typing.List[A]) -> int: ...
       class A:
           pass
-    """)
+    """,
+    )
 
   def test_double_string(self):
     ty = self.Infer("""
@@ -886,10 +1006,13 @@ class AnnotationTest(test_base.BaseTest):
       def f(x: "List[\\"int\\"]") -> int:
         return 0
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       def f(x: List[int]) -> int: ...
-    """)
+    """,
+    )
 
   def test_duplicate_identifier(self):
     ty = self.Infer("""
@@ -898,12 +1021,15 @@ class AnnotationTest(test_base.BaseTest):
       def g(x: "t") -> int: return 0
       t = float
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Type
       t: Type[float]
       def f(x: int) -> int: ...
       def g(x: int) -> int: ...
-    """)
+    """,
+    )
 
   def test_ellipsis(self):
     ty, errors = self.InferWithErrors("""
@@ -912,31 +1038,40 @@ class AnnotationTest(test_base.BaseTest):
       def g(x: Tuple[str, ...]): pass
       def h(x: Dict[..., int]): pass  # invalid-annotation[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict, Tuple
       def f(x) -> None: ...
       def g(x: Tuple[str, ...]) -> None: ...
       def h(x: Dict[Any, int]) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"Ellipsis.*Dict"})
 
   def test_custom_container(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Generic
         T = TypeVar("T")
         T2 = TypeVar("T2")
         class Foo(Generic[T]):
           def __init__(self, x: T2):
             self = Foo[T2]
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         import foo
         def f(x: foo.Foo[int]):
           pass
         f(foo.Foo(42))
         f(foo.Foo(""))  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       self.assertErrorRegexes(errors, {"e": r"Foo\[int\].*Foo\[str\]"})
 
   def test_no_implicit_optional(self):
@@ -955,22 +1090,31 @@ class AnnotationTest(test_base.BaseTest):
       f3(None)
       f4(None)  # wrong-arg-types
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional, Union
       def f1(x: str = ...) -> None: ...
       def f2(x: Optional[str] = ...) -> None: ...
       def f3(x: Optional[str] = ...) -> None: ...
       def f4(x: Union[str, int] = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_infer_return(self):
-    ty = self.Infer("""
+    ty = self.Infer(
+        """
       def f(x: int):
         return x
-    """, analyze_annotated=False)
-    self.assertTypesMatchPytd(ty, """
+    """,
+        analyze_annotated=False,
+    )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       def f(x: int) -> int: ...
-    """)
+    """,
+    )
 
   def test_return_abstract_dict(self):
     self.Check("""
@@ -1006,10 +1150,13 @@ class AnnotationTest(test_base.BaseTest):
       def f(x: List["Callable[[int], str]"]):
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Callable, List
       def f(x: List[Callable[[int], str]]) -> None: ...
-    """)
+    """,
+    )
 
   def test_late_annotation_non_name_error(self):
     self.CheckWithErrors("""
@@ -1025,10 +1172,13 @@ class AnnotationTest(test_base.BaseTest):
       def f(x: "Dict[str, int.error]"):  # attribute-error
         pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Any, Dict
       def f(x: Dict[str, Any]) -> None: ...
-    """)
+    """,
+    )
 
   def test_count_type_parameters(self):
     self.Check("""
@@ -1063,15 +1213,21 @@ class AnnotationTest(test_base.BaseTest):
 
   def test_nested_forward_ref_to_import(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Foo: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         from typing import Tuple
         def f(x: Tuple[str, 'foo.Foo']):
           pass
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_tuple_container_check(self):
     # Regression test for a container_type_mismatch crash that was caused by
@@ -1103,7 +1259,8 @@ class AnnotationTest(test_base.BaseTest):
           cluster_info_config[''] = {}  # container-type-mismatch[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Container: Dict\[_K, _V\].*_V: int.*_V: Dict"})
+        errors, {"e": r"Container: Dict\[_K, _V\].*_V: int.*_V: Dict"}
+    )
 
   def test_check_defaults(self):
     # Because 0.0 == False in Python, previously buggy caching led to `False`
@@ -1116,7 +1273,9 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_circular_ref(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Callable, Generic, Sequence, TypeVar
       T = TypeVar('T')
       class BaseRegion(Generic[T]):
@@ -1125,7 +1284,8 @@ class AnnotationTest(test_base.BaseTest):
       class BaseZone(Generic[T]):
         @property
         def region(self) -> T: ...
-    """)]):
+    """,
+    )]):
       ty = self.Infer("""
         import foo
         class Region(foo.BaseRegion['Zone']):
@@ -1133,11 +1293,14 @@ class AnnotationTest(test_base.BaseTest):
         class Zone(foo.BaseZone['Region']):
           pass
       """)
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         class Region(foo.BaseRegion[Zone]): ...
         class Zone(foo.BaseZone[Region]): ...
-      """)
+      """,
+      )
 
   def test_recursion_in_parent(self):
     self.Check("""
@@ -1148,13 +1311,16 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_recursion_in_imported_class(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import MutableMapping, TypeVar, Union
       T = TypeVar('T')
       class NestedDict(MutableMapping[str, Union[T, "NestedDict"]]): ...
       class Array: ...
       class SpecDict(NestedDict[Array]): ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f() -> foo.SpecDict:
@@ -1192,9 +1358,12 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
     ty = self.Infer("""
       a: int = 42
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       a: int
-    """)
+    """,
+    )
 
   def test_container_mutation(self):
     errors = self.CheckWithErrors("""
@@ -1214,10 +1383,13 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
       quack("", *[42])
       quack("", *[42.0])  # wrong-arg-types[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Tuple
       def quack(x, *args: int) -> Tuple[int, ...]: ...
-    """)
+    """,
+    )
     error = r"Expected.*Iterable\[int\].*Actually passed.*Tuple\[float\]"
     self.assertErrorRegexes(errors, {"e": error})
 
@@ -1227,9 +1399,11 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
       x: Dict[int, str] = {}
       x["hello"] = 1.0  # container-type-mismatch[e]
     """)
-    pattern = (r"New container.*for x.*Dict\[_K, _V\].*" +
-               r"Allowed.*_K.*int.*_V.*str.*"
-               r"New.*_K.*str.*_V.*float")
+    pattern = (
+        r"New container.*for x.*Dict\[_K, _V\].*"
+        + r"Allowed.*_K.*int.*_V.*str.*"
+        r"New.*_K.*str.*_V.*float"
+    )
     self.assertErrorRegexes(errors, {"e": pattern})
 
   def test_allowed_container_mutation_subclass(self):
@@ -1276,20 +1450,32 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
 
   def test_imported_container_type(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Dict, List, Union
         MyDict = Dict[str, int]
         def f() -> Union[List[MyDict], MyDict]: ...
-      """)
-      errors = self.CheckWithErrors("""
+      """,
+      )
+      errors = self.CheckWithErrors(
+          """
         import foo
         from typing import List
         x: List[foo.MyDict] = []
         x.append(foo.f())  # container-type-mismatch[e]
-      """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e": (r"Allowed contained types.*Dict\[str, int\].*"
-                r"New contained types.*List\[Dict\[str, int\]\]")})
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertErrorRegexes(
+          errors,
+          {
+              "e": (
+                  r"Allowed contained types.*Dict\[str, int\].*"
+                  r"New contained types.*List\[Dict\[str, int\]\]"
+              )
+          },
+      )
 
 
 class TestStringifiedAnnotations(test_base.BaseTest):
@@ -1347,12 +1533,15 @@ class TestStringifiedAnnotations(test_base.BaseTest):
         def f(self) -> A[set[int]]:
           return self
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Generic, Set, TypeVar
       T = TypeVar('T')
       class A(Generic[T]):
         def f(self) -> A[Set[int]]: ...
-   """)
+   """,
+    )
 
 
 class EllipsisTest(test_base.BaseTest):
@@ -1371,11 +1560,14 @@ class EllipsisTest(test_base.BaseTest):
       def f(x: ...) -> ...:
         return x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeVar
       _T0 = TypeVar('_T0')
       def f(x: _T0) -> _T0: ...
-    """)
+    """,
+    )
 
   def test_class(self):
     ty = self.Infer("""
@@ -1384,11 +1576,14 @@ class EllipsisTest(test_base.BaseTest):
         def f(self):
           self.x = 5
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         x: int
         def f(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_future(self):
     ty = self.Infer("""
@@ -1401,13 +1596,16 @@ class EllipsisTest(test_base.BaseTest):
         def f(self):
           self.x = 5
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       x: int
       def f(x) -> None: ...
       class Foo:
         x: int
         def f(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_try_except_block(self):
     # Regression test - the first except line puts a `STORE_NAME e` opcode in
@@ -1440,14 +1638,17 @@ class BareAnnotationTest(test_base.BaseTest):
                     int]
           z: str
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       class Foo:
         a: bool
         x: int
         y: List[int]
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_global(self):
     self.Check("""

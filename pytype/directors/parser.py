@@ -50,8 +50,9 @@ class _StructuredComment:
     tool: The tool label, e.g., "type" for "# type: int".
     data: The data, e.g., "int" for "# type: int".
     open_ended: True if the comment appears on a line by itself (i.e., it is
-     open-ended rather than attached to a line of code).
+      open-ended rather than attached to a line of code).
   """
+
   line: int
   tool: str
   data: str
@@ -168,7 +169,8 @@ class _ParseVisitor(visitor.BaseVisitor):
     # will be merged into larger line ranges as the visitor runs.
     self.structured_comment_groups = collections.OrderedDict(
         (LineRange(lineno, lineno), list(structured_comments))
-        for lineno, structured_comments in raw_structured_comments.items())
+        for lineno, structured_comments in raw_structured_comments.items()
+    )
     self.variable_annotations = []
     self.param_annotations = []
     self.decorators = collections.defaultdict(list)
@@ -190,8 +192,10 @@ class _ParseVisitor(visitor.BaseVisitor):
       for line_range, group in reversed(self.structured_comment_groups.items()):
         if isinstance(line_range, Call):
           continue
-        if (line_range.start_line <= start_line and
-            end_line <= line_range.end_line):
+        if (
+            line_range.start_line <= start_line
+            and end_line <= line_range.end_line
+        ):
           return group
         if line_range.end_line < start_line:
           break
@@ -202,9 +206,11 @@ class _ParseVisitor(visitor.BaseVisitor):
     keys_to_absorb = []
     keys_to_move = []
     for line_range in reversed(self.structured_comment_groups):
-      if (cls is LineRange and
-          start_line <= line_range.start_line and
-          line_range.end_line <= end_line):
+      if (
+          cls is LineRange
+          and start_line <= line_range.start_line
+          and line_range.end_line <= end_line
+      ):
         if type(line_range) is LineRange:  # pylint: disable=unidiomatic-typecheck
           keys_to_absorb.append(line_range)
         else:
@@ -232,8 +238,11 @@ class _ParseVisitor(visitor.BaseVisitor):
         return False
       # A "type: ignore" or "pytype:" comment can belong to any number of
       # overlapping function calls.
-      return (comment.tool == "pytype" or
-              comment.tool == "type" and IGNORE_RE.match(comment.data))
+      return (
+          comment.tool == "pytype"
+          or comment.tool == "type"
+          and IGNORE_RE.match(comment.data)
+      )
 
     for lineno, structured_comments in self._raw_structured_comments.items():
       if lineno > line_range.end_line:
@@ -243,7 +252,8 @@ class _ParseVisitor(visitor.BaseVisitor):
       if lineno < line_range.start_line:
         continue
       group = self._add_structured_comment_group(
-          line_range.start_line, line_range.end_line, cls)
+          line_range.start_line, line_range.end_line, cls
+      )
       # Comments do not need to be added to LineRange groups because we already
       # did so in __init__.
       if cls is not LineRange:
@@ -274,7 +284,8 @@ class _ParseVisitor(visitor.BaseVisitor):
     else:
       name = None
     self.variable_annotations.append(
-        _VariableAnnotation(node.lineno, node.end_lineno, name, annotation))
+        _VariableAnnotation(node.lineno, node.end_lineno, name, annotation)
+    )
     self._process_structured_comments(LineRange.from_node(node))
 
   def _visit_try(self, node):
@@ -337,7 +348,7 @@ class _ParseVisitor(visitor.BaseVisitor):
           end=c.pattern.end_lineno,
           as_name=name,
           is_underscore=is_underscore,
-          match_line=start
+          match_line=start,
       )
       cases.append(match_case)
     self.matches.add_match(start, end, cases)
@@ -400,8 +411,10 @@ class _ParseVisitor(visitor.BaseVisitor):
       end_lineno = maybe_end_lineno
     else:
       for i in range(maybe_end_lineno, body_lineno):
-        if any(c.tool == "type" and c.open_ended
-               for c in self._raw_structured_comments[i]):
+        if any(
+            c.tool == "type" and c.open_ended
+            for c in self._raw_structured_comments[i]
+        ):
           # If we find a function type comment, the end of the signature is the
           # line before the type comment.
           end_lineno = i - 1
@@ -418,10 +431,12 @@ class _ParseVisitor(visitor.BaseVisitor):
     self.function_ranges[start_lineno] = node.end_lineno
     # Record all the `name: type` annotations in the signature
     args = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
-    annots = {arg.arg: ast.unparse(arg.annotation)
-              for arg in args if arg.annotation}
+    annots = {
+        arg.arg: ast.unparse(arg.annotation) for arg in args if arg.annotation
+    }
     self.param_annotations.append(
-        _ParamAnnotations(node.lineno, node.end_lineno, node.name, annots))
+        _ParamAnnotations(node.lineno, node.end_lineno, node.name, annots)
+    )
 
   def visit_FunctionDef(self, node):
     self._visit_function_def(node)
@@ -465,7 +480,8 @@ def _process_comment(line, lineno, col):
 def parse_src(src: str, python_version: Tuple[int, int]):
   """Parses a string of source code into an ast."""
   return _SourceTree(
-      ast.parse(src, feature_version=python_version[1]), _process_comments(src))  # pylint: disable=unexpected-keyword-arg
+      ast.parse(src, feature_version=python_version[1]), _process_comments(src)
+  )  # pylint: disable=unexpected-keyword-arg
 
 
 def visit_src_tree(src_tree):

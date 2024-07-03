@@ -17,7 +17,9 @@ class SliceTest(test_base.BaseTest):
       f = x[1::3]
       g = x[1:2:]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       x = ...  # type: List[int]
       a = ...  # type: List[int]
@@ -27,7 +29,8 @@ class SliceTest(test_base.BaseTest):
       e = ...  # type: List[int]
       f = ...  # type: List[int]
       g = ...  # type: List[int]
-    """)
+    """,
+    )
 
   def test_slice_getitem(self):
     self.Check("""

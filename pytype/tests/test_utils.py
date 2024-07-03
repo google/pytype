@@ -4,6 +4,7 @@ import collections
 import copy
 import dataclasses
 import io
+import itertools
 import os
 import re
 import shutil
@@ -13,7 +14,6 @@ import tokenize
 
 import pycnite.mapping
 import pycnite.types
-
 from pytype import config
 from pytype import context
 from pytype import file_utils
@@ -163,12 +163,15 @@ class OperatorsTestMixin:
         return Foo() {op} Bar()
       f()
     """)
-    self.assertTypesMatchPytd(ty, f"""
+    self.assertTypesMatchPytd(
+        ty,
+        f"""
       class Foo:
         def {function_name}(self, unused_x) -> complex: ...
       class Bar: ...
       def f() -> complex: ...
-    """)
+    """,
+    )
 
   def check_unary(self, function_name, op, ret=None):
     """Check the unary operator."""
@@ -180,11 +183,14 @@ class OperatorsTestMixin:
         return {op} Foo()
       f()
     """)
-    self.assertTypesMatchPytd(ty, f"""
+    self.assertTypesMatchPytd(
+        ty,
+        f"""
       class Foo:
         def {function_name}(self) -> complex: ...
       def f() -> {ret or "complex"}: ...
-    """)
+    """,
+    )
 
   def check_reverse(self, function_name, op):
     """Check the reverse operator."""
@@ -205,7 +211,9 @@ class OperatorsTestMixin:
         return Foo() {op} Foo()  # use Foo.__{function_name}__
       f(); g(); h(); i()
     """)
-    self.assertTypesMatchPytd(ty, f"""
+    self.assertTypesMatchPytd(
+        ty,
+        f"""
       class Foo:
         def __{function_name}__(self, x) -> complex: ...
       class Bar(Foo):
@@ -214,7 +222,8 @@ class OperatorsTestMixin:
       def g() -> str: ...
       def h() -> str: ...
       def i() -> complex: ...
-    """)
+    """,
+    )
 
   def check_inplace(self, function_name, op):
     """Check the inplace operator."""
@@ -228,11 +237,14 @@ class OperatorsTestMixin:
         return x
       f()
     """)
-    self.assertTypesMatchPytd(ty, f"""
+    self.assertTypesMatchPytd(
+        ty,
+        f"""
       class Foo:
         def __{function_name}__(self, x) -> complex: ...
       def f() -> complex: ...
-    """)
+    """,
+    )
 
 
 class InplaceTestMixin:
@@ -276,12 +288,24 @@ class MakeCodeMixin:
   def make_code(self, int_array, name="testcode"):
     """Utility method for creating CodeType objects."""
     return pycnite.types.CodeType38(
-        co_argcount=0, co_posonlyargcount=0, co_kwonlyargcount=0, co_nlocals=2,
-        co_stacksize=2, co_flags=0, co_consts=[None, 1, 2], co_names=[],
-        co_varnames=["x", "y"], co_filename="", co_name=name, co_firstlineno=1,
-        co_lnotab=b"", co_freevars=(), co_cellvars=(),
-        co_code=bytes(int_array),
-        python_version=self.python_version)
+        co_argcount=0,
+        co_posonlyargcount=0,
+        co_kwonlyargcount=0,
+        co_nlocals=2,
+        co_stacksize=2,
+        co_flags=0,
+        co_consts=[None, 1, 2],
+        co_names=[],
+        co_varnames=["x", "y"],
+        co_filename="",
+        co_name=name,
+        co_firstlineno=1,
+        co_lnotab=b"",
+        co_freevars=(),
+        co_cellvars=(),
+        co_code=bytes(itertools.chain(*int_array)),
+        python_version=self.python_version,
+    )
 
 
 class RegexMatcher:
@@ -333,8 +357,10 @@ class ErrorMatcher:
   See tests/test_base_test.py for usage examples.
   """
 
-  ERROR_RE = re.compile(r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?"
-                        r"((?P<cmp>([!=]=|[<>]=?))(?P<version>\d+\.\d+))?$")
+  ERROR_RE = re.compile(
+      r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?"
+      r"((?P<cmp>([!=]=|[<>]=?))(?P<version>\d+\.\d+))?$"
+  )
 
   def __init__(self, src):
     # errorlog and marks are set by assert_errors_match_expected()
@@ -383,8 +409,9 @@ class ErrorMatcher:
           self._fail(f"Unexpected error:\n{error}")
     leftover_errors = []
     for line in sorted(expected):
-      leftover_errors.extend(_format_error(line, code, mark)
-                             for code, mark in expected[line])
+      leftover_errors.extend(
+          _format_error(line, code, mark) for code, mark in expected[line]
+      )
     if leftover_errors:
       self._fail("Errors not found:\n" + "\n".join(leftover_errors))
 
@@ -397,8 +424,10 @@ class ErrorMatcher:
       except KeyError:
         self._fail(f"No matcher for mark {mark}")
       if not matcher.match(error.message):
-        self._fail("Bad error message for mark %s: expected %r, got %r" %
-                   (mark, matcher, error.message))
+        self._fail(
+            "Bad error message for mark %s: expected %r, got %r"
+            % (mark, matcher, error.message)
+        )
     if matchers:
       self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
@@ -416,8 +445,10 @@ class ErrorMatcher:
         match = matcher.match
       error_as_string = error.as_string()
       if not match(error_as_string):
-        self._fail("Bad error message for mark %s: expected %r, got %r" %
-                   (mark, matcher, error_as_string))
+        self._fail(
+            "Bad error message for mark %s: expected %r, got %r"
+            % (mark, matcher, error_as_string)
+        )
     if matchers:
       self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
@@ -514,7 +545,8 @@ def make_context(options, src=""):
 def test_data_file(filename):
   pytype_dir = path_utils.dirname(path_utils.dirname(path_utils.__file__))
   code = path_utils.join(
-      pytype_dir, file_utils.replace_separator("test_data/"), filename)
+      pytype_dir, file_utils.replace_separator("test_data/"), filename
+  )
   with open(code, "r") as f:
     return f.read()
 

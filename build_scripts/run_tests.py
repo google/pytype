@@ -15,17 +15,37 @@ import sys
 
 import build_utils
 
+
 def parse_args():
   """Parse the args to this script and return them."""
   parser = argparse.ArgumentParser()
-  parser.add_argument("targets", metavar="TARGET", nargs="*",
-                      help="List of test targets to run.")
-  parser.add_argument("--fail_fast", "-f", action="store_true", default=False,
-                      help="Fail as soon as one build target fails.")
-  parser.add_argument("--debug", "-d", action="store_true", default=False,
-                      help="Build targets in the debug mode.")
-  parser.add_argument("--verbose", "-v", action="store_true", default=False,
-                      help="Print failing test logs to stderr.")
+  parser.add_argument(
+      "targets",
+      metavar="TARGET",
+      nargs="*",
+      help="List of test targets to run.",
+  )
+  parser.add_argument(
+      "--fail_fast",
+      "-f",
+      action="store_true",
+      default=False,
+      help="Fail as soon as one build target fails.",
+  )
+  parser.add_argument(
+      "--debug",
+      "-d",
+      action="store_true",
+      default=False,
+      help="Build targets in the debug mode.",
+  )
+  parser.add_argument(
+      "--verbose",
+      "-v",
+      action="store_true",
+      default=False,
+      help="Print failing test logs to stderr.",
+  )
   args = parser.parse_args()
   for target in args.targets:
     if "." in target:
@@ -45,11 +65,14 @@ def main():
   fail_collector = build_utils.FailCollector()
   print("Running tests (build steps will be executed as required) ...\n")
   if not build_utils.run_ninja(
-      targets, fail_collector, opts.fail_fast, opts.verbose):
+      targets, fail_collector, opts.fail_fast, opts.verbose
+  ):
     fail_collector.print_report(opts.verbose)
     sys.exit(1)
-  print("!!! All tests passed !!!\n"
-        "Some tests might not have been run because they were already passing.")
+  print(
+      "!!! All tests passed !!!\n"
+      "Some tests might not have been run because they were already passing."
+  )
 
 
 if __name__ == "__main__":

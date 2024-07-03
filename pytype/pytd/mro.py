@@ -110,8 +110,10 @@ def _ComputeMRO(t, mros, lookup_ast):
           base_mro = _ComputeMRO(base, mros, lookup_ast)
         base_mros.append(base_mro)
       mros[t] = tuple(
-          MROMerge([[t]] + base_mros + [_Degenerify(
-              _GetClass(t, lookup_ast).bases)]))
+          MROMerge(
+              [[t]] + base_mros + [_Degenerify(_GetClass(t, lookup_ast).bases)]
+          )
+      )
     return mros[t]
   elif isinstance(t, pytd.GenericType):
     return _ComputeMRO(t.base_type, mros, lookup_ast)

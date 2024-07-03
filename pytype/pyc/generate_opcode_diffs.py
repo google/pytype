@@ -70,11 +70,19 @@ def generate_diffs(argv):
       print(json.dumps(output))
     """))
     f.flush()
-    proc1 = subprocess.run([f'python{version1}', f.name], capture_output=True,
-                           text=True, check=True)
+    proc1 = subprocess.run(
+        [f'python{version1}', f.name],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     dis1 = json.loads(proc1.stdout)
-    proc2 = subprocess.run([f'python{version2}', f.name], capture_output=True,
-                           text=True, check=True)
+    proc2 = subprocess.run(
+        [f'python{version2}', f.name],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     dis2 = json.loads(proc2.stdout)
 
   # Diff the two opcode mappings, generating a change dictionary with entries:
@@ -204,8 +212,11 @@ def main(argv):
   print('\n---- OPCODE STUB IMPLEMENTATIONS (vm.py) ----\n')
   print('\n\n'.join('  ' + '\n  '.join(stub) for stub in stubs))
   if impl_changed:
-    print('\nNOTE: The implementations of the following modified opcodes may '
-          'need to be updated: ' + ', '.join(impl_changed))
+    print(
+        '\nNOTE: The implementations of the following modified opcodes may '
+        'need to be updated: '
+        + ', '.join(impl_changed)
+    )
 
   print('\n\n==== PYCNITE CHANGES ====\n')
   print('---- OPCODE MAPPING DIFF (mapping.py) ----\n')

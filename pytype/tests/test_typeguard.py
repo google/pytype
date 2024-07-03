@@ -85,10 +85,13 @@ class PyiTest(test_base.BaseTest):
       def f(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeGuard
       def f(x: object) -> TypeGuard[int]: ...
-    """)
+    """,
+    )
 
   def test_infer_extension(self):
     ty, _ = self.InferWithErrors("""
@@ -96,16 +99,22 @@ class PyiTest(test_base.BaseTest):
       def f(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import TypeGuard
       def f(x: object) -> TypeGuard[int]: ...
-    """)
+    """,
+    )
 
   def test_import(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypeGuard
       def f(x: object) -> TypeGuard[int]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(x: object):
@@ -114,10 +123,13 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_import_extension(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing_extensions import TypeGuard
       def f(x: object) -> TypeGuard[int]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(x: object):
@@ -126,11 +138,14 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_generic(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Optional, TypeGuard, TypeVar
       T = TypeVar('T')
       def f(x: Optional[int]) -> TypeGuard[int]: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         from typing import Optional
@@ -140,18 +155,23 @@ class PyiTest(test_base.BaseTest):
       """)
 
   def test_non_variable(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import TypeGuard
       def f(x) -> TypeGuard[int]: ...
-    """)]):
+    """,
+    )]):
       errors = self.CheckWithErrors("""
         import foo
         from typing import Dict
         def f(x: Dict[str, object]):
           print(foo.f(x['k']))  # not-supported-yet[e]
       """)
-      self.assertErrorSequences(errors, {
-          "e": ["TypeGuard function 'foo.f' with an arbitrary expression"]})
+      self.assertErrorSequences(
+          errors,
+          {"e": ["TypeGuard function 'foo.f' with an arbitrary expression"]},
+      )
 
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
@@ -185,10 +205,13 @@ class CallableTest(test_base.BaseTest):
     """)
 
   def test_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       from typing import Callable, TypeGuard
       f: Callable[[object], TypeGuard[int]]
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         def f(x: object):
@@ -203,8 +226,9 @@ class CallableTest(test_base.BaseTest):
       def g(x: dict[str, object]):
         print(f(x['k']))  # not-supported-yet[e]
     """)
-    self.assertErrorSequences(errors, {
-        "e": "TypeGuard with an arbitrary expression"})
+    self.assertErrorSequences(
+        errors, {"e": "TypeGuard with an arbitrary expression"}
+    )
 
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
@@ -387,7 +411,8 @@ class TypeGuardTest(test_base.BaseTest):
           return x['k']
     """)
     self.assertErrorSequences(
-        errors, {"e": ["TypeGuard function 'f' with an arbitrary expression"]})
+        errors, {"e": ["TypeGuard function 'f' with an arbitrary expression"]}
+    )
 
   def test_cellvar(self):
     self.Check("""

@@ -8,13 +8,16 @@ class AbstractMethodTests(test_base.BaseTest):
   """Tests for @abc.abstractmethod."""
 
   def test_no_skip_call(self):
-    self.Check("""
+    self.Check(
+        """
       import abc
       class Example(metaclass=abc.ABCMeta):
         @abc.abstractmethod
         def foo(self) -> int:
           return None
-    """, skip_repeat_calls=False)
+    """,
+        skip_repeat_calls=False,
+    )
 
   def test_multiple_inheritance_builtins(self):
     self.Check("""
@@ -67,7 +70,9 @@ class AbstractMethodTests(test_base.BaseTest):
       v1 = Foo().foo  # not-instantiable[e]
       v2 = Bar().foo
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import abc
       from typing import Annotated, Any
       v1 = ...  # type: Any
@@ -76,7 +81,8 @@ class AbstractMethodTests(test_base.BaseTest):
         foo = ...  # type: Annotated[int, 'property']
       class Foo(metaclass=abc.ABCMeta):
         foo = ...  # type: Annotated[Any, 'property']
-    """)
+    """,
+    )
     self.assertErrorRegexes(errors, {"e": r"Foo.*foo"})
 
   def test_dictviews(self):
@@ -109,18 +115,24 @@ class AbstractMethodTests(test_base.BaseTest):
     # presumably the intent is for callers to pass in concrete subclasses of A,
     # so we should not raise an error if A is instantiated in the body.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import abc
         class A(metaclass=abc.ABCMeta):
           @abc.abstractmethod
           def a(self) -> None: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         from typing import Type
         def f(x: Type[foo.A]):
           return x()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_instantiate_generic_abstract_class(self):
     self.Check("""
@@ -165,12 +177,15 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["on method Foo.f"]})
 
   def test_bad_abstract_pyi_method(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import abc
       class Foo(abc.ABC):
         @abc.abstractmethod
         def f(self) -> int: ...
-    """)]):
+    """,
+    )]):
       self.CheckWithErrors("""
         import foo
         class Bar:  # ignored-abstractmethod
@@ -194,7 +209,8 @@ class AbstractMethodTests(test_base.BaseTest):
           return 'a'
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected", "Callable", "Actual", "property"]})
+        errors, {"e": ["Expected", "Callable", "Actual", "property"]}
+    )
 
   def test_instantiate_abcmeta(self):
     self.Check("""
@@ -235,7 +251,9 @@ class AbstractMethodTests(test_base.BaseTest):
       from abc import abstractproperty
       from abc import abstractstaticmethod
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import abc
       from typing import Callable, Type, TypeVar
 
@@ -245,7 +263,8 @@ class AbstractMethodTests(test_base.BaseTest):
 
       _FuncT = TypeVar('_FuncT', bound=Callable)
       def abstractmethod(funcobj: _FuncT) -> _FuncT: ...
-    """)
+    """,
+    )
 
 
 if __name__ == "__main__":

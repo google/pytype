@@ -48,7 +48,9 @@ class TestSuperPython3Feature(test_base.BaseTest):
         return a.m_a(1, 2)
       i = call_inner(Outer.InnerA())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
     from typing import Callable
     class A:
       def m_a(self, x: int, y: int) -> int: ...
@@ -65,7 +67,8 @@ class TestSuperPython3Feature(test_base.BaseTest):
     def call_inner(a: Outer.InnerA) -> int: ...
     b = ...  # type: B
     i = ...  # type: int
-    """)
+    """,
+    )
 
   def test_super_without_args_error(self):
     _, errors = self.InferWithErrors("""
@@ -80,8 +83,13 @@ class TestSuperPython3Feature(test_base.BaseTest):
       def func(x: int):
         super().m()  # invalid-super-call[e2]
       """)
-    self.assertErrorRegexes(errors, {"e1": r".*Missing 'self' argument.*",
-                                     "e2": r".*Missing __class__ closure.*"})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r".*Missing 'self' argument.*",
+            "e2": r".*Missing __class__ closure.*",
+        },
+    )
 
   def test_mixin(self):
     self.Check("""
@@ -113,13 +121,17 @@ class TestSuperPython3Feature(test_base.BaseTest):
 
   def test_metaclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         class Meta(type): ...
         class Foo(metaclass=Meta):
           @classmethod
           def hook(cls): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class Bar(foo.Foo):
           @classmethod
@@ -129,7 +141,9 @@ class TestSuperPython3Feature(test_base.BaseTest):
           @classmethod
           def hook(cls):
             return super().hook()
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_metaclass_calling_super(self):
     # Regression test distilled from a custom enum module that was already using
@@ -208,23 +222,29 @@ class TestSuperPython3Feature(test_base.BaseTest):
           return super().f()
       x = Bar.f(self=Bar())
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       class Foo:
         def f(self) -> int: ...
       class Bar(Foo):
         def f(self) -> int: ...
       x: int
-    """)
+    """,
+    )
 
   def test_classmethod_inheritance_chain(self):
-    with self.DepTree([("base.py", """
+    with self.DepTree([(
+        "base.py",
+        """
       from typing import Type, TypeVar
       BaseT = TypeVar('BaseT', bound='Base')
       class Base:
         @classmethod
         def test(cls: Type[BaseT]) -> BaseT:
           return cls()
-    """)]):
+    """,
+    )]):
       self.Check("""
         import base
         class Foo(base.Base):

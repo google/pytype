@@ -68,7 +68,8 @@ class Module:
       name = module_utils.get_absolute_name(self.package_name, orig_name)
       if name is None:
         raise _ParseError(
-            f"Cannot resolve relative import {orig_name.rsplit('.', 1)[0]}")
+            f"Cannot resolve relative import {orig_name.rsplit('.', 1)[0]}"
+        )
       return name
     return orig_name
 
@@ -99,8 +100,7 @@ class Module:
     if not qualified_name.startswith("typing.") and name != "*":
       # Mark this as an externally imported type, so that AddNamePrefix
       # does not prefix it with the current package name.
-      qualified_name = (parser_constants.EXTERNAL_NAME_PREFIX +
-                        qualified_name)
+      qualified_name = parser_constants.EXTERNAL_NAME_PREFIX + qualified_name
     t = pytd.NamedType(qualified_name)
     if name == "*":
       # A star import is stored as
@@ -110,5 +110,6 @@ class Module:
       # contents of the imported module.
       assert new_name == name
       new_name = t.name
-    return Import(pytd_node=t, name=name, new_name=new_name,
-                  qualified_name=qualified_name)
+    return Import(
+        pytd_node=t, name=name, new_name=new_name, qualified_name=qualified_name
+    )

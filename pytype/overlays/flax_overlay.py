@@ -79,16 +79,19 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
           self.ctx.vm.frames,
           None,
           name=key,
-          details=f"flax.linen.Module defines field '{key}' implicitly")
+          details=f"flax.linen.Module defines field '{key}' implicitly",
+      )
     default = typ.to_variable(node)
     cls_locals[key] = abstract_utils.Local(node, None, typ, default, self.ctx)
 
   def get_class_locals(self, node, cls):
     cls_locals = super().get_class_locals(node, cls)
     initvar = self.ctx.convert.lookup_value("dataclasses", "InitVar")
+
     def make_initvar(t):
-      return abstract.ParameterizedClass(initvar, {abstract_utils.T: t},
-                                         self.ctx)
+      return abstract.ParameterizedClass(
+          initvar, {abstract_utils.T: t}, self.ctx
+      )
 
     name_type = make_initvar(self.ctx.convert.str_type)
     # TODO(mdemello): Fill in the parent type properly
@@ -132,7 +135,8 @@ class Module(abstract.PyTDClass):
     return node
 
   def to_pytd_type_of_instance(
-      self, node=None, instance=None, seen=None, view=None):
+      self, node=None, instance=None, seen=None, view=None
+  ):
     """Get the type an instance of us would have."""
     # The class is imported as flax.linen.Module but aliases
     # flax.linen.module.Module internally

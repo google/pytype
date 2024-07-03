@@ -19,7 +19,9 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(factory=annotated_func)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       class CustomClass: ...
       def annotated_func() -> CustomClass: ...
@@ -27,7 +29,8 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x: CustomClass = ...
         def __init__(self, x: CustomClass = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_attr_default_dict(self):
     self.Check("""
@@ -240,7 +243,9 @@ class TestAttribPy3(test_base.BaseTest):
         x : int = attr.ib()
         y = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -248,7 +253,8 @@ class TestAttribPy3(test_base.BaseTest):
         x: int
         y: str
         def __init__(self, x: int, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_late_annotations(self):
     ty = self.Infer("""
@@ -258,7 +264,9 @@ class TestAttribPy3(test_base.BaseTest):
         x : 'Foo' = attr.ib()
         y = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -266,7 +274,8 @@ class TestAttribPy3(test_base.BaseTest):
         x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_classvar(self):
     ty = self.Infer("""
@@ -277,7 +286,9 @@ class TestAttribPy3(test_base.BaseTest):
         y = attr.ib(type=str)
         z : int = 1 # class var, should not be in __init__
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -286,7 +297,8 @@ class TestAttribPy3(test_base.BaseTest):
         y: str
         z: int
         def __init__(self, x: int, y: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_type_clash(self):
     self.CheckWithErrors("""
@@ -304,7 +316,9 @@ class TestAttribPy3(test_base.BaseTest):
         x: int = attr.ib(default=42)
         y: str = attr.ib(default=42)  # annotation-type-mismatch[e]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -312,30 +326,40 @@ class TestAttribPy3(test_base.BaseTest):
         x: int = ...
         y: str = ...
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
-    """)
+    """,
+    )
     self.assertErrorRegexes(err, {"e": "annotation for y"})
 
   def test_cannot_decorate(self):
     # Tests the attr.s decorator being passed an object it can't process.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Type
         class Foo: ...
         def decorate(cls: Type[Foo]) -> Type[Foo]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import attr
         import foo
         @attr.s
         @foo.decorate
         class Bar(foo.Foo): ...
-      """, pythonpath=[d.path])
-    self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       import foo
       from typing import Type
       Bar: Type[foo.Foo]
-    """)
+    """,
+    )
 
   def test_conflicting_annotations(self):
     # If an annotation has multiple visible values, they must be the same.
@@ -365,7 +389,9 @@ class TestAttribPy3(test_base.BaseTest):
         y = attr.ib(type=int, kw_only=True)
         z = attr.ib(type=str, default="hello")
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, Union
       @attr.s
@@ -374,7 +400,8 @@ class TestAttribPy3(test_base.BaseTest):
         y: int
         z: str = ...
         def __init__(self, x: int = ..., z: str = ..., *, y: int) -> None: ...
-    """)
+    """,
+    )
 
   def test_generic(self):
     ty = self.Infer("""
@@ -390,7 +417,9 @@ class TestAttribPy3(test_base.BaseTest):
       foo2 = Foo(x='', y='')
       x2, y2 = foo2.x, foo2.y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Generic, TypeVar
       T = TypeVar('T')
@@ -406,7 +435,8 @@ class TestAttribPy3(test_base.BaseTest):
       foo2: Foo[str]
       x2: str
       y2: str
-    """)
+    """,
+    )
 
   def test_generic_auto_attribs(self):
     ty = self.Infer("""
@@ -421,7 +451,9 @@ class TestAttribPy3(test_base.BaseTest):
       foo2 = Foo(x='')
       x2 = foo2.x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Generic, TypeVar
       T = TypeVar('T')
@@ -434,7 +466,8 @@ class TestAttribPy3(test_base.BaseTest):
       x1: int
       foo2: Foo[str]
       x2: str
-    """)
+    """,
+    )
 
   def test_typevar_in_type_arg_generic(self):
     self.Check("""
@@ -460,7 +493,9 @@ class TestAttrs(test_base.BaseTest):
         y = attr.ib(type=int)
         z = attr.ib(type=str)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -469,7 +504,8 @@ class TestAttrs(test_base.BaseTest):
         y: int
         z: str
         def __init__(self, *, x, y: int, z: str) -> None: ...
-    """)
+    """,
+    )
 
   def test_kw_only_with_defaults(self):
     ty = self.Infer("""
@@ -478,14 +514,17 @@ class TestAttrs(test_base.BaseTest):
       class Foo:
         x = attr.ib(default=1)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
       class Foo:
         x: int = ...
         def __init__(self, *, x : int = ...) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_auto_attrs(self):
@@ -498,7 +537,9 @@ class TestAttrs(test_base.BaseTest):
         z = 10
         a: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -508,7 +549,8 @@ class TestAttrs(test_base.BaseTest):
         a: str = ...
         z: int
         def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_redefined_auto_attrs(self):
@@ -520,7 +562,9 @@ class TestAttrs(test_base.BaseTest):
         y: int
         x: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -528,7 +572,8 @@ class TestAttrs(test_base.BaseTest):
         y: int
         x: str = ...
         def __init__(self, y: int, x: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_non_attrs(self):
@@ -553,7 +598,9 @@ class TestAttrs(test_base.BaseTest):
         def f(self):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, Annotated
       @attr.s
@@ -567,7 +614,8 @@ class TestAttrs(test_base.BaseTest):
         def bar(x) -> None: ...
         @classmethod
         def foo(cls) -> None: ...
-    """)
+    """,
+    )
 
   def test_callable_attrib(self):
     ty = self.Infer("""
@@ -577,14 +625,17 @@ class TestAttrs(test_base.BaseTest):
       class Foo:
         x: Callable = lambda x: x
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Callable, Union
       @attr.s
       class Foo:
         x: Callable = ...
         def __init__(self, x: Callable = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_auto_attrs_with_dataclass_constructor(self):
     ty = self.Infer("""
@@ -596,7 +647,9 @@ class TestAttrs(test_base.BaseTest):
         z = 10
         a: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -606,7 +659,8 @@ class TestAttrs(test_base.BaseTest):
         a: str = ...
         z: int
         def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_init_false_generates_attrs_init(self):
     ty = self.Infer("""
@@ -618,7 +672,9 @@ class TestAttrs(test_base.BaseTest):
         z = attr.ib(type=str, default="bar")
         t = attr.ib(init=False, default=5)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -628,7 +684,8 @@ class TestAttrs(test_base.BaseTest):
         z: str = ...
         t: int = ...
         def __attrs_init__(self, x, y: int, z: str = "bar") -> None: ...
-    """)
+    """,
+    )
 
   def test_bad_default_param_order(self):
     self.CheckWithErrors("""
@@ -653,7 +710,9 @@ class TestAttrs(test_base.BaseTest):
         def get_y(self):
           return self.y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
@@ -663,7 +722,8 @@ class TestAttrs(test_base.BaseTest):
       class Bar(Foo):
         def get_x(self) -> bool : ...
         def get_y(self) -> int: ...
-    """)
+    """,
+    )
 
   # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_partial_auto_attribs(self):
@@ -680,7 +740,9 @@ class TestAttrs(test_base.BaseTest):
         bar: str = attr.ib()
         baz = attr.ib()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -692,7 +754,8 @@ class TestAttrs(test_base.BaseTest):
         bar: str
         baz: Any
         def __init__(self, bar: str, baz) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_classvar_auto_attribs(self):
@@ -704,7 +767,9 @@ class TestAttrs(test_base.BaseTest):
         x: ClassVar[int] = 10
         y: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import ClassVar
       @attr.s
@@ -712,7 +777,8 @@ class TestAttrs(test_base.BaseTest):
         y: str = ...
         x: ClassVar[int]
         def __init__(self, y: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_wrapper(self):
     ty = self.Infer("""
@@ -723,7 +789,9 @@ class TestAttrs(test_base.BaseTest):
       class Foo:
         x: int
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Callable
       def s(*args, **kwargs) -> Callable: ...
@@ -731,7 +799,8 @@ class TestAttrs(test_base.BaseTest):
       class Foo:
         x: int
         def __init__(self, x: int) -> None: ...
-    """)
+    """,
+    )
 
 
 class TestAttrsNextGenApi(test_base.BaseTest):
@@ -756,7 +825,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         r: int = 43
         t: int = attr.field(default=5, init=False)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, Union
       @attr.s(auto_attribs=True)
@@ -767,7 +838,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         r: int = ...
         t: int = ...
         def __init__(self, x, y: int, z: str = "bar", r: int = 43) -> None: ...
-    """)
+    """,
+    )
 
   def test_define_auto_detects_auto_attrs_false(self):
     """Test whether @attr.define can detect auto_attrs should default to False.
@@ -786,7 +858,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         r = attr.field(default="bar")
         t: int = attr.field(default=5, init=False)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -797,7 +871,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         t: int = ...
         x: None
         def __init__(self, y: int, z, r: str = "bar") -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored from TestAttrs, except with @attr.define
   def test_auto_attrs(self):
@@ -810,7 +885,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         z = 10
         a: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -820,7 +897,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         a: str = ...
         z: int
         def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored from TestAttrs, except with @attr.define
   def test_redefined_auto_attrs(self):
@@ -832,7 +910,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         y: int
         x: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Union
       @attr.s
@@ -840,7 +920,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         y: int
         x: str = ...
         def __init__(self, y: int, x: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored from TestAttrs, except with @attr.define
   def test_non_attrs(self):
@@ -865,7 +946,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         def f(self):
           pass
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any, Annotated
       @attr.s
@@ -879,7 +962,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         def bar(x) -> None: ...
         @classmethod
         def foo(cls) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored from TestAttrs, except with @attr.define
   def test_subclass_auto_attribs(self):
@@ -895,7 +979,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         def get_y(self):
           return self.y
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       @attr.s
       class Foo:
@@ -905,7 +991,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
       class Bar(Foo):
         def get_x(self) -> bool : ...
         def get_y(self) -> int: ...
-    """)
+    """,
+    )
 
   # Mirrored from TestAttrs, except with @attr.define
   def test_partial_auto_attribs(self):
@@ -922,7 +1009,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         bar: str = attr.ib()
         baz = attr.ib()
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import Any
       @attr.s
@@ -934,7 +1023,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         bar: str
         baz: Any
         def __init__(self, bar: str, baz) -> None: ...
-    """)
+    """,
+    )
 
   # Mirrored from TestAttrs, except with @attr.define
   def test_classvar_auto_attribs(self):
@@ -946,7 +1036,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         x: ClassVar[int] = 10
         y: str = 'hello'
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       from typing import ClassVar
       @attr.s
@@ -954,7 +1046,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         y: str = ...
         x: ClassVar[int]
         def __init__(self, y: str = ...) -> None: ...
-    """)
+    """,
+    )
 
   def test_attrs_namespace(self):
     ty = self.Infer("""
@@ -972,7 +1065,9 @@ class TestAttrsNextGenApi(test_base.BaseTest):
       class Qux:
         x: int = attrs.field(init=False)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import attr
       import attrs
       @attr.s
@@ -991,13 +1086,16 @@ class TestAttrsNextGenApi(test_base.BaseTest):
       class Qux:
         x: int
         def __init__(self) -> None: ...
-    """)
+    """,
+    )
 
   def test_infer_define(self):
     ty = self.Infer("""
       from attrs import define
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Annotated, Callable
       define: Annotated[
           Callable,
@@ -1005,7 +1103,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
           {'tag': 'attr.s', 'init': True, 'kw_only': False,
            'auto_attribs': None}
       ]
-    """)
+    """,
+    )
 
 
 class TestPyiAttrs(test_base.BaseTest):
@@ -1013,21 +1112,29 @@ class TestPyiAttrs(test_base.BaseTest):
 
   def test_basic(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         @attr.s
         class A:
           x: int
           y: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         x = foo.A(10, 'hello')
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_docstring(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         from typing import Union
         @attr.s
@@ -1035,43 +1142,61 @@ class TestPyiAttrs(test_base.BaseTest):
           __doc__: str  # should be filtered out
           x: int
           y: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         x = foo.A(10, 'hello')
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_type_mismatch(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         @attr.s
         class A:
           x: int
           y: str
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         x = foo.A(10, 20)  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_subclass(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         @attr.s
         class A:
           x: bool
           y: int
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import attr
         import foo
         @attr.s(auto_attribs=True)
         class Foo(foo.A):
           z: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import attr
         from typing import Union
         import foo
@@ -1079,11 +1204,14 @@ class TestPyiAttrs(test_base.BaseTest):
         class Foo(foo.A):
           z: str = ...
           def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_subclass_from_same_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         @attr.s
         class A:
@@ -1093,15 +1221,21 @@ class TestPyiAttrs(test_base.BaseTest):
         @attr.s
         class B(A):
           z: str
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import attr
         import foo
         @attr.s(auto_attribs=True)
         class Foo(foo.B):
           a: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import attr
         from typing import Union
         import foo
@@ -1109,32 +1243,44 @@ class TestPyiAttrs(test_base.BaseTest):
         class Foo(foo.B):
           a: str = ...
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_subclass_from_different_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("bar.pyi", """
+      d.create_file(
+          "bar.pyi",
+          """
         import attr
         @attr.s
         class A:
           x: bool
           y: int
-      """)
-      d.create_file("foo.pyi", """
+      """,
+      )
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         import bar
         @attr.s
         class B(bar.A):
           z: str
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import attr
         import foo
         @attr.attrs(auto_attribs=True)
         class Foo(foo.B):
           a: str = "hello"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import attr
         from typing import Union
         import foo
@@ -1142,26 +1288,35 @@ class TestPyiAttrs(test_base.BaseTest):
         class Foo(foo.B):
           a: str = ...
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
-      """)
+      """,
+      )
 
   def test_subclass_with_kwonly(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import attr
         @attr.s
         class A:
           x: bool
           y: int
           def __init__(self, x: bool, *, y: int = ...): ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import attr
         import foo
         @attr.s(auto_attribs=True)
         class Foo(foo.A):
           z: str
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import attr
         from typing import Union
         import foo
@@ -1169,7 +1324,8 @@ class TestPyiAttrs(test_base.BaseTest):
         class Foo(foo.A):
           z: str
           def __init__(self, x: bool, z: str, *, y: int = ...) -> None: ...
-      """)
+      """,
+      )
 
 
 class TestPyiAttrsWrapper(test_base.BaseTest):
@@ -1182,13 +1338,18 @@ class TestPyiAttrsWrapper(test_base.BaseTest):
     """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      ty = self.Infer("""
+      ty = self.Infer(
+          """
         import foo
         @foo.wrapper
         class Foo:
           x: int
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import foo
         from typing import Annotated, Callable
 
@@ -1196,7 +1357,8 @@ class TestPyiAttrsWrapper(test_base.BaseTest):
         class Foo:
           x: int
           def __init__(self, *, x: int) -> None: ...
-      """)
+      """,
+      )
 
 
 if __name__ == "__main__":

@@ -38,14 +38,17 @@ class EnumOverlayTest(test_base.BaseTest):
         GREEN = 2
         BLUE = 3
       """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Literal
       class Colors(enum.Enum):
           BLUE: Literal[3]
           GREEN: Literal[2]
           RED: Literal[1]
-      """)
+      """,
+    )
 
   def test_access_members_and_values(self):
     self.CheckWithErrors("""
@@ -77,12 +80,16 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_sunderscore_name_value_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class M(enum.Enum):
           A: int
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Any
         import foo
         assert_type(foo.M.A._name_, str)
@@ -90,52 +97,73 @@ class EnumOverlayTest(test_base.BaseTest):
         def f(m: foo.M):
           assert_type(m._name_, str)
           assert_type(m._value_, Any)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_basic_enum_from_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("e.pyi", """
+      d.create_file(
+          "e.pyi",
+          """
         import enum
         class Colors(enum.Enum):
           RED: int
           BLUE: int
           GREEN: int
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         import e
         c = e.Colors.RED
         n = e.Colors.BLUE.name
         v = e.Colors.GREEN.value
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         import e
         c: e.Colors
         n: str
         v: int
-      """)
+      """,
+      )
 
   def test_enum_from_pyi_recur(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class Recur(enum.Enum):
           A: Recur
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         Recur = foo.Recur
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_canonical_enum_members(self):
     # Checks that enum members created by instantiate() behave similarly to
     # real enum members.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class F(enum.Enum):
           X: int
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import enum
         from foo import F
         class M(enum.Enum):
@@ -148,24 +176,32 @@ class EnumOverlayTest(test_base.BaseTest):
           return x.value
         def get_pyi_value(x: F) -> int:
           return x.value
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_pytd_returns_enum(self):
     # Ensure that canonical enums created by PytdSignature.instantiate_return
     # have name and value fields.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class M(enum.Enum):
           A: int
         def get_m(name: str) -> M: ...
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         def print_m(name: str):
           print(foo.get_m(name).name)
           print(foo.get_m(name).value)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_name_value_overlap(self):
     # Make sure enum members named "name" and "value" work correctly.
@@ -185,13 +221,17 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_name_value_overlap_pyi(self):
     # Make sure enum members named "name" and "value" work correctly.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class M(enum.Enum):
           name: int
           value: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         assert_type(foo.M.name, "foo.M")
         assert_type(foo.M.name.name, "str")
@@ -199,12 +239,15 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(foo.M.value, "foo.M")
         assert_type(foo.M.value.name, "str")
         assert_type(foo.M.value.value, "str")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_name_lookup(self):
     with test_utils.Tempdir() as d:
       d.create_file("e.pyi", "a_string: str")
-      self.CheckWithErrors("""
+      self.CheckWithErrors(
+          """
         import enum
         import e
         class M(enum.Enum):
@@ -214,24 +257,32 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M["B"].value, "str")
         assert_type(M[e.a_string].value, "Union[int, str]")
         _ = M["C"]  # attribute-error
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_name_lookup_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("e.pyi", """
+      d.create_file(
+          "e.pyi",
+          """
         import enum
         a_string: str
         class M(enum.Enum):
           A: int
           B: str
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import e
         assert_type(e.M["A"].value, "int")
         assert_type(e.M["B"].value, "str")
         assert_type(e.M[e.a_string].value, "Any")
         _ = e.M["C"]  # attribute-error
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_name_lookup_from_canonical(self):
     # Canonical enum members should have non-atomic names.
@@ -267,13 +318,17 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_enum_pytd_named_name(self):
     with test_utils.Tempdir() as d:
-      d.create_file("m.pyi", """
+      d.create_file(
+          "m.pyi",
+          """
         import enum
         class M(enum.Enum):
           name: int
           value: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from m import M
         assert_type(M.name, "m.M")
         assert_type(M.name.name, "str")
@@ -281,7 +336,9 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M.value, "m.M")
         assert_type(M.value.name, "str")
         assert_type(M.value.value, "str")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_value_lookup(self):
     self.CheckWithErrors("""
@@ -305,15 +362,19 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_value_lookup_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("m.pyi", """
+      d.create_file(
+          "m.pyi",
+          """
         import enum
         class M(enum.Enum):
           A: int
         class N(enum.Enum):
           A: int
           B: str
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         from typing import Union
         from m import M, N
         assert_type(M(1), "m.M")
@@ -325,7 +386,9 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(N("str"), "m.N")
         # assert_type(N(499).value, "Union[int, str]")
         N(M.A)  # wrong-arg-types
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_value_lookup_no_members(self):
     self.Check("""
@@ -337,24 +400,33 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_value_lookup_no_members_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class M(enum.Enum):
           ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         x = foo.M  # to force foo.M to be loaded by the overlay.
         y = foo.M(1)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_reingest_literal_members(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import enum
       class A(enum.Enum):
         FOO = 1
         BAR = 2
-    """)]):
+    """,
+    )]):
       self.Check("""
         from typing import Literal
         from foo import A
@@ -398,14 +470,18 @@ class EnumOverlayTest(test_base.BaseTest):
   @test_base.skip("Stricter equality disabled due to b/195136939")
   def test_enum_pytd_eq(self):
     with test_utils.Tempdir() as d:
-      d.create_file("m.pyi", """
+      d.create_file(
+          "m.pyi",
+          """
         import enum
         class M(enum.Enum):
           A: int
         class N(enum.Enum):
           A: int
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from m import M, N
 
         # Boolean values indicate the expected result.
@@ -426,7 +502,9 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(a, "bool")
         assert_type(b, "bool")
         assert_type(c, "bool")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_metaclass_methods(self):
     self.CheckWithErrors("""
@@ -453,12 +531,16 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_pytd_metaclass_methods(self):
     with test_utils.Tempdir() as d:
-      d.create_file("m.pyi", """
+      d.create_file(
+          "m.pyi",
+          """
         import enum
         class M(enum.Enum):
           A: int
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import enum
         from m import M
         class N(enum.Enum):
@@ -477,7 +559,9 @@ class EnumOverlayTest(test_base.BaseTest):
 
         # __bool__
         assert_type(bool(M), "bool")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_functional_api(self):
     self.Check("""
@@ -516,15 +600,21 @@ class EnumOverlayTest(test_base.BaseTest):
     # Empty enums can be extended (subclassed) so they can be used for the
     # functional api.
     with test_utils.Tempdir() as d:
-      d.create_file("pretty.pyi", """
+      d.create_file(
+          "pretty.pyi",
+          """
         enum: module
         class Pretty(enum.Enum):
           def __str__(self) -> str: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from pretty import Pretty
         M = Pretty("M", "A B C")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_functional_api_errors(self):
     self.CheckWithErrors("""
@@ -539,13 +629,16 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_functional_api_no_constants(self):
     with test_utils.Tempdir() as d:
       d.create_file("m.pyi", "A: str")
-      self.Check("""
+      self.Check(
+          """
         import enum
         import m
         F = enum.Enum("F", [(m.A, m.A)])
         for x in F:
           print(x)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_functional_api_intenum(self):
     # Technically, any subclass of Enum without any members can be used for the
@@ -630,54 +723,72 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_auto_generate_from_pyi_base(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class Base(enum.Enum):
           def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import enum
         import foo
         class M(foo.Base):
           A = enum.auto()
         assert_type(M.A.value, "str")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_auto_generate_from_pyi_base_staticmethod(self):
     # It's possible that _generate_next_value_ will appear in a type stub as a
     # staticmethod. This should not change how pytype handles it.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class Base(enum.Enum):
           @staticmethod
           def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import enum
         import foo
         class M(foo.Base):
           A = enum.auto()
         assert_type(M.A.value, "str")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_auto_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class M(enum.Enum):
           A: int
           B: int
           def _generate_next_value_(name: str, start: int, count: int, last_values: list) -> str: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Callable
         from foo import M
         assert_type(M.A, "foo.M")
         assert_type(M.A.value, "int")
         assert_type(M.B.value, "int")
         assert_type(M._generate_next_value_, Callable[[str, int, int, list], str])
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_auto_flag(self):
     # Flag enums can be defined using bitwise ops, even when using auto.
@@ -713,28 +824,38 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_subclassing_pytd_simple(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class Base(enum.Enum): ...
         class M(Base):
           A: int
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from foo import M
         assert_type(M.A, "foo.M")
         assert_type(M.A.name, "str")
         assert_type(M.A.value, "int")
         assert_type(M["A"], "foo.M")
         assert_type(M(1), "foo.M")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_subclassing_pytd_cross_file(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class Base(enum.Enum): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from foo import Base
         class M(Base):
           A = 1
@@ -743,7 +864,9 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M.A.value, "int")
         assert_type(M["A"], "M")
         assert_type(M(1), "M")
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_subclassing_base_types(self):
     self.Check("""
@@ -779,13 +902,17 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_subclassing_base_types_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class NoBase(enum.Enum): ...
         class StrBase(str, enum.Enum): ...
         class OnceRemoved(StrBase): ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import enum
         import foo
 
@@ -820,7 +947,9 @@ class EnumOverlayTest(test_base.BaseTest):
             return float(c)
           A = enum.auto()
         assert_type(Y.A.value, str)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_base_types(self):
     self.CheckWithErrors("""
@@ -886,7 +1015,9 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_dynamic_attributes_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class Normal:
           A: int
@@ -894,31 +1025,41 @@ class EnumOverlayTest(test_base.BaseTest):
           def __new__(cls, name, bases, dct): ...
         class Yes(enum.Enum, metaclass=Custom):
           A: int
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         foo.Normal.B  # attribute-error
         foo.Yes.B
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_typical_subclassed_meta(self):
     # The typical pattern when subclassing EnumMeta is to create a base enum
     # using that metaclass, then subclass that enum in other files.
     # In this case, all enums that have the custom metaclass should be dynamic.
     with test_utils.Tempdir() as d:
-      d.create_file("base_enum.pyi", """
+      d.create_file(
+          "base_enum.pyi",
+          """
         import enum
         class CustomMeta(enum.EnumMeta): pass
         class Base(enum.Enum, metaclass=CustomMeta): pass
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import base_enum
         class M(base_enum.Base):
           A = 1
         M.A
         M.B
         base_enum.Base.A
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_intenum_basic(self):
     self.Check("""
@@ -952,7 +1093,9 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_unique_enum_in_dict(self):
     # Regression test for a recursion error in matcher.py
-    self.assertNoCrash(self.Check, """
+    self.assertNoCrash(
+        self.Check,
+        """
       import enum
       from typing import Dict, Generic, TypeVar
 
@@ -968,7 +1111,8 @@ class EnumOverlayTest(test_base.BaseTest):
           result = Features()
           result[Feature('')] = True
           return result
-    """)
+    """,
+    )
 
   def test_if_statement(self):
     # See b/195136939
@@ -1088,7 +1232,9 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_own_member_new(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         from typing import Annotated, Any, Type, TypeVar
 
@@ -1098,8 +1244,10 @@ class EnumOverlayTest(test_base.BaseTest):
             _pos: Annotated[int, 'property']
             @classmethod
             def __new_member__(cls: Type[_TOrderedEnum], value: Any) -> _TOrderedEnum: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class Stage(foo.OrderedEnum):
           DEMAND = 1
@@ -1107,7 +1255,9 @@ class EnumOverlayTest(test_base.BaseTest):
           AGGREGATION = 3
           HEADROOM = 4
           ORDER = 5
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_dynamic_base_enum(self):
     self.Check("""
@@ -1122,17 +1272,23 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_dynamic_base_enum_pyi(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         class DynBase(enum.Enum):
           _HAS_DYNAMIC_ATTRIBUTES = True
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         class M(foo.DynBase):
           A = 1
         M.B
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_instance_attrs_property_output(self):
     ty = self.Infer("""
@@ -1145,7 +1301,9 @@ class EnumOverlayTest(test_base.BaseTest):
         def combo(self) -> str:
           return f"{self.str_v}+{self.value}"
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import Annotated, Literal
       class M(enum.Enum):
@@ -1153,12 +1311,15 @@ class EnumOverlayTest(test_base.BaseTest):
         combo: Annotated[str, 'property']
         str_v: Annotated[str, 'property']
         def __init__(self, val) -> None: ...
-    """)
+    """,
+    )
 
   def test_instance_attrs_property_input(self):
     # Instance attributes are marked using @property.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         from typing import Annotated
         class Fn(enum.Enum):
@@ -1168,8 +1329,10 @@ class EnumOverlayTest(test_base.BaseTest):
         class NoFn(enum.Enum):
           A: int
           x: Annotated[str, 'property']
-      """)
-      self.CheckWithErrors("""
+      """,
+      )
+      self.CheckWithErrors(
+          """
         import foo
         assert_type(foo.Fn.A.value, int)
         assert_type(foo.Fn.A.x, str)
@@ -1179,19 +1342,25 @@ class EnumOverlayTest(test_base.BaseTest):
         # between class and instance attributes for PyTDClass.
         foo.Fn.x
         foo.NoFn.x
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_instance_attrs_canonical(self):
     # Test that canonical instances have instance attributes.
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         import enum
         from typing import Annotated
         class F(enum.Enum):
           A: str
           x = Annotated[int, 'property']
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import enum
         import foo
         class M(enum.Enum):
@@ -1203,7 +1372,9 @@ class EnumOverlayTest(test_base.BaseTest):
           return f.x
         def take_m(m: M):
           return m.x
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_instance_attrs_self_referential(self):
     self.Check("""
@@ -1243,29 +1414,38 @@ class EnumOverlayTest(test_base.BaseTest):
         A = 1
       M.class_attr = 2
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       import enum
       from typing import ClassVar, Literal
       class M(enum.Enum):
         A: Literal[1]
         class_attr: ClassVar[int]
-    """)
+    """,
+    )
 
   def test_classvar_attributes_in(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import ClassVar
         import enum
         class M(enum.Enum):
           A: int
           class_attr: ClassVar[int]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from foo import M
         assert_type(M.A, M)
         assert_type(M.class_attr, int)
         assert_type(M.A.class_attr, int)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_namedtuple_base_type(self):
     # This is a fun case for the base type. The value for A is an Item, but
@@ -1321,7 +1501,8 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_valid_members_pytd_functions(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def a(x) -> None: ...")
-      self.Check("""
+      self.Check(
+          """
         import enum
         from typing import Any, Callable
         import foo
@@ -1330,7 +1511,9 @@ class EnumOverlayTest(test_base.BaseTest):
           B = 1
         assert_type(M.A, Callable[[Any], None])
         assert_type(M.B, M)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_valid_members_dundername(self):
     self.Check("""
@@ -1344,17 +1527,23 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_valid_members_dundername_pytd(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         enum: module
         class M(enum.Enum):
           __A__: str
           B: str
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         assert_type(foo.M.__A__, str)
         assert_type(foo.M.B, foo.M)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_valid_members_class(self):
     # Class are callables, but they aren't descriptors.
@@ -1388,7 +1577,9 @@ class EnumOverlayTest(test_base.BaseTest):
     """)
 
   def test_members_with_value_attribute(self):
-    with self.DepTree([("foo.py", """
+    with self.DepTree([(
+        "foo.py",
+        """
       import enum
       from typing import List
 
@@ -1406,7 +1597,8 @@ class EnumOverlayTest(test_base.BaseTest):
         @property
         def value_alias(self):
           return self.value
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         assert_type(foo.MyEnum.A, foo.MyEnum)
@@ -1427,13 +1619,16 @@ class EnumOverlayTest(test_base.BaseTest):
     """)
 
   def test_missing_pyi(self):
-    with self.DepTree([("foo.pyi", """
+    with self.DepTree([(
+        "foo.pyi",
+        """
       import enum
       class E(enum.Enum):
         X = 42
         @classmethod
         def _missing_(cls, value: object) -> E: ...
-    """)]):
+    """,
+    )]):
       self.Check("""
         import foo
         assert_type(foo.E("FOO"), foo.E)

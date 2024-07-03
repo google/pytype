@@ -8,7 +8,6 @@ disk, which is faster to digest than a pyi file.
 from typing import List, Optional, Set, Tuple
 
 import msgspec
-
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
@@ -95,6 +94,7 @@ class SerializableAst(msgspec.Struct):
     src_path: Optionally, the filepath of the original source file.
     metadata: A list of arbitrary string-encoded metadata.
   """
+
   ast: pytd.TypeDeclUnit
   dependencies: List[Tuple[str, Set[str]]]
   late_dependencies: List[Tuple[str, Set[str]]]
@@ -140,8 +140,11 @@ def SerializeAst(ast, src_path=None, metadata=None) -> SerializableAst:
     The SerializableAst derived from `ast`.
   """
   if ast.name.endswith(".__init__"):
-    ast = ast.Visit(visitors.RenameModuleVisitor(
-        ast.name, ast.name.rsplit(".__init__", 1)[0]))
+    ast = ast.Visit(
+        visitors.RenameModuleVisitor(
+            ast.name, ast.name.rsplit(".__init__", 1)[0]
+        )
+    )
   ast = ast.Visit(UndoModuleAliasesVisitor())
   # Collect dependencies
   deps = visitors.CollectDependencies()
@@ -159,8 +162,11 @@ def SerializeAst(ast, src_path=None, metadata=None) -> SerializableAst:
   metadata = metadata or []
 
   return SerializableAst(
-      ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
-      src_path=src_path, metadata=metadata,
+      ast,
+      sorted(dependencies.items()),
+      sorted(late_dependencies.items()),
+      src_path=src_path,
+      metadata=metadata,
   )
 
 
@@ -182,8 +188,11 @@ def EnsureAstName(ast, module_name, fix=False):
   # when the ast has been pickled.
   if fix and module_name != raw_ast.name:
     ast = ast.Replace(class_type_nodes=None)
-    ast = ast.Replace(ast=raw_ast.Visit(
-        visitors.RenameModuleVisitor(raw_ast.name, module_name)))
+    ast = ast.Replace(
+        ast=raw_ast.Visit(
+            visitors.RenameModuleVisitor(raw_ast.name, module_name)
+        )
+    )
   else:
     assert module_name == raw_ast.name
   return ast
@@ -221,11 +230,16 @@ def ProcessAst(serializable_ast, module_map):
   # we need the reference to the new instance, which can only be known after all
   # external references are resolved.
   serializable_ast = _LookupClassReferences(
-      serializable_ast, module_map, serializable_ast.ast.name)
+      serializable_ast, module_map, serializable_ast.ast.name
+  )
   serializable_ast = serializable_ast.Replace(class_type_nodes=None)
-  serializable_ast = FillLocalReferences(serializable_ast, {
-      "": serializable_ast.ast,
-      serializable_ast.ast.name: serializable_ast.ast})
+  serializable_ast = FillLocalReferences(
+      serializable_ast,
+      {
+          "": serializable_ast.ast,
+          serializable_ast.ast.name: serializable_ast.ast,
+      },
+  )
   return serializable_ast.ast
 
 
@@ -256,21 +270,19 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
       for d in c.decorators
   }
 
-  for node in (serializable_ast.class_type_nodes or ()):
+  for node in serializable_ast.class_type_nodes or ():
     try:
       class_lookup.allow_functions = node.name in decorators
       if node is not class_lookup.VisitClassType(node):
         serializable_ast = serializable_ast.Replace(class_type_nodes=None)
         break
     except KeyError as e:
-      raise UnrestorableDependencyError(
-          f"Unresolved class: {str(e)!r}.") from e
+      raise UnrestorableDependencyError(f"Unresolved class: {str(e)!r}.") from e
   if serializable_ast.class_type_nodes is None:
     try:
       raw_ast = raw_ast.Visit(class_lookup)
     except KeyError as e:
-      raise UnrestorableDependencyError(
-          f"Unresolved class: {str(e)!r}.") from e
+      raise UnrestorableDependencyError(f"Unresolved class: {str(e)!r}.") from e
   serializable_ast = serializable_ast.Replace(ast=raw_ast)
   return serializable_ast
 
@@ -320,13 +332,19 @@ def PrepareForExport(module_name, ast, loader):
 def SourceToExportableAst(module_name, src, loader):
   """Parse the source code into a pickle-able ast."""
   ast = parser.parse_string(
-      src=src, name=module_name, filename=loader.options.input,
-      options=parser.PyiOptions.from_toplevel_options(loader.options))
+      src=src,
+      name=module_name,
+      filename=loader.options.input,
+      options=parser.PyiOptions.from_toplevel_options(loader.options),
+  )
   ast = ast.Visit(visitors.LookupBuiltins(loader.builtins, full_names=False))
   ast = ast.Visit(visitors.LookupLocalTypes())
   ast = ast.Visit(visitors.AdjustTypeParameters())
   ast = ast.Visit(visitors.NamedTypeToClassType())
   ast = ast.Visit(visitors.FillInLocalPointers({"": ast, module_name: ast}))
-  ast = ast.Visit(visitors.ClassTypeToLateType(
-      ignore=[module_name + ".", "builtins.", "typing."]))
+  ast = ast.Visit(
+      visitors.ClassTypeToLateType(
+          ignore=[module_name + ".", "builtins.", "typing."]
+      )
+  )
   return ast

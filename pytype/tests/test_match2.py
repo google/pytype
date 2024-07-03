@@ -9,10 +9,14 @@ class MatchTest(test_base.BaseTest):
 
   def test_no_argument_pytd_function_against_callable(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def bar() -> bool: ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         from typing import Callable
         import foo
 
@@ -21,18 +25,26 @@ class MatchTest(test_base.BaseTest):
 
         f(foo.bar)  # ok
         g(foo.bar)  # wrong-arg-types[e]
-      """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e": r"\(x: Callable\[\[\], str\]\).*\(x: Callable\[\[\], bool\]\)"})
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertErrorRegexes(
+          errors,
+          {"e": r"\(x: Callable\[\[\], str\]\).*\(x: Callable\[\[\], bool\]\)"},
+      )
 
   def test_pytd_function_against_callable_with_type_parameters(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         def f1(x: int) -> int: ...
         def f2(x: int) -> bool: ...
         def f3(x: int) -> str: ...
-      """)
-      _, errors = self.InferWithErrors("""
+      """,
+      )
+      _, errors = self.InferWithErrors(
+          """
         from typing import Callable, TypeVar
         import foo
 
@@ -47,15 +59,27 @@ class MatchTest(test_base.BaseTest):
         f2(foo.f1)  # ok
         f2(foo.f2)  # wrong-arg-types[e2]
         f2(foo.f3)  # wrong-arg-types[e3]
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
       expected = r"Callable\[\[Union\[bool, int\]\], Union\[bool, int\]\]"
-      self.assertErrorRegexes(errors, {
-          "e1": (r"Expected.*Callable\[\[str\], str\].*"
-                 r"Actual.*Callable\[\[int\], str\]"),
-          "e2": (r"Expected.*Callable\[\[bool\], bool\].*"
-                 r"Actual.*Callable\[\[int\], bool\]"),
-          "e3": (r"Expected.*" + expected + ".*"
-                 r"Actual.*Callable\[\[int\], str\]")})
+      self.assertErrorRegexes(
+          errors,
+          {
+              "e1": (
+                  r"Expected.*Callable\[\[str\], str\].*"
+                  r"Actual.*Callable\[\[int\], str\]"
+              ),
+              "e2": (
+                  r"Expected.*Callable\[\[bool\], bool\].*"
+                  r"Actual.*Callable\[\[int\], bool\]"
+              ),
+              "e3": (
+                  r"Expected.*" + expected + ".*"
+                  r"Actual.*Callable\[\[int\], str\]"
+              ),
+          },
+      )
 
   def test_interpreter_function_against_callable(self):
     _, errors = self.InferWithErrors("""
@@ -68,9 +92,15 @@ class MatchTest(test_base.BaseTest):
       f(g1)  # ok
       f(g2)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Expected.*Callable\[\[bool\], int\].*"
-              r"Actual.*Callable\[\[str\], int\]")})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e": (
+                r"Expected.*Callable\[\[bool\], int\].*"
+                r"Actual.*Callable\[\[str\], int\]"
+            )
+        },
+    )
 
   def test_bound_interpreter_function_against_callable(self):
     _, errors = self.InferWithErrors("""
@@ -92,23 +122,37 @@ class MatchTest(test_base.BaseTest):
       f1(unbound)  # wrong-arg-types[e3]
       f2(unbound)  # ok
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": (r"Expected.*Callable\[\[A, bool\], int\].*"
-               r"Actual.*Callable\[\[int\], bool\]"),
-        "e2": (r"Expected.*Callable\[\[bool\], str\].*"
-               r"Actual.*Callable\[\[int\], bool\]"),
-        "e3": (r"Expected.*Callable\[\[bool\], int\].*"
-               r"Actual.*Callable\[\[Any, int\], bool\]")})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": (
+                r"Expected.*Callable\[\[A, bool\], int\].*"
+                r"Actual.*Callable\[\[int\], bool\]"
+            ),
+            "e2": (
+                r"Expected.*Callable\[\[bool\], str\].*"
+                r"Actual.*Callable\[\[int\], bool\]"
+            ),
+            "e3": (
+                r"Expected.*Callable\[\[bool\], int\].*"
+                r"Actual.*Callable\[\[Any, int\], bool\]"
+            ),
+        },
+    )
 
   def test_callable_parameters(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any, Callable, List, TypeVar
         T = TypeVar("T")
         def f1(x: Callable[..., T]) -> List[T]: ...
         def f2(x: Callable[[T], Any]) -> List[T]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         from typing import Any, Callable
         import foo
 
@@ -121,8 +165,12 @@ class MatchTest(test_base.BaseTest):
         def g4(x: int): pass
         w1 = foo.f2(g3)
         w2 = foo.f2(g4)
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import List
         import foo
         def g1() -> None: ...
@@ -134,7 +182,8 @@ class MatchTest(test_base.BaseTest):
         v2 = ...  # type: List[int]
         w1 = ...  # type: list
         w2 = ...  # type: List[int]
-      """)
+      """,
+      )
 
   def test_variable_length_function_against_callable(self):
     _, errors = self.InferWithErrors("""
@@ -145,9 +194,15 @@ class MatchTest(test_base.BaseTest):
       f(g1)  # ok
       f(g2)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Expected.*Callable\[\[int\], Any\].*"
-              r"Actual.*Callable\[\[str\], Any\]")})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e": (
+                r"Expected.*Callable\[\[int\], Any\].*"
+                r"Actual.*Callable\[\[str\], Any\]"
+            )
+        },
+    )
 
   def test_callable_instance_against_callable_with_type_parameters(self):
     _, errors = self.InferWithErrors("""
@@ -157,9 +212,15 @@ class MatchTest(test_base.BaseTest):
       def g() -> Callable[[int], str]: return __any_object__
       f(g())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Expected.*Callable\[\[str\], str\].*"
-              r"Actual.*Callable\[\[int\], str\]")})
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e": (
+                r"Expected.*Callable\[\[str\], str\].*"
+                r"Actual.*Callable\[\[int\], str\]"
+            )
+        },
+    )
 
   def test_function_with_type_parameter_return_against_callable(self):
     self.InferWithErrors("""
@@ -175,23 +236,32 @@ class MatchTest(test_base.BaseTest):
 
   def test_union_in_type_parameter(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Callable, Iterator, List, TypeVar
         T = TypeVar("T")
         def decorate(func: Callable[..., Iterator[T]]) -> List[T]: ...
-      """)
-      ty = self.Infer("""
+      """,
+      )
+      ty = self.Infer(
+          """
         from typing import Generator, Optional
         import foo
         @foo.decorate
         def f() -> Generator[Optional[str], None, None]:
           yield "hello world"
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      """,
+          pythonpath=[d.path],
+      )
+      self.assertTypesMatchPytd(
+          ty,
+          """
         from typing import List, Optional
         import foo
         f = ...  # type: List[Optional[str]]
-      """)
+      """,
+      )
 
   def test_anystr(self):
     self.Check("""
@@ -227,12 +297,16 @@ class MatchTest(test_base.BaseTest):
 
   def test_callable_base_class(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import Any, Callable, Union, Type
         def f() -> Union[Callable[[], Any], Type[Exception]]: ...
         def g() -> Union[Type[Exception], Callable[[], Any]]: ...
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         from typing import Union
         import foo
         class Foo(foo.f()):
@@ -242,7 +316,9 @@ class MatchTest(test_base.BaseTest):
         def f(x: Foo, y: Bar) -> Union[Bar, Foo]:
           return x or y
         f(Foo(), Bar())
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_anystr_against_callable(self):
     # Because `T` appears only once in the callable, it does not do any
@@ -269,8 +345,10 @@ class MatchTest(test_base.BaseTest):
         pass
       g(f, 0)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Callable\[\[IntVar\], Any\].*Callable\[\[AnyStr\], AnyStr\]"})
+    self.assertErrorRegexes(
+        errors,
+        {"e": r"Callable\[\[IntVar\], Any\].*Callable\[\[AnyStr\], AnyStr\]"},
+    )
 
   def test_anystr_against_multiple_param_callable(self):
     # Callable[[T], T] needs to accept any argument, so AnyStr cannot match it.
@@ -283,8 +361,9 @@ class MatchTest(test_base.BaseTest):
         pass
       g(f)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Callable\[\[T\], T\].*Callable\[\[AnyStr\], AnyStr\]"})
+    self.assertErrorRegexes(
+        errors, {"e": r"Callable\[\[T\], T\].*Callable\[\[AnyStr\], AnyStr\]"}
+    )
 
   @test_utils.skipOnWin32("Fails on windows for unknown reasons")
   def test_filter_return(self):
@@ -315,12 +394,15 @@ class MatchTest(test_base.BaseTest):
       def g(x: Optional[str]):
         return f(x)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Optional, TypeVar
       T = TypeVar('T')
       def f(x: Optional[T]) -> T: ...
       def g(x: Optional[str]) -> str: ...
-    """)
+    """,
+    )
 
   def test_mapping_attributes(self):
     self.CheckWithErrors("""
@@ -429,16 +511,21 @@ class MatchTestPy3(test_base.BaseTest):
         pass
       x = tokenize.generate_tokens(f)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Generator
       import tokenize
       def f() -> NoneType: ...
       x = ...  # type: Generator[tokenize.TokenInfo, None, None]
-    """)
+    """,
+    )
 
   def test_callable_against_generic(self):
     with test_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(
+          "foo.pyi",
+          """
         from typing import TypeVar, Callable, Generic, Iterable, Iterator
         A = TypeVar("A")
         N = TypeVar("N")
@@ -446,22 +533,29 @@ class MatchTestPy3(test_base.BaseTest):
           def __init__(self, c: Callable[[], N]):
             self = Foo[N]
         x = ...  # type: Iterator[int]
-      """)
-      self.Check("""
+      """,
+      )
+      self.Check(
+          """
         import foo
         foo.Foo(foo.x.__next__)
-      """, pythonpath=[d.path])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_empty(self):
     ty = self.Infer("""
       a = []
       b = ["%d" % i for i in a]
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import List
       a = ...  # type: List[nothing]
       b = ...  # type: List[str]
-    """)
+    """,
+    )
 
   def test_bound_against_callable(self):
     ty = self.Infer("""
@@ -469,12 +563,15 @@ class MatchTestPy3(test_base.BaseTest):
       import tokenize
       x = tokenize.generate_tokens(io.StringIO("").readline)
     """)
-    self.assertTypesMatchPytd(ty, """
+    self.assertTypesMatchPytd(
+        ty,
+        """
       from typing import Generator
       import io
       import tokenize
       x = ...  # type: Generator[tokenize.TokenInfo, None, None]
-    """)
+    """,
+    )
 
 
 class NonIterableStringsTest(test_base.BaseTest):
@@ -487,10 +584,12 @@ class NonIterableStringsTest(test_base.BaseTest):
       a += "bar"
     """)
     self.assertTypesMatchPytd(
-        ty, """
+        ty,
+        """
       from typing import List
       a = ...  # type: List[str]
-    """)
+    """,
+    )
 
   def test_str_against_plain_iterable(self):
     self.Check("""
@@ -689,6 +788,7 @@ class NonIterableStringsTest(test_base.BaseTest):
     self.Check("""
       x = frozenset("abcdef")
     """)
+
 
 if __name__ == "__main__":
   test_base.main()

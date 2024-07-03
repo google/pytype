@@ -21,7 +21,6 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from pycnite import marshal as pyc_marshal
-
 from pytype import block_environment
 from pytype import compare
 from pytype import constant_folding
@@ -97,7 +96,8 @@ class VirtualMachine:
     # LateAnnotation depends on a single undefined name, so once that name is
     # defined, we immediately resolve the annotation.
     self.late_annotations: Dict[str, List[abstract.LateAnnotation]] = (
-        collections.defaultdict(list))
+        collections.defaultdict(list)
+    )
     # Memoize which overlays are loaded.
     self.loaded_overlays: Dict[str, Optional[overlay_lib.Overlay]] = {}
     self.has_unknown_wildcard_imports: bool = False
@@ -116,7 +116,8 @@ class VirtualMachine:
     self.annotated_locals: Dict[str, Dict[str, abstract_utils.Local]] = {}
     self.filename: str = None
     self.functions_type_params_check: List[
-        Tuple[abstract.InterpreterFunction, opcodes.Opcode]] = []
+        Tuple[abstract.InterpreterFunction, opcodes.Opcode]
+    ] = []
 
     self._maximum_depth = None  # set by run_program() and analyze()
     self._director: directors.Director = None
@@ -219,8 +220,9 @@ class VirtualMachine:
     # to look for the opcode before the STORE_FAST, since the match itself does
     # not generate any specific opcode, just stack manipulations.
     is_default_match = opname == "NOP" or (
-        isinstance(op.next, opcodes.STORE_FAST) and
-        op.line in self._branch_tracker.matches.defaults)
+        isinstance(op.next, opcodes.STORE_FAST)
+        and op.line in self._branch_tracker.matches.defaults
+    )
     return is_match or is_cmp_match or is_default_match or is_none_match
 
   def _handle_match_case(self, state, op):
@@ -257,6 +259,7 @@ class VirtualMachine:
     Args:
       op: An opcode.
       state: The state just before running this instruction.
+
     Returns:
       The state right after this instruction that should roll over to the
       subsequent instruction. If this opcode aborts this function (e.g. through
@@ -281,8 +284,9 @@ class VirtualMachine:
     if state.why in ("reraise", "Never"):
       state = state.set_why("exception")
     implicit_return = (
-        op.name in ("RETURN_VALUE", "RETURN_CONST") and
-        op.line not in self._director.return_lines)
+        op.name in ("RETURN_VALUE", "RETURN_CONST")
+        and op.line not in self._director.return_lines
+    )
     if len(self.frames) <= 2:
       # We do exhaustiveness checking only when doing a top-level analysis of
       # the match code.
@@ -294,7 +298,8 @@ class VirtualMachine:
   def _run_frame_blocks(self, frame, node, annotated_locals):
     """Runs a frame's code blocks."""
     frame.states[frame.f_code.get_first_opcode()] = frame_state.FrameState.init(
-        node, self.ctx)
+        node, self.ctx
+    )
     frame_name = frame.f_code.name
     if frame_name not in self.local_ops or frame_name != "<module>":
       # abstract_utils.eval_expr creates a temporary frame called "<module>". We
@@ -352,7 +357,8 @@ class VirtualMachine:
     self.push_frame(frame)
     try:
       can_return, return_nodes = self._run_frame_blocks(
-          frame, node, annotated_locals)
+          frame, node, annotated_locals
+      )
     finally:
       self.pop_frame(frame)
     if not return_nodes:
@@ -367,8 +373,9 @@ class VirtualMachine:
         # annotated return type. Raising an error in an unimplemented function
         # and documenting the intended return type in an annotation is a
         # common pattern.
-        self._set_frame_return(node, frame,
-                               self.ctx.convert.never.to_variable(node))
+        self._set_frame_return(
+            node, frame, self.ctx.convert.never.to_variable(node)
+        )
     return node, frame.return_variable
 
   def push_frame(self, frame):
@@ -390,17 +397,31 @@ class VirtualMachine:
     return self.call_function_with_state(state, method, args)
 
   def make_frame(
-      self, node, code, f_globals, f_locals, callargs=None, closure=None,
-      new_locals=False, func=None, first_arg=None, substs=()):
+      self,
+      node,
+      code,
+      f_globals,
+      f_locals,
+      callargs=None,
+      closure=None,
+      new_locals=False,
+      func=None,
+      first_arg=None,
+      substs=(),
+  ):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
       log.info("Detected recursion in %s", code.name or code.filename)
       raise self.VirtualMachineRecursionError()
 
-    log.info("make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
-             vm_utils.repper(callargs),
-             type(f_globals).__name__, id(f_globals),
-             type(f_locals).__name__, id(f_locals))
+    log.info(
+        "make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
+        vm_utils.repper(callargs),
+        type(f_globals).__name__,
+        id(f_globals),
+        type(f_locals).__name__,
+        id(f_locals),
+    )
 
     # Implement NEWLOCALS flag. See Objects/frameobject.c in CPython.
     # (Also allow to override this with a parameter, Python 3 doesn't always set
@@ -408,9 +429,19 @@ class VirtualMachine:
     if code.has_newlocals() or new_locals:
       f_locals = abstract.LazyConcreteDict("locals", {}, self.ctx)
 
-    return frame_state.Frame(node, self.ctx, code, f_globals, f_locals,
-                             self.frame, callargs or {}, closure, func,
-                             first_arg, substs)
+    return frame_state.Frame(
+        node,
+        self.ctx,
+        code,
+        f_globals,
+        f_locals,
+        self.frame,
+        callargs or {},
+        closure,
+        func,
+        first_arg,
+        substs,
+    )
 
   def simple_stack(self, opcode=None):
     """Get a stack of simple frames.
@@ -433,8 +464,10 @@ class VirtualMachine:
 
   def stack(self, func=None):
     """Get a frame stack for the given function for error reporting."""
-    if (isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and
-        not self.current_opcode):
+    if (
+        isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES)
+        and not self.current_opcode
+    ):
       return self.simple_stack(func.get_first_opcode())
     else:
       return self.frames
@@ -482,7 +515,8 @@ class VirtualMachine:
         python_version=self.ctx.python_version,
         python_exe=self.ctx.options.python_exe,
         filename=filename,
-        mode=mode)
+        mode=mode,
+    )
     code, block_graph = blocks.process_code(code)
     if store_blockgraph:
       self.block_graph = block_graph
@@ -497,13 +531,16 @@ class VirtualMachine:
       assert f_locals is None
       # __name__, __doc__, and __package__ are unused placeholder values.
       f_globals = f_locals = abstract.LazyConcreteDict(
-          "globals", {
+          "globals",
+          {
               "__builtins__": self.ctx.loader.builtins,
               "__name__": "__main__",
               "__file__": code.filename,
               "__doc__": None,
               "__package__": None,
-          }, self.ctx)
+          },
+          self.ctx,
+      )
       # __name__ is retrieved by class bodies. So make sure that it's preloaded,
       # otherwise we won't properly cache the first class initialization.
       f_globals.load_lazy_attribute("__name__")
@@ -518,6 +555,7 @@ class VirtualMachine:
       src: The program source code.
       filename: The filename the source is from.
       maximum_depth: Maximum depth to follow call chains.
+
     Returns:
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
@@ -532,21 +570,25 @@ class VirtualMachine:
     # but the exact positioning is unpredictable, so we pass the bytecode to the
     # director to make adjustments based on the opcodes' observed line numbers.
     director = directors.Director(
-        src_tree, self.ctx.errorlog, filename, self.ctx.options.disable)
+        src_tree, self.ctx.errorlog, filename, self.ctx.options.disable
+    )
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
     self.ctx.options.set_feature_flags(director.features)
     self._branch_tracker = pattern_matching.BranchTracker(
-        director.matches, self.ctx)
+        director.matches, self.ctx
+    )
     code = process_blocks.merge_annotations(
-        code, self._director.annotations, self._director.param_annotations)
+        code, self._director.annotations, self._director.param_annotations
+    )
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
-      self.ctx.errorlog.ignored_type_comment(self.filename, line,
-                                             self._director.type_comments[line])
+      self.ctx.errorlog.ignored_type_comment(
+          self.filename, line, self._director.type_comments[line]
+      )
     code = constant_folding.optimize(code)
     process_blocks.adjust_returns(code, self._director.block_returns)
 
@@ -596,7 +638,8 @@ class VirtualMachine:
     state, (x, y) = state.popn(2)
     with self._suppress_opcode_tracing():  # don't trace the magic method call
       state, ret = vm_utils.call_binary_operator(
-          state, name, x, y, report_errors=report_errors, ctx=self.ctx)
+          state, name, x, y, report_errors=report_errors, ctx=self.ctx
+      )
     self.trace_opcode(None, name, ret)
     return state.push(ret)
 
@@ -628,22 +671,33 @@ class VirtualMachine:
     del cls, container, extra_key
     return NotImplemented
 
-  def call_function_with_state(self, state, funcv, posargs, namedargs=None,
-                               starargs=None, starstarargs=None,
-                               fallback_to_unsolvable=True):
+  def call_function_with_state(
+      self,
+      state,
+      funcv,
+      posargs,
+      namedargs=None,
+      starargs=None,
+      starstarargs=None,
+      fallback_to_unsolvable=True,
+  ):
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
     args = function.Args(
-        posargs=posargs, namedargs=namedargs, starargs=starargs,
-        starstarargs=starstarargs)
+        posargs=posargs,
+        namedargs=namedargs,
+        starargs=starargs,
+        starstarargs=starstarargs,
+    )
     node, ret = function.call_function(
         self.ctx,
         state.node,
         funcv,
         args,
         fallback_to_unsolvable,
-        allow_never=True)
+        allow_never=True,
+    )
     if ret.data == [self.ctx.convert.never]:
       state = state.set_why("Never")
     state = state.change_cfg_node(node)
@@ -664,8 +718,9 @@ class VirtualMachine:
           stack.enter_context(f.reset_overloads())
       yield
 
-  def _call_function_from_stack_helper(self, state, funcv, posargs, namedargs,
-                                       starargs, starstarargs):
+  def _call_function_from_stack_helper(
+      self, state, funcv, posargs, namedargs, starargs, starstarargs
+  ):
     """Helper for call_function_from_stack."""
     for f in funcv.data:
       if isinstance(f, abstract.Function):
@@ -677,7 +732,8 @@ class VirtualMachine:
       funcv_to_call = funcv
     with self._reset_overloads(funcv):
       state, ret = self.call_function_with_state(
-          state, funcv_to_call, posargs, namedargs, starargs, starstarargs)
+          state, funcv_to_call, posargs, namedargs, starargs, starstarargs
+      )
     return state.push(ret)
 
   def call_function_from_stack(self, state, num, starargs, starstarargs):
@@ -703,7 +759,8 @@ class VirtualMachine:
       posargs = args
     state, func = state.pop()
     return self._call_function_from_stack_helper(
-        state, func, posargs, namedargs, starargs, starstarargs)
+        state, func, posargs, namedargs, starargs, starstarargs
+    )
 
   def call_function_from_stack_311(self, state, num):
     """Pop arguments for a function and call it."""
@@ -712,7 +769,7 @@ class VirtualMachine:
     #   function: [NULL,   function, num * arg]
     #   method:   [method, self,     num * arg]
     m = state.peek(num + 2)
-    is_meth = not(m.data and isinstance(m.data[0], abstract.Null))
+    is_meth = not (m.data and isinstance(m.data[0], abstract.Null))
     if is_meth:
       num += 1
     state, args = state.popn(num)
@@ -730,15 +787,19 @@ class VirtualMachine:
     starargs = starstarargs = None
     self._kw_names = ()
     return self._call_function_from_stack_helper(
-        state, func, posargs, namedargs, starargs, starstarargs)
+        state, func, posargs, namedargs, starargs, starstarargs
+    )
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
     return self.frame.f_globals
 
   def load_from(
-      self, state: frame_state.FrameState, store: abstract.LazyConcreteDict,
-      name: str, discard_concrete_values: bool = False
+      self,
+      state: frame_state.FrameState,
+      store: abstract.LazyConcreteDict,
+      name: str,
+      discard_concrete_values: bool = False,
   ) -> Tuple[frame_state.FrameState, cfg.Variable]:
     """Load an item out of locals, globals, or builtins."""
     if isinstance(store, mixin.LazyMembers):
@@ -751,8 +812,12 @@ class VirtualMachine:
       assert store == self.ctx.convert.unsolvable
       return state, self.ctx.new_unsolvable(state.node)
     bindings = member.Bindings(state.node)
-    if (not bindings and self._late_annotations_stack and member.bindings and
-        all(isinstance(v, abstract.Module) for v in member.data)):
+    if (
+        not bindings
+        and self._late_annotations_stack
+        and member.bindings
+        and all(isinstance(v, abstract.Module) for v in member.data)
+    ):
       # Hack: Evaluation of late annotations may create new nodes not within the
       # normal program flow, causing imports to not be visible, so we pretend
       # that modules are always visible.
@@ -761,8 +826,11 @@ class VirtualMachine:
       return state, self._load_annotation(state.node, name, store)
     ret = self.ctx.program.NewVariable()
     self._filter_none_and_paste_bindings(
-        state.node, bindings, ret,
-        discard_concrete_values=discard_concrete_values)
+        state.node,
+        bindings,
+        ret,
+        discard_concrete_values=discard_concrete_values,
+    )
     self.set_var_name(ret, name)
     return state, ret
 
@@ -786,8 +854,11 @@ class VirtualMachine:
     # variable at the current node with var's bindings and return that. For now,
     # we just use this as a reachability check to make sure `name` is defined in
     # every path through the code.
-    if (self.ctx.options.strict_undefined_checks and
-        self.ctx.python_version >= (3, 10) and not var):
+    if (
+        self.ctx.options.strict_undefined_checks
+        and self.ctx.python_version >= (3, 10)
+        and not var
+    ):
       raise KeyError()
 
     return self.load_from(state, self.frame.f_locals, name)
@@ -797,8 +868,11 @@ class VirtualMachine:
     # concrete values are converted to abstract instances of their types, as we
     # generally can't assume that globals are constant.
     return self.load_from(
-        state, self.frame.f_globals, name,
-        discard_concrete_values=name != "TYPE_CHECKING")
+        state,
+        self.frame.f_globals,
+        name,
+        discard_concrete_values=name != "TYPE_CHECKING",
+    )
 
   def load_special_builtin(self, name):
     if name == "__any_object__":
@@ -852,23 +926,31 @@ class VirtualMachine:
       typ: The annotation.
       orig_val: The original value, if any.
       final: Whether the annotation is tagged Final (None to preserve any
-          existing Final tag when updating an existing annotation).
+        existing Final tag when updating an existing annotation).
     """
     if orig_val:
       self.current_local_ops.append(LocalOp(name, LocalOp.Op.ASSIGN))
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.Op.ANNOTATE))
     self._update_annotations_dict(
-        node, op, name, typ, orig_val, self.current_annotated_locals,
-        final=final)
+        node,
+        op,
+        name,
+        typ,
+        orig_val,
+        self.current_annotated_locals,
+        final=final,
+    )
 
   def _update_annotations_dict(
-      self, node, op, name, typ, orig_val, annotations_dict, final=None):
+      self, node, op, name, typ, orig_val, annotations_dict, final=None
+  ):
     if name in annotations_dict:
       annotations_dict[name].update(node, op, typ, orig_val)
     else:
-      annotations_dict[name] = abstract_utils.Local(node, op, typ, orig_val,
-                                                    self.ctx)
+      annotations_dict[name] = abstract_utils.Local(
+          node, op, typ, orig_val, self.ctx
+      )
     if final is not None:
       annotations_dict[name].final = final
 
@@ -881,8 +963,9 @@ class VirtualMachine:
       target = m_frame.f_locals
     else:
       target = m_frame.f_globals
-    node = self.ctx.attribute_handler.set_attribute(state.node, target, name,
-                                                    value)
+    node = self.ctx.attribute_handler.set_attribute(
+        state.node, target, name, value
+    )
     if target is m_frame.f_globals and self.late_annotations:
       # We sort the annotations so that a parameterized class's base class is
       # resolved before the parameterized class itself.
@@ -896,18 +979,21 @@ class VirtualMachine:
 
   def _process_annotations(self, node, name, value):
     """Process any type annotations in the named value."""
-    if not value.data or any(not isinstance(v, mixin.NestedAnnotation)
-                             for v in value.data):
+    if not value.data or any(
+        not isinstance(v, mixin.NestedAnnotation) for v in value.data
+    ):
       return value
     stack = self.simple_stack()
     typ = self.ctx.annotation_utils.extract_annotation(node, value, name, stack)
     return typ.to_variable(node)
 
   def _apply_annotation(
-      self, state, op, name, orig_val, annotations_dict, check_types):
+      self, state, op, name, orig_val, annotations_dict, check_types
+  ):
     """Applies the type annotation, if any, associated with this object."""
     ann = self.ctx.annotation_utils.apply_annotation(
-        state.node, op, name, orig_val)
+        state.node, op, name, orig_val
+    )
     typ, value = ann.typ, ann.value
     final_violation = False
     local = False
@@ -915,9 +1001,11 @@ class VirtualMachine:
       # If we are assigning to a member that is in the class annotation dict as
       # Final, don't raise an error if we are simply analysing the same method
       # repeatedly and have hit the STORE_ opcode a second time.
-      final_violation = (name in annotations_dict and
-                         annotations_dict[name].final and
-                         op != annotations_dict[name].last_update_op)
+      final_violation = (
+          name in annotations_dict
+          and annotations_dict[name].final
+          and op != annotations_dict[name].last_update_op
+      )
       if annotations_dict is self.current_annotated_locals:
         local = True
         self._record_local(state.node, op, name, typ, orig_val, ann.final)
@@ -926,7 +1014,8 @@ class VirtualMachine:
         # encountered so that if, say, an instance attribute is annotated in
         # both __init__ and another method, the __init__ annotation is used.
         self._update_annotations_dict(
-            state.node, op, name, typ, orig_val, annotations_dict, ann.final)
+            state.node, op, name, typ, orig_val, annotations_dict, ann.final
+        )
       if typ is None and name in annotations_dict:
         typ = annotations_dict[name].get_type(state.node, name)
         if typ == self.ctx.convert.unsolvable:
@@ -938,28 +1027,32 @@ class VirtualMachine:
         self.ctx.errorlog.assigning_to_final(self.frames, name, local)
       else:
         self.ctx.check_annotation_type_mismatch(
-            state.node, name, typ, orig_val, self.frames, allow_none=True)
+            state.node, name, typ, orig_val, self.frames, allow_none=True
+        )
     return value
 
   def _get_value_from_annotations(self, state, op, name, local, orig_val):
     annotations_dict = self.current_annotated_locals if local else None
     value = self._apply_annotation(
-        state, op, name, orig_val, annotations_dict, check_types=True)
+        state, op, name, orig_val, annotations_dict, check_types=True
+    )
     value = self._process_annotations(state.node, name, value)
     return value
 
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    if (self._branch_tracker.is_current_as_name(op, name) and
-        self._branch_tracker.get_current_type_tracker(op, orig_val)):
+    if self._branch_tracker.is_current_as_name(
+        op, name
+    ) and self._branch_tracker.get_current_type_tracker(op, orig_val):
       # If we are storing the as name in a case match, i.e.
       #    case <class-expr> as <name>:
       # we need to store the type of <class-expr>, not of the original match
       # object (due to the way match statements are compiled into bytecode, the
       # match object will be on the stack and retrieved as orig_val)
       value = self._branch_tracker.instantiate_case_var(
-          op, orig_val, state.node)
+          op, orig_val, state.node
+      )
     else:
       value = self._get_value_from_annotations(state, op, name, local, orig_val)
     state = state.forward_cfg_node(f"Store:{name}")
@@ -979,8 +1072,11 @@ class VirtualMachine:
       self, node: cfg.CFGNode, obj: cfg.Variable, attr: str
   ) -> Tuple[cfg.CFGNode, Optional[cfg.Variable], List[cfg.Binding]]:
     """Load an attribute from an object."""
-    if (attr == "__class__" and self.ctx.callself_stack and
-        obj.data == self.ctx.callself_stack[-1].data):
+    if (
+        attr == "__class__"
+        and self.ctx.callself_stack
+        and obj.data == self.ctx.callself_stack[-1].data
+    ):
       return node, self.ctx.new_unsolvable(node), []
     # Resolve the value independently for each value of obj
     result = self.ctx.program.NewVariable()
@@ -989,13 +1085,20 @@ class VirtualMachine:
     values_without_attribute = []
     for val in obj.bindings:
       node2, attr_var = self.ctx.attribute_handler.get_attribute(
-          node, val.data, attr, val)
+          node, val.data, attr, val
+      )
       if attr_var is None or not attr_var.bindings:
         log.debug("No %s on %s", attr, val.data.__class__)
         values_without_attribute.append(val)
         continue
-      log.debug("got choice for attr %s from %r of %r (0x%x): %r", attr, obj,
-                val.data, id(val.data), attr_var)
+      log.debug(
+          "got choice for attr %s from %r of %r (0x%x): %r",
+          attr,
+          obj,
+          val.data,
+          id(val.data),
+          attr_var,
+      )
       self._filter_none_and_paste_bindings(node2, attr_var.bindings, result)
       nodes.append(node2)
     if nodes:
@@ -1007,8 +1110,9 @@ class VirtualMachine:
     return x.cls == self.ctx.convert.none_type
 
   def _var_is_none(self, v: cfg.Variable) -> bool:
-    return (bool(v.bindings) and
-            all(self._data_is_none(b.data) for b in v.bindings))
+    return bool(v.bindings) and all(
+        self._data_is_none(b.data) for b in v.bindings
+    )
 
   def _delete_item(self, state, obj, arg):
     state, _ = self._call(state, obj, "__delitem__", (arg,))
@@ -1032,17 +1136,21 @@ class VirtualMachine:
       if state.node.HasCombination(combination):
         self.ctx.errorlog.attribute_error(self.frames, error, attr)
 
-  def _filter_none_and_paste_bindings(self, node, bindings, var,
-                                      discard_concrete_values=False):
+  def _filter_none_and_paste_bindings(
+      self, node, bindings, var, discard_concrete_values=False
+  ):
     """Paste the bindings into var, filtering out false positives on None."""
     for b in bindings:
       if self._has_strict_none_origins(b):
-        if (discard_concrete_values and
-            isinstance(b.data, abstract.PythonConstant) and
-            not isinstance(b.data.pyval, str)):
+        if (
+            discard_concrete_values
+            and isinstance(b.data, abstract.PythonConstant)
+            and not isinstance(b.data.pyval, str)
+        ):
           # We need to keep constant strings as they may be forward references.
           var.AddBinding(
-              self.ctx.convert.get_maybe_abstract_instance(b.data), [b], node)
+              self.ctx.convert.get_maybe_abstract_instance(b.data), [b], node
+          )
         else:
           var.PasteBinding(b, node)
       elif self.ctx.options.strict_none_binding:
@@ -1069,7 +1177,8 @@ class VirtualMachine:
       return True
     has_any_none_origin = False
     walker = cfg_utils.walk_binding(
-        binding, keep_binding=lambda b: self._data_is_none(b.data))
+        binding, keep_binding=lambda b: self._data_is_none(b.data)
+    )
     origin = None
     while True:
       try:
@@ -1079,7 +1188,8 @@ class VirtualMachine:
       for source_set in origin.source_sets:
         if not source_set:
           if self.ctx.program.is_reachable(
-              src=self.frame.node, dst=origin.where):
+              src=self.frame.node, dst=origin.where
+          ):
             # Checking for reachability works because the current part of the
             # graph hasn't been connected back to the analyze node yet. Since
             # the walker doesn't preserve information about the relationship
@@ -1094,8 +1204,12 @@ class VirtualMachine:
     return state.change_cfg_node(node), result
 
   def store_attr(
-      self, state: frame_state.FrameState, obj: cfg.Variable, attr: str,
-      value: cfg.Variable) -> frame_state.FrameState:
+      self,
+      state: frame_state.FrameState,
+      obj: cfg.Variable,
+      attr: str,
+      value: cfg.Variable,
+  ) -> frame_state.FrameState:
     """Set an attribute on an object."""
     if not obj.bindings:
       log.info("Ignoring setattr on %r", obj)
@@ -1105,8 +1219,10 @@ class VirtualMachine:
       # TODO(b/172045608): Check whether val.data is a descriptor (i.e. has
       # "__set__")
       nodes.append(
-          self.ctx.attribute_handler.set_attribute(state.node, val.data, attr,
-                                                   value))
+          self.ctx.attribute_handler.set_attribute(
+              state.node, val.data, attr, value
+          )
+      )
     if nodes:
       return state.change_cfg_node(self.ctx.join_cfg_nodes(nodes))
     else:
@@ -1114,8 +1230,9 @@ class VirtualMachine:
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""
-    log.info("Attribute removal does not do anything in the abstract "
-             "interpreter")
+    log.info(
+        "Attribute removal does not do anything in the abstract interpreter"
+    )
     return state
 
   def _handle_311_pattern_match_on_dict(self, state, op, obj, ret):
@@ -1127,8 +1244,10 @@ class VirtualMachine:
     # DELETE_SUBSCR on the concrete keys and binds the remaining dict to `rest`
     # (3.10 had a specific COPY_DICT_WITHOUT_KEYS opcode to handle this but it
     # was removed in 3.11).
-    if not (self.ctx.python_version == (3, 11) and
-            op.line in self._branch_tracker.matches.match_cases):
+    if not (
+        self.ctx.python_version == (3, 11)
+        and op.line in self._branch_tracker.matches.match_cases
+    ):
       return state
     if state.top() == obj:
       state = state.pop_and_discard()
@@ -1175,9 +1294,13 @@ class VirtualMachine:
       module = self._import_module(name, level)
       # Since we have explicitly imported full_name, add it to the prefix list.
       self.ctx.loader.add_module_prefixes(full_name)
-    except (parser.ParseError, load_pytd.BadDependencyError,
-            visitors.ContainerError, visitors.SymbolLookupError,
-            visitors.LiteralValueError) as e:
+    except (
+        parser.ParseError,
+        load_pytd.BadDependencyError,
+        visitors.ContainerError,
+        visitors.SymbolLookupError,
+        visitors.LiteralValueError,
+    ) as e:
       self.ctx.errorlog.pyi_error(self.frames, full_name, e)
       module = self.ctx.convert.unsolvable
     return module
@@ -1220,9 +1343,9 @@ class VirtualMachine:
           return overlay
         if level == -1 and self.ctx.loader.base_module:
           # Python 2 tries relative imports first.
-          ast = (
-              self.ctx.loader.import_relative_name(name) or
-              self.ctx.loader.import_name(name))
+          ast = self.ctx.loader.import_relative_name(
+              name
+          ) or self.ctx.loader.import_name(name)
         else:
           ast = self.ctx.loader.import_name(name)
       else:
@@ -1240,7 +1363,8 @@ class VirtualMachine:
       ast = self.ctx.loader.import_relative(level)
     if ast:
       return self.ctx.convert.constant_to_value(
-          ast, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
+          ast, subst=datatypes.AliasingDict(), node=self.ctx.root_node
+      )
     else:
       return None
 
@@ -1263,8 +1387,9 @@ class VirtualMachine:
 
   def expand_bool_result(self, node, left, right, name, maybe_predicate):
     """Common functionality for 'is' and 'is not'."""
-    if (self._is_classmethod_cls_arg(left) or
-        self._is_classmethod_cls_arg(right)):
+    if self._is_classmethod_cls_arg(left) or self._is_classmethod_cls_arg(
+        right
+    ):
       # If cls is the first argument of a classmethod, it could be bound to
       # either the defining class or one of its subclasses, so `is` is
       # ambiguous.
@@ -1275,7 +1400,8 @@ class VirtualMachine:
       for y in right.bindings:
         pyval = maybe_predicate(x.data, y.data)
         result.AddBinding(
-            self.ctx.convert.bool_values[pyval], source_set=(x, y), where=node)
+            self.ctx.convert.bool_values[pyval], source_set=(x, y), where=node
+        )
 
     return result
 
@@ -1305,7 +1431,8 @@ class VirtualMachine:
       if func:
         # Call __getitem__(int).
         state, item = self.call_function_with_state(
-            state, func, (self.ctx.convert.build_int(state.node),))
+            state, func, (self.ctx.convert.build_int(state.node),)
+        )
         # Create a new iterator from the returned value.
         itr = abstract.Iterator(self.ctx, item).to_variable(state.node)
       else:
@@ -1323,9 +1450,11 @@ class VirtualMachine:
     """Implement the UNARY_NOT bytecode."""
     state, var = state.pop()
     true_bindings = [
-        b for b in var.bindings if compare.compatible_with(b.data, True)]
+        b for b in var.bindings if compare.compatible_with(b.data, True)
+    ]
     false_bindings = [
-        b for b in var.bindings if compare.compatible_with(b.data, False)]
+        b for b in var.bindings if compare.compatible_with(b.data, False)
+    ]
     if len(true_bindings) == len(false_bindings) == len(var.bindings):
       # No useful information from bindings, use a generic bool value.
       # This is merely an optimization rather than building separate True/False
@@ -1340,12 +1469,14 @@ class VirtualMachine:
         result.AddBinding(
             self.ctx.convert.bool_values[False],
             source_set=(b,),
-            where=state.node)
+            where=state.node,
+        )
       for b in false_bindings:
         result.AddBinding(
             self.ctx.convert.bool_values[True],
             source_set=(b,),
-            where=state.node)
+            where=state.node,
+        )
     state = state.push(result)
     return state
 
@@ -1486,8 +1617,9 @@ class VirtualMachine:
   def _name_error_or_late_annotation(self, state, name):
     """Returns a late annotation or returns Any and logs a name error."""
     if self._late_annotations_stack and self.late_annotations is not None:
-      annot = abstract.LateAnnotation(name, self._late_annotations_stack,
-                                      self.ctx)
+      annot = abstract.LateAnnotation(
+          name, self._late_annotations_stack, self.ctx
+      )
       log.info("Created %r", annot)
       self.late_annotations[name].append(annot)
       return annot
@@ -1546,7 +1678,8 @@ class VirtualMachine:
         val = self.ctx.new_unsolvable(state.node)
       else:
         val = self._name_error_or_late_annotation(state, name).to_variable(
-            state.node)
+            state.node
+        )
     vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     return state.push(val)
@@ -1606,7 +1739,8 @@ class VirtualMachine:
     assert isinstance(value, cfg.Variable)
     name = op.argval
     value = self._apply_annotation(
-        state, op, name, value, self.current_annotated_locals, check_types=True)
+        state, op, name, value, self.current_annotated_locals, check_types=True
+    )
     state = state.forward_cfg_node(f"StoreDeref:{name}")
     self.frame.get_cell_by_name(name).PasteVariable(value, state.node)
     self.trace_opcode(op, name, value)
@@ -1674,22 +1808,29 @@ class VirtualMachine:
             ret.AddBinding(self.ctx.convert.unsolvable, {b1, b2}, state.node)
           elif isinstance(b1.data, abstract.SequenceLength):
             # `None` is a meaningful return value when pattern matching
-            ret.AddBinding(self.ctx.convert.bool_values[val], {b1, b2},
-                           state.node)
+            ret.AddBinding(
+                self.ctx.convert.bool_values[val], {b1, b2}, state.node
+            )
           else:
             leftover_x.PasteBinding(b1, state.node)
             leftover_y.PasteBinding(b2, state.node)
         else:
-          ret.AddBinding(self.ctx.convert.bool_values[val], {b1, b2},
-                         state.node)
+          ret.AddBinding(
+              self.ctx.convert.bool_values[val], {b1, b2}, state.node
+          )
     if leftover_x.bindings:
       op = f"__{op_name.lower()}__"
       # If we do not already have a return value, raise any errors caught by the
       # overloaded comparison method.
       report_errors = op_not_eq and not bool(ret.bindings) and not reported
       state, leftover_ret = vm_utils.call_binary_operator(
-          state, op, leftover_x, leftover_y, report_errors=report_errors,
-          ctx=self.ctx)
+          state,
+          op,
+          leftover_x,
+          leftover_y,
+          report_errors=report_errors,
+          ctx=self.ctx,
+      )
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 
@@ -1714,7 +1855,8 @@ class VirtualMachine:
     state, has_contains = self.load_attr_noerror(state, seq, "__contains__")
     if has_contains:
       state, ret = vm_utils.call_binary_operator(
-          state, "__contains__", seq, item, report_errors=True, ctx=self.ctx)
+          state, "__contains__", seq, item, report_errors=True, ctx=self.ctx
+      )
       if ret.bindings:
         ret = self._coerce_to_bool(ret, true_val=true_val)
     else:
@@ -1724,8 +1866,9 @@ class VirtualMachine:
       if len(itr.bindings) < len(seq.bindings):
         # seq does not have any of __contains__, __iter__, and __getitem__.
         # (The last two are checked by _get_iter.)
-        self.ctx.errorlog.unsupported_operands(self.frames, "__contains__", seq,
-                                               item)
+        self.ctx.errorlog.unsupported_operands(
+            self.frames, "__contains__", seq, item
+        )
       ret = self.ctx.convert.build_bool(state.node)
     return state, ret
 
@@ -1755,15 +1898,19 @@ class VirtualMachine:
           sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
           value.PasteVariable(sub_value)
           types.extend(sub_types)
-      elif (isinstance(e, abstract.Instance) and
-            e.cls.full_name == "builtins.tuple"):
+      elif (
+          isinstance(e, abstract.Instance)
+          and e.cls.full_name == "builtins.tuple"
+      ):
         sub_exc_type = e.get_instance_type_parameter(abstract_utils.T)
         sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
         value.PasteVariable(sub_value)
         types.extend(sub_types)
       elif isinstance(e, abstract.Class) and any(
-          base.full_name == "builtins.BaseException" or
-          isinstance(base, abstract.AMBIGUOUS_OR_EMPTY) for base in e.mro):
+          base.full_name == "builtins.BaseException"
+          or isinstance(base, abstract.AMBIGUOUS_OR_EMPTY)
+          for base in e.mro
+      ):
         value.PasteVariable(self.init_class(node, e))
         types.append(e)
       elif isinstance(e, abstract.Union):
@@ -1777,7 +1924,8 @@ class VirtualMachine:
             mro_seqs = []
             msg = "Not a class"
           self.ctx.errorlog.mro_error(
-              self.frames, e.name, mro_seqs, details=msg)
+              self.frames, e.name, mro_seqs, details=msg
+          )
         value.AddBinding(self.ctx.convert.unsolvable, [], node)
         types.append(None)
     return value, types
@@ -1834,11 +1982,13 @@ class VirtualMachine:
     elif op_arg == slots.CMP_GE:
       state, ret = self._cmp_rel(state, "GE", x, y)
     elif op_arg == slots.CMP_IS:
-      ret = self.expand_bool_result(state.node, x, y,
-                                    "is_cmp", frame_state.is_cmp)
+      ret = self.expand_bool_result(
+          state.node, x, y, "is_cmp", frame_state.is_cmp
+      )
     elif op_arg == slots.CMP_IS_NOT:
-      ret = self.expand_bool_result(state.node, x, y,
-                                    "is_not_cmp", frame_state.is_not_cmp)
+      ret = self.expand_bool_result(
+          state.node, x, y, "is_not_cmp", frame_state.is_not_cmp
+      )
     elif op_arg == slots.CMP_NOT_IN:
       state, ret = self._cmp_in(state, x, y, true_val=False)
     elif op_arg == slots.CMP_IN:
@@ -1853,8 +2003,7 @@ class VirtualMachine:
       # Python version. In this case, always return a (boolean) value.
       # (https://docs.python.org/2/library/stdtypes.html#comparisons or
       # (https://docs.python.org/3/library/stdtypes.html#comparisons)
-      ret.AddBinding(self.ctx.convert.primitive_instances[bool], [],
-                     state.node)
+      ret.AddBinding(self.ctx.convert.primitive_instances[bool], [], state.node)
     return state.push(ret)
 
   def byte_COMPARE_OP(self, state, op):
@@ -1899,21 +2048,28 @@ class VirtualMachine:
       else:
         maybe_cls = obj_val.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
-        if ("__annotations__" not in maybe_cls.members and
-            op.line in self._director.annotations):
+        if (
+            "__annotations__" not in maybe_cls.members
+            and op.line in self._director.annotations
+        ):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
           cur_annotations_dict = abstract.AnnotationsDict({}, self.ctx)
           maybe_cls.members["__annotations__"] = (
-              cur_annotations_dict.to_variable(self.ctx.root_node))
+              cur_annotations_dict.to_variable(self.ctx.root_node)
+          )
         cur_annotations_dict = abstract_utils.get_annotations_dict(
-            maybe_cls.members)
+            maybe_cls.members
+        )
         if cur_annotations_dict:
           cur_annotations_dict = cur_annotations_dict.annotated_locals
-      elif (isinstance(maybe_cls, abstract.PyTDClass) and
-            maybe_cls != self.ctx.convert.type_type):
+      elif (
+          isinstance(maybe_cls, abstract.PyTDClass)
+          and maybe_cls != self.ctx.convert.type_type
+      ):
         node, attr = self.ctx.attribute_handler.get_attribute(
-            node, obj_val, name, obj_val.to_binding(node))
+            node, obj_val, name, obj_val.to_binding(node)
+        )
         if attr:
           typ = self.ctx.convert.merge_classes(attr.data)
           cur_annotations_dict = {
@@ -1929,8 +2085,10 @@ class VirtualMachine:
         # We can still check for final members being assigned to.
         if name in maybe_cls.final_members:
           self.ctx.errorlog.assigning_to_final(self.frames, name, local=False)
-      elif (isinstance(obj_val, abstract.Instance) and
-            "__annotations__" in obj_val.members):
+      elif (
+          isinstance(obj_val, abstract.Instance)
+          and "__annotations__" in obj_val.members
+      ):
         # Some overlays add an __annotations__ dict to an abstract.Instance to
         # replicate runtime type checks on individual instances.
         annot = abstract_utils.get_annotations_dict(obj_val.members)
@@ -1945,7 +2103,8 @@ class VirtualMachine:
             # pylint: disable=unsupported-assignment-operation,unsupported-membership-test
             if k in annotations_dict:
               annotations_dict[k] = abstract_utils.Local.merge(
-                  node, op, annotations_dict[k], v)
+                  node, op, annotations_dict[k], v
+              )
             else:
               annotations_dict[k] = v
             # pylint: enable=unsupported-assignment-operation,unsupported-membership-test
@@ -1956,10 +2115,12 @@ class VirtualMachine:
     name = op.argval
     state, (val, obj) = state.popn(2)
     node, annotations_dict, check_attribute_types = (
-        self._get_type_of_attr_to_store(state.node, op, obj, name))
+        self._get_type_of_attr_to_store(state.node, op, obj, name)
+    )
     state = state.change_cfg_node(node)
     val = self._apply_annotation(
-        state, op, name, val, annotations_dict, check_attribute_types)
+        state, op, name, val, annotations_dict, check_attribute_types
+    )
     state = state.forward_cfg_node(f"StoreAttr:{name}")
     state = self.store_attr(state, obj, name, val)
     # We need to trace both the object and the attribute.
@@ -1987,7 +2148,8 @@ class VirtualMachine:
           val,
           name,
           self.simple_stack(),
-          allowed_type_params=self.frame.type_params)
+          allowed_type_params=self.frame.type_params,
+      )
       self._record_annotation(state.node, op, name, typ)
 
   def byte_STORE_SUBSCR(self, state, op):
@@ -2031,7 +2193,7 @@ class VirtualMachine:
     the_map = self.ctx.convert.build_map(state.node)
     state, args = state.popn(2 * op.arg)
     for i in range(op.arg):
-      key, val = args[2*i], args[2*i+1]
+      key, val = args[2 * i], args[2 * i + 1]
       state = self.store_subscr(state, the_map, key, val)
     return state.push(the_map)
 
@@ -2050,7 +2212,8 @@ class VirtualMachine:
             # we're a subclass of a heterogeneous tuple (usually a
             # typing.NamedTuple instance).
             new_data = self.ctx.convert.merge_values(
-                base.instantiate(self.ctx.root_node).data)
+                base.instantiate(self.ctx.root_node).data
+            )
             return self._get_literal_sequence(new_data)
         return None
 
@@ -2078,6 +2241,7 @@ class VirtualMachine:
       state: The current VM state
       n_before: Number of elements before the list (n_elements for case 1)
       n_after: Number of elements after the list (-1 for case 1)
+
     Returns:
       The new state.
     """
@@ -2121,7 +2285,8 @@ class VirtualMachine:
       options.append(option)
     values = tuple(
         self.ctx.convert.build_content(value, discard_concrete_values=False)
-        for value in zip(*options))
+        for value in zip(*options)
+    )
     if len(values) > 1 and nondeterministic_iterable:
       self.ctx.errorlog.nondeterministic_unpacking(self.frames)
     for value in reversed(values):
@@ -2139,7 +2304,7 @@ class VirtualMachine:
     return self._unpack_sequence(state, op.arg)
 
   def byte_UNPACK_EX(self, state, op):
-    n_before = op.arg & 0xff
+    n_before = op.arg & 0xFF
     n_after = op.arg >> 8
     return self._unpack_sequence(state, n_before, n_after)
 
@@ -2150,7 +2315,7 @@ class VirtualMachine:
     elif op.arg == 3:
       state, (x, y, z) = state.popn(3)
       return state.push(self.ctx.convert.build_slice(state.node, x, y, z))
-    else:       # pragma: no cover
+    else:  # pragma: no cover
       raise VirtualMachineError(f"Strange BUILD_SLICE count: {op.arg!r}")
 
   def byte_LIST_APPEND(self, state, op):
@@ -2195,20 +2360,24 @@ class VirtualMachine:
 
     update_elements = vm_utils.unpack_iterable(state.node, update, self.ctx)
     if not keep_splats and any(
-        abstract_utils.is_var_splat(x) for x in update_elements):
+        abstract_utils.is_var_splat(x) for x in update_elements
+    ):
       for target_value in target.data:
         vm_utils.merge_indefinite_iterables(
-            state.node, target_value, update_elements)
+            state.node, target_value, update_elements
+        )
     else:
       for target_value in target.data:
         target_value.pyval.extend(update_elements)
         for update_value in update.data:
           update_param = update_value.get_instance_type_parameter(
-              abstract_utils.T, state.node)
+              abstract_utils.T, state.node
+          )
           # We use Instance.merge_instance_type_parameter because the List
           # implementation also sets is_concrete to False.
           abstract.Instance.merge_instance_type_parameter(
-              target_value, state.node, abstract_utils.T, update_param)
+              target_value, state.node, abstract_utils.T, update_param
+          )
     return state
 
   def byte_SET_ADD(self, state, op):
@@ -2265,12 +2434,14 @@ class VirtualMachine:
     return state.pop_and_discard()
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
-                            pop=vm_utils.PopBehavior.OR)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=True, pop=vm_utils.PopBehavior.OR
+    )
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
-                            pop=vm_utils.PopBehavior.OR)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=False, pop=vm_utils.PopBehavior.OR
+    )
 
   def byte_JUMP_IF_TRUE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True)
@@ -2280,13 +2451,15 @@ class VirtualMachine:
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
     # TODO: b/345717799 - May need an update for 3.12
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=True, pop=vm_utils.PopBehavior.ALWAYS
+    )
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
     # TODO: b/345717799 - May need an update for 3.12
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=False, pop=vm_utils.PopBehavior.ALWAYS
+    )
 
   def byte_JUMP_FORWARD(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
@@ -2306,15 +2479,17 @@ class VirtualMachine:
     # exception instance still on the stack and push on an indefinite result for
     # the isinstance call.
     state = self._replace_abstract_exception(state, exc_type)
-    return state.push(self.ctx.convert.bool_values[None].to_variable(
-        state.node))
+    return state.push(
+        self.ctx.convert.bool_values[None].to_variable(state.node)
+    )
 
   def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
     # Opcode for exception type matching in Python 3.10-. In 3.11+, this is
     # replaced by CHECK_EXC_MATCH followed by POP_JUMP_FORWARD_IF_FALSE.
     state = self._check_exc_match(state)
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=False, pop=vm_utils.PopBehavior.ALWAYS
+    )
 
   def byte_CHECK_EXC_MATCH(self, state, op):
     # Opcode for exception type matching in Python 3.11+. For 3.10-, see
@@ -2345,7 +2520,8 @@ class VirtualMachine:
     self.frame.targets[current_block.id].append(target)
     if current_opcode.push_exc_block:
       state = vm_utils.push_block(
-          state, "setup-except", index=current_opcode.index)
+          state, "setup-except", index=current_opcode.index
+      )
     elif current_opcode.pop_exc_block:
       state, _ = state.pop_block()
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
@@ -2395,8 +2571,10 @@ class VirtualMachine:
     if isinstance(op, opcodes.SETUP_FINALLY):
       for i, block in enumerate(self.frame.f_code.order):
         if block.id == op.arg:
-          if not any(isinstance(o, opcodes.BEGIN_FINALLY)
-                     for o in self.frame.f_code.order[i-1]):
+          if not any(
+              isinstance(o, opcodes.BEGIN_FINALLY)
+              for o in self.frame.f_code.order[i - 1]
+          ):
             return True
           break
     return False
@@ -2409,8 +2587,9 @@ class VirtualMachine:
       return self._setup_except(state, op)
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
-    self.store_jump(op.target,
-                    state.push(self.ctx.convert.build_none(state.node)))
+    self.store_jump(
+        op.target, state.push(self.ctx.convert.build_none(state.node))
+    )
     return vm_utils.push_block(state, "finally")
 
   # New python3.8+ exception handling opcodes:
@@ -2438,8 +2617,10 @@ class VirtualMachine:
     if preserve_tos:
       state, saved_tos = state.pop()
     state, tos = state.pop()
-    if any(d != self.ctx.convert.none and d.cls != self.ctx.convert.int_type
-           for d in tos.data):
+    if any(
+        d != self.ctx.convert.none and d.cls != self.ctx.convert.int_type
+        for d in tos.data
+    ):
       state, _ = state.popn(5)
     if preserve_tos:
       state = state.push(saved_tos)  # pytype: disable=name-error
@@ -2481,7 +2662,8 @@ class VirtualMachine:
     v = self.ctx.convert.build_none(state.node)
     w = self.ctx.convert.build_none(state.node)
     state, suppress_exception = self.call_function_with_state(
-        state, exit_func, (u, v, w))
+        state, exit_func, (u, v, w)
+    )
     return state.push(suppress_exception)
 
   def _with_cleanup_start(self, state, op):
@@ -2494,7 +2676,8 @@ class VirtualMachine:
     state = state.push(self.ctx.convert.build_none(state.node))
     state = state.push(w, v, u)
     state, suppress_exception = self.call_function_with_state(
-        state, exit_func, (u, v, w))
+        state, exit_func, (u, v, w)
+    )
     return state.push(suppress_exception)
 
   def byte_WITH_CLEANUP_START(self, state, op):
@@ -2505,30 +2688,32 @@ class VirtualMachine:
     """Called to finish cleaning up a with block."""
     state, suppress_exception = state.pop()
     state, second = state.pop()
-    if (suppress_exception.data == [self.ctx.convert.true] and
-        second.data != [self.ctx.convert.none]):
+    if suppress_exception.data == [self.ctx.convert.true] and second.data != [
+        self.ctx.convert.none
+    ]:
       state = state.push(self.ctx.convert.build_none(state.node))
     return state
 
   def _convert_kw_defaults(self, values):
     kw_defaults = {}
     for i in range(0, len(values), 2):
-      key_var, value = values[i:i + 2]
+      key_var, value = values[i : i + 2]
       key = abstract_utils.get_atomic_python_constant(key_var)
       kw_defaults[key] = value
     return kw_defaults
 
   def _get_extra_closure_args(self, state, arg):
     """Get closure annotations and defaults from the stack."""
-    num_pos_defaults = arg & 0xff
-    num_kw_defaults = (arg >> 8) & 0xff
-    state, raw_annotations = state.popn((arg >> 16) & 0x7fff)
+    num_pos_defaults = arg & 0xFF
+    num_kw_defaults = (arg >> 8) & 0xFF
+    state, raw_annotations = state.popn((arg >> 16) & 0x7FFF)
     state, kw_defaults = state.popn(2 * num_kw_defaults)
     state, pos_defaults = state.popn(num_pos_defaults)
     free_vars = None  # Python < 3.6 does not handle closure vars here.
     kw_defaults = self._convert_kw_defaults(kw_defaults)
     annot = self.ctx.annotation_utils.convert_function_annotations(
-        state.node, raw_annotations)
+        state.node, raw_annotations
+    )
     return state, pos_defaults, kw_defaults, annot, free_vars
 
   def _get_extra_function_args(self, state, arg):
@@ -2547,28 +2732,35 @@ class VirtualMachine:
       # Previously, it was a name->param_type dictionary.
       if self.ctx.python_version >= (3, 10):
         annot_seq = abstract_utils.get_atomic_python_constant(
-            packed_annot, tuple)
+            packed_annot, tuple
+        )
         double_num_annots = len(annot_seq)
         assert not double_num_annots % 2
         annot = {}
         for i in range(double_num_annots // 2):
-          name = abstract_utils.get_atomic_python_constant(annot_seq[i*2], str)
-          annot[name] = annot_seq[i*2 + 1]
+          name = abstract_utils.get_atomic_python_constant(
+              annot_seq[i * 2], str
+          )
+          annot[name] = annot_seq[i * 2 + 1]
       else:
         annot = abstract_utils.get_atomic_python_constant(packed_annot, dict)
       for k in annot:
         annot[k] = self.ctx.annotation_utils.convert_function_type_annotation(
-            k, annot[k])
+            k, annot[k]
+        )
     if arg & Flags.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       state, packed_kw_def = state.pop()
       kw_defaults = abstract_utils.get_atomic_python_constant(
-          packed_kw_def, dict)
+          packed_kw_def, dict
+      )
     if arg & Flags.MAKE_FUNCTION_HAS_POS_DEFAULTS:
       state, packed_pos_def = state.pop()
       pos_defaults = abstract_utils.get_atomic_python_constant(
-          packed_pos_def, tuple)
+          packed_pos_def, tuple
+      )
     annot = self.ctx.annotation_utils.convert_annotations_list(
-        state.node, annot.items())
+        state.node, annot.items()
+    )
     return state, pos_defaults, kw_defaults, annot, free_vars
 
   def byte_MAKE_FUNCTION(self, state, op):
@@ -2580,11 +2772,21 @@ class VirtualMachine:
       name = abstract_utils.get_atomic_python_constant(name_var)
     state, code = state.pop()
     state, defaults, kw_defaults, annot, free_vars = (
-        self._get_extra_function_args(state, op.arg))
+        self._get_extra_function_args(state, op.arg)
+    )
     globs = self.get_globals_dict()
     func_var = vm_utils.make_function(
-        name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
-        closure=free_vars, opcode=op, ctx=self.ctx)
+        name,
+        state.node,
+        code,
+        globs,
+        defaults,
+        kw_defaults,
+        annotations=annot,
+        closure=free_vars,
+        opcode=op,
+        ctx=self.ctx,
+    )
     func = func_var.data[0]
     func.decorators = self._director.decorators[op.line]
     func.cache_return = self._director.has_pragma("cache-return", op.line)
@@ -2598,12 +2800,22 @@ class VirtualMachine:
     state, name_var = state.pop()
     name = abstract_utils.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
-    state, defaults, kw_defaults, annot, _ = (
-        self._get_extra_closure_args(state, op.arg))
+    state, defaults, kw_defaults, annot, _ = self._get_extra_closure_args(
+        state, op.arg
+    )
     globs = self.get_globals_dict()
     fn = vm_utils.make_function(
-        name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
-        closure=closure, opcode=op, ctx=self.ctx)
+        name,
+        state.node,
+        code,
+        globs,
+        defaults,
+        kw_defaults,
+        annotations=annot,
+        closure=closure,
+        opcode=op,
+        ctx=self.ctx,
+    )
     self.trace_functiondef(fn)
     return state.push(fn)
 
@@ -2638,8 +2850,13 @@ class VirtualMachine:
       state = state.pop_and_discard()
     with self._reset_overloads(fn):
       state, ret = self.call_function_with_state(
-          state, fn, (), namedargs=None, starargs=starargs,
-          starstarargs=starstarargs)
+          state,
+          fn,
+          (),
+          namedargs=None,
+          starargs=starargs,
+          starstarargs=starstarargs,
+      )
     return state.push(ret)
 
   def _check_frame_yield(self, state, yield_value):
@@ -2648,8 +2865,10 @@ class VirtualMachine:
     generator_type = self.frame.allowed_returns
     assert generator_type is not None
     self._check_return(
-        state.node, yield_value,
-        generator_type.get_formal_type_parameter(abstract_utils.T))
+        state.node,
+        yield_value,
+        generator_type.get_formal_type_parameter(abstract_utils.T),
+    )
     return generator_type
 
   def byte_YIELD_VALUE(self, state, op):
@@ -2744,9 +2963,11 @@ class VirtualMachine:
   def _return_value(self, state, var):
     """Get and check the return value."""
     if self.frame.check_return:
-      if (self.frame.f_code.has_generator() or
-          self.frame.f_code.has_coroutine() or
-          self.frame.f_code.has_iterable_coroutine()):
+      if (
+          self.frame.f_code.has_generator()
+          or self.frame.f_code.has_coroutine()
+          or self.frame.f_code.has_iterable_coroutine()
+      ):
         ret_type = self.frame.allowed_returns
         assert ret_type is not None
         allowed_return = ret_type.get_formal_type_parameter(abstract_utils.V)
@@ -2756,8 +2977,9 @@ class VirtualMachine:
         allowed_return = None
       if allowed_return:
         self._check_return(state.node, var, allowed_return)
-    if (self.ctx.options.no_return_any and
-        any(d == self.ctx.convert.unsolvable for d in var.data)):
+    if self.ctx.options.no_return_any and any(
+        d == self.ctx.convert.unsolvable for d in var.data
+    ):
       self.ctx.errorlog.any_return_type(self.frames)
     self._set_frame_return(state.node, self.frame, var)
     return state.set_why("return")
@@ -2787,8 +3009,9 @@ class VirtualMachine:
 
   def byte_SETUP_ANNOTATIONS(self, state, op):
     """Sets up variable annotations in locals()."""
-    annotations = abstract.AnnotationsDict(self.current_annotated_locals,
-                                           self.ctx).to_variable(state.node)
+    annotations = abstract.AnnotationsDict(
+        self.current_annotated_locals, self.ctx
+    ).to_variable(state.node)
     return self.store_local(state, "__annotations__", annotations)
 
   def _record_annotation(self, node, op, name, typ):
@@ -2806,11 +3029,13 @@ class VirtualMachine:
         value,
         name,
         self.simple_stack(),
-        allowed_type_params=self.frame.type_params)
+        allowed_type_params=self.frame.type_params,
+    )
     self._record_annotation(state.node, op, name, typ)
     key = self.ctx.convert.primitive_instances[str]
     state = self.store_subscr(
-        state, annotations_var, key.to_variable(state.node), value)
+        state, annotations_var, key.to_variable(state.node), value
+    )
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):
@@ -2834,8 +3059,13 @@ class VirtualMachine:
     return state
 
   def byte_BUILD_LIST_UNPACK(self, state, op):
-    return vm_utils.unpack_and_build(state, op.arg, self.ctx.convert.build_list,
-                                     self.ctx.convert.list_type, self.ctx)
+    return vm_utils.unpack_and_build(
+        state,
+        op.arg,
+        self.ctx.convert.build_list,
+        self.ctx.convert.list_type,
+        self.ctx,
+    )
 
   def byte_LIST_TO_TUPLE(self, state, op):
     """Convert the list at the top of the stack to a tuple."""
@@ -2845,7 +3075,8 @@ class VirtualMachine:
     for b in lst_var.bindings:
       if abstract_utils.is_concrete_list(b.data):
         tup_var.AddBinding(
-            self.ctx.convert.tuple_to_value(b.data.pyval), {b}, state.node)
+            self.ctx.convert.tuple_to_value(b.data.pyval), {b}, state.node
+        )
       else:
         param = b.data.get_instance_type_parameter(abstract_utils.T)
         tup = abstract.Instance(self.ctx.convert.tuple_type, self.ctx)
@@ -2865,8 +3096,12 @@ class VirtualMachine:
 
   def byte_BUILD_TUPLE_UNPACK(self, state, op):
     return vm_utils.unpack_and_build(
-        state, op.arg, self.ctx.convert.build_tuple,
-        self.ctx.convert.tuple_type, self.ctx)
+        state,
+        op.arg,
+        self.ctx.convert.build_tuple,
+        self.ctx.convert.tuple_type,
+        self.ctx,
+    )
 
   def byte_BUILD_TUPLE_UNPACK_WITH_CALL(self, state, op):
     state, seq = vm_utils.pop_and_unpack_list(state, op.arg, self.ctx)
@@ -2874,8 +3109,13 @@ class VirtualMachine:
     return state.push(ret)
 
   def byte_BUILD_SET_UNPACK(self, state, op):
-    return vm_utils.unpack_and_build(state, op.arg, self.ctx.convert.build_set,
-                                     self.ctx.convert.set_type, self.ctx)
+    return vm_utils.unpack_and_build(
+        state,
+        op.arg,
+        self.ctx.convert.build_set,
+        self.ctx.convert.set_type,
+        self.ctx,
+    )
 
   def byte_SETUP_ASYNC_WITH(self, state, op):
     state, res = state.pop()
@@ -2889,8 +3129,9 @@ class VirtualMachine:
     # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
     # push a new string onto the stack.
     state = state.pop_and_discard()
-    ret = abstract.Instance(
-        self.ctx.convert.str_type, self.ctx).to_variable(state.node)
+    ret = abstract.Instance(self.ctx.convert.str_type, self.ctx).to_variable(
+        state.node
+    )
     self.trace_opcode(None, "__mod__", ret)
     return state.push(ret)
 
@@ -2955,16 +3196,20 @@ class VirtualMachine:
     ret_var = self.ctx.program.NewVariable()
     for b in generator_var.bindings:
       generator = b.data
-      if isinstance(generator, (abstract.Generator,
-                                abstract.Coroutine, abstract.Unsolvable)):
+      if isinstance(
+          generator,
+          (abstract.Generator, abstract.Coroutine, abstract.Unsolvable),
+      ):
         ret = generator.get_instance_type_parameter(abstract_utils.V)
         ret_var.PasteVariable(ret, node, {b})
-      elif (isinstance(generator, abstract.Instance)
-            and isinstance(generator.cls,
-                           (abstract.ParameterizedClass, abstract.PyTDClass))
-            and generator.cls.full_name in ("typing.Awaitable",
-                                            "builtins.coroutine",
-                                            "builtins.generator")):
+      elif (
+          isinstance(generator, abstract.Instance)
+          and isinstance(
+              generator.cls, (abstract.ParameterizedClass, abstract.PyTDClass)
+          )
+          and generator.cls.full_name
+          in ("typing.Awaitable", "builtins.coroutine", "builtins.generator")
+      ):
         if generator.cls.full_name == "typing.Awaitable":
           ret = generator.get_instance_type_parameter(abstract_utils.T)
         else:
@@ -3036,7 +3281,8 @@ class VirtualMachine:
     # First try to narrow `var` based on `classes`.
     for c in classes:
       m = self.ctx.matcher(state.node).compute_one_match(
-          var, c, keep_all_views=True, match_all_views=False)
+          var, c, keep_all_views=True, match_all_views=False
+      )
       if m.success:
         for matched in m.good_matches:
           d = matched.view[var]
@@ -3046,8 +3292,7 @@ class VirtualMachine:
     # If we don't have bindings from `classes` in `var`, instantiate the
     # original class spec.
     ret = ret or classes
-    instance = self.init_class(
-        state.node, self.ctx.convert.merge_values(ret))
+    instance = self.init_class(state.node, self.ctx.convert.merge_values(ret))
     return self._store_new_var_in_local(state, var, instance)
 
   def _check_test_assert(self, state, func, args):
@@ -3155,7 +3400,8 @@ class VirtualMachine:
     state, (obj_var, cls_var) = state.popn(2)
     orig_node = state.node
     ret = vm_utils.match_class(
-        state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx)
+        state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx
+    )
     state = state.forward_cfg_node("MatchClass")
     success = ret.success
     vals = ret.values or self.ctx.convert.none.to_variable(state.node)
@@ -3168,7 +3414,8 @@ class VirtualMachine:
       var_name = self._var_names.get(obj_var.id)
       if var_name:
         narrowed_type = self._branch_tracker.instantiate_case_var(
-            op, obj_var, state.node)
+            op, obj_var, state.node
+        )
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     if self.ctx.python_version == (3, 10):
       state = state.push(vals)
@@ -3188,7 +3435,8 @@ class VirtualMachine:
     state, keys_var = state.pop()
     obj_var = state.top()
     ret = vm_utils.copy_dict_without_keys(
-        state.node, obj_var, keys_var, self.ctx)
+        state.node, obj_var, keys_var, self.ctx
+    )
     return state.push(ret)
 
   def byte_GEN_START(self, state, op):
@@ -3224,10 +3472,13 @@ class VirtualMachine:
       if isinstance(v, abstract.Tuple):
         for element in v.pyval:
           flattened_exc_type.extend(element.data)
-      elif (isinstance(v.cls, abstract.ParameterizedClass) and
-            v.cls.base_cls == self.ctx.convert.tuple_type):
+      elif (
+          isinstance(v.cls, abstract.ParameterizedClass)
+          and v.cls.base_cls == self.ctx.convert.tuple_type
+      ):
         flattened_exc_type.extend(
-            v.get_instance_type_parameter(abstract_utils.T).data)
+            v.get_instance_type_parameter(abstract_utils.T).data
+        )
       elif v.cls == self.ctx.convert.tuple_type:
         flattened_exc_type.append(self.ctx.convert.unsolvable)
       else:
@@ -3235,7 +3486,8 @@ class VirtualMachine:
     exc_group_type = abstract.ParameterizedClass(
         exc_group_base,
         {abstract_utils.T: self.ctx.convert.merge_values(flattened_exc_type)},
-        self.ctx)
+        self.ctx,
+    )
     return exc_group_type.instantiate(node)
 
   def byte_CHECK_EG_MATCH(self, state, op):
@@ -3338,13 +3590,18 @@ class VirtualMachine:
       state = state.pop_and_discard()
       value = self.ctx.convert.none.to_variable(state.node)
       state = state.push(value)
-    return vm_utils.jump_if(state, op, self.ctx,
-                            jump_if_val=frame_state.NOT_NONE,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state,
+        op,
+        self.ctx,
+        jump_if_val=frame_state.NOT_NONE,
+        pop=vm_utils.PopBehavior.ALWAYS,
+    )
 
   def byte_POP_JUMP_FORWARD_IF_NONE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=None,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=None, pop=vm_utils.PopBehavior.ALWAYS
+    )
 
   def byte_JUMP_BACKWARD_NO_INTERRUPT(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node("JumpBackward"))
@@ -3381,13 +3638,18 @@ class VirtualMachine:
     return state
 
   def byte_POP_JUMP_BACKWARD_IF_NOT_NONE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx,
-                            jump_if_val=frame_state.NOT_NONE,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state,
+        op,
+        self.ctx,
+        jump_if_val=frame_state.NOT_NONE,
+        pop=vm_utils.PopBehavior.ALWAYS,
+    )
 
   def byte_POP_JUMP_BACKWARD_IF_NONE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=None,
-                            pop=vm_utils.PopBehavior.ALWAYS)
+    return vm_utils.jump_if(
+        state, op, self.ctx, jump_if_val=None, pop=vm_utils.PopBehavior.ALWAYS
+    )
 
   def byte_POP_JUMP_BACKWARD_IF_FALSE(self, state, op):
     return self.byte_POP_JUMP_IF_FALSE(state, op)
