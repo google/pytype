@@ -74,6 +74,11 @@ class LocalOp:
 _opcode_counter = metrics.MapCounter("vm_opcode")
 
 
+class _UninitializedBehavior(enum.Enum):
+  ERROR = enum.auto()
+  PUSH_NULL = enum.auto()
+
+
 class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
 
@@ -1664,9 +1669,10 @@ class VirtualMachine:
     name = op.argval
     return self._del_name(op, state, name, local=True)
 
-  def byte_LOAD_FAST(self, state, op):
+  def _load_fast(
+      self, state, op, name, on_uninitialized=_UninitializedBehavior.ERROR
+  ):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
-    name = op.argval
     try:
       state, val = self.load_local(state, name)
     except KeyError:
@@ -1676,6 +1682,8 @@ class VirtualMachine:
       # the user.
       if re.fullmatch(r"\.\d+", name):
         val = self.ctx.new_unsolvable(state.node)
+      elif on_uninitialized == _UninitializedBehavior.PUSH_NULL:
+        val = abstract.Null(self.ctx).to_variable(state.node)
       else:
         val = self._name_error_or_late_annotation(state, name).to_variable(
             state.node
@@ -1683,6 +1691,20 @@ class VirtualMachine:
     vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     return state.push(val)
+
+  def byte_LOAD_FAST(self, state, op):
+    name = op.argval
+    return self._load_fast(state, op, name)
+
+  def byte_LOAD_FAST_CHECK(self, state, op):
+    name = op.argval
+    return self._load_fast(state, op, name)
+
+  def byte_LOAD_FAST_AND_CLEAR(self, state, op):
+    name = op.argval
+    state = self._load_fast(state, op, name, _UninitializedBehavior.PUSH_NULL)
+    null = abstract.Null(self.ctx).to_variable(state.node)
+    return self._store_value(state, name, null, local=True)
 
   def byte_STORE_FAST(self, state, op):
     name = op.argval
@@ -3695,11 +3717,6 @@ class VirtualMachine:
     del op
     return state
 
-  def byte_LOAD_FAST_CHECK(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
-
   def byte_POP_JUMP_IF_NOT_NONE(self, state, op):
     # TODO: b/345717799 - Implement
     del op
@@ -3711,11 +3728,6 @@ class VirtualMachine:
     return state
 
   def byte_LOAD_SUPER_ATTR(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
-
-  def byte_LOAD_FAST_AND_CLEAR(self, state, op):
     # TODO: b/345717799 - Implement
     del op
     return state
