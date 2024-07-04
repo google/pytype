@@ -32,6 +32,8 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
               '<7>',
               'JUMP',
           ] + more_opcode_names,
+          'intrinsic_1_descs': ['INTRINSIC_1_INVALID', 'INTRINSIC_PRINT'],
+          'intrinsic_2_descs': ['INTRINSIC_2_INVALID'],
           'HAVE_ARGUMENT': 3,
           'HAS_CONST': [],
           'HAS_NAME': [],
@@ -56,6 +58,8 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
               'DO_NINE',
               'JUMP',
           ] + more_opcode_names,
+          'intrinsic_1_descs': ['INTRINSIC_1_INVALID', 'INTRINSIC_IMPORT_STAR'],
+          'intrinsic_2_descs': ['INTRINSIC_2_INVALID'],
           'HAVE_ARGUMENT': 6,
           'HAS_CONST': [7],
           'HAS_NAME': [5, 7],
@@ -68,7 +72,7 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
       return generate_opcode_diffs.generate_diffs(['3.8', '3.9'])
 
   def test_classes(self):
-    classes, _, _, _, _ = self._generate_diffs()
+    classes, _, _, _, _, _, _ = self._generate_diffs()
     i_move, do_that, do_that_too, do_nine, jump = classes
     self.assertMultiLineEqual(
         '\n'.join(i_move),
@@ -110,8 +114,8 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
     )
 
   def test_stubs(self):
-    _, stubs, _, _, _ = self._generate_diffs()
-    do_that, do_that_too, do_nine = stubs
+    _, stubs, _, _, _, _, _ = self._generate_diffs()
+    do_that, do_that_too, do_nine, intrinsic_import_star = stubs
     self.assertMultiLineEqual(
         '\n'.join(do_that),
         textwrap.dedent("""
@@ -136,13 +140,20 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
         return state
     """).strip(),
     )
+    self.assertMultiLineEqual(
+        '\n'.join(intrinsic_import_star),
+        textwrap.dedent("""
+      def byte_INTRINSIC_IMPORT_STAR(self, state):
+        return state
+    """).strip(),
+    )
 
   def test_impl_changed(self):
-    _, _, impl_changed, _, _ = self._generate_diffs()
+    _, _, impl_changed, _, _, _, _ = self._generate_diffs()
     self.assertEqual(impl_changed, ['I_MOVE', 'JUMP'])
 
   def test_mapping(self):
-    _, _, _, mapping, _ = self._generate_diffs()
+    _, _, _, mapping, _, _, _ = self._generate_diffs()
     self.assertMultiLineEqual(
         '\n'.join(mapping),
         textwrap.dedent("""
@@ -156,13 +167,25 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
     )
 
   def test_arg_types(self):
-    _, _, _, _, arg_types = self._generate_diffs()
+    _, _, _, _, arg_types, _, _ = self._generate_diffs()
     self.assertMultiLineEqual(
         '\n'.join(arg_types),
         textwrap.dedent("""
           "DO_THAT_TOO": NAME,
           "DO_NINE": CONST,
           "JUMP": JREL,
+        """).strip(),
+    )
+
+  def test_intrinsic_descs(self):
+    _, _, _, _, _, descs_1, descs_2 = self._generate_diffs()
+    self.assertMultiLineEqual(
+        '\n'.join(descs_1 + descs_2),
+        textwrap.dedent("""
+          PYTHON_3_9_INTRINSIC_1_DESCS = [
+              "INTRINSIC_1_INVALID",
+              "INTRINSIC_IMPORT_STAR",
+          ]
         """).strip(),
     )
 

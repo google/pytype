@@ -55,9 +55,12 @@ def generate_diffs(argv):
     f.write(textwrap.dedent("""
       import dis
       import json
+      import opcode
       output = {
         'opmap': dis.opmap,
         'opname': dis.opname,
+        'intrinsic_1_descs': getattr(opcode, '_intrinsic_1_descs', []),
+        'intrinsic_2_descs': getattr(opcode, '_intrinsic_2_descs', []),
         'HAVE_ARGUMENT': dis.HAVE_ARGUMENT,
         'HAS_CONST': dis.hasconst,
         'HAS_NAME': dis.hasname,
@@ -186,7 +189,28 @@ def generate_diffs(argv):
     if new_type != old_type:
       arg_types.append(f'"{name}": {new_type},')
 
-  return classes, stubs, sorted(impl_changed), mapping, arg_types
+  # Intrinsic call descriptions
+  v2 = version2.replace('.', '_')
+  intrinsic_1_descs, intrinsic_1_stubs = _diff_intrinsic_descs(
+      dis1['intrinsic_1_descs'], dis2['intrinsic_1_descs'], v2
+  )
+  intrinsic_2_descs, intrinsic_2_stubs = _diff_intrinsic_descs(
+      dis1['intrinsic_2_descs'], dis2['intrinsic_2_descs'], v2
+  )
+  for stub in intrinsic_1_stubs:
+    stubs.append(stub)
+  for stub in intrinsic_2_stubs:
+    stubs.append(stub)
+
+  return (
+      classes,
+      stubs,
+      sorted(impl_changed),
+      mapping,
+      arg_types,
+      intrinsic_1_descs,
+      intrinsic_2_descs,
+  )
 
 
 def _get_arg_type(dis, opname):
@@ -198,8 +222,32 @@ def _get_arg_type(dis, opname):
   return None
 
 
+def _diff_intrinsic_descs(old, new, new_version):
+  """Diff intrinsic descriptions and returns mapping and stubs if they differ."""
+  if old == new:
+    return [], []
+  mapping = (
+      [f'PYTHON_{new_version}_INTRINSIC_1_DESCS = [']
+      + [f'    "{name}",' for name in new]
+      + [']']
+  )
+  stubs = []
+  for name in new:
+    if name not in old:
+      stubs.append([f'def byte_{name}(self, state):', '  return state'])
+  return mapping, stubs
+
+
 def main(argv):
-  classes, stubs, impl_changed, mapping, arg_types = generate_diffs(argv)
+  (
+      classes,
+      stubs,
+      impl_changed,
+      mapping,
+      arg_types,
+      intrinsic_1_descs,
+      intrinsic_2_descs,
+  ) = generate_diffs(argv)
   print('==== PYTYPE CHANGES ====\n')
   print('---- NEW OPCODES (pyc/opcodes.py) ----\n')
   print('\n\n\n'.join('\n'.join(cls) for cls in classes))
@@ -223,6 +271,9 @@ def main(argv):
   print('    ' + '\n    '.join(mapping))
   print('\n---- OPCODE ARG TYPE DIFF (mapping.py) ----\n')
   print('    ' + '\n    '.join(arg_types))
+  print('\n---- OPCODE INTRINSIC DESCS DIFF (mapping.py) ----\n')
+  print('    ' + '\n    '.join(intrinsic_1_descs))
+  print('    ' + '\n    '.join(intrinsic_2_descs))
 
 
 if __name__ == '__main__':
