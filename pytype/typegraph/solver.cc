@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <deque>
 #include <functional>
 #include <iterator>
 #include <stack>
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -180,7 +183,8 @@ const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
 }
 
 const CFGNode* PathFinder::FindHighestReachableWeight(
-    const CFGNode* start, CFGNodeSet seen,
+    const CFGNode* start,
+    std::unordered_set<const CFGNode*, CFGNodePtrHash> seen,
     const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
     const {
   std::vector<const CFGNode*> stack;
@@ -200,10 +204,8 @@ const CFGNode* PathFinder::FindHighestReachableWeight(
       best_weight = weight;
       best_node = node;
     }
-    if (node_set_contains(seen, node))
-      continue;
-    seen.insert(node);
-  stack.insert(stack.end(), node->incoming().begin(), node->incoming().end());
+    if (!seen.insert(node).second) continue;
+    stack.insert(stack.end(), node->incoming().begin(), node->incoming().end());
   }
   return best_node;
 }
@@ -231,7 +233,8 @@ QueryResult PathFinder::FindNodeBackwards(
   // without using any nodes on it. The furthest node we can reach (described
   // below by the "weight", which is the position on our shortest path) is our
   // first articulation point. Set that as new start and continue.
-  CFGNodeSet blocked_(blocked);
+  std::unordered_set<const CFGNode*, CFGNodePtrHash> blocked_;
+  blocked_.insert(blocked.begin(), blocked.end());
   blocked_.insert(shortest_path.begin(), shortest_path.end());
   std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights;
   int w = 0;

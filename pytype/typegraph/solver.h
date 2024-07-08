@@ -26,11 +26,12 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
-#include "typegraph.h"
 #include "map_util.h"
 #include "metrics.h"
+#include "typegraph.h"
 
 namespace devtools_python_typegraph {
 
@@ -176,7 +177,8 @@ class PathFinder {
 
   // Determine the highest weighted node we can reach, going backwards.
   const CFGNode* FindHighestReachableWeight(
-      const CFGNode* start, CFGNodeSet seen,
+      const CFGNode* start,
+      std::unordered_set<const CFGNode*, CFGNodePtrHash> seen,
       const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
       const;
 
