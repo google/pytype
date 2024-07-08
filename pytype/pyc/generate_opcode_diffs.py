@@ -61,6 +61,7 @@ def generate_diffs(argv):
         'opname': dis.opname,
         'intrinsic_1_descs': getattr(opcode, '_intrinsic_1_descs', []),
         'intrinsic_2_descs': getattr(opcode, '_intrinsic_2_descs', []),
+        'inline_cache_entries': getattr(opcode, '_inline_cache_entries', []),
         'HAVE_ARGUMENT': dis.HAVE_ARGUMENT,
         'HAS_CONST': dis.hasconst,
         'HAS_NAME': dis.hasname,
@@ -202,6 +203,14 @@ def generate_diffs(argv):
   for stub in intrinsic_2_stubs:
     stubs.append(stub)
 
+  # Generate inline cache entries diff
+  inline_cache_entries = []
+  for name in dis2['opname']:
+    old_entries = _get_inline_cache_entries(dis1, name)
+    new_entries = _get_inline_cache_entries(dis2, name)
+    if old_entries != new_entries:
+      inline_cache_entries.append(f'"{name}": {new_entries},')
+
   return (
       classes,
       stubs,
@@ -210,6 +219,7 @@ def generate_diffs(argv):
       arg_types,
       intrinsic_1_descs,
       intrinsic_2_descs,
+      inline_cache_entries,
   )
 
 
@@ -238,6 +248,17 @@ def _diff_intrinsic_descs(old, new, new_version):
   return mapping, stubs
 
 
+def _get_inline_cache_entries(dis, opname):
+  if opname not in dis['opmap']:
+    return 0
+  op = dis['opmap'][opname]
+  return (
+      dis['inline_cache_entries'][op]
+      if len(dis['inline_cache_entries']) > op
+      else 0
+  )
+
+
 def main(argv):
   (
       classes,
@@ -247,6 +268,7 @@ def main(argv):
       arg_types,
       intrinsic_1_descs,
       intrinsic_2_descs,
+      inline_cache_entries,
   ) = generate_diffs(argv)
   print('==== PYTYPE CHANGES ====\n')
   print('---- NEW OPCODES (pyc/opcodes.py) ----\n')
@@ -274,6 +296,8 @@ def main(argv):
   print('\n---- OPCODE INTRINSIC DESCS DIFF (mapping.py) ----\n')
   print('    ' + '\n    '.join(intrinsic_1_descs))
   print('    ' + '\n    '.join(intrinsic_2_descs))
+  print('\n---- OPCODE INLINE CACHE ENTRIES DIFF (mapping.py) ----\n')
+  print('    ' + '\n    '.join(inline_cache_entries))
 
 
 if __name__ == '__main__':
