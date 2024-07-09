@@ -2549,10 +2549,14 @@ class VirtualMachine:
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
-    if self.ctx.python_version >= (3, 12):
-      self.store_jump(op.target, state)
-    else:
-      self.store_jump(op.target, state.pop_and_discard())
+    # In 3.12+, FOR_ITER pops the iterator off the stack conditionally, see
+    # https://github.com/python/cpython/issues/121399.
+    # Pytype doesn't actually execute the loop, so we need to handle this
+    # differently. We always pop the iterator here, same as in <=3.11. END_FOR
+    # is a no-op. Since we don't execute the loop, we never have a situation
+    # where at the end of the loop the top of the stack is `[iter, iter()]`, so
+    # the double-pop of END_FOR is not needed.
+    self.store_jump(op.target, state.pop_and_discard())
     state, f = self.load_attr(state, state.top(), "__next__")
     state = state.push(f)
     return self.call_function_from_stack(state, 0, None, None)
@@ -3685,7 +3689,8 @@ class VirtualMachine:
     return state
 
   def byte_END_FOR(self, state, op):
-    return state.pop_and_discard().pop_and_discard()
+    # No-op in pytype. See comment in `byte_FOR_ITER` for details.
+    return state
 
   def byte_END_SEND(self, state, op):
     # TODO: b/345717799 - Implement
