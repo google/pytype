@@ -939,6 +939,7 @@ static PyObject* AddOrigin(PyBindingObj* self, PyObject* args,
     return nullptr;
   }
   self->attr->AddOrigin(where->cfg_node, ParseBindingList(source_set));
+  Py_XDECREF(source_set);
   Py_RETURN_NONE;
 }
 
