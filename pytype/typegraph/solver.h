@@ -171,7 +171,7 @@ class PathFinder {
 
   // Find a shortest path from start to finish, going backwards. Returns an
   // empty path if no path exists.
-  const std::deque<const CFGNode*> FindShortestPathToNode(
+  std::deque<const CFGNode*> FindShortestPathToNode(
       const CFGNode* start, const CFGNode* finish,
       const CFGNodeSet& blocked) const;
 

@@ -1,16 +1,20 @@
-#include <algorithm>
-#include <memory>
+#include "solver.h"
+
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include "solver.h"
-#include "test_util.h"
-#include "typegraph.h"
 #include "gmock/gmock.h"  // for UnorderedElementsAre
 #include "gtest/gtest.h"
+#include "test_util.h"
+#include "typegraph.h"
 
 namespace devtools_python_typegraph {
 namespace {
+
+using ::testing::ElementsAre;
+using ::testing::IsEmpty;
+using ::testing::UnorderedElementsAre;
 
 TEST(SolverTest, TestOverwrite) {
   // [n0] x = 1
@@ -24,8 +28,8 @@ TEST(SolverTest, TestOverwrite) {
   Variable* x = p.NewVariable();
   AddBinding(x, &const1, n0, {});
   AddBinding(x, &const2, n0, {});
-  EXPECT_THAT(x->FilteredData(n1), testing::UnorderedElementsAre(
-      AsDataType(&const1), AsDataType(&const2)));
+  EXPECT_THAT(x->FilteredData(n1),
+              UnorderedElementsAre(AsDataType(&const1), AsDataType(&const2)));
 }
 
 TEST(SolverTest, TestShadow) {
@@ -40,10 +44,8 @@ TEST(SolverTest, TestShadow) {
   Variable* x = p.NewVariable();
   AddBinding(x, &const1, n0, {});
   AddBinding(x, &const2, n1, {});
-  EXPECT_THAT(x->FilteredData(n0),
-              testing::UnorderedElementsAre(AsDataType(&const1)));
-  EXPECT_THAT(x->FilteredData(n1),
-              testing::UnorderedElementsAre(AsDataType(&const2)));
+  EXPECT_THAT(x->FilteredData(n0), UnorderedElementsAre(AsDataType(&const1)));
+  EXPECT_THAT(x->FilteredData(n1), UnorderedElementsAre(AsDataType(&const2)));
 }
 
 TEST(SolverTest, TestOriginUnreachable) {
@@ -106,10 +108,8 @@ TEST(SolverTest, TestOriginMulti) {
   Binding* ax = AddBinding(x, &const1, n0, {});
   Binding* ay = AddBinding(y, &const2, n1, {ax});
   AddBinding(z, &const3, n2, {ax, ay});
-  EXPECT_THAT(y->FilteredData(n2),
-              testing::UnorderedElementsAre(AsDataType(&const2)));
-  EXPECT_THAT(z->FilteredData(n2),
-              testing::UnorderedElementsAre(AsDataType(&const3)));
+  EXPECT_THAT(y->FilteredData(n2), UnorderedElementsAre(AsDataType(&const2)));
+  EXPECT_THAT(z->FilteredData(n2), UnorderedElementsAre(AsDataType(&const3)));
 }
 
 TEST(SolverTest, TestDiamond) {
@@ -138,9 +138,9 @@ TEST(SolverTest, TestDiamond) {
   AddBinding(yz, &const1, n3, {ay, az});
   EXPECT_EQ(0, yz->FilteredData(n3).size());
   DataType* const1_data = AsDataType(&const1);
-  EXPECT_THAT(y->FilteredData(n3), testing::UnorderedElementsAre(const1_data));
-  EXPECT_THAT(z->FilteredData(n3), testing::UnorderedElementsAre(const1_data));
-  EXPECT_THAT(x->FilteredData(n3), testing::UnorderedElementsAre(const1_data));
+  EXPECT_THAT(y->FilteredData(n3), UnorderedElementsAre(const1_data));
+  EXPECT_THAT(z->FilteredData(n3), UnorderedElementsAre(const1_data));
+  EXPECT_THAT(x->FilteredData(n3), UnorderedElementsAre(const1_data));
 }
 
 TEST(SolverTest, TestOriginSplitPath) {
@@ -202,8 +202,7 @@ TEST(SolverTest, TestOriginSplitPath) {
 
   EXPECT_EQ(2, z->FilteredData(n3).size());
   EXPECT_THAT(z->FilteredData(n3),
-              testing::UnorderedElementsAre(AsDataType(&const11),
-                                            AsDataType(&const22)));
+              UnorderedElementsAre(AsDataType(&const11), AsDataType(&const22)));
 }
 
 TEST(SolverTest, TestCombination) {
@@ -266,8 +265,7 @@ TEST(SolverTest, TestSameBinding) {
   AddBinding(y, &const1, n2, {x1});
   AddBinding(y, &const2, n2, {x2});
   EXPECT_THAT(y->Data(),
-              testing::UnorderedElementsAre(AsDataType(&const1),
-                                            AsDataType(&const2)));
+              UnorderedElementsAre(AsDataType(&const1), AsDataType(&const2)));
 }
 
 TEST(SolverTest, TestEntrypoint) {
@@ -358,13 +356,11 @@ TEST(SolverTest, TestPathFinder) {
   EXPECT_TRUE(f.FindAnyPathToNode(n4, n1, {n3}));
   EXPECT_FALSE(f.FindAnyPathToNode(n4, n1, {n4}));
   EXPECT_FALSE(f.FindAnyPathToNode(n4, n1, {n2, n3}));
-  EXPECT_THAT(f.FindShortestPathToNode(n1, n1, {}), testing::ElementsAre(n1));
-  EXPECT_THAT(f.FindShortestPathToNode(n1, n1, {n1}), testing::ElementsAre(n1));
+  EXPECT_THAT(f.FindShortestPathToNode(n1, n1, {}), ElementsAre(n1));
+  EXPECT_THAT(f.FindShortestPathToNode(n1, n1, {n1}), ElementsAre(n1));
   EXPECT_FALSE(f.FindShortestPathToNode(n4, n1, {n1}).empty());
-  EXPECT_THAT(f.FindShortestPathToNode(n4, n1, {n2}),
-            testing::ElementsAre(n4, n3, n1));
-  EXPECT_THAT(f.FindShortestPathToNode(n4, n1, {n3}),
-              testing::ElementsAre(n4, n2, n1));
+  EXPECT_THAT(f.FindShortestPathToNode(n4, n1, {n2}), ElementsAre(n4, n3, n1));
+  EXPECT_THAT(f.FindShortestPathToNode(n4, n1, {n3}), ElementsAre(n4, n2, n1));
   EXPECT_TRUE(f.FindShortestPathToNode(n4, n1, {n4}).empty());
   EXPECT_TRUE(f.FindShortestPathToNode(n4, n1, {n2, n3}).empty());
   std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights;
@@ -421,19 +417,19 @@ TEST(SolverTest, TestFindNodeBackwards) {
   EXPECT_FALSE(f.FindNodeBackwards(n8, n1, {n4}).path_exists);
   internal::QueryResult q1 = f.FindNodeBackwards(n8, n1, {});
   EXPECT_TRUE(q1.path_exists);
-  EXPECT_THAT(q1.path, testing::ElementsAre(n5, n4));
+  EXPECT_THAT(q1.path, ElementsAre(n5, n4));
   auto q2 = f.FindNodeBackwards(n8, n5, {});
   EXPECT_TRUE(q2.path_exists);
-  EXPECT_THAT(q2.path, testing::ElementsAre(n5));
+  EXPECT_THAT(q2.path, ElementsAre(n5));
   auto q3 = f.FindNodeBackwards(n5, n4, {});
   EXPECT_TRUE(q3.path_exists);
-  EXPECT_THAT(q3.path, testing::ElementsAre(n5, n4));
+  EXPECT_THAT(q3.path, ElementsAre(n5, n4));
   auto q4 = f.FindNodeBackwards(n5, n2, {});
   EXPECT_TRUE(q4.path_exists);
-  EXPECT_THAT(q4.path, testing::ElementsAre(n5, n4, n2));
+  EXPECT_THAT(q4.path, ElementsAre(n5, n4, n2));
   auto q5 = f.FindNodeBackwards(n5, n3, {});
   EXPECT_TRUE(q5.path_exists);
-  EXPECT_THAT(q5.path, testing::ElementsAre(n5, n4));
+  EXPECT_THAT(q5.path, ElementsAre(n5, n4));
 }
 
 TEST(SolverTest, TestConflict) {
@@ -465,14 +461,14 @@ TEST(SolverTest, TestStrict) {
   Variable* x = p.NewVariable();
   AddBinding(x, &a, left, {});
   EXPECT_THAT(x->FilteredData(left, true),
-              testing::UnorderedElementsAre(AsDataType(&a)));
+              UnorderedElementsAre(AsDataType(&a)));
   EXPECT_THAT(x->FilteredData(left, false),
-              testing::UnorderedElementsAre(AsDataType(&a)));
-  EXPECT_THAT(x->FilteredData(right, true), testing::IsEmpty());
+              UnorderedElementsAre(AsDataType(&a)));
+  EXPECT_THAT(x->FilteredData(right, true), IsEmpty());
   // The result should be empty, but with strict=false, the solver thinks that
   // the binding is visible.
   EXPECT_THAT(x->FilteredData(right, false),
-              testing::UnorderedElementsAre(AsDataType(&a)));
+              UnorderedElementsAre(AsDataType(&a)));
 }
 
 TEST(SolverTest, TestMetricsBasic) {

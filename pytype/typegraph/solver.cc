@@ -5,7 +5,7 @@
 #include <deque>
 #include <functional>
 #include <iterator>
-#include <stack>
+#include <set>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -147,7 +147,7 @@ bool PathFinder::FindAnyPathToNode(
   return false;
 }
 
-const std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
+std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
     const CFGNode* start, const CFGNode* finish,
     const CFGNodeSet& blocked) const {
   std::deque<const CFGNode*> queue;

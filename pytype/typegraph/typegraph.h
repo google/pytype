@@ -325,7 +325,7 @@ class Variable {
   // at the current point in the CFG is filtered out. When the strict flag is
   // not set, may make performance-improving approximations.
   std::vector<Binding*> Filter(const CFGNode* viewpoint,
-                               const bool strict = true) const;
+                               bool strict = true) const;
 
   // Prunes all bindings of this variable that are invisible at the CFG node.
   // This only takes the CFG into account, and ignores source sets. It's faster
@@ -364,14 +364,14 @@ class Variable {
     return bindings_;
   }
   // All nodes in the bindings of this variable.
-  const CFGNodeSet nodes() const;
+  CFGNodeSet nodes() const;
 
   // Get the (unfiltered) data of all bindings.
-  const std::vector<DataType*> Data() const;
+  std::vector<DataType*> Data() const;
 
   // Convenience function for retrieving the filtered data of all bindings.
-  const std::vector<DataType*> FilteredData(const CFGNode* viewpoint,
-                                            const bool strict = true) const;
+  std::vector<DataType*> FilteredData(const CFGNode* viewpoint,
+                                      bool strict = true) const;
 
  private:
   // Initialize an empty variable

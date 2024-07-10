@@ -2,8 +2,6 @@
 #ifndef PYTYPE_TYPEGRAPH_TEST_UTIL_H_
 #define PYTYPE_TYPEGRAPH_TEST_UTIL_H_
 
-#include <memory>
-#include <utility>
 #include <vector>
 
 #include "typegraph.h"

@@ -1,12 +1,13 @@
+#include <Python.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include <Python.h>
 #include <structseq.h>
 
 #include <cstddef>
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "cfg_logging.h"
 #include "metrics.h"

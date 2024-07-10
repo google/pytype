@@ -54,8 +54,8 @@ const V<M>* FindOrNull(const M& map, const K<M>& key) {
 // FindPtrOrNull returns the pointer value associated with a given key. It is
 // designed to be used with maps of keys to pointers. It does not differentiate
 // between keys that are not in the map and keys that are mapped to nullptr.
-template<typename M>
-const V<M> FindPtrOrNull(const M& map, const K<M>& key) {
+template <typename M>
+V<M> FindPtrOrNull(const M& map, const K<M>& key) {
   auto it = map.find(key);
   if (it != map.end())
     return it->second;

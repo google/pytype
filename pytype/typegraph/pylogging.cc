@@ -1,8 +1,8 @@
+#include "pylogging.h"
 
 #include <cstdlib>
 #include <iostream>
-
-#include "pylogging.h"
+#include <string>
 
 namespace pytype {
 namespace pylogging {

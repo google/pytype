@@ -1,13 +1,15 @@
-#include <algorithm>
-
-#include "test_util.h"
 #include "typegraph.h"
+
+#include <string>
 
 #include "gmock/gmock.h"  // for UnorderedElementsAre
 #include "gtest/gtest.h"
+#include "test_util.h"
 
 namespace devtools_python_typegraph {
 namespace {
+
+using ::testing::UnorderedElementsAre;
 
 class TypeGraphTest : public ::testing::Test {
  protected:
@@ -160,9 +162,9 @@ TEST_F(TypeGraphTest, TestVariableProperties) {
   AddBinding(xx_, &A, n_[1], {});
   AddBinding(xx_, &B, n_[2], {});
   AddBinding(xx_, &C, n_[3], {});
-  EXPECT_THAT(xx_->nodes(), testing::UnorderedElementsAre(n_[1], n_[2], n_[3]));
-  EXPECT_THAT(xx_->Data(), testing::UnorderedElementsAre(
-      AsDataType(&A), AsDataType(&B), AsDataType(&C)));
+  EXPECT_THAT(xx_->nodes(), UnorderedElementsAre(n_[1], n_[2], n_[3]));
+  EXPECT_THAT(xx_->Data(), UnorderedElementsAre(AsDataType(&A), AsDataType(&B),
+                                                AsDataType(&C)));
 }
 
 TEST_F(TypeGraphTest, testConditionOnStartNode2) {
@@ -261,7 +263,7 @@ TEST_F(TypeGraphTest, TestMetrics) {
   auto varm = metrics.variable_metrics();
   EXPECT_EQ(varm.size(), 1);
   EXPECT_EQ(varm[0].binding_count(), 1);
-  EXPECT_THAT(varm[0].node_ids(), testing::UnorderedElementsAre(0, 1));
+  EXPECT_THAT(varm[0].node_ids(), UnorderedElementsAre(0, 1));
 }
 }  // namespace
 }  // namespace devtools_python_typegraph

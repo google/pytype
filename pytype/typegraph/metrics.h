@@ -44,7 +44,7 @@ class VariableMetrics {
 
   std::size_t binding_count() const { return binding_count_; }
 
-  const std::vector<NodeID> node_ids() const { return node_ids_; }
+  std::vector<NodeID> node_ids() const { return node_ids_; }
 
  private:
   std::size_t binding_count_;
@@ -159,13 +159,9 @@ class SolverMetrics {
 
   ~SolverMetrics() {}
 
-  const std::vector<QueryMetrics> query_metrics() const {
-    return query_metrics_;
-  }
+  std::vector<QueryMetrics> query_metrics() const { return query_metrics_; }
 
-  const CacheMetrics cache_metrics() const {
-    return cache_metrics_;
-  }
+  CacheMetrics cache_metrics() const { return cache_metrics_; }
 
  private:
   const std::vector<QueryMetrics> query_metrics_;
@@ -186,17 +182,15 @@ class Metrics {
 
   std::size_t binding_count() { return binding_count_; }
 
-  const std::vector<NodeMetrics> cfg_node_metrics() const {
+  std::vector<NodeMetrics> cfg_node_metrics() const {
     return cfg_node_metrics_;
   }
 
-  const std::vector<VariableMetrics> variable_metrics() const {
+  std::vector<VariableMetrics> variable_metrics() const {
     return variable_metrics_;
   }
 
-  const std::vector<SolverMetrics> solver_metrics() const {
-    return solver_metrics_;
-  }
+  std::vector<SolverMetrics> solver_metrics() const { return solver_metrics_; }
 
  private:
   std::size_t binding_count_;

@@ -1,16 +1,18 @@
 #include "typegraph.h"
 
-#include <algorithm>
 #include <cstddef>
-#include <iterator>
+#include <memory>
+#include <set>
 #include <stack>
-#include <unordered_set>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "cfg_logging.h"
 #include "map_util.h"
 #include "memory_util.h"
 #include "metrics.h"
+#include "reachable.h"
 #include "solver.h"
 
 namespace devtools_python_typegraph {
@@ -336,7 +338,7 @@ void Variable::PasteBinding(Binding* binding, CFGNode* where,
   new_binding->CopyOrigins(binding, nullptr, additional_sources);
 }
 
-const CFGNodeSet Variable::nodes() const {
+CFGNodeSet Variable::nodes() const {
   CFGNodeSet nodes;
   for (const auto& kvpair : cfg_node_to_bindings_) {
     nodes.insert(kvpair.first);
@@ -344,7 +346,7 @@ const CFGNodeSet Variable::nodes() const {
   return nodes;
 }
 
-const std::vector<DataType*> Variable::Data() const {
+std::vector<DataType*> Variable::Data() const {
   std::vector<DataType*> data;
   data.reserve(bindings_.size());
   for (const auto& a : bindings_) {
@@ -353,8 +355,8 @@ const std::vector<DataType*> Variable::Data() const {
   return data;
 }
 
-const std::vector<DataType*> Variable::FilteredData(
-    const CFGNode* viewpoint, const bool strict) const {
+std::vector<DataType*> Variable::FilteredData(const CFGNode* viewpoint,
+                                              const bool strict) const {
   std::vector<Binding*> filtered = Filter(viewpoint, strict);
   std::vector<DataType*> data;
   data.reserve(filtered.size());

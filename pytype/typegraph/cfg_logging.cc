@@ -1,6 +1,9 @@
+#include "cfg_logging.h"
+
+#include <cstdlib>
 #include <iostream>
 
-#include "cfg_logging.h"
+#include "pylogging.h"
 
 namespace pytype {
 namespace typegraph {

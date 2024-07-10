@@ -1,6 +1,5 @@
 #include "reachable.h"
 
-#include <cstddef>
 #include <cstdint>
 
 namespace devtools_python_typegraph {
@@ -42,7 +41,7 @@ void ReachabilityAnalyzer::add_connection(const int src, const int dst) {
   }
 }
 
-const bool ReachabilityAnalyzer::is_reachable(const int src, const int dst) {
+bool ReachabilityAnalyzer::is_reachable(const int src, const int dst) const {
   return adj_[src][dst / 64] & _node_bit(dst) ? true : false;
 }
 

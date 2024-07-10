@@ -14,8 +14,8 @@ class ReachabilityAnalyzer {
   ReachabilityAnalyzer();
 
   int add_node();
-  void add_connection(const int src, const int dst);
-  const bool is_reachable(const int src, const int dst);
+  void add_connection(int src, int dst);
+  bool is_reachable(int src, int dst) const;
 
   std::size_t size() const { return size_; }
 
