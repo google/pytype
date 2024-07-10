@@ -36,8 +36,22 @@ except ImportError:
 # all instance vars of metrics are things that json can serialize, so we don't
 # need to write custom JsonEncoder and JsonDecoder classes per Metric subclass.
 
-# Register metric types for deserialization
+# Register metric types for deserialization.
 _METRIC_TYPES = {}
+
+# Map from metric name to Metric object.
+_registered_metrics = {}
+
+# Whether metrics should be collected.
+_enabled = False
+
+
+def reset():
+  """Resets this module to its initial state."""
+  _METRIC_TYPES.clear()
+  _registered_metrics.clear()
+  global _enabled
+  _enabled = False
 
 
 class _RegistryMeta(type):
@@ -76,9 +90,6 @@ def load_all(fp):
 
 
 _METRIC_NAME_RE = re.compile(r"^[a-zA-Z_]\w+$")
-
-_registered_metrics = {}  # Map from metric name to Metric object.
-_enabled = False  # True iff metrics should be collected.
 
 
 def _validate_metric_name(name):
