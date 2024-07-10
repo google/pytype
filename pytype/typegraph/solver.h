@@ -178,7 +178,7 @@ class PathFinder {
   // Determine the highest weighted node we can reach, going backwards.
   const CFGNode* FindHighestReachableWeight(
       const CFGNode* start,
-      std::unordered_set<const CFGNode*, CFGNodePtrHash> seen,
+      std::unordered_set<const CFGNode*, CFGNodePtrHash>& seen,
       const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
       const;
 

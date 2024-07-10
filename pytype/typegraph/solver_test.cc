@@ -1,6 +1,7 @@
 #include "solver.h"
 
 #include <string>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -368,20 +369,29 @@ TEST(SolverTest, TestPathFinder) {
   weights[n4] = 1;
   weights[n2] = 2;
   weights[n1] = 3;
-  EXPECT_EQ(n1->id(), f.FindHighestReachableWeight(n5, {}, weights)->id());
-  EXPECT_EQ(n1->id(), f.FindHighestReachableWeight(n5, {n3}, weights)->id());
-  EXPECT_EQ(n4->id(), f.FindHighestReachableWeight(n5, {n4}, weights)->id());
+  std::unordered_set<const CFGNode*, CFGNodePtrHash> empty({}), n3_set({n3}),
+      n4_set({n4});
+  EXPECT_EQ(n1->id(), f.FindHighestReachableWeight(n5, empty, weights)->id());
+  EXPECT_EQ(n1->id(), f.FindHighestReachableWeight(n5, n3_set, weights)->id());
+  EXPECT_EQ(n4->id(), f.FindHighestReachableWeight(n5, n4_set, weights)->id());
+
+
+  std::unordered_set<const CFGNode*, CFGNodePtrHash> n2_n3_set({n2, n3});
+  std::unordered_set<const CFGNode*, CFGNodePtrHash> empty_2({});
+  std::unordered_set<const CFGNode*, CFGNodePtrHash> n4_set_2({n4});
   EXPECT_EQ(n2->id(),
-            f.FindHighestReachableWeight(n5, {n2, n3}, weights)->id());
-  EXPECT_EQ(f.FindHighestReachableWeight(n1, {}, weights), nullptr);
+            f.FindHighestReachableWeight(n5, n2_n3_set, weights)->id());
+  EXPECT_EQ(f.FindHighestReachableWeight(n1, empty_2, weights), nullptr);
+
   std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights2;
   weights2[n5] = 1;
-  EXPECT_EQ(f.FindHighestReachableWeight(n5, {n4}, weights2), nullptr);
+  EXPECT_EQ(f.FindHighestReachableWeight(n5, n4_set_2, weights2), nullptr);
   std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights3;
+  std::unordered_set<const CFGNode*, CFGNodePtrHash> n2_n3_set_2({n2, n3});
   weights3[n4] = 1;
   weights3[n5] = 2;
   EXPECT_EQ(n4->id(),
-            f.FindHighestReachableWeight(n5, {n2, n3}, weights3)->id());
+            f.FindHighestReachableWeight(n5, n2_n3_set_2, weights3)->id());
 }
 
 TEST(SolverTest, TestFindNodeBackwards) {

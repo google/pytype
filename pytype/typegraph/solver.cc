@@ -184,7 +184,7 @@ std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
 
 const CFGNode* PathFinder::FindHighestReachableWeight(
     const CFGNode* start,
-    std::unordered_set<const CFGNode*, CFGNodePtrHash> seen,
+    std::unordered_set<const CFGNode*, CFGNodePtrHash>& seen,
     const std::unordered_map<const CFGNode*, int, CFGNodePtrHash>& weight_map)
     const {
   std::vector<const CFGNode*> stack;
