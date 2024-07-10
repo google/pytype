@@ -417,9 +417,6 @@ static PyObject* NewVariable(PyProgramObj* self,
   if (bindings == Py_None)
     bindings = nullptr;
 
-  if (bindings && !PyObject_GetIter(bindings))
-    return nullptr;  // propagate error raised by PyObject_GetIter
-
   typegraph::CFGNode* where;
   if (!IsCFGNodeOrNone(where_obj, &where)) {
     PyErr_SetString(PyExc_TypeError, "where must be a CFGNode or None.");
@@ -435,6 +432,10 @@ static PyObject* NewVariable(PyProgramObj* self,
     CHECK(bindings && source_set && where);
     PyObject* item;
     PyObject* bind_iter = PyObject_GetIter(bindings);
+    if (bind_iter == nullptr) {
+      Py_XDECREF(source_set);
+      return nullptr;  // propagate error raised by PyObject_GetIter
+    }
     while ((item = PyIter_Next(bind_iter))) {
       // PyIter_Next returns a new reference, which will be owned by AddBinding.
       // That means we don't need to INCREF or DECREF item.
