@@ -3019,7 +3019,7 @@ class VirtualMachine:
     self.trace_opcode(op, op.argval, const)
     return self._return_value(state, const)
 
-  def byte_IMPORT_STAR(self, state, op):
+  def _import_star(self, state):
     """Pops a module and stores all its contents in locals()."""
     # TODO(b/159041010): this doesn't use __all__ properly.
     state, mod_var = state.pop()
@@ -3032,6 +3032,9 @@ class VirtualMachine:
       if name[0] != "_" or name == "__getattr__":
         state = self.store_local(state, name, var)
     return state
+
+  def byte_IMPORT_STAR(self, state, op):
+    return self._import_star(state)
 
   def byte_SETUP_ANNOTATIONS(self, state, op):
     """Sets up variable annotations in locals()."""
@@ -3093,9 +3096,8 @@ class VirtualMachine:
         self.ctx,
     )
 
-  def byte_LIST_TO_TUPLE(self, state, op):
+  def _list_to_tuple(self, state):
     """Convert the list at the top of the stack to a tuple."""
-    del op  # unused
     state, lst_var = state.pop()
     tup_var = self.ctx.program.NewVariable()
     for b in lst_var.bindings:
@@ -3109,6 +3111,10 @@ class VirtualMachine:
         tup.merge_instance_type_parameter(state.node, abstract_utils.T, param)
         tup_var.AddBinding(tup, {b}, state.node)
     return state.push(tup_var)
+
+  def byte_LIST_TO_TUPLE(self, state, op):
+    del op  # unused
+    return self._list_to_tuple(state)
 
   def byte_BUILD_MAP_UNPACK(self, state, op):
     state, maps = state.popn(op.arg)
@@ -3741,14 +3747,16 @@ class VirtualMachine:
     return state
 
   def byte_CALL_INTRINSIC_1(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    intrinsic_fn = getattr(self, f"byte_{op.argval}", None)
+    if intrinsic_fn is None:
+      raise VirtualMachineError(f"Unknown intrinsic function: {op.argval}")
+    return intrinsic_fn(state)
 
   def byte_CALL_INTRINSIC_2(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    intrinsic_fn = getattr(self, f"byte_{op.argval}", None)
+    if intrinsic_fn is None:
+      raise VirtualMachineError(f"Unknown intrinsic function: {op.argval}")
+    return intrinsic_fn(state)
 
   def byte_LOAD_FROM_DICT_OR_GLOBALS(self, state, op):
     # TODO: b/345717799 - Implement
@@ -3758,4 +3766,66 @@ class VirtualMachine:
   def byte_LOAD_FROM_DICT_OR_DEREF(self, state, op):
     # TODO: b/345717799 - Implement
     del op
+    return state
+
+  def byte_INTRINSIC_1_INVALID(self, state):
+    return state
+
+  def byte_INTRINSIC_PRINT(self, state):
+    # Only used in the interactive interpreter, not in modules.
+    return state
+
+  def byte_INTRINSIC_IMPORT_STAR(self, state):
+    state = self._import_star(state)
+    return self._push_null(state)
+
+  def byte_INTRINSIC_STOPITERATION_ERROR(self, state):
+    # Changes StopIteration or StopAsyncIteration to a RuntimeError.
+    return state
+
+  def byte_INTRINSIC_ASYNC_GEN_WRAP(self, state):
+    return state
+
+  def byte_INTRINSIC_UNARY_POSITIVE(self, state):
+    return self.unary_operator(state, "__pos__")
+
+  def byte_INTRINSIC_LIST_TO_TUPLE(self, state):
+    return self._list_to_tuple(state)
+
+  def byte_INTRINSIC_TYPEVAR(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_PARAMSPEC(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_TYPEVARTUPLE(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_SUBSCRIPT_GENERIC(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_TYPEALIAS(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_2_INVALID(self, state):
+    return state
+
+  def byte_INTRINSIC_PREP_RERAISE_STAR(self, state):
+    return state
+
+  def byte_INTRINSIC_TYPEVAR_WITH_BOUND(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_TYPEVAR_WITH_CONSTRAINTS(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
+    return state
+
+  def byte_INTRINSIC_SET_FUNCTION_TYPE_PARAMS(self, state):
+    # TODO: b/350910471 - Implement to support PEP 695
     return state
