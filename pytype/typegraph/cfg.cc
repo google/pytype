@@ -628,25 +628,14 @@ static void CFGNodeDealloc(PyObject* self) {
 
 static PyObject* CFGNodeRepr(PyObject* self) {
   PyCFGNodeObj* py_node = reinterpret_cast<PyCFGNodeObj*>(self);
-  auto node = py_node->cfg_node;
-  PyObject* str = PyUnicode_FromFormat(
-      "<cfgnode %zu %s", node->id(), node->name().c_str());
+  typegraph::CFGNode* node = py_node->cfg_node;
   if (node->condition()) {
-    PyObject* cond_str = PyUnicode_FromFormat(
-        " condition:%zu",
-        node->condition()->variable()->id());
-    PyObject* str_cond_str = PyUnicode_Concat(str, cond_str);
-    // Drop references to the old |str| and |cond_str| as we do not need them
-    // anymore.
-    Py_DECREF(str);
-    Py_DECREF(cond_str);
-    str = str_cond_str;
+    return PyUnicode_FromFormat("<cfgnode %zu %s condition:%zu>", node->id(),
+                                node->name().c_str(),
+                                node->condition()->variable()->id());
   }
-  PyObject* final_str = PyUnicode_Concat(str, PyUnicode_FromString(">"));
-  // Drop reference to |str| as we do not need it anymore.
-  Py_DECREF(str);
-  str = final_str;
-  return str;
+  return PyUnicode_FromFormat("<cfgnode %zu %s>", node->id(),
+                              node->name().c_str());
 }
 
 PyDoc_STRVAR(connect_new_doc,
