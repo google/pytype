@@ -25,7 +25,7 @@ def _is_function_def(fn_code):
   return True
 
 
-class CollectAnnotationTargetsVisitor:
+class CollectAnnotationTargetsVisitor(pyc.CodeVisitor):
   """Collect opcodes that might have annotations attached."""
 
   def __init__(self):
@@ -68,7 +68,7 @@ class CollectAnnotationTargetsVisitor:
     return code
 
 
-class FunctionDefVisitor:
+class FunctionDefVisitor(pyc.CodeVisitor):
   """Add metadata to function definition opcodes."""
 
   def __init__(self, param_annotations):

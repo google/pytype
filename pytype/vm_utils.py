@@ -21,6 +21,7 @@ from pytype.blocks import blocks
 from pytype.errors import error_types
 from pytype.overlays import metaclass
 from pytype.pyc import opcodes
+from pytype.pyc import pyc
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import slots
@@ -72,7 +73,7 @@ class _Block:
     return f"Block({self.type}: {self.op_index} level={self.level})"
 
 
-class FindIgnoredTypeComments:
+class FindIgnoredTypeComments(pyc.CodeVisitor):
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
@@ -82,7 +83,6 @@ class FindIgnoredTypeComments:
     self._ignored_type_lines = set(type_comments)
 
   def visit_code(self, code):
-    """Interface for pyc.visit."""
     for op in code.code_iter:
       # Make sure we have attached the type comment to an opcode.
       if isinstance(op, blocks.STORE_OPCODES):

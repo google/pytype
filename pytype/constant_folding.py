@@ -265,7 +265,7 @@ class _FoldedOps:
     return f
 
 
-class _FoldConstants:
+class _FoldConstants(pyc.CodeVisitor):
   """Fold constant literals in pyc code."""
 
   def visit_code(self, code):

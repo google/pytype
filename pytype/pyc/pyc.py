@@ -1,5 +1,6 @@
 """Functions for generating, reading and parsing pyc."""
 
+import abc
 import copy
 
 from pycnite import pyc
@@ -9,6 +10,14 @@ from pytype.pyc import compiler
 
 # Reexport since we have exposed this error publicly as pyc.CompileError
 CompileError = compiler.CompileError
+
+
+# The abstract base class for a code visitor passed to pyc.visit.
+class CodeVisitor(abc.ABC):
+
+  @abc.abstractmethod
+  def visit_code(self, code):
+    ...
 
 
 def parse_pyc_string(data):
@@ -23,7 +32,7 @@ def parse_pyc_string(data):
   return pyc.loads(data)
 
 
-class AdjustFilename:
+class AdjustFilename(CodeVisitor):
   """Visitor for changing co_filename in a code object."""
 
   def __init__(self, filename):
@@ -71,7 +80,7 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
 _VISIT_CACHE = {}
 
 
-def visit(c, visitor):
+def visit(c, visitor: CodeVisitor):
   """Recursively process constants in a pyc using a visitor."""
   if hasattr(c, "co_consts"):
     # This is a CodeType object (because it has co_consts). Visit co_consts,
