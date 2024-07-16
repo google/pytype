@@ -57,6 +57,31 @@ def _generate_builtins_pickle(options):
   loader.save_to_pickle(options.generate_builtins)
 
 
+def _expand_args(argv):
+  """Returns argv with flagfiles expanded.
+
+  A flagfile is an argument starting with "@". The remainder of the argument is
+  interpreted as the path to a file containing a list of arguments, one per
+  line. Flagfiles may contain references to other flagfiles.
+
+  Args:
+    argv: Command line arguments.
+  """
+
+  def _expand_single_arg(arg, result):
+    if arg.startswith("@"):
+      with open(arg[1:]) as f:
+        for earg in f.read().splitlines():
+          _expand_single_arg(earg, result)
+    else:
+      result.append(arg)
+
+  expanded_args = []
+  for arg in argv:
+    _expand_single_arg(arg, expanded_args)
+  return expanded_args
+
+
 def _fix_spaces(argv):
   """Returns argv with unescaped spaces in paths fixed.
 
@@ -80,7 +105,9 @@ def _fix_spaces(argv):
 
 def main():
   try:
-    options = config.Options(_fix_spaces(sys.argv[1:]), command_line=True)
+    options = config.Options(
+        _fix_spaces(_expand_args(sys.argv[1:])), command_line=True
+    )
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)
