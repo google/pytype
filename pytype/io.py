@@ -304,6 +304,14 @@ def process_one_file(options):
           f.write(f"{os.path.relpath(unused_path, cwd)}\n")
   exit_status = handle_errors(ret.context.errorlog, options)
 
+  # Give the garbage collector a little help.
+  # Without this line, successive calls to this method, such as in a long-lived
+  # persistent worker, cause memory usage to grow seemingly without bound. With
+  # this line, memory usage remains stable. Do not remove before first checking
+  # that this is no longer needed.
+  # TODO(b/350414460): Get to the bottom of why this is needed.
+  ret.context.program = None
+
   # Touch output file upon success.
   if options.touch and not exit_status:
     with options.open_function(options.touch, "a"):
