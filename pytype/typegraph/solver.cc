@@ -421,12 +421,11 @@ bool Solver::RecallOrFindSolution(
   // that if it's possible to solve this state at this level of the tree, it can
   // also be solved in any of the children.
   (*solved_states_)[state] = true;
-  // Careful! Modifying seen_states would affect other recursive calls, so we
-  // need to copy it.
-  internal::StateSet new_seen_states(seen_states);
-  new_seen_states.insert(&state);
-
-  bool result = FindSolution(state, new_seen_states, current_depth);
+  // Careful! Make sure to remove the value from seen_states afterwards, to not
+  // affect other recursive calls.
+  seen_states.insert(&state);
+  bool result = FindSolution(state, seen_states, current_depth);
+  seen_states.erase(&state);
   (*solved_states_)[state] = result;
   return result;
 }
