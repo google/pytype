@@ -18,7 +18,7 @@ toplevel_py_binary(
   MAIN
     main.py
   DEPS
-    .pytype_main_deps
+    .main_deps
 )
 
 py_library(
@@ -751,7 +751,7 @@ py_test(
 
 py_library(
   NAME
-    pytype_main_deps
+    main_deps
   DEPS
     ._utils
     .config
