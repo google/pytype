@@ -3732,14 +3732,10 @@ class VirtualMachine:
     return state
 
   def byte_POP_JUMP_IF_NOT_NONE(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    return self.byte_POP_JUMP_FORWARD_IF_NOT_NONE(state, op)
 
   def byte_POP_JUMP_IF_NONE(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    return self.byte_POP_JUMP_FORWARD_IF_NONE(state, op)
 
   def byte_LOAD_SUPER_ATTR(self, state, op):
     # TODO: b/345717799 - Implement
