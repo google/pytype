@@ -44,6 +44,7 @@ _LOAD_OPS = frozenset((
 
 _LOAD_SUBSCR_METHODS = ("__getitem__", "__getslice__")
 _LOAD_SUBSCR_OPS = frozenset((
+    "BINARY_SLICE",
     "BINARY_SUBSCR",
     "SLICE_0",
     "SLICE_1",

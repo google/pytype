@@ -45,7 +45,9 @@ class TraceTest(unittest.TestCase):
   def test_traces(self):
     src = traces.trace("")
     trace, = src.traces[0 if _PYVER >= (3, 11) else 1]
-    self.assertEqual(trace.op, "LOAD_CONST")
+    self.assertEqual(
+        trace.op, "RETURN_CONST" if _PYVER >= (3, 12) else "LOAD_CONST"
+    )
     self.assertIsNone(trace.symbol)
     pyval, = trace.types
     self.assertEqual(pyval.name, "builtins.NoneType")
@@ -309,8 +311,16 @@ class MatchSubscriptTest(MatchAstTestCase):
       v = "hello"
       print(v[:-1])
     """, ast.Subscript)
-    self.assertTracesEqual(
-        matches, [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))])
+    if _PYVER >= (3, 12):
+      expected = [(
+          (2, 6),
+          "BINARY_SLICE",
+          "__getitem__",
+          ("Callable[[Union[int, slice]], str]", "str"),
+      )]
+    else:
+      expected = [((2, 6), "BINARY_SUBSCR", "__getitem__", ("str",))]
+    self.assertTracesEqual(matches, expected)
 
   def test_complex_slice(self):
     matches = self._get_traces("""
