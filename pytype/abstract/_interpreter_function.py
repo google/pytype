@@ -94,8 +94,6 @@ class InterpreterFunction(_function_base.SignedFunction):
     ctx: context.Context instance.
   """
 
-  _function_cache = {}
-
   @classmethod
   def make(
       cls,
@@ -165,8 +163,8 @@ class InterpreterFunction(_function_base.SignedFunction):
             (dict(enumerate(closure or ())), None),
         ),
     )
-    if key not in cls._function_cache:
-      cls._function_cache[key] = cls(
+    if key not in ctx.function_cache:
+      ctx.function_cache[key] = cls(
           name,
           def_opcode,
           code,
@@ -182,8 +180,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     elif closure:
       # Reusing the old closure variables would lead to the closure containing
       # future values, such as Deleted.
-      cls._function_cache[key].closure = closure
-    f = cls._function_cache[key]
+      ctx.function_cache[key].closure = closure
+    f = ctx.function_cache[key]
     ctx.vm.frame.functions_created_in_frame[f.name.rsplit(".")[-1]].append(f)
     return f
 

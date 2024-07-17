@@ -103,6 +103,10 @@ class Context:
     self.method_signature_map: Dict[
         abstract.Class, Dict[str, function.Signature]
     ] = {}
+    # Cache used by InterpreterFunction.
+    # There isn't a more appropriate place to put it while ensuring that the
+    # cache doesn't persist between runs.
+    self.function_cache = {}
 
   def matcher(self, node):
     return matcher.AbstractMatcher(node, self)
