@@ -14,7 +14,6 @@ import collections
 import contextlib
 import dataclasses
 import enum
-import functools
 import itertools
 import logging
 import re
@@ -143,6 +142,9 @@ class VirtualMachine:
 
     # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
     self._kw_names = ()
+
+    # Cache for _import_module.
+    self._imported_modules_cache = {}
 
   @property
   def current_local_ops(self):
@@ -1325,7 +1327,6 @@ class VirtualMachine:
         overlay = self.loaded_overlays[name] = None
     return overlay
 
-  @functools.lru_cache(maxsize=None)  # pylint: disable=cache-max-size-none
   def _import_module(self, name, level):
     """Import the module and return the module object.
 
@@ -1340,6 +1341,11 @@ class VirtualMachine:
     Returns:
       An instance of abstract.Module or None if we couldn't find the module.
     """
+    if name not in self._imported_modules_cache:
+      self._imported_modules_cache[name] = self._do_import_module(name, level)
+    return self._imported_modules_cache[name]
+
+  def _do_import_module(self, name, level):
     if name:
       if level <= 0:
         assert level in [-1, 0]
