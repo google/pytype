@@ -75,6 +75,8 @@ class TestPyc(test_base.UnitTest):
     if self.python_version >= (3, 11):
       expected = [("RESUME", 0)] + expected
       expected[5] = ("BINARY_OP", 3)  # this was BINARY_ADD in 3.10-
+    if self.python_version >= (3, 12):
+      expected = expected[:-2] + [("RETURN_CONST", 3)]
     self.assertEqual(expected, op_and_line)
 
   def test_mode(self):
@@ -98,6 +100,8 @@ class TestPyc(test_base.UnitTest):
     ]
     if self.python_version >= (3, 11):
       expected = [("RESUME", 0)] + expected
+    if self.python_version >= (3, 12):
+      expected = expected[:-2] + [("RETURN_CONST", 1)]
     self.assertEqual(expected, op_and_line)
 
   def test_singlelinenowithspace(self):
@@ -116,6 +120,8 @@ class TestPyc(test_base.UnitTest):
     ]
     if self.python_version >= (3, 11):
       expected = [("RESUME", 0)] + expected
+    if self.python_version >= (3, 12):
+      expected = expected[:-2] + [("RETURN_CONST", 3)]
     self.assertEqual(expected, op_and_line)
 
 
