@@ -106,12 +106,14 @@ typedef std::set<const State*, pointer_less<State>> StateSet;
 // operator== and operator!=.
 class QueryKey {
  public:
-  QueryKey(): start_(nullptr), finish_(nullptr) {}
+  QueryKey() = delete;
   QueryKey(const CFGNode* s, const CFGNode* f,
            const CFGNodeSet& b):
-    start_(s), finish_(f), blocked_(b) {}
+    start_(s), finish_(f), blocked_(b), hash_(ComputeHash()) {}
 
-  std::size_t Hash() const {
+  std::size_t Hash() const { return hash_; }
+
+  std::size_t ComputeHash() const {
     std::size_t hash = std::hash<const CFGNode*>{}(start_);
     hash_mix<const CFGNode*>(hash, finish_);
     for (auto n : blocked_)
@@ -134,7 +136,8 @@ class QueryKey {
  private:
   const CFGNode* start_;
   const CFGNode* finish_;
-  CFGNodeSet blocked_;
+  const CFGNodeSet blocked_;
+  const std::size_t hash_;
 };
 
 // QueryResult represents the result of a PathFinder query. It contains status
