@@ -15,6 +15,12 @@ CompileError = compiler.CompileError
 # The abstract base class for a code visitor passed to pyc.visit.
 class CodeVisitor(abc.ABC):
 
+  def __init__(self):
+    # This cache, used by pyc.visit below, is needed to avoid visiting the same
+    # code object twice, since some visitors mutate the input object.
+    # It maps CodeType object id to the result of visiting that object.
+    self.visitor_cache = {}
+
   @abc.abstractmethod
   def visit_code(self, code):
     ...
@@ -36,6 +42,7 @@ class AdjustFilename(CodeVisitor):
   """Visitor for changing co_filename in a code object."""
 
   def __init__(self, filename):
+    super().__init__()
     self.filename = filename
 
   def visit_code(self, code):
@@ -75,18 +82,12 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
   return code
 
 
-# This cache is needed to avoid visiting the same code object twice, since some
-# visitors mutate the input object.
-_VISIT_CACHE = {}
-
-
 def visit(c, visitor: CodeVisitor):
   """Recursively process constants in a pyc using a visitor."""
   if hasattr(c, "co_consts"):
     # This is a CodeType object (because it has co_consts). Visit co_consts,
     # and then the CodeType object itself.
-    k = (id(c), visitor)
-    if k not in _VISIT_CACHE:
+    if id(c) not in visitor.visitor_cache:
       new_consts = []
       changed = False
       for const in c.co_consts:
@@ -96,7 +97,7 @@ def visit(c, visitor: CodeVisitor):
       if changed:
         c = copy.copy(c)
         c.co_consts = new_consts
-      _VISIT_CACHE[k] = visitor.visit_code(c)
-    return _VISIT_CACHE[k]
+      visitor.visitor_cache[id(c)] = visitor.visit_code(c)
+    return visitor.visitor_cache[id(c)]
   else:
     return c

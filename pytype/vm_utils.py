@@ -77,6 +77,7 @@ class FindIgnoredTypeComments(pyc.CodeVisitor):
   """A visitor that finds type comments that will be ignored."""
 
   def __init__(self, type_comments):
+    super().__init__()
     self._type_comments = type_comments
     # Lines will be removed from this set during visiting. Any lines that remain
     # at the end are type comments that will be ignored.

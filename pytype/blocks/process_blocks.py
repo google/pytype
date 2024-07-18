@@ -29,6 +29,7 @@ class CollectAnnotationTargetsVisitor(pyc.CodeVisitor):
   """Collect opcodes that might have annotations attached."""
 
   def __init__(self):
+    super().__init__()
     # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
     # visitor runs, and contains the last opcode for each line.
     self.store_ops = {}
@@ -72,6 +73,7 @@ class FunctionDefVisitor(pyc.CodeVisitor):
   """Add metadata to function definition opcodes."""
 
   def __init__(self, param_annotations):
+    super().__init__()
     self.annots = param_annotations
 
   def visit_code(self, code):
