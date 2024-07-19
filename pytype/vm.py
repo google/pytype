@@ -1341,9 +1341,10 @@ class VirtualMachine:
     Returns:
       An instance of abstract.Module or None if we couldn't find the module.
     """
-    if name not in self._imported_modules_cache:
-      self._imported_modules_cache[name] = self._do_import_module(name, level)
-    return self._imported_modules_cache[name]
+    key = (name, level)
+    if key not in self._imported_modules_cache:
+      self._imported_modules_cache[key] = self._do_import_module(name, level)
+    return self._imported_modules_cache[key]
 
   def _do_import_module(self, name, level):
     if name:
