@@ -336,3 +336,13 @@ py_library(
     pytype.pytd.pytd
     pytype.typegraph.cfg
 )
+
+py_library(
+  NAME
+    trail_configurable_overlay
+  SRCS
+    trail_configurable_overlay.py
+  DEPS
+    .fiddle_overlay
+    .overlay
+)
