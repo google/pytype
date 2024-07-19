@@ -204,12 +204,9 @@ QueryResult PathFinder::FindNodeBackwards(
   const auto* res = map_util::FindOrNull(*solved_find_queries_, query);
   if (res)
     return *res;
-  // Declaring result here and filling it in later lets us use RVO.
-  QueryResult result;
   auto shortest_path = FindShortestPathToNode(start, finish, blocked);
   if (shortest_path.empty()) {
-    result.path_exists = false;
-    result.path = shortest_path;
+    QueryResult result(/*path_exists=*/false, shortest_path);
     (*solved_find_queries_)[query] = result;
     return result;
   }
@@ -236,8 +233,9 @@ QueryResult PathFinder::FindNodeBackwards(
       break;
     node = FindHighestReachableWeight(node, blocked_, weights);
   }
+  QueryResult result;
   result.path_exists = true;
-  result.path = path;
+  result.path = std::move(path);
   (*solved_find_queries_)[query] = result;
   return result;
 }
