@@ -161,8 +161,7 @@ typedef std::unordered_map<QueryKey, QueryResult, map_util::hash<QueryKey>>
 // queries to improve performance.
 class PathFinder {
  public:
-  PathFinder();
-  ~PathFinder();
+  PathFinder() {}
 
   // Don't allow copy or move semantics on PathFinder.
   PathFinder(const PathFinder&) = delete;
@@ -190,7 +189,7 @@ class PathFinder {
                                 const CFGNodeSet& blocked);
 
  private:
-  const std::unique_ptr<QueryMap> solved_find_queries_;
+  QueryMap solved_find_queries_;
 };
 
 }  // namespace internal

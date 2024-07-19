@@ -106,12 +106,6 @@ std::size_t State::Hash() const {
   return hash;
 }
 
-PathFinder::PathFinder()
-    : solved_find_queries_(
-          new QueryMap){}
-
-PathFinder::~PathFinder() {}
-
 bool PathFinder::FindAnyPathToNode(
     const CFGNode* start,
     const CFGNode* finish,
@@ -201,13 +195,13 @@ QueryResult PathFinder::FindNodeBackwards(
     const CFGNode* finish,
     const CFGNodeSet& blocked) {
   QueryKey query(start, finish, blocked);
-  const auto* res = map_util::FindOrNull(*solved_find_queries_, query);
+  const auto* res = map_util::FindOrNull(solved_find_queries_, query);
   if (res)
     return *res;
   auto shortest_path = FindShortestPathToNode(start, finish, blocked);
   if (shortest_path.empty()) {
     QueryResult result(/*path_exists=*/false, shortest_path);
-    (*solved_find_queries_)[query] = result;
+    solved_find_queries_[query] = result;
     return result;
   }
   // We now have the shortest path to finish. All articulation points are
@@ -236,7 +230,7 @@ QueryResult PathFinder::FindNodeBackwards(
   QueryResult result;
   result.path_exists = true;
   result.path = std::move(path);
-  (*solved_find_queries_)[query] = result;
+  solved_find_queries_[query] = result;
   return result;
 }
 
