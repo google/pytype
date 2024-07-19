@@ -47,34 +47,7 @@ class ImportsMapBuilder:
         for short_path, paths in imports_multimap.items()
     }
 
-  def _validate(self, imports_map: MultimapType) -> List[ItemType]:
-    """Validate the imports map against the command line arguments.
-
-    Args:
-      imports_map: The map returned by _read_imports_map.
-
-    Returns:
-      A list of invalid entries, in the form (short_path, long_path)
-    """
-    errors = []
-    for short_path, paths in imports_map.items():
-      for path in paths:
-        if not path_utils.exists(path):
-          errors.append((short_path, path))
-    if errors:
-      log.error(
-          "Invalid imports_map entries (checking from root dir: %s)",
-          path_utils.abspath("."),
-      )
-      for short_path, path in errors:
-        log.error(
-            "  file does not exist: %r (mapped from %r)", path, short_path
-        )
-    return errors
-
-  def _finalize(
-      self, imports_multimap: MultimapType, path: str = ""
-  ) -> ImportsMapType:
+  def _finalize(self, imports_multimap: MultimapType) -> ImportsMapType:
     """Generate the final imports map."""
     # Output warnings for all multiple mappings and keep the lexicographically
     # first path for each.
@@ -90,12 +63,6 @@ class ImportsMapBuilder:
         short_path: path_utils.abspath(paths[0])
         for short_path, paths in imports_multimap.items()
     }
-
-    errors = self._validate(imports_multimap)
-    if errors:
-      msg = f"Invalid imports_map: {path}\nBad entries:\n"
-      msg += "\n".join(f"  {k} -> {v}" for k, v in errors)
-      raise ValueError(msg)
 
     # Add the potential directory nodes for adding "__init__", because some
     # build systems automatically create __init__.py in empty directories. These
@@ -132,16 +99,14 @@ class ImportsMapBuilder:
 
     Returns:
       Dict of .py short_path to list of .pytd path or None if no path
-    Raises:
-      ValueError if the imports map is invalid
     """
     if not path:
       return None
     items = self._read_from_file(path)
-    return self.build_from_items(items, path)
+    return self.build_from_items(items)
 
   def build_from_items(
-      self, items: Optional[List[ItemType]], path=None
+      self, items: Optional[List[ItemType]]
   ) -> Optional[ImportsMapType]:
     """Create a file mapping from a list of (short path, path) tuples.
 
@@ -150,15 +115,12 @@ class ImportsMapBuilder:
              "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
     Args:
       items: A list of (short_path, full_path) tuples.
-      path: The file from which the items were read (for error messages)
 
     Returns:
       Dict of .py short_path to list of .pytd path or None if no items
-    Raises:
-      ValueError if the imports map is invalid
     """
     if not items:
       return None
     imports_multimap = self._build_multimap(items)
     assert imports_multimap is not None
-    return self._finalize(imports_multimap, path)
+    return self._finalize(imports_multimap)
