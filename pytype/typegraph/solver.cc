@@ -22,20 +22,6 @@ namespace devtools_python_typegraph {
 
 namespace internal {
 
-// Helper function for checking set membership.
-template <class T, class U>
-static bool set_contains(const std::set<T, U>& set, const T elem) {
-  return set.find(elem) != set.end();
-}
-
-static bool node_set_contains(const CFGNodeSet& set, const CFGNode* elem) {
-  return set_contains<const CFGNode*>(set, elem);
-}
-
-static bool goal_set_contains(const GoalSet& set, const Binding* elem) {
-  return set_contains<const Binding*>(set, elem);
-}
-
 // Stores the results of remove_finished_goals.
 struct RemoveResult {
   const GoalSet removed_goals;
@@ -55,7 +41,7 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
   GoalSet goals_to_remove;
   // We can't use set_intersection here because pos->bindings() is a vector.
   for (const auto* goal : pos->bindings()) {
-    if (goal_set_contains(goals, goal)) {
+    if (goals.count(goal)) {
       goals_to_remove.insert(goal);
     }
   }
@@ -80,7 +66,7 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
     }
     const auto* goal = *goals_to_remove.begin();
     goals_to_remove.erase(goals_to_remove.begin());
-    if (goal_set_contains(seen_goals, goal)) {
+    if (seen_goals.count(goal)) {
       // Only process a goal once, to prevent infinite loops.
       stack.push_back(std::make_tuple(
           goals_to_remove, seen_goals, removed_goals, new_goals));
@@ -139,7 +125,7 @@ bool PathFinder::FindAnyPathToNode(
     stack.pop_back();
     if (node == finish)
       return true;
-    if (node_set_contains(seen, node) || node_set_contains(blocked, node))
+    if (seen.count(node) || blocked.count(node))
       continue;
     seen.insert(node);
     stack.insert(stack.end(), node->incoming().begin(), node->incoming().end());
@@ -164,7 +150,7 @@ std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
       found = true;
       break;
     }
-    if (node_set_contains(seen, node) || node_set_contains(blocked, node))
+    if (seen.count(node) || blocked.count(node))
       continue;
     seen.insert(node);
     for (auto n : node->incoming())
@@ -366,8 +352,7 @@ bool Solver::FindSolution(const internal::State& state,
       LOG(INFO) << indent << "New pos: <" << new_pos->id() << "> "
                 << new_pos->name();
       const internal::State new_state(new_pos, result.new_goals);
-      if (internal::set_contains<const internal::State*>(
-              seen_states, &new_state) && new_positions.size() > 1) {
+      if (seen_states.count(&new_state) > 0 && new_positions.size() > 1) {
         // Cycle detected. We ignore it unless it is the only solution.
         continue;
       }
