@@ -15,7 +15,7 @@ set(TEST_MODULE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/test_module.py")
 set(PYEXE_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/pyexe.py")
 set(CC_TEST_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/run_cc_test.py")
 
-add_compile_options("-std=c++11")
+add_compile_options("-std=c++17")
 
 include(CMakeParseArguments)
 
