@@ -7,6 +7,7 @@
 #define THIRD_PARTY_PY_PYTYPE_TYPEGRAPH_METRICS_H_
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace devtools_python_typegraph {
@@ -38,7 +39,7 @@ class NodeMetrics {
 class VariableMetrics {
  public:
   VariableMetrics(std::size_t binding_count, std::vector<NodeID> node_ids)
-      : binding_count_(binding_count), node_ids_(node_ids) {}
+      : binding_count_(binding_count), node_ids_(std::move(node_ids)) {}
 
   ~VariableMetrics() {}
 
@@ -53,8 +54,8 @@ class VariableMetrics {
 
 class QueryStep {
  public:
-  QueryStep(std::size_t cfgnode, std::vector<std::size_t> bindings, int depth):
-    cfgnode_(cfgnode), bindings_(bindings), depth_(depth) {}
+  QueryStep(std::size_t cfgnode, std::vector<std::size_t> bindings, int depth)
+      : cfgnode_(cfgnode), bindings_(std::move(bindings)), depth_(depth) {}
   std::size_t cfgnode() const { return cfgnode_; }
   std::vector<std::size_t> bindings() const { return bindings_; }
   int depth() const { return depth_; }
@@ -101,7 +102,7 @@ class QueryMetrics {
   void add_visited_node() { nodes_visited_ += 1; }
 
   std::vector<QueryStep> steps() const { return steps_; }
-  void add_step(QueryStep step) { steps_.push_back(step); }
+  void add_step(QueryStep step) { steps_.push_back(std::move(step)); }
 
   NodeID start_node() const { return start_node_; }
 
@@ -155,7 +156,8 @@ class SolverMetrics {
  public:
   SolverMetrics(std::vector<QueryMetrics> query_metrics,
                 CacheMetrics cache_metrics)
-      : query_metrics_(query_metrics), cache_metrics_(cache_metrics) {}
+      : query_metrics_(std::move(query_metrics)),
+        cache_metrics_(std::move(cache_metrics)) {}
 
   ~SolverMetrics() {}
 
@@ -174,9 +176,9 @@ class Metrics {
           std::vector<VariableMetrics> variable_metrics,
           std::vector<SolverMetrics> solver_metrics)
       : binding_count_(binding_count),
-        cfg_node_metrics_(cfg_node_metrics),
-        variable_metrics_(variable_metrics),
-        solver_metrics_(solver_metrics) {}
+        cfg_node_metrics_(std::move(cfg_node_metrics)),
+        variable_metrics_(std::move(variable_metrics)),
+        solver_metrics_(std::move(solver_metrics)) {}
 
   ~Metrics() {}
 

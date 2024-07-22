@@ -352,9 +352,10 @@ static PyObject* NewCFGNode(PyProgramObj* self,
   }
   if (condition_obj) {
     auto bind_obj = reinterpret_cast<PyBindingObj*>(condition_obj);
-    return WrapCFGNode(self, self->program->NewCFGNode(name, bind_obj->attr));
+    return WrapCFGNode(
+        self, self->program->NewCFGNode(std::move(name), bind_obj->attr));
   }
-  return WrapCFGNode(self, self->program->NewCFGNode(name));
+  return WrapCFGNode(self, self->program->NewCFGNode(std::move(name)));
 }
 
 static std::vector<typegraph::Binding*> ParseBindingList(PyObject* list) {

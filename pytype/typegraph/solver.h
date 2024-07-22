@@ -23,7 +23,6 @@
 #include <deque>
 #include <functional>  // For std::hash
 #include <limits>
-#include <memory>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -63,7 +62,7 @@ class State {
  public:
   // Initialize a state that starts at the given cfg node. It needs to solve
   // a list of goals to succeed.
-  State(const CFGNode* pos, const GoalSet& goals);
+  State(const CFGNode* pos, GoalSet goals);
   State(const CFGNode* pos, const std::vector<const Binding*>& goals);
   ~State();
 

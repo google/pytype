@@ -91,8 +91,8 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
   return results;
 }
 
-State::State(const CFGNode* pos, const GoalSet& goals)
-    : pos_(pos), goals_(goals) {}
+State::State(const CFGNode* pos, GoalSet goals)
+    : pos_(pos), goals_(std::move(goals)) {}
 
 State::State(const CFGNode* pos, const std::vector<const Binding*>& goals)
     : pos_(pos), goals_(goals.begin(), goals.end()) {}
@@ -147,8 +147,9 @@ std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
     if (seen.count(node) || blocked.count(node))
       continue;
     seen.insert(node);
-    for (auto n : node->incoming())
-      previous.insert({n, node});
+    for (auto n : node->incoming()) {
+      previous.emplace(n, node);
+    }
     queue.insert(queue.end(), node->incoming().begin(), node->incoming().end());
   }
   std::deque<const CFGNode*> path;
@@ -237,14 +238,12 @@ QueryResult PathFinder::FindNodeBackwards(
 }  // namespace internal
 
 Solver::Solver(const Program* program)
-    : state_cache_hits_(0),
-      state_cache_misses_(0),
-      program_(program) {}
+    : state_cache_hits_(0), state_cache_misses_(0), program_(program) {}
 
 SolverMetrics Solver::CalculateMetrics() const {
   auto cm = CacheMetrics(solved_states_.size(), state_cache_hits_,
                          state_cache_misses_);
-  return SolverMetrics(std::vector<QueryMetrics>(query_metrics_), cm);
+  return SolverMetrics(query_metrics_, std::move(cm));
 }
 
 bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
@@ -282,7 +281,7 @@ bool Solver::FindSolution(const internal::State& state,
   for (const Binding* goal : state.goals()) goal_ids.push_back(goal->id());
 
   query_metrics_.back().add_step(
-      QueryStep(state.pos()->id(), goal_ids, current_depth));
+      QueryStep(state.pos()->id(), std::move(goal_ids), current_depth));
   for (const Binding* goal : state.goals()) {
     LOG(INFO) << indent << "Goal: " << goal->variable()->id() << " = "
               << goal->data();

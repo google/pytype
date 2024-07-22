@@ -15,11 +15,12 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
-#include "reachable.h"
 #include "map_util.h"
 #include "metrics.h"
+#include "reachable.h"
 
 namespace devtools_python_typegraph {
 
@@ -74,8 +75,8 @@ class Program {
   Program(const Program&) = delete;
   Program& operator=(const Program&) = delete;
 
-  CFGNode* NewCFGNode(const std::string& name);
-  CFGNode* NewCFGNode(const std::string& name, Binding* condition);
+  CFGNode* NewCFGNode(std::string name);
+  CFGNode* NewCFGNode(std::string name, Binding* condition);
   Variable* NewVariable();
   std::size_t CountCFGNodes() const { return cfg_nodes_.size(); }
 
@@ -87,8 +88,8 @@ class Program {
 
   const BindingData& default_data() const { return default_data_; }
 
-  void set_default_data(const BindingData& new_default) {
-    default_data_ = new_default;
+  void set_default_data(BindingData new_default) {
+    default_data_ = std::move(new_default);
   }
 
   std::size_t next_binding_id() const { return next_binding_id_; }
@@ -137,8 +138,8 @@ class CFGNode {
   CFGNode& operator=(const CFGNode&) = delete;
 
   // Create a new node, and connect it after this node.
-  CFGNode* ConnectNew(const std::string& name);
-  CFGNode* ConnectNew(const std::string& name, Binding* condition);
+  CFGNode* ConnectNew(std::string name);
+  CFGNode* ConnectNew(std::string name, Binding* condition);
 
   // Connect to an existing node. O(n), with n current number of outgoing edges.
   void ConnectTo(CFGNode* node);
@@ -183,7 +184,7 @@ class CFGNode {
   }
 
  private:
-  CFGNode(Program* program, const std::string& name, std::size_t id,
+  CFGNode(Program* program, std::string name, std::size_t id,
           Binding* condition, ReachabilityAnalyzer* backward_reachability);
 
   const std::string name_;
@@ -294,7 +295,7 @@ class Binding {
   Origin* FindOrigin(const CFGNode* node) const;
 
  private:
-  Binding(Program* program, Variable* variable, const BindingData& data,
+  Binding(Program* program, Variable* variable, BindingData data,
           std::size_t id);
   Origin* FindOrAddOrigin(CFGNode* node);
 

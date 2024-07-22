@@ -17,20 +17,19 @@
 
 namespace devtools_python_typegraph {
 
-CFGNode* Program::NewCFGNode(const std::string& name) {
-  return NewCFGNode(name, nullptr);
+CFGNode* Program::NewCFGNode(std::string name) {
+  return NewCFGNode(std::move(name), nullptr);
 }
 
-CFGNode* Program::NewCFGNode(const std::string& name, Binding* condition) {
+CFGNode* Program::NewCFGNode(std::string name, Binding* condition) {
   // Count the number of nodes so far and use that as ID
   InvalidateSolver();
   std::size_t node_nr = CountCFGNodes();
   int n = backward_reachability_->add_node();
   CHECK(n == node_nr) <<
       "internal error: wrong reachability cache node count.";
-  auto node = memory_util::WrapUnique(
-      new CFGNode(this, name, node_nr, condition,
-                  backward_reachability_.get()));
+  auto node = memory_util::WrapUnique(new CFGNode(
+      this, std::move(name), node_nr, condition, backward_reachability_.get()));
   CFGNode* np = node.get();
   cfg_nodes_.push_back(std::move(node));
   return np;
@@ -100,14 +99,14 @@ Metrics Program::CalculateMetrics() {
     solver_metrics.push_back(solver_->CalculateMetrics());
   }
 
-  return Metrics(binding_count, cfg_node_metrics, variable_metrics,
-                 solver_metrics);
+  return Metrics(binding_count, std::move(cfg_node_metrics),
+                 std::move(variable_metrics), std::move(solver_metrics));
 }
 
-CFGNode::CFGNode(Program* program, const std::string& name, std::size_t id,
+CFGNode::CFGNode(Program* program, std::string name, std::size_t id,
                  Binding* condition,
                  ReachabilityAnalyzer* backward_reachability)
-    : name_(name),
+    : name_(std::move(name)),
       id_(id),
       program_(program),
       condition_(condition),
@@ -115,12 +114,12 @@ CFGNode::CFGNode(Program* program, const std::string& name, std::size_t id,
 
 CFGNode::~CFGNode() {}
 
-CFGNode* CFGNode::ConnectNew(const std::string& name) {
-  return ConnectNew(name, nullptr);
+CFGNode* CFGNode::ConnectNew(std::string name) {
+  return ConnectNew(std::move(name), nullptr);
 }
 
-CFGNode* CFGNode::ConnectNew(const std::string& name, Binding* condition) {
-  CFGNode* node = program_->NewCFGNode(name, condition);
+CFGNode* CFGNode::ConnectNew(std::string name, Binding* condition) {
+  CFGNode* node = program_->NewCFGNode(std::move(name), condition);
 
   this->ConnectTo(node);
   return node;
@@ -174,9 +173,9 @@ void Origin::AddSourceSet(const SourceSet& source_set) {
 }
 
 // Create a Binding, and also registers it with its CFG node.
-Binding::Binding(Program* program, Variable* variable, const BindingData& data,
+Binding::Binding(Program* program, Variable* variable, BindingData data,
                  std::size_t id)
-    : variable_(variable), data_(data), program_(program), id_(id) {}
+    : variable_(variable), data_(std::move(data)), program_(program), id_(id) {}
 
 Binding::~Binding() {}
 
