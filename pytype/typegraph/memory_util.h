@@ -8,7 +8,6 @@
 #define PYTYPE_TYPEGRAPH_MEMORY_UTIL_H_
 
 #include <memory>
-#include <type_traits>
 
 namespace devtools_python_typegraph {
 
@@ -21,14 +20,6 @@ std::unique_ptr<T> make_unique(Args&&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-// WrapUnique wraps a pointer in a unique_ptr. Unlike make_unique, it can be
-// used for classes that have private constructors.
-template<typename T>
-std::unique_ptr<T> WrapUnique(T* ptr) {
-  static_assert(!std::is_array<T>::value, "array types are unsupported");
-  static_assert(std::is_object<T>::value, "non-object types are unsupported");
-  return std::unique_ptr<T>(ptr);
-}
 }  // namespace memory_util
 
 }  // namespace devtools_python_typegraph

@@ -53,8 +53,7 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
                       std::inserter(new_goals, new_goals.begin()),
                       pointer_less<Binding>());
   std::vector<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> stack;
-  stack.push_back(
-      std::make_tuple(goals_to_remove, seen_goals, removed_goals, new_goals));
+  stack.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
   std::vector<RemoveResult> results;
   while (!stack.empty()) {
     std::tie(
@@ -68,24 +67,22 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
     goals_to_remove.erase(goals_to_remove.begin());
     if (seen_goals.count(goal)) {
       // Only process a goal once, to prevent infinite loops.
-      stack.push_back(std::make_tuple(
-          goals_to_remove, seen_goals, removed_goals, new_goals));
+      stack.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
       continue;
     }
     seen_goals.insert(goal);
     const auto* origin = goal->FindOrigin(pos);
     if (!origin) {
       new_goals.insert(goal);
-      stack.push_back(std::make_tuple(
-          goals_to_remove, seen_goals, removed_goals, new_goals));
+      stack.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
       continue;
     }
     removed_goals.insert(goal);
     for (const auto& source_set : origin->source_sets) {
       GoalSet next_goals_to_remove(goals_to_remove);
       next_goals_to_remove.insert(source_set.begin(), source_set.end());
-      stack.push_back(std::make_tuple(
-          next_goals_to_remove, seen_goals, removed_goals, new_goals));
+      stack.emplace_back(std::move(next_goals_to_remove), seen_goals,
+                         removed_goals, new_goals);
     }
   }
   return results;
@@ -171,7 +168,6 @@ const CFGNode* PathFinder::FindHighestReachableWeight(
   std::vector<const CFGNode*> stack;
   stack.insert(stack.end(), start->incoming().begin(), start->incoming().end());
   int best_weight = -1;
-  int weight;
   const CFGNode* best_node = nullptr;
   const CFGNode* node;
   while (!stack.empty()) {
@@ -180,9 +176,9 @@ const CFGNode* PathFinder::FindHighestReachableWeight(
     if (node == start)
       // Don't allow loops back to the start.
       continue;
-    weight = map_util::FindOrDefault(weight_map, node, -1);
-    if (weight > best_weight) {
-      best_weight = weight;
+    const auto weight = weight_map.find(node);
+    if (weight != weight_map.end() && weight->second > best_weight) {
+      best_weight = weight->second;
       best_node = node;
     }
     if (!seen.insert(node).second) continue;
@@ -216,9 +212,9 @@ QueryResult PathFinder::FindNodeBackwards(
   blocked_.insert(shortest_path.begin(), shortest_path.end());
   std::unordered_map<const CFGNode*, int, CFGNodePtrHash> weights;
   int w = 0;
-  std::deque<const CFGNode*>::const_iterator it = shortest_path.cbegin();
-  for (; it != shortest_path.cend(); w++, it++)
-    weights[*it] = w;
+  for (const auto& x : shortest_path) {
+    weights[x] = w++;
+  }
   std::deque<const CFGNode*> path;
   const CFGNode* node = start;
   while (true) {
@@ -249,15 +245,13 @@ SolverMetrics Solver::CalculateMetrics() const {
 bool Solver::GoalsConflict(const internal::GoalSet& goals) const {
   std::unordered_map<const Variable*, const Binding*> variables;
   for (const Binding* goal : goals) {
-    const Binding* existing = map_util::FindPtrOrNull(variables,
-                                                      goal->variable());
-    if (existing) {
-      CHECK(existing != goal) << "Internal error. Duplicate goal.";
-      CHECK(existing->data() != goal->data()) <<
-          "Internal error. Duplicate data across bindings.";
+    const auto& [it, inserted] = variables.emplace(goal->variable(), goal);
+    if (!inserted) {
+      CHECK(it->second != goal) << "Internal error. Duplicate goal.";
+      CHECK(it->second->data() != goal->data())
+          << "Internal error. Duplicate data across bindings.";
       return true;
     }
-    variables[goal->variable()] = goal;
   }
   return false;
 }

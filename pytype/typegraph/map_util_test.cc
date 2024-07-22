@@ -35,13 +35,6 @@ TEST(MapUtilTest, FindPtrOrNullTest) {
   EXPECT_EQ(*res, val);
 }
 
-TEST(MapUtilTest, FindOrDefaultTest) {
-  std::unordered_map<int, int> m;
-  EXPECT_EQ(FindOrDefault(m, 1, 2), 2);
-  m[1] = 3;
-  EXPECT_EQ(FindOrDefault(m, 1, 2), 3);
-}
-
 }  // namespace
 
 }  // namespace map_util

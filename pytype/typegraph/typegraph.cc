@@ -28,7 +28,7 @@ CFGNode* Program::NewCFGNode(std::string name, Binding* condition) {
   int n = backward_reachability_->add_node();
   CHECK(n == node_nr) <<
       "internal error: wrong reachability cache node count.";
-  auto node = memory_util::WrapUnique(new CFGNode(
+  std::unique_ptr<CFGNode> node(new CFGNode(
       this, std::move(name), node_nr, condition, backward_reachability_.get()));
   CFGNode* np = node.get();
   cfg_nodes_.push_back(std::move(node));
@@ -37,7 +37,7 @@ CFGNode* Program::NewCFGNode(std::string name, Binding* condition) {
 
 Variable* Program::NewVariable() {
   LOG(DEBUG) << "Creating Variable v" << next_variable_id_;
-  auto u = memory_util::WrapUnique(new Variable(this, next_variable_id_));
+  std::unique_ptr<Variable> u(new Variable(this, next_variable_id_));
   next_variable_id_ += 1;
   Variable* up = u.get();
   variables_.push_back(std::move(u));
@@ -284,10 +284,8 @@ Binding* Variable::FindOrAddBinding(const BindingData& data) {
 }
 
 void Variable::RegisterBindingAtNode(Binding* binding, const CFGNode* node) {
-  if (!map_util::ContainsKey(cfg_node_to_bindings_, node)) {
-    cfg_node_to_bindings_[node] = SourceSet();
-  }
-  cfg_node_to_bindings_[node].insert(binding);
+  const auto& [it, _] = cfg_node_to_bindings_.emplace(node, SourceSet());
+  it->second.insert(binding);
 }
 
 Binding* Variable::AddBinding(const BindingData& data) {

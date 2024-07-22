@@ -63,17 +63,6 @@ V<M> FindPtrOrNull(const M& map, const K<M>& key) {
   return nullptr;
 }
 
-// FindOrDefault returns a const reference to the value associated with the
-// given key if it exists, otherwise returns a const reference to the given
-// default value.
-template<typename M>
-const V<M>& FindOrDefault(const M& map, const K<M>& key, const V<M>& value) {
-  auto it = map.find(key);
-  if (it != map.end())
-    return it->second;
-  return value;
-}
-
 }  // namespace map_util
 
 }  // namespace devtools_python_typegraph
