@@ -680,13 +680,13 @@ class VirtualMachine:
 
   def call_function_with_state(
       self,
-      state,
-      funcv,
-      posargs,
-      namedargs=None,
-      starargs=None,
-      starstarargs=None,
-      fallback_to_unsolvable=True,
+      state: frame_state.FrameState,
+      funcv: cfg.Variable,
+      posargs: Tuple[cfg.Variable, ...],
+      namedargs: Optional[Dict[str, cfg.Variable]] = None,
+      starargs: Optional[cfg.Variable] = None,
+      starstarargs: Optional[cfg.Variable] = None,
+      fallback_to_unsolvable: bool = True,
   ):
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
@@ -2054,18 +2054,20 @@ class VirtualMachine:
 
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
-    if self.ctx.python_version >= (3, 12) and op.arg & 1:
-      return self._load_method(state, op)
     name = op.argval
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
-    with self._suppress_opcode_tracing():
-      # LOAD_ATTR for @property methods generates an extra opcode trace for the
-      # implicit function call, which we do not want.
-      state, val = self.load_attr(state, obj, name)
+    if self.ctx.python_version >= (3, 12) and op.arg & 1:
+      state, val = self._load_method(state, obj, name)
+    else:
+      with self._suppress_opcode_tracing():
+        # LOAD_ATTR for @property methods generates an extra opcode trace for
+        # the implicit function call, which we do not want.
+        state, val = self.load_attr(state, obj, name)
+      state = state.push(val)
     # We need to trace both the object and the attribute.
     self.trace_opcode(op, name, (obj, val))
-    return state.push(val)
+    return state
 
   def _get_type_of_attr_to_store(self, node, op, obj, name):
     """Grabs the __annotations__ dict, if any, with the attribute type."""
@@ -3273,21 +3275,34 @@ class VirtualMachine:
     ret_var = self._get_generator_return(state.node, generator)
     return state.push(ret_var)
 
-  def _load_method(self, state, op):
-    """Implementation of the LOAD_METHOD opcode."""
-    name = op.argval
-    state, self_obj = state.pop()
+  def _load_method(self, state, self_obj, name):
+    """Loads and pushes a method on the stack.
+
+    Args:
+      state: the current VM state.
+      self_obj: the `self` object of the method.
+      name: the name of the method.
+
+    Returns:
+      (state, method) where `state` is the updated VM state and `method` is the
+      method that was loaded. The method is already pushed onto the stack,
+      either at the top or below the `self` object.
+    """
     state, result = self.load_attr(state, self_obj, name)
     # https://docs.python.org/3.11/library/dis.html#opcode-LOAD_METHOD says that
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
     state = self._push_null(state)
-    self.trace_opcode(op, name, (self_obj, result))
-    return state.push(result)
+    return state.push(result), result
 
   def byte_LOAD_METHOD(self, state, op):
-    return self._load_method(state, op)
+    """Implementation of the LOAD_METHOD opcode."""
+    name = op.argval
+    state, self_obj = state.pop()
+    state, method = self._load_method(state, self_obj, name)
+    self.trace_opcode(op, name, (self_obj, method))
+    return state
 
   def _store_new_var_in_local(self, state, var, new_var):
     """Assign a new var to a variable in locals."""
@@ -3745,8 +3760,25 @@ class VirtualMachine:
     return self.byte_POP_JUMP_FORWARD_IF_NONE(state, op)
 
   def byte_LOAD_SUPER_ATTR(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
+    """Implementation of the LOAD_SUPER_ATTR opcode."""
+    name = op.argval
+    state, (super_fn, arg_cls, arg_self) = state.popn(3)
+    # The 2nd-low bit indicates a two-argument super call.
+    if op.arg & 2:
+      super_args = (arg_cls, arg_self)
+    else:
+      super_args = ()
+    state, obj = self.call_function_with_state(state, super_fn, super_args)
+    # The 1st-low bit indicates a method load (similar to LOAD_ATTR).
+    if op.arg & 1:
+      state, val = self._load_method(state, obj, name)
+    else:
+      with self._suppress_opcode_tracing():
+        # LOAD_ATTR for @property methods generates an extra opcode trace for
+        # the implicit function call, which we do not want.
+        state, val = self.load_attr(state, obj, name)
+      state = state.push(val)
+    self.trace_opcode(op, name, (obj, val))
     return state
 
   def byte_CALL_INTRINSIC_1(self, state, op):
