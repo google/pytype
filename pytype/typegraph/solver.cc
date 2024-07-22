@@ -237,13 +237,12 @@ QueryResult PathFinder::FindNodeBackwards(
 }  // namespace internal
 
 Solver::Solver(const Program* program)
-    : solved_states_(new internal::StateMap),
-      state_cache_hits_(0),
+    : state_cache_hits_(0),
       state_cache_misses_(0),
       program_(program) {}
 
 SolverMetrics Solver::CalculateMetrics() const {
-  auto cm = CacheMetrics(solved_states_->size(), state_cache_hits_,
+  auto cm = CacheMetrics(solved_states_.size(), state_cache_hits_,
                          state_cache_misses_);
   return SolverMetrics(std::vector<QueryMetrics>(query_metrics_), cm);
 }
@@ -378,7 +377,7 @@ bool Solver::CanHaveSolution(
 bool Solver::RecallOrFindSolution(
     const internal::State& state, internal::StateSet& seen_states,
     int current_depth) {
-  const bool* status = map_util::FindOrNull(*solved_states_, state);
+  const bool* status = map_util::FindOrNull(solved_states_, state);
   if (status) {
     state_cache_hits_ += 1;
     query_metrics_.back().set_from_cache(true);
@@ -397,14 +396,14 @@ bool Solver::RecallOrFindSolution(
   // solvable state, even though we have not solved it yet. The reasoning is
   // that if it's possible to solve this state at this level of the tree, it can
   // also be solved in any of the children.
-  (*solved_states_)[state] = true;
+  solved_states_[state] = true;
   // Careful! Modifying seen_states would affect other recursive calls, so we
   // need to copy it.
   internal::StateSet new_seen_states(seen_states);
   new_seen_states.insert(&state);
 
   bool result = FindSolution(state, new_seen_states, current_depth);
-  (*solved_states_)[state] = result;
+  solved_states_[state] = result;
   return result;
 }
 

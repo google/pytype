@@ -237,7 +237,7 @@ class Solver {
   bool Solve_(const std::vector<const Binding*>& start_attrs,
              const CFGNode* start_node);
 
-  const std::unique_ptr<internal::StateMap> solved_states_;
+  internal::StateMap solved_states_;
   std::size_t state_cache_hits_;
   std::size_t state_cache_misses_;
 
