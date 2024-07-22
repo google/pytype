@@ -392,11 +392,12 @@ bool Solver::RecallOrFindSolution(
   solved_states_[state] = true;
   // Careful! Modifying seen_states would affect other recursive calls, so we
   // need to copy it.
-  internal::StateSet new_seen_states(seen_states);
-  new_seen_states.insert(&state);
-
-  bool result = FindSolution(state, new_seen_states, current_depth);
+  auto inserted = seen_states.insert(&state);
+  bool result = FindSolution(state, seen_states, current_depth);
   solved_states_[state] = result;
+  if (inserted.second) {
+    seen_states.erase(inserted.first);
+  }
   return result;
 }
 
