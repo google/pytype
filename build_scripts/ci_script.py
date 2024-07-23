@@ -14,29 +14,42 @@ STEP = collections.namedtuple("STEP", ["name", "command"])
 
 def _begin_step(s):
   print("")
-  print(f"BEGIN_STEP: {s.name}")
-  print(f"STEP_COMMAND: {shlex.join(s.command)}")
-  print("")
+  if os.getenv("GITHUB_ACTIONS"):
+    print(f"::group::{s.name}")
+  else:
+    print(f"BEGIN_STEP: {s.name}")
+  print(f"Command: {shlex.join(s.command)}")
+  print(flush=True)
 
 
 def _end_step(s):
-  print(f"\nEND_STEP: {s.name}\n")
+  print("")
+  if os.getenv("GITHUB_ACTIONS"):
+    print("::endgroup::")
+  else:
+    print(f"END_STEP: {s.name}")
+  print(flush=True)
 
 
 def _report_failure(s):
   print("")
-  print(f">>> STEP_FAILED: {s.name}")
-  print("")
+  if os.getenv("GITHUB_ACTIONS"):
+    print(f"::error::STEP FAILED: {s.name}")
+  else:
+    print(f">>> STEP_FAILED: {s.name}")
+  print(flush=True)
 
 
 def _run_steps(steps):
   for s in steps:
     _begin_step(s)
-    returncode, _ = build_utils.run_cmd(s.command, pipe=False)
-    if returncode != 0:
-      _report_failure(s)
-      sys.exit(1)
-    _end_step(s)
+    try:
+      returncode, _ = build_utils.run_cmd(s.command, pipe=False)
+      if returncode != 0:
+        _report_failure(s)
+        sys.exit(1)
+    finally:
+      _end_step(s)
 
 
 def main():
