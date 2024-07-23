@@ -1,7 +1,8 @@
+# The version in Ubuntu 20.04:
+cmake_minimum_required(VERSION 3.16)
+cmake_policy(SET CMP0148 OLD)
+
 project(PyType)
-# The minimum CMake version is currently governed by the CMake version that can
-# be installed on the Travis Trusty VMs with apt-get.
-cmake_minimum_required(VERSION 2.8)
 
 if (WIN32)
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
