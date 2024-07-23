@@ -3749,9 +3749,19 @@ class VirtualMachine:
     return state
 
   def byte_LOAD_LOCALS(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
+    return state.push(self.frame.f_locals.to_variable(state.node))
+
+  def byte_LOAD_FROM_DICT_OR_GLOBALS(self, state, op):
+    # TODO: b/350910471 - Implement to support PEP 695
     return state
+
+  def byte_LOAD_FROM_DICT_OR_DEREF(self, state, op):
+    state, loaded_locals = state.pop()
+    # Current locals have been pushed to top of the stack by LOAD_LOCALS. The
+    # following calls `self.load_local`, which uses `self.frame.f_locals`
+    # internally.
+    assert loaded_locals.data == [self.frame.f_locals]
+    return self.byte_LOAD_CLASSDEREF(state, op)
 
   def byte_POP_JUMP_IF_NOT_NONE(self, state, op):
     return self.byte_POP_JUMP_FORWARD_IF_NOT_NONE(state, op)
@@ -3792,16 +3802,6 @@ class VirtualMachine:
     if intrinsic_fn is None:
       raise VirtualMachineError(f"Unknown intrinsic function: {op.argval}")
     return intrinsic_fn(state)
-
-  def byte_LOAD_FROM_DICT_OR_GLOBALS(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
-
-  def byte_LOAD_FROM_DICT_OR_DEREF(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
 
   def byte_INTRINSIC_1_INVALID(self, state):
     return state

@@ -31,7 +31,7 @@ class ClassesTest(test_base.BaseTest):
     )
 
   def test_load_classderef(self):
-    """Exercises the Python 3 LOAD_CLASSDEREF opcode.
+    """Exercises the LOAD_CLASSDEREF (<=3.11) and LOAD_FROM_DICT_OR_DEREF (3.12+) opcode.
 
     Serves as a simple test for Python 2.
     """
