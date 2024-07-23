@@ -3,6 +3,7 @@
 import json
 import locale
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -177,7 +178,7 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
     with open(CMAKE_LOG, "w") as cmake_log:
       cmake_log.write(stdout)
   if returncode != 0:
-    print(f">>> FAILED: CMake command '{' '.join(cmd)}'")
+    print(f">>> FAILED: CMake command '{shlex.join(cmd)}'")
     if log_output:
       print(f">>>         Full CMake output is available in '{CMAKE_LOG}'.")
     return False
@@ -274,7 +275,7 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
     else:
       # Ninja output can be a lot. Printing it here will clutter the output of
       # this script. So, just tell the user how to repro the error.
-      print(f">>> FAILED: Ninja command '{' '.join(cmd)}'.")
+      print(f">>> FAILED: Ninja command '{shlex.join(cmd)}'.")
       print(">>>         Run it in the 'out' directory to reproduce.")
       print(f">>>         Full Ninja output is available in '{NINJA_LOG}'.")
       print(">>>         Failing test modules (if any) will be reported below.")

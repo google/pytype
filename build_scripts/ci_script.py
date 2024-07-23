@@ -3,6 +3,7 @@
 
 import collections
 import os
+import shlex
 import sys
 
 import build_utils
@@ -14,7 +15,7 @@ STEP = collections.namedtuple("STEP", ["name", "command"])
 def _begin_step(s):
   print("")
   print(f"BEGIN_STEP: {s.name}")
-  print(f"STEP_COMMAND: {' '.join(s.command)}")
+  print(f"STEP_COMMAND: {shlex.join(s.command)}")
   print("")
 
 
