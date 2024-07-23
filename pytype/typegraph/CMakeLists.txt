@@ -10,7 +10,6 @@ pybind11_add_module(
     cfg_logging.cc
     cfg_logging.h
     map_util.h
-    memory_util.h
     metrics.h
     pylogging.cc
     pylogging.h
@@ -24,7 +23,7 @@ pybind11_add_module(
 
 # pybind11_add_module changes the name of the output library, which makes
 # pytype unable to discover it.
-if (WIN32) 
+if (WIN32)
   set_target_properties(
     pytype.typegraph.cfg
     PROPERTIES

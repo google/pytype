@@ -11,7 +11,6 @@
 
 #include "cfg_logging.h"
 #include "map_util.h"
-#include "memory_util.h"
 #include "metrics.h"
 #include "reachable.h"
 #include "solver.h"
@@ -49,13 +48,13 @@ Program::Program()
     : entrypoint_(nullptr),
       next_variable_id_(0),
       next_binding_id_(0),
-      backward_reachability_(memory_util::make_unique<ReachabilityAnalyzer>()),
+      backward_reachability_(std::make_unique<ReachabilityAnalyzer>()),
       default_data_(nullptr) {}
 
 Program::~Program() {}
 
 Solver* Program::GetSolver() {
-  if (solver_ == nullptr) solver_ = memory_util::make_unique<Solver>(this);
+  if (solver_ == nullptr) solver_ = std::make_unique<Solver>(this);
   return solver_.get();
 }
 
@@ -192,7 +191,7 @@ Origin* Binding::FindOrigin(const CFGNode* node) const {
 Origin* Binding::FindOrAddOrigin(CFGNode* node) {
   auto it = node_to_origin_.find(node);
   if (it == node_to_origin_.end()) {
-    auto o = memory_util::make_unique<Origin>(node);
+    auto o = std::make_unique<Origin>(node);
     Origin* op = o.get();
     origins_.push_back(std::move(o));
     node_to_origin_[node] = op;

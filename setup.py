@@ -38,13 +38,12 @@ def get_typegraph_ext():
       depends=[
           'pytype/typegraph/cfg_logging.h',
           'pytype/typegraph/map_util.h',
-          'pytype/typegraph/memory_util.h',
           'pytype/typegraph/pylogging.h',
           'pytype/typegraph/reachable.h',
           'pytype/typegraph/solver.h',
           'pytype/typegraph/typegraph.h',
       ],
-      cxx_std=11,
+      cxx_std=17,
   )
 
 
