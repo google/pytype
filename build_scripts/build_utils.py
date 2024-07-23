@@ -1,7 +1,6 @@
 """Module with common utilities used by other build and test scripts."""
 
 import json
-import locale
 import os
 import shlex
 import shutil
@@ -123,14 +122,12 @@ def run_cmd(cmd, cwd=None, pipe=True):
     process_options = {
         "stdout": subprocess.PIPE,
         "stderr": subprocess.STDOUT,
+        "text": True,
     }
   if cwd:
     process_options["cwd"] = cwd
   with subprocess.Popen(cmd, **process_options) as process:
     stdout, _ = process.communicate()
-    if pipe:
-      # Popen.communicate returns a bytes object always.
-      stdout = stdout.decode(locale.getpreferredencoding())
     return process.returncode, stdout
 
 
@@ -228,7 +225,11 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
   # True.
   cmd = ["ninja", "-k", "1" if fail_fast else "100000"] + targets
   with subprocess.Popen(
-      cmd, cwd=OUT_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+      cmd,
+      cwd=OUT_DIR,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.STDOUT,
+      text=True,
   ) as process:
     failed_targets = []
     # When verbose output is requested, test failure logs are printed to stderr.
@@ -240,8 +241,6 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
         line = process.stdout.readline()
         if not line:
           break
-        # process.stdout.readline() always returns a 'bytes' object.
-        line = line.decode(locale.getpreferredencoding())
         ninja_log.write(line)
         msg_type, modname, logfile = parse_ninja_output_line(line)
         if msg_type == _NINJA_FAILURE_MSG:
