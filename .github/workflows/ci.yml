@@ -22,11 +22,6 @@ jobs:
             python-version: '3.12'
             experimental: true
     steps:
-    - name: Cancel previous
-      uses: styfle/cancel-workflow-action@0.12.1
-      with:
-        access_token: ${{ github.token }}
-
     - uses: actions/checkout@v4
       with:
         submodules: true
