@@ -5,6 +5,7 @@
 #include <set>
 #include <stack>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -404,7 +405,7 @@ std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
     }
     return result;
   }
-  std::set<Binding*, pointer_less<Binding>> seen_results;
+  std::unordered_set<Binding*> seen_results;
   std::stack<const CFGNode*> stack;
   CFGNodeSet seen;
   stack.push(viewpoint);
