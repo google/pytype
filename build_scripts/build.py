@@ -39,7 +39,7 @@ def main():
   ):
     sys.exit(1)
   print("Building all targets with Ninja ...\n")
-  if not build_utils.run_ninja(["all"], fail_fast=True):
+  if not build_utils.run_ninja(["all"], fail_fast=True, verbose=True):
     sys.exit(1)
   print("Pytype built successfully!\n")
 
