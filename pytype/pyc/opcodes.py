@@ -1198,10 +1198,32 @@ def _get_exception_bitmask(offset_to_op, exception_ranges):
   return in_exception
 
 
-def _add_setup_except(offset_to_op, exc_table):
+# Opcodes that, when preceeded by JUMP_BACKWARD, indicate an infinite loop
+# that's broken by an exception handler.
+_INFINITE_LOOPS_INDICATORS = (
+    # In 3.11+ `async for` loops end normally by thowing a StopAsyncIteration
+    # exception, which jumps to an END_ASYNC_FOR opcode via the exception table.
+    END_ASYNC_FOR,
+    # In 3.12+ generators end normally by throwing a StopIteration exception,
+    # which jumps to a CLEANUP_THROW opcode via the exception table.
+    CLEANUP_THROW,
+)
+
+# Opcodes that come up as exception targets but don't need a block.
+_IGNORED_EXCEPTION_TARGETS = _INFINITE_LOOPS_INDICATORS + (
+    # In 3.12+ list/dict/set comprehensions jump to a SWAP opcode, which cleans
+    # up the stack before re-raising the exception. The cleanup has no effect on
+    # type checking.
+    SWAP,
+)
+
+
+def _add_setup_except(
+    offset_to_op: Dict[float, Opcode], exc_table: pycnite.types.ExceptionTable
+):
   """Handle the exception table in 3.11+."""
   # In python 3.11, exception handling is no longer bytecode-based - see
-  # https://github.com/python/cpython/blob/main/Objects/exception_handling_notes.txt
+  # https://github.com/python/cpython/blob/3.11/Objects/exception_handling_notes.txt
   # This makes it hard for pytype to analyse code containing exceptions, so we
   # add back some opcodes to mark exception blocks.
   #
@@ -1217,7 +1239,7 @@ def _add_setup_except(offset_to_op, exc_table):
   seen_lines = set()
   exception_ranges = {}
   for e in exc_table.entries:
-    if isinstance(offset_to_op[e.target], END_ASYNC_FOR):
+    if isinstance(offset_to_op[e.target], _IGNORED_EXCEPTION_TARGETS):
       # This entry corresponds to an `async for` block.
       continue
     line = offset_to_op[e.start].line
@@ -1236,6 +1258,11 @@ def _add_setup_except(offset_to_op, exc_table):
   for off, op in offset_to_op.items():
     if not op.has_known_jump() or isinstance(op, SETUP_EXCEPT_311):
       continue
+    # `off` is only a float for SETUP_EXCEPT_311 and POP_BLOCK, both are
+    # filtered out (POP_BLOCK because it's not a jump).
+    off = cast(int, off)
+    # Since `op` has a jump, it must have an argument (the jump target).
+    op = cast(OpcodeWithArg, op)
     starts_in_exception = (1 << off) & in_exception
     ends_in_exception = (1 << op.argval) & in_exception
     if starts_in_exception and not ends_in_exception:
@@ -1254,14 +1281,19 @@ def _make_opcode_list(offset_to_op, python_version):
   for i, (off, op) in enumerate(op_items):
     index += 1
     if (
-        python_version == (3, 11)
+        # In 3.11 `async for` is compiled into an infinite loop, relying on the
+        # exception handler to break out. This causes the block graph to be
+        # pruned abruptly, so we need to remove the loop opcode.
+        python_version >= (3, 11)
         and isinstance(op, JUMP_BACKWARD)
         and i + 1 < len(op_items)
-        and isinstance(op_items[i + 1][1], END_ASYNC_FOR)
+        and isinstance(op_items[i + 1][1], _INFINITE_LOOPS_INDICATORS)
+    ) or (
+        # In 3.12 all generators are compiled into infinite loops, too.
+        # Exceptions are used to jump to CLEANUP_THROW instructions.
+        python_version >= (3, 12)
+        and isinstance(op, CLEANUP_THROW)
     ):
-      # In 3.11 `async for` is compiled into an infinite loop, relying on the
-      # exception handler to break out. This causes the block graph to be
-      # pruned abruptly, so we need to remove the loop opcode.
       #  We map the offset to the index of the next opcode so that jumps to
       # `op` are redirected correctly.
       offset_to_index[off] = index
