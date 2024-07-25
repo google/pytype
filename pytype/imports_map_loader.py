@@ -64,28 +64,32 @@ class ImportsMapBuilder:
         for short_path, paths in imports_multimap.items()
     }
 
+    dir_paths = {}
+    intermediate_dirs = set()
+
+    for short_path, full_path in sorted(imports_map.items()):
+      dir_paths[short_path] = full_path
+      # Collect intermediate directories.
+      # For example, for foo/bar/quux.py, collect foo and foo/bar.
+      # Avoid repeated work on common ancestors; it matters for huge maps.
+      intermediate_dir = short_path
+      while True:
+        intermediate_dir = os.path.dirname(intermediate_dir)
+        if not intermediate_dir or intermediate_dir in intermediate_dirs:
+          break
+        intermediate_dirs.add(intermediate_dir)
+
     # Add the potential directory nodes for adding "__init__", because some
     # build systems automatically create __init__.py in empty directories. These
     # are added with the path name appended with "/", mapping to the empty file.
     # See also load_pytd._import_file which also checks for an empty directory
     # and acts as if an empty __init__.py is there.
-    dir_paths = {}
-    for short_path, full_path in sorted(imports_map.items()):
-      dir_paths[short_path] = full_path
-      short_path_pieces = short_path.split(path_utils.sep)
-      # If we have a mapping file foo/bar/quux.py', then the pieces are
-      # ["foo", "bar", "quux"] and we want to add foo/__init__.py and
-      # foo/bar/__init__.py
-      for i in range(1, len(short_path_pieces)):
-        intermediate_dir_init = path_utils.join(
-            *(short_path_pieces[:i] + ["__init__"])
-        )
-        if (
-            intermediate_dir_init not in imports_map
-            and intermediate_dir_init not in dir_paths
-        ):
-          log.warning("Created empty __init__ %r", intermediate_dir_init)
-          dir_paths[intermediate_dir_init] = os.devnull
+    for intermediate_dir in intermediate_dirs:
+      intermediate_dir_init = os.path.join(intermediate_dir, "__init__")
+      if intermediate_dir_init not in dir_paths:
+        log.warning("Created empty __init__ %r", intermediate_dir_init)
+        dir_paths[intermediate_dir_init] = os.devnull
+
     return dir_paths
 
   def build_from_file(self, path: Optional[str]) -> Optional[ImportsMapType]:
