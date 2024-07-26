@@ -762,14 +762,39 @@ class SimpleFunction(SignedFunction):
     )
     return cls(signature, ctx)
 
+  def _skip_parameter_matching(self):
+    """Check whether we should skip parameter matching.
+
+    This is use to skip parameter matching for function calls in the context of
+    inference (pyi generation). This is to optimize the case where we don't
+    need to match parameters in cases which the function has explicit type
+    annotations, meaning that we don't need to infer the type.
+
+    Returns:
+      True if we should skip parameter matching.
+    """
+    # We can skip parameter matching if we don't have type any parameters. If we
+    # do, we can't skip it because we need to substitute the type parameters in
+    # the signature's annotations.
+    if self.signature.type_params:
+      return False
+    # We only skip in Infer.
+    if self.ctx.options.analyze_annotated:
+      return False
+
+    return self.signature.has_return_annotation or self.full_name == "__init__"
+
   def call(self, node, func, args, alias_map=None):
     args = args.simplify(node, self.ctx)
     callargs = self._map_args(node, args)
-    substs = self.match_args(node, args, alias_map)
-    # Substitute type parameters in the signature's annotations.
-    annotations = self.ctx.annotation_utils.sub_annotations(
-        node, self.signature.annotations, substs, instantiate_unbound=False
-    )
+    substs = []
+    annotations = self.signature.annotations
+    if not self._skip_parameter_matching():
+      substs = self.match_args(node, args, alias_map)
+      # Substitute type parameters in the signature's annotations.
+      annotations = self.ctx.annotation_utils.sub_annotations(
+          node, self.signature.annotations, substs, instantiate_unbound=False
+      )
     if self.signature.has_return_annotation:
       ret_type = annotations["return"]
       ret = ret_type.instantiate(node)
@@ -779,6 +804,7 @@ class SimpleFunction(SignedFunction):
       self_arg = ret
     else:
       self_arg = self.signature.get_self_arg(callargs)
-    mutations = self._mutations_generator(node, self_arg, substs)
-    node = abstract_utils.apply_mutations(node, mutations)
+    if not self._skip_parameter_matching():
+      mutations = self._mutations_generator(node, self_arg, substs)
+      node = abstract_utils.apply_mutations(node, mutations)
     return node, ret
