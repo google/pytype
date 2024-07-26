@@ -2908,7 +2908,6 @@ class VirtualMachine:
 
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
-    # TODO: b/345717799 - May need an update for 3.12
     state, yield_value = state.pop()
     yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
     yield_variable.PasteVariable(yield_value, state.node)
@@ -3627,11 +3626,15 @@ class VirtualMachine:
     # return value onto the stack and jumps past JUMP_BACKWARD_NO_INTERRUPT. See
     # https://github.com/python/cpython/blob/c6d5628be950bdf2c31243b4cc0d9e0b658458dd/Python/ceval.c#L2577
     # for the CPython source.
-    state, (generator, unused_send) = state.popn(2)
+    state, unused_send = state.pop()
+    generator = state.top()
     yield_var = self._get_generator_yield(state.node, generator)
     ret_var = self._get_generator_return(state.node, generator)
-    self.store_jump(op.target, state.push(ret_var))
-    return state.push(generator).push(yield_var)
+    if self.ctx.python_version >= (3, 12):
+      self.store_jump(op.target, state.push(ret_var))
+    else:
+      self.store_jump(op.target, state.set_top(ret_var))
+    return state.push(yield_var)
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
     # Check if this is a `case None` statement (3.11+ compiles it directly to a
@@ -3721,9 +3724,9 @@ class VirtualMachine:
     return state
 
   def byte_END_SEND(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    # Implements `del STACK[-2]`. Used to clean up when a generator exits.
+    state, top = state.pop()
+    return state.set_top(top)
 
   def byte_RESERVED(self, state, op):
     # TODO: b/345717799 - Implement
@@ -3744,7 +3747,8 @@ class VirtualMachine:
     return self.store_subscr(state, obj, subscr, val)
 
   def byte_CLEANUP_THROW(self, state, op):
-    # TODO: b/345717799 - Implement
+    # In 3.12 the only use of CLEANUP_THROW is for exception handling in
+    # generators. Pytype elides the opcode in opcodes::_make_opcode_list.
     del op
     return state
 
