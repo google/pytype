@@ -1252,7 +1252,7 @@ class VirtualMachine:
     # (3.10 had a specific COPY_DICT_WITHOUT_KEYS opcode to handle this but it
     # was removed in 3.11).
     if not (
-        self.ctx.python_version == (3, 11)
+        self.ctx.python_version >= (3, 11)
         and op.line in self._branch_tracker.matches.match_cases
     ):
       return state
