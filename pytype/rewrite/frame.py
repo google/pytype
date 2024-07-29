@@ -1,7 +1,7 @@
 """A frame of an abstract VM for type analysis of python bytecode."""
 
 import logging
-from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
+from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Tuple, Type
 
 from pycnite import marshal as pyc_marshal
 from pytype import datatypes
@@ -93,7 +93,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # All functions and classes created during execution
     self._functions: List[_FrameFunction] = []
     self._classes: List[abstract.InterpreterClass] = []
-    # All variables returned via RETURN_VALUE
+    # All variables returned via RETURN_VALUE/RETURN_CONST
     self._returns: List[_Var] = []
     # Handler for function calls.
     self._call_helper = function_call_helper.FunctionCallHelper(ctx, self)
@@ -354,6 +354,18 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         attr_bindings.append(variables.Binding(attr))
       return variables.Variable(tuple(attr_bindings), name)
 
+  def _load_method(
+      self, instance_var: _Var, method_name: str
+  ) -> Tuple[_Var, _Var]:
+    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
+    # this opcode should push two values onto the stack: either the unbound
+    # method and its `self` or NULL and the bound method. Since we always
+    # retrieve a bound method, we push the NULL
+    return (
+        self._ctx.consts.singles['NULL'].to_variable(),
+        self.load_attr(instance_var, method_name),
+    )
+
   def _pop_jump_if_false(self, opcode):
     unused_var = self._stack.pop()
     # TODO(b/324465215): Construct the real conditions for this jump.
@@ -389,8 +401,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # ---------------------------------------------------------------
   # Load and store operations
 
-  def byte_LOAD_CONST(self, opcode):
-    const = self._code.consts[opcode.arg]
+  def _get_const(self, oparg):
+    const = self._code.consts[oparg]
     if isinstance(const, tuple):
       # Tuple literals with all primitive elements are stored as a single raw
       # constant; we need to wrap each element in a variable for consistency
@@ -398,10 +410,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       val = self._ctx.abstract_loader.build_tuple(const)
     else:
       val = self._ctx.consts[const]
-    self._stack.push(val.to_variable())
+    return val.to_variable()
+
+  def byte_LOAD_CONST(self, opcode):
+    self._stack.push(self._get_const(opcode.arg))
 
   def byte_RETURN_VALUE(self, opcode):
     self._returns.append(self._stack.pop())
+
+  def byte_RETURN_CONST(self, opcode):
+    self._returns.append(self._get_const(opcode.arg))
 
   def byte_STORE_NAME(self, opcode):
     self.store_local(opcode.argval, self._stack.pop())
@@ -521,17 +539,19 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_LOAD_ATTR(self, opcode):
     attr_name = opcode.argval
     target_var = self._stack.pop()
-    self._stack.push(self.load_attr(target_var, attr_name))
+    if self._code.python_version >= (3, 12) and opcode.arg & 1:
+      (var1, var2) = self._load_method(target_var, attr_name)
+      self._stack.push(var1)
+      self._stack.push(var2)
+    else:
+      self._stack.push(self.load_attr(target_var, attr_name))
 
   def byte_LOAD_METHOD(self, opcode):
     method_name = opcode.argval
     instance_var = self._stack.pop()
-    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
-    # this opcode should push two values onto the stack: either the unbound
-    # method and its `self` or NULL and the bound method. Since we always
-    # retrieve a bound method, we push the NULL
-    self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
-    self._stack.push(self.load_attr(instance_var, method_name))
+    (var1, var2) = self._load_method(instance_var, method_name)
+    self._stack.push(var1)
+    self._stack.push(var2)
 
   def byte_IMPORT_NAME(self, opcode):
     full_name = opcode.argval
@@ -917,11 +937,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       ret = target.update(update)
     self._replace_atomic_stack_value(count, ret)
 
+  def _list_to_tuple(self, var: _Var) -> _Var:
+    target = abstract.get_atomic_constant(var, list)
+    return abstract.Tuple(self._ctx, tuple(target)).to_variable()
+
   def byte_LIST_TO_TUPLE(self, opcode):
-    target_var = self._stack.pop()
-    target = abstract.get_atomic_constant(target_var, list)
-    ret = abstract.Tuple(self._ctx, tuple(target)).to_variable()
-    self._stack.push(ret)
+    self._stack.push(self._list_to_tuple(self._stack.pop()))
 
   def byte_FORMAT_VALUE(self, opcode):
     if opcode.arg & pyc_marshal.Flags.FVS_MASK:
@@ -981,3 +1002,24 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_ROT_N(self, opcode):
     self._stack.rotn(opcode.arg)
+
+  # ---------------------------------------------------------------
+  # Intrinsic function calls
+
+  def _call_intrinsic(self, opcode):
+    try:
+      intrinsic_impl = getattr(self, f'byte_intrinsic_{opcode.argval}')
+    except AttributeError as e:
+      raise NotImplementedError(
+          f'Intrinsic function {opcode.argval} not implemented'
+      ) from e
+    intrinsic_impl()
+
+  def byte_CALL_INTRINSIC_1(self, opcode):
+    self._call_intrinsic(opcode)
+
+  def byte_CALL_INTRINSIC_2(self, opcode):
+    self._call_intrinsic(opcode)
+
+  def byte_intrinsic_INTRINSIC_LIST_TO_TUPLE(self):
+    self._stack.push(self._list_to_tuple(self._stack.pop()))
