@@ -65,6 +65,27 @@ class CollectAnnotationTargetsVisitor(pyc.CodeVisitor):
       ):
         # For type comments attached to multi-opcode lines, we want to mark the
         # latest 'store' opcode and attach the type comment to it.
+        # Except that in 3.12+ list/dict/set comprehensions are inlined and end
+        # with a STORE_FAST opcode, which set the iteration variable to NULL.
+        # E.g.  `foo = [x for x in y]` ends with:
+        #     END_FOR
+        #     STORE_FAST foo
+        #     STORE_FAST x
+        # In this case we want to attach the comment to the 2nd to last opcode.
+        #
+        # Brittleness alert:
+        # Taking the last opcode in a line is possibly confusing, e.g. for:
+        #     a = ''; b = 1  # type: int
+        # Matching comprehensions based on the 3 opcodes could probably also
+        # fail. Feel free to adjust as necessary.
+        if (
+            code.python_version >= (3, 12)
+            and i >= 2
+            and isinstance(op, opcodes.STORE_FAST)
+            and isinstance(co_code[i - 1], opcodes.STORE_FAST)
+            and isinstance(co_code[i - 2], opcodes.END_FOR)
+        ):
+          continue
         self.store_ops[op.line] = op
     return code
 
