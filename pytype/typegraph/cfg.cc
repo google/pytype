@@ -505,7 +505,7 @@ PyDoc_STRVAR(
     "stay in memory.");
 
 PyTypeObject PyProgram = {
-  PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "Program",
+  ob_base: PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "Program",
   tp_basicsize : sizeof(PyProgramObj),
   tp_itemsize : 0,
   tp_dealloc : ProgramDealloc,
@@ -759,7 +759,7 @@ PyDoc_STRVAR(cfg_node_doc,
     "inside that node.");
 
 PyTypeObject PyCFGNode = {
-  PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "CFGNode",
+  ob_base: PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "CFGNode",
   tp_basicsize : sizeof(PyCFGNodeObj),
   tp_itemsize : 0,
   tp_dealloc : CFGNodeDealloc,
@@ -996,7 +996,7 @@ PyDoc_STRVAR(
     "Bindings.");
 
 PyTypeObject PyBinding = {
-  PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "Binding",
+  ob_base: PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "Binding",
   tp_basicsize : sizeof(PyBindingObj),
   tp_itemsize : 0,
   tp_dealloc : BindingDealloc,
@@ -1398,7 +1398,7 @@ PyDoc_STRVAR(
     "PasteVariable.");
 
 PyTypeObject PyVariable = {
-  PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "Variable",
+  ob_base: PyVarObject_HEAD_INIT(&PyType_Type, 0) tp_name : "Variable",
   tp_basicsize : sizeof(PyVariableObj),
   tp_itemsize : 0,
   tp_dealloc : VariableDealloc,
