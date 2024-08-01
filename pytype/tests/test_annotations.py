@@ -239,7 +239,9 @@ class AnnotationTest(test_base.BaseTest):
     )
 
   @test_utils.skipIfPy(
-      (3, 10), reason="Logs one error for all bad returns in <=3.9, >=3.11"
+      (3, 10),
+      (3, 12),
+      reason="Logs one error for all bad returns in <=3.9, =3.11",
   )
   def test_ambiguous_return(self):
     _, errors = self.InferWithErrors("""
@@ -255,9 +257,11 @@ class AnnotationTest(test_base.BaseTest):
     )
 
   @test_utils.skipUnlessPy(
-      (3, 10), reason="Logs one error per bad return in 3.10"
+      (3, 10),
+      (3, 12),
+      reason="Logs one error per bad return in 3.10 and 3.12",
   )
-  def test_ambiguous_return_310(self):
+  def test_ambiguous_return_310_312(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str) -> int:
         if x:

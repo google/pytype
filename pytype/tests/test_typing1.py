@@ -179,7 +179,14 @@ class TypingTest(test_base.BaseTest):
             "e1": r".*Expected:.*str.*\nActually passed:.*Type\[int\].*",
             "e2": r".*Expected:.*type.*\nActually passed:.*str.*",
             "e3": r".*Expected:.*str.*\nActually passed:.*Union.*",
-            "e4": r".*Expected:.*type.*\nActually passed:.*Union.*",
+            "e4": (
+                # 3.12+ unrolls the ternary into 2 separate branches with 2
+                # separate CALL instructions. This means both branches are
+                # individually type checked.
+                r".*Expected:.*type.*\nActually passed:.*str.*"
+                if self.python_version >= (3, 12)
+                else r".*Expected:.*type.*\nActually passed:.*Union.*"
+            ),
         },
     )
 

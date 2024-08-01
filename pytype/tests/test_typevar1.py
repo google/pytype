@@ -174,30 +174,38 @@ class TypeVarTest(test_base.BaseTest):
       from typing import TypeVar
       T = TypeVar("T", int, float, bound=str)  # invalid-typevar
       S = TypeVar("S", bound="")  # invalid-typevar
-      U = TypeVar("U", bound=str)  # ok
       V = TypeVar("V", bound=int if __random__ else float)  # invalid-typevar
+      U = TypeVar("U", bound=str)  # ok
     """)
 
   def test_covariant(self):
     _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", covariant=True)  # not-supported-yet
-      S = TypeVar("S", covariant=42)  # invalid-typevar[e1]
-      U = TypeVar("U", covariant=True if __random__ else False)  # invalid-typevar[e2]
+      U = TypeVar("U", covariant=True if __random__ else False)  # invalid-typevar[e1]
+      S = TypeVar("S", covariant=42)  # invalid-typevar[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"}
+        errors,
+        {
+            "e1": r"constant",
+            "e2": r"Expected.*bool.*Actual.*int",
+        },
     )
 
   def test_contravariant(self):
     _, errors = self.InferWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", contravariant=True)  # not-supported-yet
-      S = TypeVar("S", contravariant=42)  # invalid-typevar[e1]
-      U = TypeVar("U", contravariant=True if __random__ else False)  # invalid-typevar[e2]
+      U = TypeVar("U", contravariant=True if __random__ else False)  # invalid-typevar[e1]
+      S = TypeVar("S", contravariant=42)  # invalid-typevar[e2]
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Expected.*bool.*Actual.*int", "e2": r"constant"}
+        errors,
+        {
+            "e1": r"constant",
+            "e2": r"Expected.*bool.*Actual.*int",
+        },
     )
 
   def test_dont_propagate_pyval(self):
