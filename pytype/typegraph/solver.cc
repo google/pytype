@@ -5,6 +5,8 @@
 #include <deque>
 #include <functional>
 #include <iterator>
+#include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -103,6 +105,52 @@ std::size_t State::Hash() const {
   return hash;
 }
 
+QueryResult PathCacheTrie::InsertResult(
+    const CFGNode* start, const CFGNode* finish, const CFGNodeSet& blocked,
+    bool path_exists, std::deque<const CFGNode*> result_path) {
+  TrieNode* current_trie_node = &root_[start][finish];
+  std::unordered_map<CFGNode::IdType, std::unique_ptr<TrieNode>>*
+      current_children = &current_trie_node->children;
+
+  for (const CFGNode* node : blocked) {
+    auto it = current_children->find(node->id());
+    if (it == current_children->end()) {
+      auto inserted =
+          current_children->insert({node->id(), std::make_unique<TrieNode>()});
+      current_trie_node = inserted.first->second.get();
+      current_children = &current_trie_node->children;
+      continue;
+    }
+    current_trie_node = it->second.get();
+    current_children = &it->second->children;
+  }
+  current_trie_node->path = std::move(result_path);
+  current_trie_node->path_exists = path_exists;
+  return {path_exists, &current_trie_node->path.value()};
+}
+
+QueryResult PathCacheTrie::GetResult(const CFGNode* start,
+                                     const CFGNode* finish,
+                                     const CFGNodeSet& blocked) {
+  TrieNode* current_trie_node = &root_[start][finish];
+  std::unordered_map<CFGNode::IdType, std::unique_ptr<TrieNode>>*
+      current_children = &current_trie_node->children;
+
+  for (const CFGNode* node : blocked) {
+    auto it = current_children->find(node->id());
+    if (it == current_children->end()) {
+      return {false, nullptr};
+    }
+    current_trie_node = it->second.get();
+    current_children = &it->second->children;
+  }
+
+  if (current_trie_node->path.has_value()) {
+    return {current_trie_node->path_exists, &current_trie_node->path.value()};
+  }
+  return {false, nullptr};
+}
+
 bool PathFinder::FindAnyPathToNode(
     const CFGNode* start,
     const CFGNode* finish,
@@ -187,19 +235,18 @@ const CFGNode* PathFinder::FindHighestReachableWeight(
   return best_node;
 }
 
-QueryResult PathFinder::FindNodeBackwards(
-    const CFGNode* start,
-    const CFGNode* finish,
-    const CFGNodeSet& blocked) {
-  QueryKey query(start, finish, blocked);
-  const auto* res = map_util::FindOrNull(solved_find_queries_, query);
-  if (res)
-    return *res;
+QueryResult PathFinder::FindNodeBackwards(const CFGNode* start,
+                                          const CFGNode* finish,
+                                          const CFGNodeSet& blocked) {
+  QueryResult result = path_trie_.GetResult(start, finish, blocked);
+  if (result.path) {
+    return result;
+  }
   auto shortest_path = FindShortestPathToNode(start, finish, blocked);
   if (shortest_path.empty()) {
-    QueryResult result(/*path_exists=*/false, shortest_path);
-    solved_find_queries_[query] = result;
-    return result;
+    return path_trie_.InsertResult(start, finish, blocked,
+                                   /*path_exists=*/false,
+                                   std::move(shortest_path));
   }
   // We now have the shortest path to finish. All articulation points are
   // guaranteed to be on that path (since they're on *all* possible paths).
@@ -224,11 +271,7 @@ QueryResult PathFinder::FindNodeBackwards(
       break;
     node = FindHighestReachableWeight(node, blocked_, weights);
   }
-  QueryResult result;
-  result.path_exists = true;
-  result.path = std::move(path);
-  solved_find_queries_[query] = result;
-  return result;
+  return path_trie_.InsertResult(start, finish, blocked, true, std::move(path));
 }
 
 }  // namespace internal
@@ -322,7 +365,7 @@ bool Solver::FindSolution(const internal::State& state,
         if (origin_path.path_exists) {
           const CFGNode* where = origin->where;
           // Check if we found conditions on the way.
-          for (const CFGNode* node : origin_path.path) {
+          for (const CFGNode* node : *origin_path.path) {
             if (node != state.pos()) {
               where = node;
               break;

@@ -427,19 +427,19 @@ TEST(SolverTest, TestFindNodeBackwards) {
   EXPECT_FALSE(f.FindNodeBackwards(n8, n1, {n4}).path_exists);
   internal::QueryResult q1 = f.FindNodeBackwards(n8, n1, {});
   EXPECT_TRUE(q1.path_exists);
-  EXPECT_THAT(q1.path, ElementsAre(n5, n4));
+  EXPECT_THAT(*q1.path, ElementsAre(n5, n4));
   auto q2 = f.FindNodeBackwards(n8, n5, {});
   EXPECT_TRUE(q2.path_exists);
-  EXPECT_THAT(q2.path, ElementsAre(n5));
+  EXPECT_THAT(*q2.path, ElementsAre(n5));
   auto q3 = f.FindNodeBackwards(n5, n4, {});
   EXPECT_TRUE(q3.path_exists);
-  EXPECT_THAT(q3.path, ElementsAre(n5, n4));
+  EXPECT_THAT(*q3.path, ElementsAre(n5, n4));
   auto q4 = f.FindNodeBackwards(n5, n2, {});
   EXPECT_TRUE(q4.path_exists);
-  EXPECT_THAT(q4.path, ElementsAre(n5, n4, n2));
+  EXPECT_THAT(*q4.path, ElementsAre(n5, n4, n2));
   auto q5 = f.FindNodeBackwards(n5, n3, {});
   EXPECT_TRUE(q5.path_exists);
-  EXPECT_THAT(q5.path, ElementsAre(n5, n4));
+  EXPECT_THAT(*q5.path, ElementsAre(n5, n4));
 }
 
 TEST(SolverTest, TestConflict) {

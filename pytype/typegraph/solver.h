@@ -23,6 +23,8 @@
 #include <deque>
 #include <functional>  // For std::hash
 #include <limits>
+#include <memory>
+#include <optional>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -99,62 +101,44 @@ typedef std::unordered_map<const State, bool, map_util::hash<State>> StateMap;
 
 typedef std::set<const State*, pointer_less<State>> StateSet;
 
-// The PathFinder uses QueryKeys to cache queries. Each query is characterized
-// by the start and end nodes and the set of blocked nodes.
-// This class implements functions necessary for use in a hash map, namely Hash,
-// operator== and operator!=.
-class QueryKey {
- public:
-  QueryKey() = delete;
-  QueryKey(const CFGNode* s, const CFGNode* f,
-           const CFGNodeSet& b):
-    start_(s), finish_(f), blocked_(b), hash_(ComputeHash()) {}
-
-  std::size_t Hash() const { return hash_; }
-
-  std::size_t ComputeHash() const {
-    std::size_t hash = std::hash<const CFGNode*>{}(start_);
-    hash_mix<const CFGNode*>(hash, finish_);
-    for (auto n : blocked_)
-      hash_mix<const CFGNode*>(hash, n);
-    return hash;
-  }
-
-  bool operator==(const QueryKey& other) const {
-    return (start_ == other.start_ &&
-            finish_ == other.finish_ &&
-            blocked_ == other.blocked_);
-  }
-
-  bool operator!=(const QueryKey& other) const {
-    return !(start_ == other.start_ &&
-             finish_ == other.finish_ &&
-             blocked_ == other.blocked_);
-  }
-
- private:
-  const CFGNode* start_;
-  const CFGNode* finish_;
-  const CFGNodeSet blocked_;
-  const std::size_t hash_;
-};
-
 // QueryResult represents the result of a PathFinder query. It contains status
 // (true = path was found) and the actual path.
-// The copy constructor is implemented so that QueryResult can be easily used as
-// a value in a hash map.
 struct QueryResult {
   bool path_exists = false;
-  std::deque<const CFGNode*> path;
-  QueryResult() {}
-  QueryResult(bool path_exists, const std::deque<const CFGNode*>& path):
-    path_exists(path_exists), path(path) {}
-  QueryResult(const QueryResult& other):
-    path_exists(other.path_exists), path(other.path) {}
+  const std::deque<const CFGNode*>* path = nullptr;
 };
 
-typedef std::unordered_map<QueryKey, QueryResult, map_util::hash<QueryKey>>
-    QueryMap;
+class TrieNode {
+  friend class PathCacheTrie;
+
+ public:
+  TrieNode(): path_exists(false) {}
+
+ private:
+  std::optional<std::deque<const CFGNode*>> path;
+  bool path_exists;
+  // There's no need to backtrack which CFGNode we represent, thus id or the
+  // pointer to CFGNode is not stored.
+ private:
+  // Older versions of gcc don't allow self reference within the same class,
+  // thus made this a unique_ptr instead to avoid incomplete type errors.
+  std::unordered_map<CFGNode::IdType, std::unique_ptr<TrieNode>> children;
+};
+
+class PathCacheTrie {
+ public:
+  PathCacheTrie() {}
+  QueryResult InsertResult(const CFGNode* start, const CFGNode* finish,
+                           const CFGNodeSet& blocked, bool path_exists,
+                           std::deque<const CFGNode*> result_path);
+  QueryResult GetResult(const CFGNode* start, const CFGNode* finish,
+                        const CFGNodeSet& blocked);
+
+ private:
+  std::unordered_map<const CFGNode*,
+                     std::unordered_map<const CFGNode*, TrieNode>>
+      root_;
+};
 
 // PathFinder is a helper class for finding paths within a CFG. It memoizes
 // queries to improve performance.
@@ -188,7 +172,7 @@ class PathFinder {
                                 const CFGNodeSet& blocked);
 
  private:
-  QueryMap solved_find_queries_;
+  PathCacheTrie path_trie_;
 };
 
 }  // namespace internal

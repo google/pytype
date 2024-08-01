@@ -131,6 +131,9 @@ class Program {
 // This class is thread compatible.
 class CFGNode {
  public:
+  using IdType = std::size_t;
+
+ public:
   ~CFGNode();
 
   // Disallow copy and move semantics on CFGNode
@@ -157,7 +160,7 @@ class CFGNode {
   const Program* program() const { return program_; }
 
   // Node ID. Node IDs are dense (they don't have any gaps).
-  std::size_t id() const { return id_; }
+  IdType id() const { return id_; }
 
   // Node name. E.g. filename plus line number, for generating backtraces.
   const std::string& name() const { return name_; }
@@ -179,7 +182,7 @@ class CFGNode {
   // Ordering CFGNodes is useful for ordered data structures like std::set.
   bool operator<(const CFGNode& other) const { return id() < other.id(); }
 
-  std::size_t Hash() const {
+  IdType Hash() const {
     return id_;
   }
 
@@ -190,7 +193,7 @@ class CFGNode {
   const std::string name_;
   std::vector<CFGNode*> incoming_;
   std::vector<CFGNode*> outgoing_;
-  std::size_t id_;
+  IdType id_;
   std::vector<Binding*> bindings_;
   Program* program_;  // for alloc
   Binding* condition_;
