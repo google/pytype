@@ -226,11 +226,12 @@ class VirtualMachine:
         "POP_JUMP_FORWARD_IF_NOT_NONE",  # 3.11
         "POP_JUMP_IF_NOT_NONE",  # 3.12
     )
-    # `case _` generates a NOP if the match is not captured. If it is, we need
-    # to look for the opcode before the STORE_FAST, since the match itself does
-    # not generate any specific opcode, just stack manipulations.
+    # `case _:` (match not captured) generates a NOP.
+    # `case _ as x:` (match captured) generates a STORE_FAST. (In 3.11 it also
+    # generates other opcodes. We ignore them.) The match itself does not
+    # generate any specific opcode, just stack manipulations.
     is_default_match = opname == "NOP" or (
-        isinstance(op.next, opcodes.STORE_FAST)
+        isinstance(op, opcodes.STORE_FAST)
         and op.line in self._branch_tracker.matches.defaults
     )
     return is_match or is_cmp_match or is_default_match or is_none_match
