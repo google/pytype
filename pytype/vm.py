@@ -1724,7 +1724,8 @@ class VirtualMachine:
 
   def byte_STORE_FAST(self, state, op):
     name = op.argval
-    if isinstance(state.top().data[0], abstract.Null):
+    top = state.top()
+    if top.data and isinstance(top.data[0], abstract.Null):
       # Storing NULL in a "fast local" is equalivent to deleting the value in
       # f_locals.
       return self._del_name(op, state.pop_and_discard(), name, local=True)

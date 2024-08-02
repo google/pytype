@@ -40,6 +40,21 @@ class TestExec(test_base.BaseTest):
     """,
     )
 
+  def test_store_fast_empty_var(self):
+    self.assertNoCrash(
+        self.Check,
+        """
+        def bar():
+          raise NotImplementedError
+        def foo():
+          try:
+            bar()
+          except () as e: # Emits STORE_FAST for `e` and STACK[-1] is empty var
+                          # (i.e. no bindings)
+            pass
+        """,
+    )
+
 
 if __name__ == "__main__":
   test_base.main()
