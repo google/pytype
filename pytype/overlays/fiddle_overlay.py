@@ -27,6 +27,7 @@ _INSTANCE_CACHE: Dict[Tuple[Node, abstract.Class, str], abstract.Instance] = {}
 _CLASS_ALIASES = {
     "Config": "Config",
     "PaxConfig": "Config",
+    "TemplateConfig": "Config",
     "Partial": "Partial",
     "PaxPartial": "Partial",
 }
@@ -331,11 +332,12 @@ def is_fiddle_buildable_pytd(cls: pytd.Class) -> bool:
   # fiddle._src.config.Config
   fiddle = re.fullmatch(r"fiddle\.(.+\.)?(Config|Partial)", cls.name)
   pax = re.fullmatch(r"(.+\.)?pax_fiddle.(Pax)?(Config|Partial)", cls.name)
-  return bool(fiddle or pax)
+  cfbl = re.fullmatch(r"(.+\.)?configurable.(Template)?(Config|)", cls.name)
+  return bool(fiddle or pax or cfbl)
 
 
 def get_fiddle_buildable_subclass(cls: pytd.Class) -> str:
-  if re.search(r"\.(Pax)?Config$", cls.name):
+  if re.search(r"\.(Pax|Template)?Config$", cls.name):
     return "Config"
   if re.search(r"\.(Pax)?Partial$", cls.name):
     return "Partial"
