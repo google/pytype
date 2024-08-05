@@ -641,7 +641,6 @@ class CallTracer(vm.VirtualMachine):
         name in abstract_utils.TOP_LEVEL_IGNORE
         or self._is_typing_member(name, var)
         or self._is_future_feature(name, var)
-        or any(isinstance(v, abstract.Deleted) for v in var.data)
     )
 
   def pytd_for_types(self, defs):
