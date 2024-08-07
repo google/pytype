@@ -358,21 +358,29 @@ bool Solver::FindSolution(const internal::State& state,
       blocked.insert(vnodes.begin(), vnodes.end());
     }
     CFGNodeSet new_positions;
+    // calling FindNodeBackwards is expensive, even with the trie cache going on
+    // there, because trie queries can happen tons of time if the CFG gets
+    // complicated. thus gather unique sets of nodes that want to visit first to
+    // avoid querying for the same path multiple times.
+    std::unordered_set<const CFGNode*> unique_finish_nodes;
     for (const Binding* goal : result.new_goals) {
       for (const auto& origin : goal->origins()) {
-        internal::QueryResult origin_path = path_finder_.FindNodeBackwards(
-            state.pos(), origin->where, blocked);
-        if (origin_path.path_exists) {
-          const CFGNode* where = origin->where;
-          // Check if we found conditions on the way.
-          for (const CFGNode* node : *origin_path.path) {
-            if (node != state.pos()) {
-              where = node;
-              break;
-            }
+        unique_finish_nodes.insert(origin->where);
+      }
+    }
+    for (const CFGNode* finish_node : unique_finish_nodes) {
+      internal::QueryResult origin_path =
+          path_finder_.FindNodeBackwards(state.pos(), finish_node, blocked);
+      if (origin_path.path_exists) {
+        const CFGNode* where = finish_node;
+        // Check if we found conditions on the way.
+        for (const CFGNode* node : *origin_path.path) {
+          if (node != state.pos()) {
+            where = node;
+            break;
           }
-          new_positions.insert(where);
         }
+        new_positions.insert(where);
       }
     }
     for (const auto* new_pos : new_positions) {
