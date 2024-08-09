@@ -7,21 +7,25 @@ and to model path-specific visibility of nested data structures.
 import collections
 import dataclasses
 import logging
-from typing import Any, List, Set
+from typing import Any, Generator, List, Optional, Set, Tuple, TypeVar, Union
 
 from pytype import metrics
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
-_variable_size_metric = metrics.Distribution("variable_size")
+_variable_size_metric: metrics.Distribution = metrics.Distribution(
+    "variable_size"
+)
 
 
 # Across a sample of 19352 modules, for files which took more than 25 seconds,
 # the largest variable was, on average, 157. For files below 25 seconds, it was
 # 7. Additionally, for 99% of files, the largest variable was below 64, so we
 # use that as the cutoff.
-MAX_VAR_SIZE = 64
+MAX_VAR_SIZE: int = 64
 
 
 class Program:
@@ -42,7 +46,7 @@ class Program:
     variables: Variables in use. Will be used for assigning variable IDs.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     """Initialize a new (initially empty) program."""
     self.entrypoint = None
     self.cfg_nodes = []
@@ -56,10 +60,10 @@ class Program:
       self.solver = Solver(self)
     return self.solver
 
-  def InvalidateSolver(self):
+  def InvalidateSolver(self) -> None:
     self.solver = None
 
-  def NewCFGNode(self, name=None, condition=None):
+  def NewCFGNode(self, name=None, condition=None) -> "CFGNode":
     """Start a new CFG node."""
     self.InvalidateSolver()
     cfg_node = CFGNode(self, name, len(self.cfg_nodes), condition)
@@ -73,7 +77,9 @@ class Program:
       ret.update(b.variable for b in node.bindings)
     return ret
 
-  def NewVariable(self, bindings=None, source_set=None, where=None):
+  def NewVariable(
+      self, bindings=None, source_set=None, where=None
+  ) -> "Variable":
     """Create a new Variable.
 
     A Variable typically models a "union type", i.e., a disjunction of different
@@ -105,11 +111,11 @@ class Program:
     """Whether a path exists (going forward) from node src to node dst."""
     return _PathFinder().FindAnyPathToNode(dst, src, frozenset())
 
-  def MakeBindingId(self):
+  def MakeBindingId(self) -> int:
     self.next_binding_id += 1
     return self.next_binding_id - 1
 
-  def calculate_metrics(self):  # pylint: disable=invalid-name
+  def calculate_metrics(self) -> "Metrics":  # pylint: disable=invalid-name
     return Metrics()  # dummy implementation
 
 
@@ -142,7 +148,7 @@ class CFGNode:
       "condition",
   )
 
-  def __init__(self, program, name, cfgnode_id, condition):
+  def __init__(self, program, name, cfgnode_id, condition) -> None:
     """Initialize a new CFG node. Called from Program.NewCFGNode."""
     self.program = program
     self.id = cfgnode_id
@@ -158,7 +164,7 @@ class CFGNode:
     self.ConnectTo(cfg_node)
     return cfg_node
 
-  def ConnectTo(self, cfg_node):
+  def ConnectTo(self, cfg_node) -> None:
     """Connect this node to an existing node."""
     if self == cfg_node:
       return
@@ -166,7 +172,7 @@ class CFGNode:
     self.outgoing.add(cfg_node)
     cfg_node.incoming.add(self)
 
-  def CanHaveCombination(self, bindings):
+  def CanHaveCombination(self, bindings) -> bool:
     """Quick version of HasCombination below."""
     goals = set(bindings)
     seen = set()
@@ -201,10 +207,10 @@ class CFGNode:
         self.program.solver.Solve({b}, self) for b in bindings
     ) and self.program.solver.Solve(bindings, self)
 
-  def RegisterBinding(self, binding):
+  def RegisterBinding(self, binding) -> None:
     self.bindings.add(binding)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if self.condition:
       return "<cfgnode %d %s condition:%s>" % (
           self.id,
@@ -241,7 +247,7 @@ class Origin:
   where: CFGNode
   source_sets: Set[SourceSet] = dataclasses.field(default_factory=set)
 
-  def AddSourceSet(self, source_set):
+  def AddSourceSet(self, source_set) -> None:
     """Add a new possible source set."""
     self.source_sets.add(SourceSet(source_set))
 
@@ -269,7 +275,7 @@ class Binding:
       "_cfgnode_to_origin",
   )
 
-  def __init__(self, program, id_num, variable, data):
+  def __init__(self, program, id_num, variable, data) -> None:
     """Initialize a new Binding. Usually called through Variable.AddBinding."""
     self.program = program
     self.id = id_num
@@ -296,7 +302,7 @@ class Binding:
     self.program.CreateSolver()
     return self.program.solver.Solve({self}, viewpoint)
 
-  def _FindOrAddOrigin(self, cfg_node):
+  def _FindOrAddOrigin(self, cfg_node) -> Origin:
     try:
       origin = self._cfgnode_to_origin[cfg_node]
     except KeyError:
@@ -307,17 +313,17 @@ class Binding:
       cfg_node.RegisterBinding(self)
     return origin
 
-  def FindOrigin(self, cfg_node):
+  def FindOrigin(self, cfg_node) -> None:
     """Return an Origin instance for a CFGNode, or None."""
     return self._cfgnode_to_origin.get(cfg_node)
 
-  def AddOrigin(self, where, source_set):
+  def AddOrigin(self, where, source_set) -> None:
     """Add another possible origin to this binding."""
     self.program.InvalidateSolver()
     origin = self._FindOrAddOrigin(where)
     origin.AddSourceSet(source_set)
 
-  def CopyOrigins(self, other_binding, where, additional_sources=None):
+  def CopyOrigins(self, other_binding, where, additional_sources=None) -> None:
     """Copy the origins from another binding."""
     additional_sources = additional_sources or frozenset()
     if not where:
@@ -334,7 +340,7 @@ class Binding:
     new_binding.CopyOrigins(self, where)
     return variable
 
-  def HasSource(self, binding):
+  def HasSource(self, binding) -> bool:
     """Does this binding depend on a given source?"""
     if self is binding:
       return True
@@ -345,7 +351,7 @@ class Binding:
             return True
     return False
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     data_id = getattr(self.data, "id", id(self.data))
     return f"<binding of variable {self.variable.id} to data {data_id}>"
 
@@ -372,7 +378,7 @@ class Variable:
       "_cfgnode_to_bindings",
   )
 
-  def __init__(self, program, variable_id):
+  def __init__(self, program, variable_id) -> None:
     """Initialize a new Variable. Called through Program.NewVariable."""
     self.program = program
     self.id = variable_id
@@ -380,12 +386,12 @@ class Variable:
     self._data_id_to_binding = {}
     self._cfgnode_to_bindings = {}
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"<Variable v{self.id}: {len(self.bindings)} choices>"
 
   __str__ = __repr__
 
-  def Bindings(self, viewpoint):
+  def Bindings(self, viewpoint) -> List[Binding]:
     """Filters down the possibilities of bindings for this variable.
 
     It determines this by analyzing the control flow graph. Any definition for
@@ -451,7 +457,7 @@ class Variable:
     else:
       return [b.data for b in self.bindings if b.IsVisible(viewpoint)]
 
-  def _FindOrAddBinding(self, data):
+  def _FindOrAddBinding(self, data) -> Binding:
     """Add a new binding if necessary, otherwise return existing binding."""
     if (
         len(self.bindings) >= MAX_VAR_SIZE - 1
@@ -509,12 +515,14 @@ class Variable:
     new_binding.CopyOrigins(binding, None)
     return new_binding
 
-  def PasteVariable(self, variable, where=None, additional_sources=None):
+  def PasteVariable(
+      self, variable, where=None, additional_sources=None
+  ) -> None:
     """Adds all the bindings from another variable to this one."""
     for binding in variable.bindings:
       self.PasteBinding(binding, where, additional_sources)
 
-  def PasteBinding(self, binding, where=None, additional_sources=None):
+  def PasteBinding(self, binding, where=None, additional_sources=None) -> None:
     """Adds a binding from another variable to this one."""
     new_binding = self.AddBinding(binding.data)
     if all(origin.where is where for origin in binding.origins):
@@ -545,7 +553,7 @@ class Variable:
       new_binding.CopyOrigins(binding, where)
     return new_variable
 
-  def RegisterBindingAtNode(self, binding, node):
+  def RegisterBindingAtNode(self, binding, node) -> None:
     if node not in self._cfgnode_to_bindings:
       self._cfgnode_to_bindings[node] = {binding}
     else:
@@ -560,7 +568,7 @@ class Variable:
     return set(self._cfgnode_to_bindings)
 
 
-def _GoalsConflict(goals):
+def _GoalsConflict(goals) -> bool:
   """Are the given bindings conflicting?
 
   Args:
@@ -597,13 +605,13 @@ class State:
 
   __slots__ = ("pos", "goals")
 
-  def __init__(self, pos, goals):
+  def __init__(self, pos, goals) -> None:
     """Initialize a state that starts at the given cfg node."""
     assert all(isinstance(goal, Binding) for goal in goals)
     self.pos = pos
     self.goals = set(goals)  # Make a copy. We modify these.
 
-  def RemoveFinishedGoals(self):
+  def RemoveFinishedGoals(self) -> Generator[Tuple[set, set], Any, None]:
     """Remove all goals that can be fulfilled at the current CFG node.
 
     Generates all possible sets of new goals obtained by replacing a goal that
@@ -648,24 +656,24 @@ class State:
       else:
         yield removed_goals, new_goals
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     """Compute hash for this State. We use States as keys when memoizing."""
     return hash(self.pos) + hash(frozenset(self.goals))
 
   def __eq__(self, other):
     return self.pos == other.pos and self.goals == other.goals
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
 
 class _PathFinder:
   """Finds a path between two nodes and collects nodes with conditions."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self._solved_find_queries = {}
 
-  def FindAnyPathToNode(self, start, finish, blocked):
+  def FindAnyPathToNode(self, start, finish, blocked) -> bool:
     """Determine whether we can reach a node at all.
 
     Args:
@@ -690,7 +698,9 @@ class _PathFinder:
       stack.extend(node.incoming)
     return False
 
-  def FindShortestPathToNode(self, start, finish, blocked):
+  def FindShortestPathToNode(
+      self, start, finish, blocked
+  ) -> Optional[collections.deque]:
     """Find a shortest path from start to finish, going backwards.
 
     Args:
@@ -761,7 +771,9 @@ class _PathFinder:
       stack.extend(node.incoming)
     return best_node
 
-  def FindNodeBackwards(self, start, finish, blocked):
+  def FindNodeBackwards(
+      self, start: _T0, finish, blocked
+  ) -> Tuple[bool, Union[List[_T0], Tuple[()]]]:
     """Determine whether we can reach a CFG node, going backwards.
 
     This also determines the "articulation points" of the graph, between the
@@ -818,10 +830,12 @@ class Solver:
   they reoccur in the solving process.
   """
 
-  _cache_metric = metrics.MapCounter("cfg_solver_cache")
-  _goals_per_find_metric = metrics.Distribution("cfg_solver_goals_per_find")
+  _cache_metric: metrics.MapCounter = metrics.MapCounter("cfg_solver_cache")
+  _goals_per_find_metric: metrics.Distribution = metrics.Distribution(
+      "cfg_solver_goals_per_find"
+  )
 
-  def __init__(self, program):
+  def __init__(self, program) -> None:
     """Initialize a solver instance. Every instance has their own cache.
 
     Arguments:
@@ -869,7 +883,7 @@ class Solver:
     result = self._solved_states[state] = self._FindSolution(state, seen_states)
     return result
 
-  def _FindSolution(self, state, seen_states):
+  def _FindSolution(self, state, seen_states) -> bool:
     """Find a sequence of assignments that would solve the given state."""
     if state.pos.condition:
       state.goals.add(state.pos.condition)
