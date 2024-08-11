@@ -3,12 +3,11 @@
 # Outstanding TODOs:
 # - Auto PyPI upload?
 # - Build sdist here too while we're at it?
-# - Don't run this on every push ('on' param)
 
 name: Build wheels
 on:
-  push:
-    branches: [ main ]
+  # `on: create` "Runs your workflow when someone creates a Git reference (Git branch or tag) in the workflow's repository. Note: An event will not be created when you create more than three tags at once."  -- https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#create . See also: https://github.com/actions/runner/issues/1007
+  create: # The purpose of this line is to run only when we create a release, which is a tag. I'm assuming these are created in github somehow; if that assumption isn't true, we may need to use on: push: tags instead, cf https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#onpushbranchestagsbranches-ignoretags-ignore
   pull_request:
     branches: [ main ]
   workflow_dispatch:
