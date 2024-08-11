@@ -24,11 +24,12 @@ use Github pull requests for this purpose.
 Before you can build and test Pytype, you will have to install a few
 dependencies.
 
-1. __A C++11 compiler for your platform__: Pytype uses extension modules.
-   A C++11 compiler is required to build these extension modules.
+1. __A C++20 compiler for your platform__: Pytype uses extension modules.
+   A C++20 compiler is required to build these extension modules.
 2. __[CMake](https://cmake.org) version 2.8 or higher__: To build the extension
    modules and to run tests in parallel, Pytype makes use of a CMake based
-   build system.
+   build system. NOTE: if you have a [CMake Python distribution](https://pypi.org/project/cmake/)
+   installed and active, you can skip installing the official CMake distribution.
 5. __[ninja build](https://ninja-build.org/)__: Pytype's test utility scripts
    make use of ninja as the CMake generated build system. NOTE: if you
    have a [ninja Python distribution](https://pypi.org/project/ninja/) installed
