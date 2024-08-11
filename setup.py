@@ -43,7 +43,7 @@ def get_typegraph_ext():
           'pytype/typegraph/solver.h',
           'pytype/typegraph/typegraph.h',
       ],
-      cxx_std=17,
+      cxx_std=20,
   )
 
 
