@@ -3,14 +3,16 @@
 import difflib
 import enum
 import os
+import re
 import shutil
-
 from typing import List, Optional, Tuple
 
 import libcst as cst
 from libcst import codemod
 from libcst.codemod import visitors
+from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
+from pytype.pytd import pytd_utils
 
 
 class MergeError(Exception):
@@ -29,7 +31,7 @@ def _merge_csts(*, py_tree, pyi_tree):
   ).transform_module(py_tree)
 
 
-def merge_sources(*, py, pyi):
+def merge_sources(*, py: str, pyi: str) -> str:
   try:
     py_cst = cst.parse_module(py)
     pyi_cst = cst.parse_module(pyi)
@@ -58,12 +60,17 @@ def merge_files(
     mode: Mode,
     backup: Optional[str] = None
 ) -> bool:
-  """Merges a .py and a .pyi file."""
+  """Merges a .py and a .pyi (experimental: or a pickled pytd) file."""
 
   with open(py_path) as f:
     py_src = f.read()
-  with open(pyi_path) as f:
-    pyi_src = f.read()
+  _, ext = os.path.splitext(pyi_path)
+  if re.fullmatch(r"\.pickled(-\d+)?", ext):
+    with open(pyi_path, "rb") as file:
+      pyi_src = pytd_utils.Print(pickle_utils.DecodeAst(file.read()).ast)
+  else:
+    with open(pyi_path) as f:
+      pyi_src = f.read()
   annotated_src = merge_sources(py=py_src, pyi=pyi_src)
   changed = annotated_src != py_src
   if mode == Mode.PRINT:
