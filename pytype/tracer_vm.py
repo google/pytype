@@ -640,7 +640,7 @@ class CallTracer(vm.VirtualMachine):
     return (
         name in abstract_utils.TOP_LEVEL_IGNORE
         or self._is_typing_member(name, var)
-        or self._is_future_feature(name, var)
+        or self._is_future_feature(var)
     )
 
   def pytd_for_types(self, defs):
@@ -662,7 +662,13 @@ class CallTracer(vm.VirtualMachine):
       ):
         options = [self.ctx.convert.unsolvable]
       else:
-        options = var.FilteredData(self.ctx.exitpoint, strict=False)
+        all_options = var.FilteredData(self.ctx.exitpoint, strict=False)
+        options = [
+            o for o in all_options if not isinstance(o, abstract.Deleted)
+        ]
+        if all_options and not options:
+          # All bindings are deleted. Don't emit anything.
+          continue
       if len(options) > 1 and not all(
           isinstance(o, abstract.FUNCTION_TYPES) for o in options
       ):
@@ -783,7 +789,7 @@ class CallTracer(vm.VirtualMachine):
           return True
     return False
 
-  def _is_future_feature(self, name, var):
+  def _is_future_feature(self, var):
     for v in var.data:
       if isinstance(v, abstract.Instance) and v.cls.module == "__future__":
         return True

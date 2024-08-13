@@ -55,6 +55,45 @@ class TestExec(test_base.BaseTest):
         """,
     )
 
+  def test_unconditionally_del_export(self):
+    ty = self.Infer("""
+      foo = 1
+      def bar():
+        return 1
+      class Baz:
+        def __init__(self):
+          self.baz = 1
+      del foo   # unconditionally deleted --> should not appear in types
+      del bar   # unconditionally deleted --> should not appear in types
+      del Baz   # unconditionally deleted --> should not appear in types
+    """)
+    self.assertTypesMatchPytd(ty, "")
+
+  def test_conditionally_del_export(self):
+    ty = self.Infer("""
+      foo = 1
+      def bar():
+        return 1
+      class Baz:
+        def __init__(self):
+          self.baz = 1
+      if __random__:
+        del foo   # conditionally deleted --> should appear in types
+        del bar   # conditionally deleted --> should appear in types
+        del Baz   # conditionally deleted --> should appear in types
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+        # TODO: b/359466700 - Ideally we could say that `foo` might be absent.
+        foo: int
+        def bar() -> int: ...
+        class Baz:
+          baz: int
+          def __init__(self) -> None: ...
+        """,
+    )
+
 
 if __name__ == "__main__":
   test_base.main()
