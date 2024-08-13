@@ -505,52 +505,52 @@ PyDoc_STRVAR(
     "stay in memory.");
 
 PyTypeObject PyProgram = {
-  .ob_base= PyVarObject_HEAD_INIT(&PyType_Type, 0)
-  .tp_name = "Program",
-  .tp_basicsize = sizeof(PyProgramObj),
-  .tp_itemsize = 0,
-  .tp_dealloc = ProgramDealloc,
+    .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    .tp_name = "Program",
+    .tp_basicsize = sizeof(PyProgramObj),
+    .tp_itemsize = 0,
+    .tp_dealloc = ProgramDealloc,
 #if PY_VERSION_HEX >= 0x03080000  // 3.8
-  .tp_vectorcall_offset= -1,
+    .tp_vectorcall_offset = -1,
 # else
-  .tp_print = nullptr,
+    .tp_print = nullptr,
 # endif
-  .tp_getattr = nullptr,
-  .tp_setattr = nullptr,
+    .tp_getattr = nullptr,
+    .tp_setattr = nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
-  .tp_as_async = nullptr,
+    .tp_as_async = nullptr,
 #else
-  .tp_compare = nullptr,
+    .tp_compare = nullptr,
 #endif
-  .tp_repr = nullptr,
-  .tp_as_number = nullptr,
-  .tp_as_sequence = nullptr,
-  .tp_as_mapping = nullptr,
-  .tp_hash = nullptr,
-  .tp_call = nullptr,
-  .tp_str = nullptr,
-  .tp_getattro = ProgramGetAttro,
-  .tp_setattro = ProgramSetAttro,
-  .tp_as_buffer = nullptr,
-  .tp_flags = 0,
-  .tp_doc = program_doc,
-  .tp_traverse = nullptr,
-  .tp_clear = nullptr,
-  .tp_richcompare = nullptr,
-  .tp_weaklistoffset = 0,
-  .tp_iter = nullptr,
-  .tp_iternext = nullptr,
-  .tp_methods = program_methods,
-  .tp_members = nullptr,
-  .tp_getset = nullptr,
-  .tp_base = nullptr,
-  .tp_dict = nullptr,
-  .tp_descr_get = nullptr,
-  .tp_descr_set = nullptr,
-  .tp_dictoffset = 0,
-  .tp_init = nullptr,
-  .tp_alloc = nullptr,
-  .tp_new = ProgramNew,
+    .tp_repr = nullptr,
+    .tp_as_number = nullptr,
+    .tp_as_sequence = nullptr,
+    .tp_as_mapping = nullptr,
+    .tp_hash = nullptr,
+    .tp_call = nullptr,
+    .tp_str = nullptr,
+    .tp_getattro = ProgramGetAttro,
+    .tp_setattro = ProgramSetAttro,
+    .tp_as_buffer = nullptr,
+    .tp_flags = 0,
+    .tp_doc = program_doc,
+    .tp_traverse = nullptr,
+    .tp_clear = nullptr,
+    .tp_richcompare = nullptr,
+    .tp_weaklistoffset = 0,
+    .tp_iter = nullptr,
+    .tp_iternext = nullptr,
+    .tp_methods = program_methods,
+    .tp_members = nullptr,
+    .tp_getset = nullptr,
+    .tp_base = nullptr,
+    .tp_dict = nullptr,
+    .tp_descr_get = nullptr,
+    .tp_descr_set = nullptr,
+    .tp_dictoffset = 0,
+    .tp_init = nullptr,
+    .tp_alloc = nullptr,
+    .tp_new = ProgramNew,
 };
 
 // --- CFGNode -----------------------------------------------------------------
@@ -760,42 +760,42 @@ PyDoc_STRVAR(cfg_node_doc,
     "inside that node.");
 
 PyTypeObject PyCFGNode = {
-  .ob_base= PyVarObject_HEAD_INIT(&PyType_Type, 0)
-  .tp_name = "CFGNode",
-  .tp_basicsize = sizeof(PyCFGNodeObj),
-  .tp_itemsize = 0,
-  .tp_dealloc = CFGNodeDealloc,
+    .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    .tp_name = "CFGNode",
+    .tp_basicsize = sizeof(PyCFGNodeObj),
+    .tp_itemsize = 0,
+    .tp_dealloc = CFGNodeDealloc,
 #if PY_VERSION_HEX >= 0x03080000  // 3.8
-  .tp_vectorcall_offset= -1,
+    .tp_vectorcall_offset = -1,
 # else
-  .tp_print = nullptr,
+    .tp_print = nullptr,
 # endif
-  .tp_getattr = nullptr,
-  .tp_setattr = nullptr,
+    .tp_getattr = nullptr,
+    .tp_setattr = nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
-  .tp_as_async = nullptr,
+    .tp_as_async = nullptr,
 #else
-  .tp_compare = nullptr,
+    .tp_compare = nullptr,
 #endif
-  .tp_repr = CFGNodeRepr,
-  .tp_as_number = nullptr,
-  .tp_as_sequence = nullptr,
-  .tp_as_mapping = nullptr,
-  .tp_hash = nullptr,
-  .tp_call = nullptr,
-  .tp_str = CFGNodeRepr,
-  .tp_getattro = CFGNodeGetAttro,
-  .tp_setattro = CFGNodeSetAttro,
-  .tp_as_buffer = nullptr,
-  .tp_flags = 0,
-  .tp_doc = cfg_node_doc,
-  .tp_traverse = nullptr,
-  .tp_clear = nullptr,
-  .tp_richcompare = nullptr,
-  .tp_weaklistoffset = 0,
-  .tp_iter = nullptr,
-  .tp_iternext = nullptr,
-  .tp_methods = cfg_node_methods,
+    .tp_repr = CFGNodeRepr,
+    .tp_as_number = nullptr,
+    .tp_as_sequence = nullptr,
+    .tp_as_mapping = nullptr,
+    .tp_hash = nullptr,
+    .tp_call = nullptr,
+    .tp_str = CFGNodeRepr,
+    .tp_getattro = CFGNodeGetAttro,
+    .tp_setattro = CFGNodeSetAttro,
+    .tp_as_buffer = nullptr,
+    .tp_flags = 0,
+    .tp_doc = cfg_node_doc,
+    .tp_traverse = nullptr,
+    .tp_clear = nullptr,
+    .tp_richcompare = nullptr,
+    .tp_weaklistoffset = 0,
+    .tp_iter = nullptr,
+    .tp_iternext = nullptr,
+    .tp_methods = cfg_node_methods,
 };
 
 // --- Origin --------------------------------------------------------------
@@ -816,10 +816,10 @@ static PyStructSequence_Field origin_fields[] = {
     {nullptr}};
 
 static PyStructSequence_Desc origin_desc = {
-  .name = const_cast<char*>("Origin"),
-  .doc = origin_doc,
-  .fields = origin_fields,
-  .n_in_sequence = 2,
+    .name = const_cast<char*>("Origin"),
+    .doc = origin_doc,
+    .fields = origin_fields,
+    .n_in_sequence = 2,
 };
 
 // --- Binding ---------------------------------------------------------------
@@ -998,42 +998,42 @@ PyDoc_STRVAR(
     "Bindings.");
 
 PyTypeObject PyBinding = {
-  .ob_base= PyVarObject_HEAD_INIT(&PyType_Type, 0)
-  .tp_name = "Binding",
-  .tp_basicsize = sizeof(PyBindingObj),
-  .tp_itemsize = 0,
-  .tp_dealloc = BindingDealloc,
+    .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    .tp_name = "Binding",
+    .tp_basicsize = sizeof(PyBindingObj),
+    .tp_itemsize = 0,
+    .tp_dealloc = BindingDealloc,
 #if PY_VERSION_HEX >= 0x03080000  // 3.8
-  .tp_vectorcall_offset= -1,
+    .tp_vectorcall_offset = -1,
 # else
-  .tp_print = nullptr,
+    .tp_print = nullptr,
 # endif
-  .tp_getattr = nullptr,
-  .tp_setattr = nullptr,
+    .tp_getattr = nullptr,
+    .tp_setattr = nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
-  .tp_as_async = nullptr,
+    .tp_as_async = nullptr,
 #else
-  .tp_compare = nullptr,
+    .tp_compare = nullptr,
 #endif
-  .tp_repr = BindingRepr,
-  .tp_as_number = nullptr,
-  .tp_as_sequence = nullptr,
-  .tp_as_mapping = nullptr,
-  .tp_hash = nullptr,
-  .tp_call = nullptr,
-  .tp_str = BindingRepr,
-  .tp_getattro = BindingGetAttro,
-  .tp_setattro = nullptr,
-  .tp_as_buffer = nullptr,
-  .tp_flags = 0,
-  .tp_doc = binding_doc,
-  .tp_traverse = nullptr,
-  .tp_clear = nullptr,
-  .tp_richcompare = nullptr,
-  .tp_weaklistoffset = 0,
-  .tp_iter = nullptr,
-  .tp_iternext = nullptr,
-  .tp_methods = binding_methods,
+    .tp_repr = BindingRepr,
+    .tp_as_number = nullptr,
+    .tp_as_sequence = nullptr,
+    .tp_as_mapping = nullptr,
+    .tp_hash = nullptr,
+    .tp_call = nullptr,
+    .tp_str = BindingRepr,
+    .tp_getattro = BindingGetAttro,
+    .tp_setattro = nullptr,
+    .tp_as_buffer = nullptr,
+    .tp_flags = 0,
+    .tp_doc = binding_doc,
+    .tp_traverse = nullptr,
+    .tp_clear = nullptr,
+    .tp_richcompare = nullptr,
+    .tp_weaklistoffset = 0,
+    .tp_iter = nullptr,
+    .tp_iternext = nullptr,
+    .tp_methods = binding_methods,
 };
 
 // --- Variable ----------------------------------------------------------------
@@ -1401,42 +1401,42 @@ PyDoc_STRVAR(
     "PasteVariable.");
 
 PyTypeObject PyVariable = {
-  .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
-  .tp_name = "Variable",
-  .tp_basicsize = sizeof(PyVariableObj),
-  .tp_itemsize = 0,
-  .tp_dealloc = VariableDealloc,
+    .ob_base = PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    .tp_name = "Variable",
+    .tp_basicsize = sizeof(PyVariableObj),
+    .tp_itemsize = 0,
+    .tp_dealloc = VariableDealloc,
 #if PY_VERSION_HEX >= 0x03080000  // 3.8
-  .tp_vectorcall_offset = -1,
+    .tp_vectorcall_offset = -1,
 # else
-  .tp_print = nullptr,
+    .tp_print = nullptr,
 # endif
-  .tp_getattr = nullptr,
-  .tp_setattr = nullptr,
+    .tp_getattr = nullptr,
+    .tp_setattr = nullptr,
 #if PY_VERSION_HEX >= 0x03050000  // 3.5
-  .tp_as_async = nullptr,
+    .tp_as_async = nullptr,
 #else
-  .tp_compare = nullptr,
+    .tp_compare = nullptr,
 #endif
-  .tp_repr = VariableRepr,
-  .tp_as_number = nullptr,
-  .tp_as_sequence = nullptr,
-  .tp_as_mapping = nullptr,
-  .tp_hash = nullptr,
-  .tp_call = nullptr,
-  .tp_str = VariableRepr,
-  .tp_getattro = VariableGetAttro,
-  .tp_setattro = VariableSetAttro,
-  .tp_as_buffer = nullptr,
-  .tp_flags = 0,
-  .tp_doc = variable_doc,
-  .tp_traverse = nullptr,
-  .tp_clear = nullptr,
-  .tp_richcompare = nullptr,
-  .tp_weaklistoffset = 0,
-  .tp_iter = nullptr,
-  .tp_iternext = nullptr,
-  .tp_methods = variable_methods,
+    .tp_repr = VariableRepr,
+    .tp_as_number = nullptr,
+    .tp_as_sequence = nullptr,
+    .tp_as_mapping = nullptr,
+    .tp_hash = nullptr,
+    .tp_call = nullptr,
+    .tp_str = VariableRepr,
+    .tp_getattro = VariableGetAttro,
+    .tp_setattro = VariableSetAttro,
+    .tp_as_buffer = nullptr,
+    .tp_flags = 0,
+    .tp_doc = variable_doc,
+    .tp_traverse = nullptr,
+    .tp_clear = nullptr,
+    .tp_richcompare = nullptr,
+    .tp_weaklistoffset = 0,
+    .tp_iter = nullptr,
+    .tp_iternext = nullptr,
+    .tp_methods = variable_methods,
 };
 
 // --- cfg module and metrics --------------------------------------------------
