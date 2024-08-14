@@ -72,13 +72,6 @@ cc_library(
 
 cc_library(
   NAME
-    metrics
-  HDRS
-    metrics.h
-)
-
-cc_library(
-  NAME
     reachable
   SRCS
     reachable.cc

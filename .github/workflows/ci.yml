@@ -18,6 +18,12 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11']
         experimental: [false]
         include:
+          - os: macos-latest
+            python-version: '3.11'
+            experimental: true
+          - os: windows-latest
+            python-version: '3.11'
+            experimental: true
           - os: ubuntu-20.04
             python-version: '3.12'
             experimental: true
@@ -32,8 +38,9 @@ jobs:
         allow-prereleases: true
 
     - name: Install system packages
+      if: runner.os == 'Linux'
       run: |
-        sudo apt-get install bison cmake flex g++
+        sudo apt-get install -y bison cmake flex g++
 
     - name: Install Dependencies
       run: pip install -r requirements.txt
@@ -44,6 +51,6 @@ jobs:
 
     - name: Run Tests
       env:
-        LINT: ${{ matrix.python-version == '3.11' }}
+        LINT: ${{ runner.os == 'Linux' && matrix.python-version == '3.11' }}
       run: python build_scripts/ci_script.py
       continue-on-error: ${{ matrix.experimental }}
