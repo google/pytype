@@ -2497,13 +2497,11 @@ class VirtualMachine:
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
-    # TODO: b/345717799 - May need an update for 3.12
     return vm_utils.jump_if(
         state, op, self.ctx, jump_if_val=True, pop=vm_utils.PopBehavior.ALWAYS
     )
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
-    # TODO: b/345717799 - May need an update for 3.12
     return vm_utils.jump_if(
         state, op, self.ctx, jump_if_val=False, pop=vm_utils.PopBehavior.ALWAYS
     )
@@ -3731,7 +3729,6 @@ class VirtualMachine:
     return self.byte_POP_JUMP_IF_TRUE(state, op)
 
   def byte_INTERPRETER_EXIT(self, state, op):
-    # TODO: b/345717799 - Implement
     del op
     return state
 
@@ -3745,7 +3742,6 @@ class VirtualMachine:
     return state.set_top(top)
 
   def byte_RESERVED(self, state, op):
-    # TODO: b/345717799 - Implement
     del op
     return state
 
