@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=40.8.0", "ninja", "wheel", "pybind11>=2.10.1", "cmake>=3.16"]
+requires = ["setuptools>=40.8.0", "ninja", "wheel", "pybind11>=2.10.1"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytype]
