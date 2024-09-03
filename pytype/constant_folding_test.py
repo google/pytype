@@ -58,7 +58,7 @@ class TestFolding(test_base.UnitTest):
     return out
 
   def _fold(self, code):
-    code = constant_folding.optimize(code)
+    code = constant_folding.fold_constants(code)
     folded = self._find_load_folded(code)
     actual = [show_op(op) for op in folded]
     return actual

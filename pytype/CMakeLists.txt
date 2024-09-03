@@ -206,6 +206,7 @@ py_library(
   SRCS
     constant_folding.py
   DEPS
+    pytype.blocks.blocks
     pytype.pyc.pyc
 )
 

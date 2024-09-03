@@ -676,6 +676,13 @@ DEBUG_OPTIONS = [
         default=None,
         help="Flag used internally by some of pytype's subtools",
     ),
+    _Arg(
+        "--debug-constant-folding",
+        action="store_true",
+        dest="debug_constant_folding",
+        default=None,
+        help="Do a bytecode diff before and after the constant folding pass",
+    ),
 ]
 
 

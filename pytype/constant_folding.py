@@ -27,6 +27,7 @@ from typing import Any, Dict, FrozenSet, Tuple
 
 import attrs
 from pycnite import marshal as pyc_marshal
+from pytype.blocks import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 
@@ -268,7 +269,7 @@ class _FoldedOps:
 class _FoldConstants(pyc.CodeVisitor):
   """Fold constant literals in pyc code."""
 
-  def visit_code(self, code):
+  def visit_code(self, code: blocks.OrderedCode):
     """Visit code, folding literals."""
 
     def build_tuple(tup):
@@ -483,7 +484,7 @@ def from_literal(tup):
     return tuple(expand(tup))
 
 
-def optimize(code):
+def fold_constants(code: blocks.OrderedCode):
   """Fold all constant literals in the bytecode into LOAD_FOLDED_CONST ops."""
   return pyc.visit(code, _FoldConstants())
 

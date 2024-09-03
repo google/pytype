@@ -13,6 +13,7 @@ program execution.
 import collections
 import contextlib
 import dataclasses
+import difflib
 import enum
 import itertools
 import logging
@@ -519,7 +520,7 @@ class VirtualMachine:
 
   def compile_src(
       self, src, filename=None, mode="exec", store_blockgraph=False
-  ):
+  ) -> blocks.OrderedCode:
     """Compile the given source code."""
     code = pyc.compile_src(
         src,
@@ -600,7 +601,18 @@ class VirtualMachine:
       self.ctx.errorlog.ignored_type_comment(
           self.filename, line, self._director.type_comments[line]
       )
-    code = constant_folding.optimize(code)
+    if self.ctx.options.debug_constant_folding:
+      before = _bytecode_to_string(code)
+      code = constant_folding.fold_constants(code)
+      after = _bytecode_to_string(code)
+      print(
+          "\n".join(
+              difflib.unified_diff(before.splitlines(), after.splitlines())
+          )
+      )
+    else:
+      code = constant_folding.fold_constants(code)
+
     process_blocks.adjust_returns(code, self._director.block_returns)
 
     node, f_globals, f_locals, _ = self.run_bytecode(self.ctx.root_node, code)
@@ -3880,3 +3892,13 @@ class VirtualMachine:
   def byte_INTRINSIC_SET_FUNCTION_TYPE_PARAMS(self, state):
     # TODO: b/350910471 - Implement to support PEP 695
     return state
+
+
+def _bytecode_to_string(bytecode) -> str:
+  """Print bytecode in a textual form."""
+  lines = []
+  for block_idx, block in enumerate(bytecode.order):
+    lines.append(f"{block_idx}")
+    for instruction in block.code:
+      lines.append(f"     {instruction.line}    {instruction.name}")
+  return "\n".join(lines)

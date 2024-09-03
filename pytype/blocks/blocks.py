@@ -121,7 +121,7 @@ class OrderedCode:
   order: List[Block]
   python_version: Tuple[int, int]
 
-  def __init__(self, code, bytecode, order):
+  def __init__(self, code, bytecode, order: List[Block]):
     assert hasattr(code, "co_code")
     self.name = code.co_name
     self.filename = code.co_filename
