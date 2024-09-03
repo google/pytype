@@ -23,7 +23,7 @@ _V2 = TypeVar('_V2')
 
 _P = ParamSpec('_P')
 
-class _Summable(Protocol):
+class _Summable(Protocol[_T]):
   def __add__(self, __y: _T) -> _T: ...
 _SummableT = TypeVar('_SummableT', bound=_Summable)
 
