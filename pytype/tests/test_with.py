@@ -19,7 +19,7 @@ class TestWithStatement(test_base.BaseTest):
           return False
 
       l = []
-      for i in range(3):
+      for i in range(4):
         with NullContext() as val:
           assert val == 17
           l.append('w')
