@@ -255,6 +255,65 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
           await f2(foo.f1)
       """)
 
+  def test_aiter(self):
+    self.Check("""
+      from typing import AsyncIterable, AsyncIterator
+      async def gen1():
+        yield 5
+
+      async def gen2() -> AsyncIterable:
+        yield 5
+
+      async def gen3() -> AsyncIterable[int]:
+        yield 5
+
+      class gen4:
+        async def __aiter__(self) -> AsyncIterator[int]:
+          yield 5
+
+      def f(i: AsyncIterator[int]): pass
+
+      f(aiter(gen1()))
+      f(aiter(gen2()))
+      f(aiter(gen3()))
+      f(aiter(gen4()))
+    """)
+
+  def test_aiter_error(self):
+    errors = self.CheckWithErrors("""
+      from typing import AsyncIterable, AsyncIterator, Iterable
+      async def gen1():
+        yield 5
+
+      async def gen2() -> AsyncIterable:
+        yield 5
+
+      async def gen3() -> AsyncIterable[int]:
+        yield 5
+
+      class gen4:
+        async def __aiter__(self) -> AsyncIterator[int]:
+          yield 5
+
+      def f(i: AsyncIterator[str]): pass
+
+      f(aiter(gen1()))  # wrong-arg-types[e1]
+      f(aiter(gen2()))  # this is ok because gen2() is effectively of type AsyncIterable[Any]
+      f(aiter(gen3()))  # wrong-arg-types[e3]
+      f(aiter(gen4()))  # wrong-arg-types[e4]
+
+      aiter([5])  # wrong-arg-types[e5]
+    """)
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"str.*int",
+            "e3": r"str.*int",
+            "e4": r"str.*int",
+            "e5": r"AsyncIterable.*list",
+        },
+    )
+
 
 if __name__ == "__main__":
   test_base.main()

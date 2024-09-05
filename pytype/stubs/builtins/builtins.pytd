@@ -2,13 +2,13 @@
 # minimise the diffs we have to maintain here.
 
 from typing import (
-    AbstractSet, Any, AsyncGenerator, Awaitable, BinaryIO, Callable,
-    Concatenate, Coroutine, Dict, FrozenSet, Generator, Generic, Hashable, IO,
-    ItemsView, Iterable, Iterator, KeysView, List, Literal, Mapping,
-    MutableSequence, NoReturn, Optional, overload, ParamSpec, Protocol,
-    Reversible, Self, Sequence, Set, Sized, SupportsAbs, SupportsBytes,
-    SupportsComplex, SupportsFloat, SupportsIndex, SupportsInt, TextIO, Tuple,
-    Type, Union, ValuesView)
+    AbstractSet, Any, AsyncGenerator, AsyncIterable, AsyncIterator, Awaitable,
+    BinaryIO, Callable, Concatenate, Coroutine, Dict, FrozenSet, Generator,
+    Generic, Hashable, IO, ItemsView, Iterable, Iterator, KeysView, List,
+    Literal, Mapping, MutableSequence, NoReturn, Optional, overload, ParamSpec,
+    Protocol, Reversible, Self, Sequence, Set, Sized, SupportsAbs,
+    SupportsBytes, SupportsComplex, SupportsFloat, SupportsIndex, SupportsInt,
+    TextIO, Tuple, Type, Union, ValuesView)
 
 _T = TypeVar('_T')
 _T2 = TypeVar('_T2')
@@ -41,6 +41,7 @@ TypeTuple = Union[type, tuple[Union[type, tuple[type, ...]], ...]]
 
 def __import__(name: Union[str, bytes, bytearray], *args, **kwargs) -> module: ...
 def abs(x) -> Any: ...
+def aiter(i: AsyncIterable[_T]) -> AsyncIterator[_T]: ...
 def all(iterable) -> bool: ...
 def any(iterable) -> bool: ...
 def ascii(__obj: object) -> str: ...
