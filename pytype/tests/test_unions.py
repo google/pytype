@@ -198,6 +198,51 @@ class UnionOrTest(test_base.BaseTest):
       c = 'Foo' | 'Bar'  # unsupported-operands
     """)
 
+  def test_assign_union_to_var(self):
+    errors = self.CheckWithErrors("""
+      from typing import Union
+      def f1() -> Union[bytes, int]:
+        return 1
+      def f2() -> Union[str, int]:
+        return 1
+      def f3() -> Union[int, str]:
+        return 1
+      x1: str = f1() # annotation-type-mismatch[e1b] # annotation-type-mismatch[e1i]
+      x2: str = f2() # annotation-type-mismatch[e2]
+      x3: str = f3() # annotation-type-mismatch[e3]
+    """)
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1b": r"str.*bytes.*Union\[bytes, int\]",
+            "e1i": r"str.*int.*Union\[bytes, int\]",
+            "e2": r"str.*int.*Union\[int, str\]",
+            "e3": r"str.*int.*Union\[int, str\]",
+        },
+    )
+
+  def test_assign_union_as_arg(self):
+    errors = self.CheckWithErrors("""
+      from typing import Union
+      def f1() -> Union[bytes, int]:
+        return 1
+      def f2() -> Union[str, int]:
+        return 1
+      def f3() -> Union[int, str]:
+        return 1
+      def g(x: str) -> None:
+        pass
+      g(f1())  # wrong-arg-types[e1]
+      g(f2())  # TODO(b/365533163): This should fail since Union[str, int] is not assignable to str.
+      g(f3())  # TODO(b/365533163): This should fail since Union[int, str] is not assignable to str.
+    """)
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"str.*Union\[bytes, int\]",
+        },
+    )
+
 
 if __name__ == "__main__":
   test_base.main()
