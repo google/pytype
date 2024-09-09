@@ -47,6 +47,36 @@ static PyObject* k_next_binding_id;
 static PyObject* k_condition;
 static PyObject* k_default_data;
 
+// String constants for __dir__, Initialized on module init.
+// Program
+static PyObject *k_NewCFGNode;
+static PyObject *k_NewVariable;
+static PyObject *k_is_reachable;
+static PyObject *k_calculate_metrics;
+
+// CFGNode
+static PyObject *k_ConnectNew;
+static PyObject *k_ConnectTo;
+static PyObject *k_HasCombination;
+static PyObject *k_CanHaveCombination;
+
+// Binding
+static PyObject *k_IsVisible;
+static PyObject *k_AddOrigin;
+static PyObject *k_HasSource;
+
+// Variable
+static PyObject *k_Bindings;
+static PyObject *k_Data;
+static PyObject *k_Filter;
+static PyObject *k_FilteredData;
+static PyObject *k_AddBinding;
+static PyObject *k_PasteBindingWithNewData;
+static PyObject *k_AssignToNewVariable;
+static PyObject *k_PasteVariable;
+static PyObject *k_PasteBinding;
+
+
 typedef struct {
   PyObject_HEAD
   typegraph::Program* program;
@@ -481,6 +511,30 @@ static PyObject* calculate_metrics(PyProgramObj* self, PyObject* _args) {
   return pybind11::cast(data).release().ptr();
 }
 
+
+PyDoc_STRVAR(
+    program_dir_doc,
+    "Implentation of __dir__ on Program to provide debuggability");
+
+static PyObject* ProgramDir(PyVariableObj* self, PyObject* args,
+                                      PyObject* kwargs) {
+  PyObject* list = PyList_New(0);
+  // properties
+  PyList_Append(list, k_cfg_nodes);
+  PyList_Append(list, k_variables);
+  PyList_Append(list, k_entrypoint);
+  PyList_Append(list, k_next_variable_id);
+  PyList_Append(list, k_next_binding_id);
+  PyList_Append(list, k_default_data);
+
+  // methods
+  PyList_Append(list, k_NewCFGNode);
+  PyList_Append(list, k_NewVariable);
+  PyList_Append(list, k_is_reachable);
+  PyList_Append(list, k_calculate_metrics);
+  return list;
+}
+
 static PyMethodDef program_methods[] = {
   {"NewCFGNode", reinterpret_cast<PyCFunction>(NewCFGNode),
     METH_VARARGS|METH_KEYWORDS, new_cfg_node_doc},
@@ -490,6 +544,8 @@ static PyMethodDef program_methods[] = {
    METH_VARARGS|METH_KEYWORDS, is_reachable_doc},
   {"calculate_metrics", reinterpret_cast<PyCFunction>(calculate_metrics),
    METH_NOARGS, calculate_metrics_doc},
+  {"__dir__", reinterpret_cast<PyCFunction>(ProgramDir),
+    METH_VARARGS | METH_KEYWORDS, program_dir_doc},
   {0, 0, 0, nullptr}  // sentinel
 };
 
@@ -741,6 +797,30 @@ static PyObject* CanHaveCombination(PyCFGNodeObj* self,
   }
 }
 
+PyDoc_STRVAR(
+    cfg_node_dir_doc,
+    "Implentation of __dir__ on CFGNode to provide debuggability");
+
+static PyObject* CFGDir(PyVariableObj* self, PyObject* args,
+                                      PyObject* kwargs) {
+  PyObject* list = PyList_New(0);
+  // properties
+  PyList_Append(list, k_incoming);
+  PyList_Append(list, k_outgoing);
+  PyList_Append(list, k_bindings);
+  PyList_Append(list, k_name);
+  PyList_Append(list, k_program);
+  PyList_Append(list, k_id);
+  PyList_Append(list, k_condition);
+
+  // methods
+  PyList_Append(list, k_ConnectNew);
+  PyList_Append(list, k_ConnectTo);
+  PyList_Append(list, k_HasCombination);
+  PyList_Append(list, k_CanHaveCombination);
+  return list;
+}
+
 static PyMethodDef cfg_node_methods[] = {
   {"ConnectNew", reinterpret_cast<PyCFunction>(ConnectNew),
     METH_VARARGS|METH_KEYWORDS, connect_new_doc},
@@ -750,6 +830,8 @@ static PyMethodDef cfg_node_methods[] = {
     METH_VARARGS|METH_KEYWORDS, has_combination_doc},
   {"CanHaveCombination", reinterpret_cast<PyCFunction>(CanHaveCombination),
     METH_VARARGS|METH_KEYWORDS, can_have_combo_doc},
+  {"__dir__", reinterpret_cast<PyCFunction>(CFGDir),
+    METH_VARARGS | METH_KEYWORDS, cfg_node_dir_doc},
   {0, 0, 0, nullptr}  // sentinel
 };
 
@@ -972,6 +1054,27 @@ static PyObject* HasSource(PyBindingObj* self, PyObject* args,
   }
 }
 
+PyDoc_STRVAR(
+    binding_dir_doc,
+    "Implentation of __dir__ on Binding to provide debuggability");
+
+static PyObject* BindingDir(PyVariableObj* self, PyObject* args,
+                                      PyObject* kwargs) {
+  PyObject* list = PyList_New(0);
+  // properties
+  PyList_Append(list, k_variable);
+  PyList_Append(list, k_origins);
+  PyList_Append(list, k_data);
+  PyList_Append(list, k_id);
+
+  // methods
+  PyList_Append(list, k_IsVisible);
+  PyList_Append(list, k_AddOrigin);
+  PyList_Append(list, k_AssignToNewVariable);
+  PyList_Append(list, k_HasSource);
+  return list;
+}
+
 static PyMethodDef binding_methods[] = {
     {"IsVisible", reinterpret_cast<PyCFunction>(IsVisible),
      METH_VARARGS | METH_KEYWORDS, is_visible_doc},
@@ -981,6 +1084,8 @@ static PyMethodDef binding_methods[] = {
      METH_VARARGS | METH_KEYWORDS, assign_to_new_variable_doc},
     {"HasSource", reinterpret_cast<PyCFunction>(HasSource),
      METH_VARARGS | METH_KEYWORDS, has_source_doc},
+    {"__dir__", reinterpret_cast<PyCFunction>(BindingDir),
+      METH_VARARGS | METH_KEYWORDS, binding_dir_doc},
     {0, 0, 0, nullptr},  // sentinel
 };
 
@@ -1368,6 +1473,32 @@ static PyObject* VariablePasteBinding(PyVariableObj* self, PyObject* args,
   Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(
+    variable_dir_doc,
+    "Implentation of __dir__ on Variable to provide debuggability");
+
+static PyObject* VariableDir(PyVariableObj* self, PyObject* args,
+                                      PyObject* kwargs) {
+  PyObject* list = PyList_New(0);
+  // properties
+  PyList_Append(list, k_bindings);
+  PyList_Append(list, k_data);
+  PyList_Append(list, k_id);
+  PyList_Append(list, k_program);
+
+  // methods
+  PyList_Append(list, k_Bindings);
+  PyList_Append(list, k_Data);
+  PyList_Append(list, k_Filter);
+  PyList_Append(list, k_FilteredData);
+  PyList_Append(list, k_AddBinding);
+  PyList_Append(list, k_PasteBindingWithNewData);
+  PyList_Append(list, k_AssignToNewVariable);
+  PyList_Append(list, k_PasteVariable);
+  PyList_Append(list, k_PasteBinding);
+  return list;
+}
+
 static PyMethodDef variable_methods[] = {
     {"Bindings", reinterpret_cast<PyCFunction>(VariablePrune),
      METH_VARARGS | METH_KEYWORDS, variable_prune_doc},
@@ -1389,6 +1520,8 @@ static PyMethodDef variable_methods[] = {
       METH_VARARGS | METH_KEYWORDS, variable_paste_variable_doc},
     {"PasteBinding", reinterpret_cast<PyCFunction>(VariablePasteBinding),
       METH_VARARGS | METH_KEYWORDS, variable_paste_binding_doc},
+    {"__dir__", reinterpret_cast<PyCFunction>(VariableDir),
+      METH_VARARGS | METH_KEYWORDS, variable_dir_doc},
     {0, 0, 0, nullptr},  // sentinel
 };
 
@@ -1498,6 +1631,51 @@ static PyObject* InitModule(PyObject* module) {
   k_condition = PyUnicode_FromString("condition");
   Py_XDECREF(k_default_data);
   k_default_data = PyUnicode_FromString("default_data");
+
+  // Program
+  Py_XDECREF(k_NewCFGNode);
+  k_NewCFGNode = PyUnicode_FromString("NewCFGNode");
+  Py_XDECREF(k_NewVariable);
+  k_NewVariable = PyUnicode_FromString("NewVariable");
+  Py_XDECREF(k_is_reachable);
+  k_is_reachable = PyUnicode_FromString("is_reachable");
+  Py_XDECREF(k_calculate_metrics);
+  k_calculate_metrics = PyUnicode_FromString("calculate_metrics");
+  // CFGNode
+  Py_XDECREF(k_ConnectNew);
+  k_ConnectNew = PyUnicode_FromString("ConnectNew");
+  Py_XDECREF(k_ConnectTo);
+  k_ConnectTo = PyUnicode_FromString("ConnectTo");
+  Py_XDECREF(k_HasCombination);
+  k_HasCombination = PyUnicode_FromString("HasCombination");
+  Py_XDECREF(k_CanHaveCombination);
+  k_CanHaveCombination = PyUnicode_FromString("CanHaveCombination");
+  // Binding
+  Py_XDECREF(k_IsVisible);
+  k_IsVisible = PyUnicode_FromString("IsVisible");
+  Py_XDECREF(k_AddOrigin);
+  k_AddOrigin = PyUnicode_FromString("AddOrigin");
+  Py_XDECREF(k_HasSource);
+  k_HasSource = PyUnicode_FromString("HasSource");
+  // Variable
+  Py_XDECREF(k_Bindings);
+  k_Bindings = PyUnicode_FromString("Bindings");
+  Py_XDECREF(k_Data);
+  k_Data = PyUnicode_FromString("Data");
+  Py_XDECREF(k_Filter);
+  k_Filter = PyUnicode_FromString("Filter");
+  Py_XDECREF(k_FilteredData);
+  k_FilteredData = PyUnicode_FromString("FilteredData");
+  Py_XDECREF(k_AddBinding);
+  k_AddBinding = PyUnicode_FromString("AddBinding");
+  Py_XDECREF(k_PasteBindingWithNewData);
+  k_PasteBindingWithNewData = PyUnicode_FromString("PasteBindingWithNewData");
+  Py_XDECREF(k_AssignToNewVariable);
+  k_AssignToNewVariable = PyUnicode_FromString("AssignToNewVariable");
+  Py_XDECREF(k_PasteVariable);
+  k_PasteVariable = PyUnicode_FromString("PasteVariable");
+  Py_XDECREF(k_PasteBinding);
+  k_PasteBinding = PyUnicode_FromString("PasteBinding");
   return module;
 }
 
