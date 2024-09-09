@@ -100,7 +100,10 @@ class TestPathExpansion(unittest.TestCase):
   def test_expand_with_cwd(self):
     with test_utils.Tempdir() as d:
       f = d.create_file("foo.py")
-      self.assertEqual(file_utils.expand_path("foo.py", d.path), f)
+      self.assertEqual(
+          file_utils.expand_path("foo.py", d.path),
+          file_utils.expand_path(f),
+      )
 
 
 class TestExpandSourceFiles(unittest.TestCase):
@@ -117,7 +120,7 @@ class TestExpandSourceFiles(unittest.TestCase):
   def _test_expand(self, string):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
-      pyfiles = [f for f in fs if f.endswith(".py")]
+      pyfiles = file_utils.expand_paths(f for f in fs if f.endswith(".py"))
       self.assertCountEqual(
           pyfiles, file_utils.expand_source_files(string, d.path)
       )
@@ -131,7 +134,7 @@ class TestExpandSourceFiles(unittest.TestCase):
   def test_cwd(self):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
-      pyfiles = [f for f in fs if f.endswith(".py")]
+      pyfiles = file_utils.expand_paths(f for f in fs if f.endswith(".py"))
       # cd to d.path and run with just "." as an argument
       with file_utils.cd(d.path):
         self.assertCountEqual(pyfiles, file_utils.expand_source_files("."))
@@ -161,7 +164,11 @@ class TestExpandSourceFiles(unittest.TestCase):
           file_utils.expand_source_files(
               file_utils.replace_separator("**/*.py"), cwd=d.path
           ),
-          {path_utils.join(d.path, f) for f in filenames},
+          set(
+              file_utils.expand_paths(
+                  path_utils.join(d.path, f) for f in filenames
+              )
+          ),
       )
 
   def test_multiple_magic(self):
@@ -173,7 +180,11 @@ class TestExpandSourceFiles(unittest.TestCase):
           file_utils.expand_source_files(
               file_utils.replace_separator("*.py b/*.py"), cwd=d.path
           ),
-          {path_utils.join(d.path, f) for f in filenames},
+          set(
+              file_utils.expand_paths(
+                  path_utils.join(d.path, f) for f in filenames
+              )
+          ),
       )
 
 
@@ -189,7 +200,7 @@ class TestExpandHiddenFiles(unittest.TestCase):
       d.create_file(".find.py")
       self.assertEqual(
           file_utils.expand_source_files(".*", cwd=d.path),
-          {path_utils.join(d.path, ".find.py")},
+          {file_utils.expand_path(path_utils.join(d.path, ".find.py"))},
       )
 
   def test_ignore_dir(self):
@@ -209,7 +220,7 @@ class TestExpandHiddenFiles(unittest.TestCase):
           file_utils.expand_source_files(
               file_utils.replace_separator(".d/**/*"), cwd=d.path
           ),
-          {path_utils.join(d.path, ".d", "find.py")},
+          {file_utils.expand_path(path_utils.join(d.path, ".d", "find.py"))},
       )
 
 
@@ -239,10 +250,10 @@ class TestExpandPythonpath(unittest.TestCase):
           file_utils.expand_pythonpath(
               file_utils.replace_separator("a/b:c/d"), cwd=d.path
           ),
-          [
+          file_utils.expand_paths([
               path_utils.join(d.path, "a", "b"),
               path_utils.join(d.path, "c", "d"),
-          ],
+          ]),
       )
 
   def test_strip_whitespace(self):
@@ -285,7 +296,9 @@ class TestExpandGlobpaths(unittest.TestCase):
           file_utils.expand_globpaths(
               [file_utils.replace_separator("**/*.py")], cwd=d.path
           ),
-          [path_utils.join(d.path, f) for f in filenames],
+          file_utils.expand_paths(
+              path_utils.join(d.path, f) for f in filenames
+          ),
       )
 
 

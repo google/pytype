@@ -61,12 +61,17 @@ class TestBase(unittest.TestCase):
     self.assertEqual(conf.exclude, set())
     # output shouldn't be present since we haven't set it.
     self.assertFalse(hasattr(conf, 'output'))
-    self.assertEqual(conf.pythonpath, [
-        path,
-        (('C:' if sys.platform == 'win32' else '') +
-         file_utils.replace_separator('/foo/bar')),
-        path_utils.join(path, file_utils.replace_separator('baz/quux'))
-    ])
+    self.assertEqual(
+        file_utils.expand_paths(conf.pythonpath),
+        file_utils.expand_paths([
+            path,
+            (
+                ('C:' if sys.platform == 'win32' else '')
+                + file_utils.replace_separator('/foo/bar')
+            ),
+            path_utils.join(path, file_utils.replace_separator('baz/quux')),
+        ]),
+    )
     self.assertEqual(conf.python_version, '3.7')
     self.assertEqual(conf.disable, 'import-error,module-attr')
 
@@ -222,7 +227,6 @@ class TestReadConfig(TestBase):
     with test_utils.Tempdir() as d:
       d.create_file('setup.cfg', SETUP_CFG)
       sub = d.create_directory(file_utils.replace_separator('x/y/z'))
-      conf = config.Config()
       with file_utils.cd(sub):
         conf = config.read_config_file_or_die(None)
         self._validate_file_contents(conf, d.path)
