@@ -1198,19 +1198,14 @@ def _get_exception_bitmask(offset_to_op, exception_ranges):
   return in_exception
 
 
-# Opcodes that, when preceeded by JUMP_BACKWARD, indicate an infinite loop
-# that's broken by an exception handler.
-_INFINITE_LOOPS_INDICATORS = (
+# Opcodes that come up as exception targets but don't need a block.
+_IGNORED_EXCEPTION_TARGETS = (
     # In 3.11+ `async for` loops end normally by thowing a StopAsyncIteration
     # exception, which jumps to an END_ASYNC_FOR opcode via the exception table.
     END_ASYNC_FOR,
     # In 3.12+ generators end normally by throwing a StopIteration exception,
     # which jumps to a CLEANUP_THROW opcode via the exception table.
     CLEANUP_THROW,
-)
-
-# Opcodes that come up as exception targets but don't need a block.
-_IGNORED_EXCEPTION_TARGETS = _INFINITE_LOOPS_INDICATORS + (
     # In 3.12+ list/dict/set comprehensions jump to a SWAP opcode, which cleans
     # up the stack before re-raising the exception. The cleanup has no effect on
     # type checking.
@@ -1271,7 +1266,73 @@ def _add_setup_except(
       op.push_exc_block = True
 
 
-def _make_opcode_list(offset_to_op, python_version):
+def _get_opcode_following_cleanup_throw_jump_pairs(
+    op_items: List[Tuple[int, Opcode]], start_i: int
+):
+  for i in range(start_i, len(op_items), 2):
+    if (
+        isinstance(op_items[i][1], CLEANUP_THROW)
+        and i + 1 < len(op_items)
+        and isinstance(op_items[i + 1][1], JUMP_BACKWARD)
+    ):
+      continue
+    return op_items[i][1]
+  return None
+
+
+def _should_elide_opcode(
+    op_items: List[Tuple[int, Opcode]], i: int, python_version: Tuple[int, int]
+):
+  """Returns `True` if the opcode on index `i` should be elided.
+
+  Opcodes should be elided if they don't contribute to type checking and cause
+  issues in the block graph.
+
+  Args:
+    op_items: List of (offset, opcode) tuples.
+    i: Index of opcode to check for elision.
+    python_version: Python version tuple.
+  """
+  op = op_items[i][1]
+
+  # In 3.11 `async for` is compiled into an infinite loop, relying on the
+  # exception handler to break out. This causes the block graph to be pruned
+  # abruptly, so we need to remove the loop opcode.
+  if python_version == (3, 11):
+    return (
+        isinstance(op, JUMP_BACKWARD)
+        and i + 1 < len(op_items)
+        and isinstance(op_items[i + 1][1], END_ASYNC_FOR)
+    )
+
+  # In 3.12 all generators are compiled into infinite loops, too. In addition,
+  # YIELD_VALUE inserts exception handling instructions:
+  #     CLEANUP_THROW
+  #     JUMP_BACKWARD
+  # These can appear on their own or they can be inserted between JUMP_BACKWARD
+  # and END_ASYNC_FOR, possibly many times. We keep eliding the `async for` jump
+  # and also elide the exception handling cleanup codes because they're not
+  # relevant for pytype and complicate the block graph.
+  if python_version == (3, 12):
+    return (
+        isinstance(op, CLEANUP_THROW)
+        or (
+            isinstance(op, JUMP_BACKWARD)
+            and i >= 1
+            and isinstance(op_items[i - 1][1], CLEANUP_THROW)
+        )
+        or (
+            isinstance(op, JUMP_BACKWARD)
+            and isinstance(
+                _get_opcode_following_cleanup_throw_jump_pairs(op_items, i + 1),
+                END_ASYNC_FOR,
+            )
+        )
+    )
+  return False
+
+
+def _make_opcode_list(offset_to_op, python_version: Tuple[int, int]):
   """Convert opcodes to a list and fill in opcode.index, next and prev."""
   ops = []
   offset_to_index = {}
@@ -1280,20 +1341,7 @@ def _make_opcode_list(offset_to_op, python_version):
   op_items = sorted(offset_to_op.items())
   for i, (off, op) in enumerate(op_items):
     index += 1
-    if (
-        # In 3.11 `async for` is compiled into an infinite loop, relying on the
-        # exception handler to break out. This causes the block graph to be
-        # pruned abruptly, so we need to remove the loop opcode.
-        python_version >= (3, 11)
-        and isinstance(op, JUMP_BACKWARD)
-        and i + 1 < len(op_items)
-        and isinstance(op_items[i + 1][1], _INFINITE_LOOPS_INDICATORS)
-    ) or (
-        # In 3.12 all generators are compiled into infinite loops, too.
-        # Exceptions are used to jump to CLEANUP_THROW instructions.
-        python_version >= (3, 12)
-        and isinstance(op, CLEANUP_THROW)
-    ):
+    if _should_elide_opcode(op_items, i, python_version):
       #  We map the offset to the index of the next opcode so that jumps to
       # `op` are redirected correctly.
       offset_to_index[off] = index

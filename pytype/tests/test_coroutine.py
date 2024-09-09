@@ -627,6 +627,24 @@ class GeneratorFeatureTest(test_base.BaseTest):
       """,
       )
 
+  def test_while_true_await(self):
+    self.Check("""
+      from typing import Any, Callable, TypeVar
+
+      _T = TypeVar("_T")
+
+      async def call_with_retry(
+          retry_value: Any,
+          func: Callable[..., _T],
+          *args,
+          **kwargs,
+      ) -> _T:
+        while True:
+          retval = await func(*args, **kwargs)
+          if retval != retry_value:
+            return retval
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
