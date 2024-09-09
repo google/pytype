@@ -78,6 +78,7 @@ def output_graphs(options, context):
 
   if options.visualize_block_graph:
     loader = jinja2.FileSystemLoader(_TEMPLATE_DIR)
+    assert context.vm.block_graph is not None
     output = visualizer.generate_block_graph(
         block_graph=context.vm.block_graph,
         loader=loader,
