@@ -155,7 +155,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     formal_type_parameters = cls.get_formal_type_parameters()
 
     def get_type_parameter_subst(
-        annotation: abstract.TypeParameter,
+        annotation: abstract.BaseValue,
     ) -> Optional[abstract.BaseValue]:
       # Normally the type parameter module is set correctly at this point.
       # Except for the case when a method that references this type parameter

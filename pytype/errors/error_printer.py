@@ -209,14 +209,16 @@ class MatcherErrorPrinter:
     return ret
 
   def print_error_details(
-      self, error_details: error_types.MatcherErrorDetails
+      self, details: error_types.MatcherErrorDetails
   ) -> List[str]:
-    printers = [
-        (error_details.protocol, self._print_protocol_error),
-        (error_details.noniterable_str, self._print_noniterable_str_error),
-        (error_details.typed_dict, self._print_typed_dict_error),
-    ]
-    return ["\n" + printer(err) if err else "" for err, printer in printers]
+    errors: List[str] = []
+    if details.protocol:
+      errors.append(self._print_protocol_error(details.protocol))
+    if details.noniterable_str:
+      errors.append(self._print_noniterable_str_error(details.noniterable_str))
+    if details.typed_dict:
+      errors.append(self._print_typed_dict_error(details.typed_dict))
+    return ["\n" + err for err in errors]
 
   def prepare_errorlog_details(self, bad: List[matcher.BadMatch]) -> List[str]:
     """Prepare printable annotation matching errors."""
