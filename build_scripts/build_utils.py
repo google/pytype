@@ -126,6 +126,7 @@ def run_cmd(cmd, cwd=None, pipe=True):
     }
   if cwd:
     process_options["cwd"] = cwd
+  print("+", shlex.join(cmd), flush=True)
   with subprocess.Popen(cmd, **process_options) as process:
     stdout, _ = process.communicate()
     return process.returncode, stdout

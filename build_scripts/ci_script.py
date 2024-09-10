@@ -3,7 +3,6 @@
 
 import collections
 import os
-import shlex
 import sys
 
 import build_utils
@@ -18,7 +17,6 @@ def _begin_step(s):
     print(f"::group::{s.name}")
   else:
     print(f"BEGIN_STEP: {s.name}")
-  print(f"Command: {shlex.join(s.command)}")
   print(flush=True)
 
 
