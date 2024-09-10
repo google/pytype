@@ -15,18 +15,18 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04]
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
         experimental: [false]
         include:
           - os: macos-latest
-            python-version: '3.11'
+            python-version: '3.12'
             experimental: false
           - os: windows-latest
-            python-version: '3.11'
-            experimental: true
-          - os: ubuntu-20.04
             python-version: '3.12'
             experimental: true
+          # - os: ubuntu-20.04
+          #   python-version: '3.13'
+          #   experimental: true
     steps:
     - uses: actions/checkout@v4
       with:
@@ -51,6 +51,6 @@ jobs:
 
     - name: Run Tests
       env:
-        LINT: ${{ runner.os == 'Linux' && matrix.python-version == '3.11' }}
+        LINT: ${{ runner.os == 'Linux' && matrix.python-version == '3.12' }}
       run: python build_scripts/ci_script.py
       continue-on-error: ${{ matrix.experimental }}
