@@ -103,7 +103,7 @@ class ResultReporter:
         # object is used for each method.
         break
     if ret_val == 0:
-      log_msg = f"PASS: {fq_method_name}"
+      log_msg = f"PAASS: {fq_method_name}"
       stdout_msg = log_msg if self._options.print_passes else None
     self._print_messages(stdout_msg, log_msg)
     return ret_val

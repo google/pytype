@@ -6,6 +6,7 @@ import os
 import sys
 
 import build_utils
+import time
 
 
 STEP = collections.namedtuple("STEP", ["name", "command"])
@@ -40,6 +41,7 @@ def _report_failure(s):
 
 def _run_steps(steps):
   for s in steps:
+    begin = time.time()
     _begin_step(s)
     try:
       returncode, _ = build_utils.run_cmd(s.command, pipe=False)
@@ -47,6 +49,8 @@ def _run_steps(steps):
         _report_failure(s)
         sys.exit(1)
     finally:
+      end = time.time()
+      print("Took " + str(end - begin) + "s")
       _end_step(s)
 
 

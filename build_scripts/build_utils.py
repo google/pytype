@@ -224,7 +224,8 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
   # The -k option to ninja, set to a very high value, makes it run until it
   # detects all failures. So, we set it to a high value unless |fail_fast| is
   # True.
-  cmd = ["ninja", "-k", "1" if fail_fast else "100000"] + targets
+  cmd = ["ninja", "-j", "12", "-k", "1" if fail_fast else "100000"] + targets
+  print("cmd = ", cmd)
   with subprocess.Popen(
       cmd,
       cwd=OUT_DIR,
