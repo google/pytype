@@ -43,9 +43,9 @@ One somewhat surprising behaviour is illustrated by the following snippet:
 
 ```python
 xs = [1, 2, 3]
-reveal_type(xs)  # => List[int]
+reveal_type(xs)  # => list[int]
 xs.append('hello')  # no error!
-reveal_type(xs)  # => List[int | str]
+reveal_type(xs)  # => list[int | str]
 ```
 
 Given that `xs` is correctly inferred as `List[int]` in line 2, it could be
@@ -58,7 +58,7 @@ Explicitly annotating xs with a type will indeed raise a
 `container-type-mismatch` error:
 
 ```python
-xs: List[int] = [1, 2, 3]
+xs: list[int] = [1, 2, 3]
 xs.append('hello')  # ! container-type-mismatch
 ```
 

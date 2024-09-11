@@ -67,6 +67,24 @@ class Person(object):
     ...
 ```
 
+Alternatively you can add a `__future__.annotations` import to reference the
+type without quotes:
+
+```python
+from __future__ import annotations
+
+class Person(object):
+  def CreatePerson(name: str) -> Person:  # no quotes needed
+    ...
+```
+
+Note: This import enables [PEP 563](https://www.python.org/dev/peps/pep-0563/),
+a previously accepted PEP that has since been superseded by
+[PEP 649](https://peps.python.org/pep-0649/). PEP 563's behavior will eventually
+be deprecated and removed. However, as of May 2023, a `__future__` import for
+PEP 649 is not yet available, so enabling PEP 563 is the best way to avoid
+quoted types.
+
 ## I'm dynamically populating a class / module using `setattr` or by modifying `locals()` / `globals()`. Now pytype complains about missing attributes or module members. How do I fix this?
 
 Add `_HAS_DYNAMIC_ATTRIBUTES = True` to your class or module.
@@ -157,14 +175,14 @@ the analysis:
     instance of its type:
 
     <!-- bad -->
-```python
+    ```python
     # Depending on the size of the dictionary and the complexity of the contents,
     # pytype may time out analyzing it.
     MY_HUGE_DICT = {...}
     ```
 
     <!-- good -->
-```python
+    ```python
     from typing import Any, Mapping
     # Pytype can use the type annotation rather than inferring a type from the
     # value, considerably speeding up analysis. Replace `Any` with more precise

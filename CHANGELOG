@@ -1,3 +1,46 @@
+Version 2024.09.11:
+
+Updates:
+* Basic support for Python 3.12.
+
+  With this release you can run pytype with Python 3.12. But pytype has no
+  support for any new features added in Python 3.12.
+
+  Look out for type checking changes caused by different bytecode emit:
+  * dict/list/set comprehensions are type checked 1 level deeper.
+  * Errors after `if` statements can be printed differently.
+
+* Add support for pickled pyi files in merge_pyi.py.
+
+* Several performance improvements.
+
+* Stop validating imports map. Pytype used to validate that each file in an
+  import map exists. This has proved too costly, especially on network file
+  systems. Pytype now assumes import maps specified via --imports_info are
+  correct.
+
+* Add support for flag files (required for Bazel workers).
+
+* Change the format of errors printed to the console.
+
+  Errors now also include the column number and a code snippet, which highlights
+  the part that's broken.
+
+  Old:
+    File "test.py", line 4, in foo: unsupported operand type(s) for +: str and int [unsupported-operands]
+      Function __add__ on str expects str
+  New:
+    test.py:4:10: error: in foo: unsupported operand type(s) for +: str and int [unsupported-operands]
+      Function __add__ on str expects str
+        print(arg + 3)
+              ~~~~~~~
+
+Bug fixes:
+* Add type stub for `aiter()`.
+* Don't include deleted top-level variables in module types.
+* Don't crash when a Generic subtype uses a TypeVar differently.
+* Fix type inference for `iter(func, None)`.
+
 Version 2024.04.11:
 
 Updates:

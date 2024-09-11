@@ -22,10 +22,11 @@ the pytype team if you have any questions or advanced use cases you think a
 pragma would help with.
 
 <!--ts-->
-
+* [Pragmas](#pragmas)
+   * [cache-return](#cache-return)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: mdemello, at: Tue Mar  5 12:02:15 PM PST 2024 -->
+<!-- Added by: jankuehle, at: Wed Sep 11 11:06:46 AM UTC 2024 -->
 
 <!--te-->
 
