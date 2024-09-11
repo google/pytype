@@ -1,6 +1,7 @@
 """Tests for async generators."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class AsyncGeneratorFeatureTest(test_base.BaseTest):
@@ -255,6 +256,7 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
           await f2(foo.f1)
       """)
 
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
   def test_aiter(self):
     self.Check("""
       from typing import AsyncIterable, AsyncIterator
@@ -279,6 +281,7 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       f(aiter(gen4()))
     """)
 
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
   def test_aiter_error(self):
     errors = self.CheckWithErrors("""
       from typing import AsyncIterable, AsyncIterator, Iterable
