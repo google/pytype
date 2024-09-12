@@ -317,6 +317,90 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         },
     )
 
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
+  def test_anext(self):
+    self.Check("""
+      from typing import AsyncIterator, Awaitable
+      from typing_extensions import Self
+      async def gen1():
+        yield 5
+
+      async def gen2() -> AsyncIterator:
+        yield 5
+
+      async def gen3() -> AsyncIterator[int]:
+        yield 5
+
+      class gen4:
+        async def __anext__(self) -> int:
+          return 5
+
+        def __aiter__(self) -> Self:
+          return self
+
+      def f(i: Awaitable[int]): pass
+      def g(i: Awaitable[int | str]): pass
+
+      f(anext(gen1()))
+      f(anext(gen2()))
+      f(anext(gen3()))
+      f(anext(gen4()))
+
+      g(anext(gen1(), "done"))
+      g(anext(gen2(), "done"))
+      g(anext(gen3(), "done"))
+      g(anext(gen4(), "done"))
+    """)
+
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
+  def test_anext_error(self):
+    errors = self.CheckWithErrors("""
+      from typing import AsyncIterator, Awaitable
+      from typing_extensions import Self
+      async def gen1():
+        yield 5
+
+      async def gen2() -> AsyncIterator:
+        yield 5
+
+      async def gen3() -> AsyncIterator[int]:
+        yield 5
+
+      class gen4:
+        async def __anext__(self) -> int:
+          return 5
+
+        def __aiter__(self) -> Self:
+          return self
+
+      def f(i: Awaitable[str]): pass
+      def g(i: Awaitable[str]): pass
+
+      f(anext(gen1()))  # wrong-arg-types[e1]
+      f(anext(gen2()))  # this is ok because gen2() is effectively of type AsyncIterator[Any]
+      f(anext(gen3()))  # wrong-arg-types[e3]
+      f(anext(gen4()))  # wrong-arg-types[e4]
+
+      g(anext(gen1(), b"done"))  # wrong-arg-types[e5]
+      g(anext(gen2(), b"done"))  # this is ok because gen2() is effectively of type AsyncIterator[Any]
+      g(anext(gen3(), b"done"))  # wrong-arg-types[e7]
+      g(anext(gen4(), b"done"))  # wrong-arg-types[e8]
+
+      anext(iter([1]))  # wrong-arg-types[e9]
+    """)
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": r"Awaitable\[str\].*Awaitable\[int\]",
+            "e3": r"Awaitable\[str\].*Awaitable\[int\]",
+            "e4": r"Awaitable\[str\].*Awaitable\[int\]",
+            "e5": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
+            "e7": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
+            "e8": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
+            "e9": r"AsyncIterator.*listiterator\[int\]",
+        },
+    )
+
 
 if __name__ == "__main__":
   test_base.main()
