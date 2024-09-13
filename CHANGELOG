@@ -36,7 +36,7 @@ Updates:
               ~~~~~~~
 
 Bug fixes:
-* Add type stub for `aiter()`.
+* Add type definitions for `aiter()` and `anext()`.
 * Don't include deleted top-level variables in module types.
 * Don't crash when a Generic subtype uses a TypeVar differently.
 * Fix type inference for `iter(func, None)`.
