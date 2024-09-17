@@ -37,11 +37,11 @@ SETUP_CFG = RANDOM_CFG + '\n' + PYTYPE_CFG
 PYTYPE_TOML = f"""
   [tool.pytype]
   exclude = ['nonexistent.*']
-  pythonpath = \"\"\"
+  pythonpath = '''
     .{os.pathsep}
     {'C:' if sys.platform == 'win32' else ''}{os.path.sep}foo{os.path.sep}bar{os.pathsep}
     baz{os.path.sep}quux
-  \"\"\"
+  '''
   python_version = '3.7'
   disable = ['import-error', 'module-attr']
 """

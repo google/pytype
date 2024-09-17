@@ -162,6 +162,9 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
   ]
   if debug_build:
     cmd.append("-DCMAKE_BUILD_TYPE=Debug")
+  else:
+    if os.name == "nt":
+      cmd.append("-DCMAKE_BUILD_TYPE=Release")
   returncode, stdout = run_cmd(cmd, cwd=OUT_DIR)
   # Print the full CMake output to stdout. It is not a lot that it would
   # clutter the output, and also gives information about the Python version

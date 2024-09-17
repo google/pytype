@@ -73,6 +73,7 @@ class ImportMapLoaderTest(unittest.TestCase):
         ("a/b/e", ["2/a/b/foo/#2.py~", "2/a/b/e1.py~", "2/a/b/e2.py~"]),
     ]
     f = file_utils.replace_separator
+    items = [(f(k), f(v)) for k, v in items]
     expected = [(f(k), list(map(f, v))) for k, v in expected]
     actual = self.builder._build_multimap(items).items()
     self.assertCountEqual(actual, expected)

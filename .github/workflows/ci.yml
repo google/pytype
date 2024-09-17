@@ -23,7 +23,7 @@ jobs:
             experimental: false
           - os: windows-latest
             python-version: '3.12'
-            experimental: true
+            experimental: false
           # - os: ubuntu-20.04
           #   python-version: '3.13'
           #   experimental: true
@@ -41,6 +41,10 @@ jobs:
       if: runner.os == 'Linux'
       run: sudo apt-get install -y bison cmake flex g++
 
+    - name: Setup Developer Command Prompt
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Install Dependencies
       run: pip install -r requirements.txt
 
@@ -56,5 +60,6 @@ jobs:
       continue-on-error: ${{ matrix.experimental }}
 
     - name: Type Check
+      if: runner.os == 'Linux'
       run: python out/bin/pytype -j auto
       continue-on-error: ${{ matrix.experimental }}

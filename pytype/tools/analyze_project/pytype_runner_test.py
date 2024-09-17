@@ -529,13 +529,16 @@ class TestNinjaBuildStatement(TestBase):
 
   def test_deps(self):
     _, output, _ = self.write_build_statement(
-        Module('', 'foo.py', 'foo'), Action.INFER, set(), 'imports', '')
+        Module('', 'foo.py', 'foo'), Action.INFER, set(), 'imports', ''
+    )
     _, _, build_statement = self.write_build_statement(
-        Module('', 'bar.py', 'bar'), Action.CHECK,
-        {pytype_runner.escape_ninja_path(output)}, 'imports', '')
+        Module('', 'bar.py', 'bar'), Action.CHECK, {output}, 'imports', ''
+    )
+    expected_suffix = ' | ' + pytype_runner.escape_ninja_path(output)
     self.assertTrue(
-        build_statement[0].endswith(' | ' +
-                                    pytype_runner.escape_ninja_path(output)))
+        build_statement[0].endswith(expected_suffix),
+        f'\n{build_statement[0]!r}\ndoes not end with\n{expected_suffix!r}',
+    )
 
   def test_imports(self):
     _, _, build_statement = self.write_build_statement(
