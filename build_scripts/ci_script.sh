@@ -3,7 +3,7 @@
 set -e -x
 
 # Lint
-pylint build_scripts pytype pytype_extensions setup.py
+pylint build_scripts pytype pytype_extensions setup.py -j 0
 
 # Build
 python build_scripts/build.py

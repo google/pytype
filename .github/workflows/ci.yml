@@ -50,7 +50,7 @@ jobs:
 
     - name: Lint
       if: runner.os == 'Linux' && matrix.python-version == '3.12'
-      run: pylint build_scripts pytype pytype_extensions setup.py
+      run: pylint build_scripts pytype pytype_extensions setup.py -j 0
 
     - name: Build
       run: python build_scripts/build.py
