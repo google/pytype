@@ -59,7 +59,7 @@ def main():
           "pytype/",
           "pytype_extensions/",
           "setup.py",
-          "-j 0" #this cuts down the time it takes to run lint by about a minute. "Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the number of processors available to use, and will cap the count on Windows to avoid hangs."
+          "-j 0",
       ],
   )
   s2 = STEP(
