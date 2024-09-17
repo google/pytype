@@ -39,18 +39,22 @@ jobs:
 
     - name: Install system packages
       if: runner.os == 'Linux'
-      run: |
-        sudo apt-get install -y bison cmake flex g++
+      run: sudo apt-get install -y bison cmake flex g++
 
     - name: Install Dependencies
       run: pip install -r requirements.txt
 
-    # We have to put continue-on-error at the step level rather than the job
-    # level because the UI is broken:
-    # https://github.com/github-community/community/discussions/15452.
+    - name: Lint
+      if: runner.os == 'Linux' && matrix.python-version == '3.12'
+      run: pylint build_scripts pytype pytype_extensions setup.py
+
+    - name: Build
+      run: python build_scripts/build.py
 
     - name: Run Tests
-      env:
-        LINT: ${{ runner.os == 'Linux' && matrix.python-version == '3.12' }}
-      run: python build_scripts/ci_script.py
+      run: python build_scripts/run_tests.py -f -v
+      continue-on-error: ${{ matrix.experimental }}
+
+    - name: Type Check
+      run: python out/bin/pytype -j auto
       continue-on-error: ${{ matrix.experimental }}

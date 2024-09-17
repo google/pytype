@@ -27,11 +27,6 @@ def current_py_version():
   return "%d.%d" % (sys.version_info.major, sys.version_info.minor)
 
 
-def build_script(base_name):
-  """Return the full path to a script in the 'build_scripts' directory."""
-  return os.path.join(PYTYPE_SRC_ROOT, "build_scripts", base_name)
-
-
 class BuildConfig:
   """Utility class to create and manage the build config cache."""
 
