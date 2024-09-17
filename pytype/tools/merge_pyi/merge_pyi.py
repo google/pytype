@@ -9,6 +9,7 @@ from typing import List, Optional, Tuple
 
 import libcst as cst
 from libcst import codemod
+from libcst._nodes import expression
 from libcst.codemod import visitors
 from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
@@ -31,10 +32,42 @@ def _merge_csts(*, py_tree, pyi_tree):
   ).transform_module(py_tree)
 
 
+def _is_any_annotation(annotation: expression.Annotation | None):
+  return (
+      annotation
+      and isinstance(annotation, expression.Name)
+      and annotation.value == "Any"
+  )
+
+
+class RemoveAnyTransformer(cst.CSTTransformer):
+  """Transform away every `Any` annotations in function returns and variable assignments."""
+
+  def leave_FunctionDef(
+      self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+  ) -> cst.CSTNode:
+    if original_node.returns and _is_any_annotation(
+        original_node.returns.annotation
+    ):
+      return updated_node.with_changes(returns=None)
+    return original_node
+
+  def leave_AnnAssign(
+      self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
+  ) -> cst.CSTNode:
+    if _is_any_annotation(original_node.annotation):
+      return cst.Assign(
+          targets=[cst.AssignTarget(target=updated_node.target)],
+          value=updated_node.value,
+          semicolon=updated_node.semicolon,
+      )
+    return original_node
+
+
 def merge_sources(*, py: str, pyi: str) -> str:
   try:
     py_cst = cst.parse_module(py)
-    pyi_cst = cst.parse_module(pyi)
+    pyi_cst = cst.parse_module(pyi).visit(RemoveAnyTransformer())
     merged_cst = _merge_csts(py_tree=py_cst, pyi_tree=pyi_cst)
     return merged_cst.code
   except Exception as e:  # pylint: disable=broad-except
@@ -54,11 +87,7 @@ def _get_diff(a, b):
 
 
 def merge_files(
-    *,
-    py_path: str,
-    pyi_path: str,
-    mode: Mode,
-    backup: Optional[str] = None
+    *, py_path: str, pyi_path: str, mode: Mode, backup: Optional[str] = None
 ) -> bool:
   """Merges a .py and a .pyi (experimental: or a pickled pytd) file."""
 
@@ -92,9 +121,8 @@ def merge_tree(
     py_path: str,
     pyi_path: str,
     backup: Optional[str] = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> Tuple[List[str], List[Tuple[str, MergeError]]]:
-
   """Merge .py files in a tree with the corresponding .pyi files."""
 
   errors = []
@@ -112,7 +140,8 @@ def merge_tree(
             print("Merging:", py, end=" ")
           try:
             changed = merge_files(
-                py_path=py, pyi_path=pyi, mode=Mode.OVERWRITE, backup=backup)
+                py_path=py, pyi_path=pyi, mode=Mode.OVERWRITE, backup=backup
+            )
             if changed:
               changed_files.append(py)
             if verbose:
