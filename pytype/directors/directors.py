@@ -10,13 +10,7 @@ from typing import Set
 from pytype import config
 from pytype.directors import annotations
 
-# directors.parser uses the stdlib ast library, which is much faster than
-# libcst, but we rely on ast features that are new in Python 3.9.
-# pylint: disable=g-import-not-at-top
-if sys.version_info[:2] >= (3, 9):
-  from pytype.directors import parser
-else:
-  from pytype.directors import parser_libcst as parser
+from pytype.directors import parser
 # pylint: enable=g-import-not-at-top
 
 log = logging.getLogger(__name__)

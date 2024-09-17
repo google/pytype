@@ -1,7 +1,5 @@
 """Tests for TypeVar."""
 
-import sys
-
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -1099,10 +1097,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       def j(x: Foo, y: Bar, z: U) -> int:
         return 42
     """)
-    if sys.version_info[:2] >= (3, 9):
-      # In 3.9+, we use opcode metadata to produce a better error message for
-      # bare generic aliases.
-      self.assertErrorSequences(err, {"e": ["Foo is a generic alias"]})
+    self.assertErrorSequences(err, {"e": ["Foo is a generic alias"]})
 
 
 class TypeVarTestPy3(test_base.BaseTest):
@@ -1203,7 +1198,6 @@ class TypeVarTestPy3(test_base.BaseTest):
       f("oops")  # wrong-arg-types
     """)
 
-  @test_utils.skipBeforePy((3, 9), "subscripting builtins.dict is new in 3.9")
   def test_builtin_dict_constraint(self):
     with self.DepTree([(
         "foo.pyi",

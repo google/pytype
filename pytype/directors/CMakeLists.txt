@@ -8,7 +8,6 @@ py_library(
     .annotations
     .init
     .parser
-    .parser_libcst
 )
 
 py_library(
@@ -19,7 +18,6 @@ py_library(
   DEPS
     .annotations
     .parser
-    .parser_libcst
     pytype.config
 )
 
@@ -44,15 +42,6 @@ py_library(
     parser.py
   DEPS
     pytype.ast.ast
-)
-
-py_library(
-  NAME
-    parser_libcst
-  SRCS
-    parser_libcst.py
-  DEPS
-    pytype.utils
 )
 
 py_test(

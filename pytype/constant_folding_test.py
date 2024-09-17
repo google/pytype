@@ -85,14 +85,12 @@ class TestFolding(test_base.UnitTest):
         actual, [(1, ("list", (int, str)), [1, 2, "3"], [int, int, str])]
     )
 
-  @test_utils.skipBeforePy((3, 9), "Test for new LIST_EXTEND opcode in 3.9")
   def test_str_to_list(self):
     actual = self._process("a = [*'abc']")
     self.assertCountEqual(
         actual, [(1, ("list", str), ["a", "b", "c"], [str, str, str])]
     )
 
-  @test_utils.skipBeforePy((3, 9), "Test for new LIST_EXTEND opcode in 3.9")
   def test_bad_extend(self):
     with self.assertRaises(constant_folding.ConstantError):
       self._process("a = [1, 2, *3]")
@@ -209,7 +207,6 @@ class TestFolding(test_base.UnitTest):
     """)
     self.assertCountEqual(actual, [(x, str, "", None) for x in (4, 6, 7)])
 
-  @test_utils.skipBeforePy((3, 9), "Depends on 3.9+ bytecode")
   def test_errors(self):
     # Check that malformed constants raise a ConstantFoldingError rather than
     # crash pytype.

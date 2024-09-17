@@ -68,7 +68,6 @@ class FunctionCallTest(RewriteTest):
       f(*a, **b)
     """)
 
-  @test_utils.skipBeforePy((3, 9), 'Relies on 3.9+ bytecode')
   def test_unpack_posargs(self):
     self.Check("""
       def f(x, y, z):

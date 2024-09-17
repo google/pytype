@@ -335,7 +335,6 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """,
     )
 
-  @test_utils.skipBeforePy((3, 9), "removeprefix and removesuffix new in 3.9")
   def test_str_remove_prefix_suffix(self):
     ty = self.Infer("""
       a = "prefix_suffix"

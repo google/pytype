@@ -65,7 +65,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("pytypecanary", modules)
 
   def test_get_all_module_names(self):
-    modules = self.ts.get_all_module_names((3, 9))
+    modules = self.ts.get_all_module_names((3, 10))
     self.assertIn("asyncio", modules)
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)
@@ -103,13 +103,13 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       self.assertNotIn("/", module_name)
 
   def test_carriage_return(self):
-    self.ts._stdlib_versions["foo"] = ((3, 8), None)
+    self.ts._stdlib_versions["foo"] = ((3, 10), None)
     with test_utils.Tempdir() as d:
       d.create_file(
           file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n"
       )
       self.ts._store = TypeshedTestFs(d.path)
-      _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
+      _, src = self.ts.get_module_file("stdlib", "foo", (3, 10))
     self.assertEqual(src, "x: int\n")
 
 

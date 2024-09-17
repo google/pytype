@@ -6,7 +6,6 @@ from pytype.pyi import parser
 from pytype.pyi import parser_test_base
 from pytype.pytd import pytd
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 import unittest
 
@@ -3597,7 +3596,6 @@ class AnnotatedTest(parser_test_base.ParserTestBase):
     """,
     )
 
-  @test_utils.skipBeforePy((3, 9), "requires ast.unparse, new in 3.9")
   def test_name(self):
     self.check(
         """

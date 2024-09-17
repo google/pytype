@@ -2404,10 +2404,8 @@ class VirtualMachine:
     # so CALL_FUNCTION needs to be considered as consuming the list.
     if self.ctx.python_version >= (3, 11):
       call_consumers = (opcodes.CALL,)
-    elif self.ctx.python_version >= (3, 9):
-      call_consumers = (opcodes.CALL_FUNCTION,)
     else:
-      call_consumers = ()
+      call_consumers = (opcodes.CALL_FUNCTION,)
     stop_classes = blocks.STORE_OPCODES + call_consumers
     while next_op:
       next_op = next_op.next

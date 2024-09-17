@@ -215,16 +215,10 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     )
 
   def _get_subscript_params(self, node):
-    if sys.version_info >= (3, 9):
-      return node.slice
-    else:
-      return node.slice.value
+    return node.slice
 
   def _set_subscript_params(self, node, new_val):
-    if sys.version_info >= (3, 9):
-      node.slice = new_val
-    else:
-      node.slice.value = new_val
+    node.slice = new_val
 
   def _convert_typing_annotated_args(self, node):
     typ, *args = self._get_subscript_params(node).elts

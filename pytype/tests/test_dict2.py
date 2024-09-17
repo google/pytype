@@ -1,7 +1,6 @@
 """Tests for dictionaries."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class DictTest(test_base.BaseTest):
@@ -87,7 +86,6 @@ class DictTest(test_base.BaseTest):
             d[key + '_suffix1']['suffix3'] = d[key + '_suffix3']
     """)
 
-  @test_utils.skipBeforePy((3, 9), "Dict | was added in 3.9.")
   def test_union(self):
     ty, _ = self.InferWithErrors("""
       from typing import Dict
@@ -133,7 +131,6 @@ class DictTest(test_base.BaseTest):
       d.update(1)  # wrong-arg-types
     """)
 
-  @test_utils.skipBeforePy((3, 9), "Requires new unpacking logic in 3.9.")
   def test_bad_unpack(self):
     self.CheckWithErrors("""
       lst = [3, 4]

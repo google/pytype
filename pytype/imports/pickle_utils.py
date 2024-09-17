@@ -29,19 +29,13 @@ This file is tested by serialize_ast_test.py.
 
 import gzip
 import os
-import sys
 from typing import Iterable, Optional, Tuple, TypeVar, Union
 
 import msgspec
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
 
-# In Python 3.8 and below, os.PathLike isn't subscriptable.
-if sys.version_info[:2] >= (3, 9):
-  _StrPathLike = os.PathLike[str]
-else:
-  _StrPathLike = os.PathLike
-Path = Union[str, _StrPathLike]
+Path = Union[str, os.PathLike[str]]
 
 
 class LoadPickleError(Exception):
