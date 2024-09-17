@@ -134,7 +134,7 @@ For more information about `run_tests.py` options, run `run_test.py --help`.
 To also lint and type-check the code, you can use:
 
 ```shell
-python build_scripts/ci_script.py
+bash build_scripts/ci_script.sh
 ```
 
 ### Resources
