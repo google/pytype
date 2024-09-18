@@ -28,6 +28,7 @@ py_library(
     ._utils
     .datatypes
     .file_utils
+    .imports_map
     .metrics
     .module_utils
     .pytype_source_utils
@@ -65,10 +66,18 @@ py_library(
 
 py_library(
   NAME
+    imports_map
+  SRCS
+    imports_map.py
+)
+
+py_library(
+  NAME
     imports_map_loader
   SRCS
     imports_map_loader.py
   DEPS
+    .imports_map
     pytype.platform_utils.platform_utils
 )
 
@@ -684,6 +693,7 @@ py_test(
   DEPS
     .config
     .file_utils
+    .imports_map
     .load_pytd
     .module_utils
     pytype.imports.imports

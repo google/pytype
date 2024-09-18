@@ -34,7 +34,7 @@ class TestParseArgs(unittest.TestCase):
       imports_info = d.create_file("foo", f"bar {pyi_file}")
       _, _, opts = parse_args.parse_args(
           ["a.py", "--imports_info", imports_info])
-      self.assertEqual(opts.imports_map, {"bar": pyi_file})
+      self.assertEqual(opts.imports_map.items, {"bar": pyi_file})
       self.assertTrue(opts.use_pickled_files)
 
 

@@ -1,5 +1,3 @@
-"""Tests for config.py."""
-
 import logging
 import os
 import sys
@@ -249,7 +247,7 @@ class PostprocessorTest(unittest.TestCase):
     items = [("foo", "/dev/null"), ("bar", "/dev/null")]
     expected = {"foo": "/dev/null", "bar": "/dev/null"}
     options = config.Options.create(imports_map_items=items)
-    self.assertCountEqual(options.imports_map, expected)
+    self.assertCountEqual(options.imports_map.items, expected)
 
   def test_imports_map_conflict(self):
     with self.assertRaises(config.PostprocessingError):

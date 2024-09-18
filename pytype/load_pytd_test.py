@@ -9,6 +9,7 @@ import textwrap
 
 from pytype import config
 from pytype import file_utils
+from pytype import imports_map
 from pytype import load_pytd
 from pytype import module_utils
 from pytype.imports import pickle_utils
@@ -187,7 +188,7 @@ class ImportPathsTest(_LoaderTest):
                 pythonpath="",
             )
         )
-        loader.options.tweak(imports_map={})
+        loader.options.tweak(imports_map=imports_map.ImportsMap())
         self.assertFalse(loader.import_name("baz"))
 
   def test_stdlib(self):
@@ -412,13 +413,6 @@ class ImportPathsTest(_LoaderTest):
       bar_path = d.create_file("bar.pyi", "X = ...  # type: another.foo.X")
       # Map the same pyi file under two module paths.
       null_device = "/dev/null" if sys.platform != "win32" else "NUL"
-      imports_map = {
-          "foo": foo_path,
-          file_utils.replace_separator("another/foo"): foo_path,
-          "bar": bar_path,
-          "empty1": null_device,
-          "empty2": null_device,
-      }
       loader = load_pytd.Loader(
           config.Options.create(
               module_name="base",
@@ -426,7 +420,17 @@ class ImportPathsTest(_LoaderTest):
               pythonpath="",
           )
       )
-      loader.options.tweak(imports_map=imports_map)
+      loader.options.tweak(
+          imports_map=imports_map.ImportsMap(
+              items={
+                  "foo": foo_path,
+                  file_utils.replace_separator("another/foo"): foo_path,
+                  "bar": bar_path,
+                  "empty1": null_device,
+                  "empty2": null_device,
+              }
+          )
+      )
       normal = loader.import_name("foo")
       self.assertEqual("foo", normal.name)
       loader.import_name("bar")  # check that we can resolve against another.foo
@@ -451,12 +455,6 @@ class ImportPathsTest(_LoaderTest):
       foo_path = d.create_file("foo.pyi", "class Foo: ...")
       bar_path = d.create_file("bar.pyi", "bar: foo.Foo = ...")
       baz_path = d.create_file("baz.pyi", "class Baz: ...")
-      imports_map = {
-          "foo": foo_path,
-          "bar": bar_path,
-          "baz": baz_path,
-          file_utils.replace_separator("aliased/baz"): baz_path,
-      }
       loader = load_pytd.Loader(
           config.Options.create(
               module_name="base",
@@ -464,7 +462,16 @@ class ImportPathsTest(_LoaderTest):
               pythonpath="",
           )
       )
-      loader.options.tweak(imports_map=imports_map)
+      loader.options.tweak(
+          imports_map=imports_map.ImportsMap(
+              items={
+                  "foo": foo_path,
+                  "bar": bar_path,
+                  "baz": baz_path,
+                  file_utils.replace_separator("aliased/baz"): baz_path,
+              }
+          )
+      )
       self.assertEqual(
           {foo_path, bar_path, baz_path},
           loader.get_unused_imports_map_paths(),
@@ -1180,7 +1187,9 @@ class PickledPyiLoaderTest(test_base.UnitTest):
               pythonpath="",
           ),
       )
-      loader.options.tweak(imports_map={"foo": foo_path})
+      loader.options.tweak(
+          imports_map=imports_map.ImportsMap(items={"foo": foo_path})
+      )
       # test import
       self.assertTrue(loader.import_name("sys"))
       self.assertTrue(loader.import_name("__future__"))

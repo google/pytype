@@ -9,6 +9,7 @@ from typing import Tuple
 # from absl import flags
 from pytype import analyze
 from pytype import config
+from pytype import imports_map as imports_map_lib
 from pytype import load_pytd
 from pytype import module_utils
 from pytype.directors import directors
@@ -399,7 +400,9 @@ class BaseTest(unittest.TestCase):
     old_use_pickled_files = self.options.use_pickled_files
     try:
       with test_utils.Tempdir() as d:
-        self.ConfigureOptions(pythonpath=[""], imports_map={})
+        self.ConfigureOptions(
+            pythonpath=[""], imports_map=imports_map_lib.ImportsMap()
+        )
         use_pickled_files = False
         for dep in deps:
           if len(dep) == 3:
@@ -422,7 +425,7 @@ class BaseTest(unittest.TestCase):
             filepath = d.create_file(new_path, pyi)
           else:
             raise ValueError(f"Unrecognised dependency type: {path}")
-          self.options.imports_map[base] = filepath
+          self.options.imports_map.items[base] = filepath
         self.options.use_pickled_files = use_pickled_files
         yield d
     finally:

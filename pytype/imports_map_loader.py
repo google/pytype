@@ -5,15 +5,15 @@ import logging
 import os
 from typing import Dict, List, Optional, Tuple
 
+from pytype import imports_map
 from pytype.platform_utils import path_utils
 
 log = logging.getLogger(__name__)
 
 
 # Type aliases.
-MultimapType = Dict[str, List[str]]
-ItemType = Tuple[str, str]
-ImportsMapType = Dict[str, str]
+_MultimapType = Dict[str, List[str]]
+_ItemType = Tuple[str, str]
 
 
 class ImportsMapBuilder:
@@ -22,7 +22,7 @@ class ImportsMapBuilder:
   def __init__(self, options):
     self.options = options
 
-  def _read_from_file(self, path) -> List[ItemType]:
+  def _read_from_file(self, path) -> List[_ItemType]:
     """Read the imports_map file."""
     items = []
     with self.options.open_function(path) as f:
@@ -33,7 +33,7 @@ class ImportsMapBuilder:
           items.append((short_path, path))
     return items
 
-  def _build_multimap(self, items: List[ItemType]) -> MultimapType:
+  def _build_multimap(self, items: List[_ItemType]) -> _MultimapType:
     """Build a multimap from a list of (short_path, path) pairs."""
     # TODO(mdemello): Keys should ideally be modules, not short paths.
     imports_multimap = collections.defaultdict(set)
@@ -47,8 +47,14 @@ class ImportsMapBuilder:
         for short_path, paths in imports_multimap.items()
     }
 
-  def _finalize(self, imports_multimap: MultimapType) -> ImportsMapType:
+  def _finalize(
+      self, imports_multimap: _MultimapType
+  ) -> imports_map.ImportsMap:
     """Generate the final imports map."""
+    # The path `%` can be used to specify unused files, so pytype can emit them
+    # as part of the --unused_imports_info_files option.
+    unused_files = imports_multimap.pop("%", [])
+
     # Output warnings for all multiple mappings and keep the lexicographically
     # first path for each.
     for short_path, paths in imports_multimap.items():
@@ -59,7 +65,8 @@ class ImportsMapBuilder:
             paths[0],
             paths[1:],
         )
-    imports_map = {
+        unused_files.extend(paths[1:])
+    imports = {
         short_path: path_utils.abspath(paths[0])
         for short_path, paths in imports_multimap.items()
     }
@@ -67,7 +74,7 @@ class ImportsMapBuilder:
     dir_paths = {}
     intermediate_dirs = set()
 
-    for short_path, full_path in sorted(imports_map.items()):
+    for short_path, full_path in sorted(imports.items()):
       dir_paths[short_path] = full_path
       # Collect intermediate directories.
       # For example, for foo/bar/quux.py, collect foo and foo/bar.
@@ -90,9 +97,11 @@ class ImportsMapBuilder:
         log.warning("Created empty __init__ %r", intermediate_dir_init)
         dir_paths[intermediate_dir_init] = os.devnull
 
-    return dir_paths
+    return imports_map.ImportsMap(items=dir_paths, unused=unused_files)
 
-  def build_from_file(self, path: Optional[str]) -> Optional[ImportsMapType]:
+  def build_from_file(
+      self, path: Optional[str]
+  ) -> Optional[imports_map.ImportsMap]:
     """Create an ImportsMap from a .imports_info file.
 
     Builds a dict of short_path to full name
@@ -110,8 +119,8 @@ class ImportsMapBuilder:
     return self.build_from_items(items)
 
   def build_from_items(
-      self, items: Optional[List[ItemType]]
-  ) -> Optional[ImportsMapType]:
+      self, items: Optional[List[_ItemType]]
+  ) -> Optional[imports_map.ImportsMap]:
     """Create a file mapping from a list of (short path, path) tuples.
 
     Builds a dict of short_path to full name

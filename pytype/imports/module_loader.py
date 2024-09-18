@@ -138,8 +138,7 @@ class ModuleLoader(base.ModuleLoader):
   def get_unused_imports_map_paths(self) -> Set[str]:
     if not self.options.imports_map:
       return set()
-    return {
-        path
-        for path in self.options.imports_map.values()
-        if path not in self._path_finder.accessed_imports_paths
-    }
+    return (
+        set(self.options.imports_map.items.values())
+        - set(self._path_finder.accessed_imports_paths)
+    ) | set(self.options.imports_map.unused)
