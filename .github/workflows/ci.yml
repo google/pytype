@@ -8,25 +8,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, macos-latest, windows-latest]
         python-version: ['3.10', '3.11', '3.12']
-        experimental: [false]
-        include:
+        shard: [shard_1, shard_2, shard_3]  # Keep this synced with ALL_TESTS_SHARD_COUNT
+        exclude:
           - os: macos-latest
-            python-version: '3.12'
-            experimental: false
+            python-version: '3.10'
+          - os: macos-latest
+            python-version: '3.11'
           - os: windows-latest
-            python-version: '3.12'
-            experimental: false
-          # - os: ubuntu-20.04
-          #   python-version: '3.13'
-          #   experimental: true
+            python-version: '3.10'
+          - os: windows-latest
+            python-version: '3.11'
     steps:
     - uses: actions/checkout@v4
       with:
@@ -48,18 +46,43 @@ jobs:
     - name: Install Dependencies
       run: pip install -r requirements.txt
 
+    - name: Build
+      run: python build_scripts/build.py
+
+    - name: Run Tests
+      run: python build_scripts/run_tests.py -f -v test_all_${{ matrix.shard }}_of_3  # Keep this synced with ALL_TESTS_SHARD_COUNT
+      continue-on-error: ${{ matrix.python-version == '3.13' }}
+
+  check:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04]
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+
+    - name: Install system packages
+      if: runner.os == 'Linux'
+      run: sudo apt-get install -y bison cmake flex g++
+
+    - name: Install Dependencies
+      run: pip install -r requirements.txt
+
     - name: Lint
-      if: runner.os == 'Linux' && matrix.python-version == '3.12'
+      if: matrix.python-version == '3.12'
       run: pylint build_scripts pytype pytype_extensions setup.py -j 0
 
     - name: Build
       run: python build_scripts/build.py
 
-    - name: Run Tests
-      run: python build_scripts/run_tests.py -f -v
-      continue-on-error: ${{ matrix.experimental }}
-
     - name: Type Check
-      if: runner.os == 'Linux'
       run: python out/bin/pytype -j auto
-      continue-on-error: ${{ matrix.experimental }}

@@ -17,10 +17,27 @@ set(CC_TEST_SCRIPT "${PROJECT_SOURCE_DIR}/build_scripts/run_cc_test.py")
 
 include(CMakeParseArguments)
 
-set(ALL_TESTS_TARGET "test_all")
-add_custom_target(
-  ${ALL_TESTS_TARGET}
-)
+# Set up the target that depends on all tests: "test_all"
+# As well as sharded targets that run only a roughly equal subset of tests,
+# such as "test_all_shard_1_of_3".
+add_custom_target("test_all")
+
+set(ALL_TESTS_SHARD_COUNT 3)
+foreach(i RANGE 1 ${ALL_TESTS_SHARD_COUNT})
+  add_custom_target("test_all_shard_${i}_of_${ALL_TESTS_SHARD_COUNT}")
+endforeach()
+
+# Add a target to "test_all" and to its computed "test_all_shard_*" target.
+function(_add_to_all_tests fq_target_name)
+  add_dependencies("test_all" ${fq_target_name})
+
+  string(SHA256 hash_of_target_name ${fq_target_name})
+  string(SUBSTRING ${hash_of_target_name} 56 8 hash_of_target_name)
+  math(EXPR modulo_of_target_name "(0x${hash_of_target_name} % ${ALL_TESTS_SHARD_COUNT}) + 1")
+
+  add_dependencies("test_all_shard_${modulo_of_target_name}_of_${ALL_TESTS_SHARD_COUNT}" ${fq_target_name})
+endfunction()
+
 
 string(COMPARE EQUAL "${CMAKE_BUILD_TYPE}" "Debug" is_debug_build)
 if(is_debug_build)
@@ -326,7 +343,7 @@ function(cc_test)
     DEPENDS ${log_file}
   )
 
-  add_dependencies(${ALL_TESTS_TARGET} ${fq_target_name})
+  _add_to_all_tests(${fq_target_name})
 endfunction(cc_test)
 
 # Function implementing a rule 'py_extension' to compile a set of CC and headers
@@ -531,7 +548,7 @@ function(py_test)
     endforeach(dep)
   endif()
 
-  add_dependencies(${ALL_TESTS_TARGET} ${fq_target_name})
+  _add_to_all_tests(${fq_target_name})
 endfunction(py_test)
 
 function(filegroup)
