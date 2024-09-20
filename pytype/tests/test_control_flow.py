@@ -34,6 +34,34 @@ class TestControlFlow(test_base.BaseTest):
         return x  # name-error
       """)
 
+  def test_and_or(self):
+    ty = self.Infer("""
+      class Foo:
+        def __bool__(self):
+          return bool(__random__)
+
+      a = Foo() and "a string" or 42
+    """)
+    # Behavior changed in 3.12: https://github.com/python/cpython/issues/124285
+    if self.python_version >= (3, 12):
+      self.assertTypesMatchPytd(
+          ty,
+          """
+          class Foo:
+            def __bool__(self) -> bool: ...
+          a: str | int | Foo
+          """,
+      )
+    else:
+      self.assertTypesMatchPytd(
+          ty,
+          """
+          class Foo:
+            def __bool__(self) -> bool: ...
+          a: str | int
+          """,
+      )
+
 
 if __name__ == "__main__":
   test_base.main()
