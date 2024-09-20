@@ -81,7 +81,7 @@ class TypeshedFs(TypeshedStore):
   def load_file(self, relpath) -> Tuple[str, str]:
     filename = self.filepath(relpath)
     with self._open_function(filename) as f:
-      return filename, f.read()
+      return relpath, f.read()
 
   def _readlines(self, unix_relpath):
     relpath = path_utils.join(*unix_relpath.split("/"))
@@ -139,7 +139,7 @@ class InternalTypeshedFs(TypeshedFs):
 
   def load_file(self, relpath) -> Tuple[str, str]:
     filepath = self.filepath(relpath)
-    return filepath, pytype_source_utils.load_text_file(filepath)
+    return relpath, pytype_source_utils.load_text_file(filepath)
 
 
 class ExternalTypeshedFs(TypeshedFs):

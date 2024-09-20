@@ -33,20 +33,24 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     filename, data = self.ts.get_module_file(
         "stdlib", "errno", self.python_version
     )
-    self.assertEqual("errno.pyi", path_utils.basename(filename))
+    self.assertEqual(file_utils.replace_separator("stdlib/errno.pyi"), filename)
     self.assertIn("errorcode", data)
 
   def test_get_typeshed_dir(self):
     filename, data = self.ts.get_module_file(
         "stdlib", "logging", self.python_version
     )
-    self.assertEqual("__init__.pyi", path_utils.basename(filename))
+    self.assertEqual(
+        file_utils.replace_separator("stdlib/logging/__init__.pyi"), filename
+    )
     self.assertIn("LogRecord", data)
 
   def test_load_module(self):
     loader = typeshed.TypeshedLoader(self.options, ())
     filename, ast = loader.load_module("stdlib", "_random")
-    self.assertEqual(path_utils.basename(filename), "_random.pyi")
+    self.assertEqual(
+        filename, file_utils.replace_separator("stdlib/_random.pyi")
+    )
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
   def test_get_typeshed_missing(self):
