@@ -1,7 +1,7 @@
 """Variables, bindings, and conditions."""
 
 import dataclasses
-from typing import Any, Generic, Optional, Tuple, Type, TypeVar, get_origin, overload
+from typing import Any, Generic, TypeVar, get_origin, overload
 
 from pytype.rewrite.flow import conditions
 
@@ -32,16 +32,17 @@ class Binding(Generic[_T]):
 class Variable(Generic[_T]):
   """A collection of bindings, optionally named."""
 
-  bindings: Tuple[Binding[_T], ...]
-  name: Optional[str] = None
+  bindings: tuple[Binding[_T], ...]
+  name: str | None = None
 
   @classmethod
   def from_value(
-      cls, value: _T2, *, name: Optional[str] = None) -> 'Variable[_T2]':
+      cls, value: _T2, *, name: str | None = None
+  ) -> 'Variable[_T2]':
     return cls(bindings=(Binding(value),), name=name)
 
   @property
-  def values(self) -> Tuple[_T, ...]:
+  def values(self) -> tuple[_T, ...]:
     return tuple(b.value for b in self.bindings)
 
   @property
@@ -53,10 +54,12 @@ class Variable(Generic[_T]):
     return f'variable {self.name}' if self.name else 'anonymous variable'
 
   @overload
-  def get_atomic_value(self, typ: Type[_T2]) -> _T2: ...
+  def get_atomic_value(self, typ: type[_T2]) -> _T2:
+    ...
 
   @overload
-  def get_atomic_value(self, typ: None = ...) -> _T: ...
+  def get_atomic_value(self, typ: None = ...) -> _T:
+    ...
 
   def get_atomic_value(self, typ=None):
     """Gets this variable's value if there's exactly one, errors otherwise."""
@@ -71,7 +74,7 @@ class Variable(Generic[_T]):
           f'{runtime_type.__name__}, got {value.__class__.__name__}')
     return value
 
-  def is_atomic(self, typ: Optional[Type[_T]] = None) -> bool:
+  def is_atomic(self, typ: type[_T] | None = None) -> bool:
     if len(self.bindings) != 1:
       return False
     return True if typ is None else isinstance(self.values[0], typ)
@@ -89,7 +92,7 @@ class Variable(Generic[_T]):
       new_bindings.append(dataclasses.replace(b, condition=new_condition))
     return dataclasses.replace(self, bindings=tuple(new_bindings))
 
-  def with_name(self, name: Optional[str]) -> 'Variable[_T]':
+  def with_name(self, name: str | None) -> 'Variable[_T]':
     return dataclasses.replace(self, name=name)
 
   def with_value(self, value: _T2) -> 'Variable[_T2]':

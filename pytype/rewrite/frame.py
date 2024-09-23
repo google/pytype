@@ -1,7 +1,8 @@
 """A frame of an abstract VM for type analysis of python bytecode."""
 
+from collections.abc import Mapping, Sequence
 import logging
-from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Tuple, Type
+from typing import Any, Optional
 
 from pycnite import marshal as pyc_marshal
 from pytype import datatypes
@@ -30,8 +31,8 @@ class _ShadowedNonlocals:
   """Tracks shadowed nonlocal names."""
 
   def __init__(self):
-    self._enclosing: Set[str] = set()
-    self._globals: Set[str] = set()
+    self._enclosing: set[str] = set()
+    self._globals: set[str] = set()
 
   def add_enclosing(self, name: str) -> None:
     self._enclosing.add(name)
@@ -45,10 +46,10 @@ class _ShadowedNonlocals:
   def has_global(self, name: str):
     return name in self._globals
 
-  def get_global_names(self) -> FrozenSet[str]:
+  def get_global_names(self) -> frozenset[str]:
     return frozenset(self._globals)
 
-  def get_enclosing_names(self) -> FrozenSet[str]:
+  def get_enclosing_names(self) -> frozenset[str]:
     return frozenset(self._enclosing)
 
 
@@ -91,10 +92,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Names of nonlocals shadowed in the current frame
     self._shadowed_nonlocals = _ShadowedNonlocals()
     # All functions and classes created during execution
-    self._functions: List[_FrameFunction] = []
-    self._classes: List[abstract.InterpreterClass] = []
+    self._functions: list[_FrameFunction] = []
+    self._classes: list[abstract.InterpreterClass] = []
     # All variables returned via RETURN_VALUE/RETURN_CONST
-    self._returns: List[_Var] = []
+    self._returns: list[_Var] = []
     # Handler for function calls.
     self._call_helper = function_call_helper.FunctionCallHelper(ctx, self)
 
@@ -356,7 +357,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def _load_method(
       self, instance_var: _Var, method_name: str
-  ) -> Tuple[_Var, _Var]:
+  ) -> tuple[_Var, _Var]:
     # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
@@ -810,8 +811,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def _build_collection_from_stack(
       self,
       opcode,
-      typ: Type[Any],
-      factory: Type[abstract.PythonConstant] = abstract.PythonConstant,
+      typ: type[Any],
+      factory: type[abstract.PythonConstant] = abstract.PythonConstant,
   ) -> None:
     """Pop elements off the stack and build a python constant."""
     count = opcode.arg
@@ -899,7 +900,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.extend(update))
 
-  def _unpack_dict_update(self, var: _Var) -> Optional[abstract.Dict]:
+  def _unpack_dict_update(self, var: _Var) -> abstract.Dict | None:
     try:
       val = var.get_atomic_value()
     except ValueError:

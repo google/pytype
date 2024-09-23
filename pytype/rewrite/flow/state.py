@@ -1,6 +1,7 @@
 """Bytecode block state."""
 
-from typing import Dict, Generic, Mapping, Optional, Set, TypeVar
+from collections.abc import Mapping
+from typing import Generic, Optional, TypeVar
 
 import immutabledict
 from pytype.rewrite.flow import conditions
@@ -14,9 +15,9 @@ class BlockState(Generic[_T]):
 
   def __init__(
       self,
-      locals_: Dict[str, variables.Variable[_T]],
+      locals_: dict[str, variables.Variable[_T]],
       condition: conditions.Condition = conditions.TRUE,
-      locals_with_block_condition: Optional[Set[str]] = None,
+      locals_with_block_condition: set[str] | None = None,
   ):
     self._locals = locals_
     self._condition = condition

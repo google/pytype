@@ -1,9 +1,10 @@
 """Utilities for abstract.py."""
 
 import collections
+from collections.abc import Collection, Iterable, Mapping, Sequence
 import dataclasses
 import logging
-from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import Any
 
 from pytype import datatypes
 from pytype.pyc import opcodes
@@ -16,7 +17,7 @@ from pytype.typegraph import cfg_utils
 log = logging.getLogger(__name__)
 
 # Type aliases
-_ArgsDictType = Dict[str, cfg.Variable]
+_ArgsDictType = dict[str, cfg.Variable]
 
 # We can't import some modules here due to circular deps.
 _ContextType = Any  # context.Context
@@ -122,7 +123,7 @@ class AsReturnValue(AsInstance):
 class LazyFormalTypeParameters:
   template: Sequence[Any]
   parameters: Sequence[pytd.Node]
-  subst: Dict[str, cfg.Variable]
+  subst: dict[str, cfg.Variable]
 
 
 class Local:
@@ -131,9 +132,9 @@ class Local:
   def __init__(
       self,
       node: cfg.CFGNode,
-      op: Optional[opcodes.Opcode],
-      typ: Optional[_BaseValueType],
-      orig: Optional[cfg.Variable],
+      op: opcodes.Opcode | None,
+      typ: _BaseValueType | None,
+      orig: cfg.Variable | None,
       ctx: _ContextType,
   ):
     self._ops = [op]
@@ -603,7 +604,7 @@ def eval_expr(ctx, node, f_globals, f_locals, expr):
   return ret, e
 
 
-def match_type_container(typ, container_type_name: Union[str, Tuple[str, ...]]):
+def match_type_container(typ, container_type_name: str | tuple[str, ...]):
   """Unpack the type parameter from ContainerType[T]."""
   if typ is None:
     return None
@@ -755,7 +756,7 @@ def is_type_variable(val: _BaseValueType):
 
 def build_generic_template(
     type_params: Sequence[_BaseValueType], base_type: _BaseValueType
-) -> Tuple[Sequence[str], Sequence[_TypeParamType]]:
+) -> tuple[Sequence[str], Sequence[_TypeParamType]]:
   """Build a typing.Generic template from a sequence of type parameters."""
   if not all(is_type_variable(item) for item in type_params):
     base_type.ctx.errorlog.invalid_annotation(
@@ -785,9 +786,9 @@ def is_generic_protocol(val: _BaseValueType) -> bool:
 
 
 def combine_substs(
-    substs1: Optional[Collection[Dict[str, cfg.Variable]]],
-    substs2: Optional[Collection[Dict[str, cfg.Variable]]],
-) -> Collection[Dict[str, cfg.Variable]]:
+    substs1: Collection[dict[str, cfg.Variable]] | None,
+    substs2: Collection[dict[str, cfg.Variable]] | None,
+) -> Collection[dict[str, cfg.Variable]]:
   """Combines the two collections of type parameter substitutions."""
   if substs1 and substs2:
     return tuple({**sub1, **sub2} for sub1 in substs1 for sub2 in substs2)  # pylint: disable=g-complex-comprehension
@@ -912,7 +913,7 @@ def update_args_dict(
       args[k] = v
 
 
-def get_generic_type(val: _BaseValueType) -> Optional[_ParameterizedClassType]:
+def get_generic_type(val: _BaseValueType) -> _ParameterizedClassType | None:
   """Gets the generic type of an abstract value.
 
   Args:
@@ -957,17 +958,17 @@ def with_empty_substitutions(subst, pytd_type, node, ctx):
 
 
 def get_var_fullhash_component(
-    var: cfg.Variable, seen: Optional[Set[_BaseValueType]] = None
-) -> Tuple[Any, ...]:
+    var: cfg.Variable, seen: set[_BaseValueType] | None = None
+) -> tuple[Any, ...]:
   return tuple(sorted(v.get_fullhash(seen) for v in var.data))
 
 
 def get_dict_fullhash_component(
-    vardict: Dict[str, cfg.Variable],
+    vardict: dict[str, cfg.Variable],
     *,
-    names: Optional[Set[str]] = None,
-    seen: Optional[Set[_BaseValueType]] = None,
-) -> Tuple[Any, ...]:
+    names: set[str] | None = None,
+    seen: set[_BaseValueType] | None = None,
+) -> tuple[Any, ...]:
   """Hash a dictionary.
 
   This contains the keys and the full hashes of the data in the values.

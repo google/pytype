@@ -1,6 +1,6 @@
 """Apply decorators to classes and functions."""
 
-from typing import Iterable, List
+from collections.abc import Iterable
 
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
@@ -32,7 +32,7 @@ def _validate_class(cls: pytd.Class, decorator: str) -> None:
     validator(cls)
 
 
-def _decorator_names(cls: pytd.Class) -> List[str]:
+def _decorator_names(cls: pytd.Class) -> list[str]:
   return [
       x.type.name for x in reversed(cls.decorators) if x.type.name is not None
   ]

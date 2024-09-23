@@ -1,7 +1,7 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
+from collections.abc import Sequence
 import logging
-from typing import Dict, Optional, Sequence
 
 from pytype import config
 from pytype.blocks import blocks
@@ -22,7 +22,7 @@ class VirtualMachine:
       self,
       ctx: context.Context,
       code: blocks.OrderedCode,
-      initial_globals: Dict[str, abstract.BaseValue],
+      initial_globals: dict[str, abstract.BaseValue],
   ):
     self._ctx = ctx
     self._code = code
@@ -33,7 +33,7 @@ class VirtualMachine:
   def from_source(
       cls,
       src: str,
-      ctx: Optional[context.Context] = None,
+      ctx: context.Context | None = None,
   ) -> 'VirtualMachine':
     ctx = ctx or context.Context(src=src)
     code = _get_bytecode(src, ctx.options)

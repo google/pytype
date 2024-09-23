@@ -1,14 +1,14 @@
 """Builtin values with special behavior."""
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.overlays import overlays
 
 
 def _stack(
-    frame: Optional[abstract.FrameType]
-) -> Optional[Sequence[abstract.FrameType]]:
+    frame: abstract.FrameType | None,
+) -> Sequence[abstract.FrameType] | None:
   return frame.stack if frame else None
 
 

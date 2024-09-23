@@ -1,11 +1,12 @@
 """Code and data structures for storing and displaying errors."""
 
+from collections.abc import Callable, Iterable, Sequence
 import contextlib
 import csv
 import io
 import logging
 import sys
-from typing import Callable, IO, Iterable, List, Optional, Sequence, TypeVar, Union
+from typing import IO, TypeVar
 
 from pytype import debug
 from pytype import pretty_printer_base
@@ -333,7 +334,7 @@ class Error:
   def keyword_context(self):
     return self._keyword_context
 
-  def _find_all_line_split(self, begin_line: int, end_line: int) -> List[int]:
+  def _find_all_line_split(self, begin_line: int, end_line: int) -> list[int]:
     """Finds all index of line boundaries between begin_line and end_line.
 
     Due to the possibility of the endline of the error message being on the
@@ -1027,7 +1028,7 @@ class VmErrorLog(ErrorLog):
   def invalid_annotation(
       self,
       stack,
-      annot: Optional[Union[str, types.BaseValue]],
+      annot: str | types.BaseValue | None,
       details=None,
       name=None,
   ):
@@ -1049,7 +1050,7 @@ class VmErrorLog(ErrorLog):
       annot: types.BaseValue,
       params: Sequence[types.BaseValue],
       expected_count: int,
-      template: Optional[Iterable[str]] = None,
+      template: Iterable[str] | None = None,
   ):
     """Log an error for an annotation with the wrong number of parameters."""
     base_type = self._pp.print_type_of_instance(annot)
@@ -1078,7 +1079,7 @@ class VmErrorLog(ErrorLog):
   def ambiguous_annotation(
       self,
       stack,
-      options: Optional[Union[str, Iterable[types.BaseValue]]],
+      options: str | Iterable[types.BaseValue] | None,
       name=None,
   ):
     """Log an ambiguous annotation."""

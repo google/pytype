@@ -1,4 +1,5 @@
-from typing import Mapping, Type, TypeVar, cast, get_origin
+from collections.abc import Mapping
+from typing import TypeVar, cast, get_origin
 from unittest import mock
 
 from pytype.pyc import opcodes
@@ -14,7 +15,7 @@ _FrameFunction = abstract.InterpreterFunction[frame_lib.Frame]
 _T = TypeVar('_T')
 
 
-def _get(frame: frame_lib.Frame, name: str, typ: Type[_T]) -> _T:
+def _get(frame: frame_lib.Frame, name: str, typ: type[_T]) -> _T:
   val = cast(_T, frame.final_locals[name])
   assert isinstance(val, get_origin(typ) or typ)
   return val

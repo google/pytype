@@ -18,7 +18,7 @@ import enum
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pycnite import marshal as pyc_marshal
 from pytype import block_environment
@@ -94,34 +94,34 @@ class VirtualMachine:
     """Construct a TypegraphVirtualMachine."""
     self.ctx = ctx  # context.Context
     # The call stack of frames.
-    self.frames: List[frame_state.Frame] = []
+    self.frames: list[frame_state.Frame] = []
     # The current frame.
     self.frame: frame_state.Frame = None
     # A map from names to the late annotations that depend on them. Every
     # LateAnnotation depends on a single undefined name, so once that name is
     # defined, we immediately resolve the annotation.
-    self.late_annotations: Dict[str, List[abstract.LateAnnotation]] = (
+    self.late_annotations: dict[str, list[abstract.LateAnnotation]] = (
         collections.defaultdict(list)
     )
     # Memoize which overlays are loaded.
-    self.loaded_overlays: Dict[str, Optional[overlay_lib.Overlay]] = {}
+    self.loaded_overlays: dict[str, overlay_lib.Overlay | None] = {}
     self.has_unknown_wildcard_imports: bool = False
     # pyformat: disable
-    self.opcode_traces: List[Tuple[
-        Optional[opcodes.Opcode],
+    self.opcode_traces: list[tuple[
+        opcodes.Opcode | None,
         Any,
-        Tuple[Optional[List[abstract.BaseValue]], ...]
+        tuple[list[abstract.BaseValue] | None, ...]
     ]] = []
     # pyformat: enable
     # Store the ordered bytecode after all preprocessing is done
     self.block_graph = None
     # Track the order of creation of local vars, for attrs and dataclasses.
-    self.local_ops: Dict[str, List[LocalOp]] = {}
+    self.local_ops: dict[str, list[LocalOp]] = {}
     # Record the annotated and original values of locals.
-    self.annotated_locals: Dict[str, Dict[str, abstract_utils.Local]] = {}
+    self.annotated_locals: dict[str, dict[str, abstract_utils.Local]] = {}
     self.filename: str = None
-    self.functions_type_params_check: List[
-        Tuple[abstract.InterpreterFunction, opcodes.Opcode]
+    self.functions_type_params_check: list[
+        tuple[abstract.InterpreterFunction, opcodes.Opcode]
     ] = []
 
     self._maximum_depth = None  # set by run_program() and analyze()
@@ -156,11 +156,11 @@ class VirtualMachine:
     return self.annotated_locals[self.frame.f_code.name]
 
   @property
-  def current_opcode(self) -> Optional[opcodes.Opcode]:
+  def current_opcode(self) -> opcodes.Opcode | None:
     return self.frame and self.frame.current_opcode
 
   @property
-  def current_line(self) -> Optional[int]:
+  def current_line(self) -> int | None:
     current_opcode = self.current_opcode
     return current_opcode and current_opcode.line
 
@@ -404,7 +404,7 @@ class VirtualMachine:
 
   def _call(
       self, state, obj, method_name, args
-  ) -> Tuple[frame_state.FrameState, cfg.Variable]:
+  ) -> tuple[frame_state.FrameState, cfg.Variable]:
     state, method = self.load_attr(state, obj, method_name)
     return self.call_function_with_state(state, method, args)
 
@@ -698,10 +698,10 @@ class VirtualMachine:
       self,
       state: frame_state.FrameState,
       funcv: cfg.Variable,
-      posargs: Tuple[cfg.Variable, ...],
-      namedargs: Optional[Dict[str, cfg.Variable]] = None,
-      starargs: Optional[cfg.Variable] = None,
-      starstarargs: Optional[cfg.Variable] = None,
+      posargs: tuple[cfg.Variable, ...],
+      namedargs: dict[str, cfg.Variable] | None = None,
+      starargs: cfg.Variable | None = None,
+      starstarargs: cfg.Variable | None = None,
       fallback_to_unsolvable: bool = True,
   ):
     """Call a function with the given state."""
@@ -823,7 +823,7 @@ class VirtualMachine:
       store: abstract.LazyConcreteDict,
       name: str,
       discard_concrete_values: bool = False,
-  ) -> Tuple[frame_state.FrameState, cfg.Variable]:
+  ) -> tuple[frame_state.FrameState, cfg.Variable]:
     """Load an item out of locals, globals, or builtins."""
     if isinstance(store, mixin.LazyMembers):
       store.load_lazy_attribute(name)
@@ -1093,7 +1093,7 @@ class VirtualMachine:
 
   def _retrieve_attr(
       self, node: cfg.CFGNode, obj: cfg.Variable, attr: str
-  ) -> Tuple[cfg.CFGNode, Optional[cfg.Variable], List[cfg.Binding]]:
+  ) -> tuple[cfg.CFGNode, cfg.Variable | None, list[cfg.Binding]]:
     """Load an attribute from an object."""
     if (
         attr == "__class__"

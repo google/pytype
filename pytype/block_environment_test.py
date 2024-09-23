@@ -1,7 +1,6 @@
 """Tests for block_environment.py."""
 
 import dataclasses
-from typing import Dict, Set
 
 from pytype import block_environment
 
@@ -11,7 +10,7 @@ import unittest
 @dataclasses.dataclass
 class FakeBlock:
   id: int
-  incoming: Set["FakeBlock"] = dataclasses.field(default_factory=set)
+  incoming: set["FakeBlock"] = dataclasses.field(default_factory=set)
 
   def __hash__(self):
     return self.id
@@ -41,7 +40,7 @@ class FakeVariable:
 
 
 class FLocals:
-  pyval: Dict[str, FakeVariable]
+  pyval: dict[str, FakeVariable]
 
   def __init__(self, varnames):
     self.pyval = {}

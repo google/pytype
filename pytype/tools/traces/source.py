@@ -2,7 +2,7 @@
 
 import collections
 import dataclasses
-from typing import Any, NamedTuple, Tuple
+from typing import Any, NamedTuple
 
 from pytype.pytd import pytd
 
@@ -17,7 +17,7 @@ class AbstractTrace:
   """Base class for traces."""
   op: str
   symbol: Any
-  types: Tuple[pytd.Node, ...]
+  types: tuple[pytd.Node, ...]
 
   def __new__(cls, op, symbol, types):
     del op, symbol, types  # unused

@@ -3,7 +3,7 @@
 import contextlib
 import logging
 import types
-from typing import Any, Dict, FrozenSet, Tuple
+from typing import Any
 
 import pycnite
 from pytype import datatypes
@@ -68,7 +68,7 @@ class Converter(utils.ContextWeakrefMixin):
     super().__init__(ctx)
     ctx.convert = self  # to make constant_to_value calls below work
 
-    self._convert_cache: Dict[Any, Any] = {}
+    self._convert_cache: dict[Any, Any] = {}
 
     # Initialize primitive_classes to empty to allow constant_to_value to run.
     self.primitive_classes = ()
@@ -744,7 +744,7 @@ class Converter(utils.ContextWeakrefMixin):
       return None
     return overlay.maybe_load_member(member_name)
 
-  def _frozenset_literal_to_value(self, pyval: FrozenSet[Any]):
+  def _frozenset_literal_to_value(self, pyval: frozenset[Any]):
     """Convert a literal frozenset to an abstract value."""
     instance = abstract.Instance(self.frozenset_type, self.ctx)
     for element in pyval:
@@ -755,7 +755,7 @@ class Converter(utils.ContextWeakrefMixin):
       )
     return instance
 
-  def _tuple_literal_to_value(self, pyval: Tuple[Any, ...]):
+  def _tuple_literal_to_value(self, pyval: tuple[Any, ...]):
     """Convert a literal tuple to an abstract value."""
     return self.tuple_to_value(
         [self.constant_to_var(item, {}) for item in pyval]

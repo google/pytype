@@ -1,6 +1,7 @@
 """Utilities for working with abstract values."""
 
-from typing import Any, Sequence, Type, TypeVar, get_origin, overload
+from collections.abc import Sequence
+from typing import Any, TypeVar, get_origin, overload
 
 from pytype.rewrite.abstract import base
 
@@ -10,7 +11,7 @@ _T = TypeVar('_T')
 
 
 @overload
-def get_atomic_constant(var: _Var, typ: Type[_T]) -> _T:
+def get_atomic_constant(var: _Var, typ: type[_T]) -> _T:
   ...
 
 

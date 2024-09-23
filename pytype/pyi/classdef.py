@@ -1,7 +1,8 @@
 """Class definitions in pyi files."""
 
 import ast as astlib
-from typing import Callable, List, cast
+from collections.abc import Callable
+from typing import cast
 
 from pytype.pyi import types
 from pytype.pytd import pytd
@@ -10,8 +11,8 @@ _ParseError = types.ParseError
 
 
 def get_bases(
-    bases: List[pytd.Type], type_match: Callable[..., bool]
-) -> List[pytd.Type]:
+    bases: list[pytd.Type], type_match: Callable[..., bool]
+) -> list[pytd.Type]:
   """Collect base classes."""
 
   bases_out = []
@@ -37,7 +38,7 @@ def get_bases(
   return bases_out
 
 
-def get_keywords(keywords: List[astlib.keyword]):
+def get_keywords(keywords: list[astlib.keyword]):
   """Get valid class keywords."""
 
   valid_keywords = []

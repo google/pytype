@@ -5,7 +5,7 @@ import collections
 import dataclasses
 import itertools
 import logging
-from typing import Any, Dict, Optional, Tuple, TypeVar, cast
+from typing import Any, TypeVar, cast
 
 import attrs
 from pytype import datatypes
@@ -108,13 +108,13 @@ class Signature(types.Signature):
   def __init__(
       self,
       name: str,
-      param_names: Tuple[str, ...],
+      param_names: tuple[str, ...],
       posonly_count: int,
-      varargs_name: Optional[str],
-      kwonly_params: Tuple[str, ...],
-      kwargs_name: Optional[str],
-      defaults: Dict[str, cfg.Variable],
-      annotations: Dict[str, _base.BaseValue],
+      varargs_name: str | None,
+      kwonly_params: tuple[str, ...],
+      kwargs_name: str | None,
+      defaults: dict[str, cfg.Variable],
+      annotations: dict[str, _base.BaseValue],
       postprocess_annotations: bool = True,
   ) -> None:
     super().__init__(
@@ -251,8 +251,8 @@ class Signature(types.Signature):
     return self._replace(param_names=self.param_names[1:])
 
   def _make_concatenated_type(
-      self, type1: _base.BaseValue, type2: Optional[_base.BaseValue]
-  ) -> Optional[_base.BaseValue]:
+      self, type1: _base.BaseValue, type2: _base.BaseValue | None
+  ) -> _base.BaseValue | None:
     """Concatenates type1 and type2 if possible.
 
     If type2 is a ParamSpec or Concatenate object, creates a new Concatenate
@@ -586,12 +586,12 @@ class Args:
     starstarargs: The **kwargs parameter, or None.
   """
 
-  posargs: Tuple[cfg.Variable, ...]
-  namedargs: Dict[str, cfg.Variable] = attrs.field(
+  posargs: tuple[cfg.Variable, ...]
+  namedargs: dict[str, cfg.Variable] = attrs.field(
       converter=_convert_namedargs, default=None
   )
-  starargs: Optional[cfg.Variable] = None
-  starstarargs: Optional[cfg.Variable] = None
+  starargs: cfg.Variable | None = None
+  starstarargs: cfg.Variable | None = None
 
   def has_namedargs(self):
     return bool(self.namedargs)

@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-from typing import Optional
 
 from pytype import config
 from pytype import load_pytd
@@ -36,7 +35,7 @@ def _make_argument_parser() -> argparse.ArgumentParser:
   return o
 
 
-def _pickle(src_path: str) -> Optional[bytes]:
+def _pickle(src_path: str) -> bytes | None:
   """Run the serialization code on the pyi file at the given src_path."""
 
   with open(src_path) as f:

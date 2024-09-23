@@ -1,8 +1,8 @@
 """Representation of modules."""
 
+from collections.abc import Sequence
 import dataclasses
 import os
-from typing import Sequence
 
 from pytype.platform_utils import path_utils
 

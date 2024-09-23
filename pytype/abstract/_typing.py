@@ -1,9 +1,10 @@
 """Constructs related to type annotations."""
 
+from collections.abc import Mapping
 import dataclasses
 import logging
 import typing
-from typing import Mapping, Optional, Set, Tuple, Type, Union as _Union
+from typing import Union as _Union
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -90,7 +91,7 @@ class AnnotationContainer(AnnotationClass):
       self,
       annot: _base.BaseValue,
       subst: Mapping[str, _base.BaseValue],
-      seen: Optional[Set[_base.BaseValue]] = None,
+      seen: set[_base.BaseValue] | None = None,
   ) -> _base.BaseValue:
     """Apply type parameter substitutions to an annotation."""
     # This is very similar to annotation_utils.sub_one_annotation, but a couple
@@ -121,10 +122,10 @@ class AnnotationContainer(AnnotationClass):
 
   def _get_value_info(
       self, inner, ellipses, allowed_ellipses=frozenset()
-  ) -> Tuple[
-      Tuple[_Union[int, str], ...],
-      Tuple[_base.BaseValue, ...],
-      Type[_classes.ParameterizedClass],
+  ) -> tuple[
+      tuple[_Union[int, str], ...],
+      tuple[_base.BaseValue, ...],
+      type[_classes.ParameterizedClass],
   ]:
     """Get information about the container's inner values.
 
@@ -298,7 +299,7 @@ class AnnotationContainer(AnnotationClass):
       # Protocol[T, ...] is a shorthand for Protocol, Generic[T, ...].
       template_params = [
           param.with_scope(base_cls.full_name)
-          for param in typing.cast(Tuple[TypeParameter, ...], processed_inner)
+          for param in typing.cast(tuple[TypeParameter, ...], processed_inner)
       ]
     else:
       template_params = None
@@ -423,7 +424,7 @@ class _TypeVariable(_base.BaseValue):
 
   formal = True
 
-  _INSTANCE_CLASS: Type[_TypeVariableInstance] = None
+  _INSTANCE_CLASS: type[_TypeVariableInstance] = None
 
   def __init__(
       self,

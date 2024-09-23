@@ -25,7 +25,6 @@ into a proper enum.
 import collections
 import contextlib
 import logging
-from typing import Optional, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -832,8 +831,8 @@ class EnumMetaGetItem(abstract.SimpleFunction):
     super().__init__(sig, ctx)
 
   def _get_member_by_name(
-      self, enum: Union[EnumInstance, abstract.PyTDClass], name: str
-  ) -> Optional[cfg.Variable]:
+      self, enum: EnumInstance | abstract.PyTDClass, name: str
+  ) -> cfg.Variable | None:
     if isinstance(enum, EnumInstance):
       return enum.members.get(name)
     else:

@@ -11,7 +11,7 @@ signatures against new inference results.
 """
 
 import logging
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 from pytype import utils
 from pytype.pytd import booleq
@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 is_complete = escape.is_complete
 
-_SubstType = Dict[pytd.TypeParameter, Optional[pytd.Type]]
+_SubstType = dict[pytd.TypeParameter, Optional[pytd.Type]]
 # This should be kept in sync with is_unknown below.
 _UnknownType = Union[pytd.ClassType, pytd.NamedType, pytd.Class, "StrictType"]
 

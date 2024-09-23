@@ -1,7 +1,8 @@
 """Base abstract representation of Python values."""
 
 import abc
-from typing import Any, Generic, Optional, Protocol, Sequence, Tuple, TypeVar
+from collections.abc import Sequence
+from typing import Any, Generic, Optional, Protocol, TypeVar
 
 from pytype import config
 from pytype import load_pytd
@@ -39,11 +40,12 @@ class BaseValue(types.BaseValue, abc.ABC):
     self._ctx = ctx
 
   @abc.abstractmethod
-  def __repr__(self): ...
+  def __repr__(self):
+    ...
 
   @property
   @abc.abstractmethod
-  def _attrs(self) -> Tuple[Any, ...]:
+  def _attrs(self) -> tuple[Any, ...]:
     """This object's identifying attributes.
 
     Used for equality comparisons and hashing. Should return a tuple of the
@@ -62,7 +64,7 @@ class BaseValue(types.BaseValue, abc.ABC):
   def __hash__(self):
     return hash((self.__class__, self._ctx) + self._attrs)
 
-  def to_variable(self, name: Optional[str] = None) -> variables.Variable[Self]:
+  def to_variable(self, name: str | None = None) -> variables.Variable[Self]:
     return variables.Variable.from_value(self, name=name)
 
   def get_attribute(self, name: str) -> Optional['BaseValue']:

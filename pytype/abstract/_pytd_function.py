@@ -4,7 +4,7 @@ import collections
 import contextlib
 import itertools
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pytype import datatypes
 from pytype import utils
@@ -39,7 +39,7 @@ class SignatureMutationError(Exception):
     self.pytd_sig = pytd_sig
 
 
-def _is_literal(annot: Optional[_base.BaseValue]):
+def _is_literal(annot: _base.BaseValue | None):
   if isinstance(annot, _typing.Union):
     return all(_is_literal(o) for o in annot.options)
   return isinstance(annot, _classes.LiteralClass)
@@ -51,8 +51,8 @@ class _MatchedSignatures:
   def __init__(self, args, can_match_multiple):
     self._args_vars = set(args.get_variables())
     self._can_match_multiple = can_match_multiple
-    self._data: List[
-        List[Tuple[PyTDSignature, Dict[str, cfg.Variable], _GoodMatchType]]
+    self._data: list[
+        list[tuple[PyTDSignature, dict[str, cfg.Variable], _GoodMatchType]]
     ] = []
     self._sig = self._cur_data = None
 

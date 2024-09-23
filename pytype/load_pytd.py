@@ -1,10 +1,10 @@
 """Load and link .pyi files."""
 
 import collections
+from collections.abc import Iterable
 import dataclasses
 import logging
 import os
-from typing import Dict, Iterable, List, Optional, Set
 
 from pytype import file_utils
 from pytype import module_utils
@@ -57,8 +57,8 @@ _ModuleNameType = _AliasNameType = _NameType = str
 
 
 def _merge_aliases(
-    aliases: Dict[_ModuleNameType, Dict[_AliasNameType, _NameType]],
-) -> Dict[_AliasNameType, _NameType]:
+    aliases: dict[_ModuleNameType, dict[_AliasNameType, _NameType]],
+) -> dict[_AliasNameType, _NameType]:
   all_aliases = {}
   for mod_aliases in aliases.values():
     all_aliases.update(mod_aliases)
@@ -70,7 +70,7 @@ class ResolvedModule:
   module_name: str
   filename: str
   ast: pytd.TypeDeclUnit
-  metadata: List[str]
+  metadata: list[str]
 
 
 class Module:
@@ -142,7 +142,7 @@ class _ModuleMap:
 
   def __init__(self, options, modules):
     self.options = options
-    self._modules: Dict[str, Module] = modules or self._base_modules()
+    self._modules: dict[str, Module] = modules or self._base_modules()
     if self._modules["builtins"].needs_unpickling():
       self._unpickle_module(self._modules["builtins"])
     if self._modules["typing"].needs_unpickling():
@@ -170,7 +170,7 @@ class _ModuleMap:
   def get(self, key):
     return self._modules.get(key)
 
-  def get_existing_ast(self, module_name: str) -> Optional[_AST]:
+  def get_existing_ast(self, module_name: str) -> _AST | None:
     existing = self._modules.get(module_name)
     if existing:
       if existing.needs_unpickling():
@@ -182,13 +182,13 @@ class _ModuleMap:
     """All module ASTs that are not None."""
     return (module.ast for module in self._modules.values() if module.ast)
 
-  def get_module_map(self) -> Dict[str, _AST]:
+  def get_module_map(self) -> dict[str, _AST]:
     """Get a {name: ast} map of all modules with a filled-in ast."""
     return {
         name: module.ast for name, module in self._modules.items() if module.ast
     }
 
-  def get_resolved_modules(self) -> Dict[str, ResolvedModule]:
+  def get_resolved_modules(self) -> dict[str, ResolvedModule]:
     """Get a {name: ResolvedModule} map of all resolved modules."""
     resolved_modules = {}
     for name, mod in self._modules.items():
@@ -533,7 +533,7 @@ class Loader:
     if module_name in self._import_name_cache:
       del self._import_name_cache[module_name]
 
-  def _try_import_prefix(self, name: str) -> Optional[_AST]:
+  def _try_import_prefix(self, name: str) -> _AST | None:
     """Try importing all prefixes of name, returning the first valid module."""
     prefix = name
     while "." in prefix:
@@ -650,7 +650,7 @@ class Loader:
         self._resolve_classtype_pointers(module.ast)
         module.has_unresolved_pointers = False
 
-  def import_relative_name(self, name: str) -> Optional[_AST]:
+  def import_relative_name(self, name: str) -> _AST | None:
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
     if self.options.module_name is None:
       raise ValueError("Attempting relative import in non-package.")
@@ -658,7 +658,7 @@ class Loader:
     path.append(name)
     return self.import_name(".".join(path))
 
-  def import_relative(self, level: int) -> Optional[_AST]:
+  def import_relative(self, level: int) -> _AST | None:
     """Import a module relative to our base module.
 
     Args:
@@ -753,7 +753,7 @@ class Loader:
         return self.load_module(mod, mod_ast=mod_ast)
     return None
 
-  def _import_module_by_name(self, module_name) -> Optional[_AST]:
+  def _import_module_by_name(self, module_name) -> _AST | None:
     """Load a name like 'sys' or 'foo.bar.baz'.
 
     Args:
@@ -833,7 +833,7 @@ class Loader:
   def load_late_type(self, late_type: pytd.LateType):
     return self._late_type_loader.load_late_type(late_type)
 
-  def get_unused_imports_map_paths(self) -> Set[str]:
+  def get_unused_imports_map_paths(self) -> set[str]:
     return self._module_loader.get_unused_imports_map_paths()
 
 

@@ -1,9 +1,10 @@
 """Utilities for inline type annotations."""
 
 import collections
+from collections.abc import Sequence
 import dataclasses
 import itertools
-from typing import Any, Dict, Optional, Sequence, Set, Tuple
+from typing import Any
 
 from pytype import state
 from pytype import utils
@@ -41,7 +42,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       self,
       node: cfg.CFGNode,
       annot: abstract.TypeParameter,
-      substs: Sequence[Dict[str, cfg.Variable]],
+      substs: Sequence[dict[str, cfg.Variable]],
       instantiate_unbound: bool,
   ) -> abstract.BaseValue:
     """Helper for sub_one_annotation."""
@@ -140,8 +141,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
   def sub_annotations_for_parameterized_class(
       self,
       cls: abstract.ParameterizedClass,
-      annotations: Dict[str, abstract.BaseValue],
-  ) -> Dict[str, abstract.BaseValue]:
+      annotations: dict[str, abstract.BaseValue],
+  ) -> dict[str, abstract.BaseValue]:
     """Apply type parameter substitutions to a dictionary of annotations.
 
     Args:
@@ -156,7 +157,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
 
     def get_type_parameter_subst(
         annotation: abstract.BaseValue,
-    ) -> Optional[abstract.BaseValue]:
+    ) -> abstract.BaseValue | None:
       # Normally the type parameter module is set correctly at this point.
       # Except for the case when a method that references this type parameter
       # is inherited in a subclass that does not specialize this parameter:
@@ -465,7 +466,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       var,
       name,
       stack,
-      allowed_type_params: Optional[Set[str]] = None,
+      allowed_type_params: set[str] | None = None,
   ):
     """Returns an annotation extracted from 'var'.
 
@@ -565,9 +566,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       # snapshot of the frame stack, rather than the actual stack, since late
       # annotations need to snapshot the stack at time of creation in order to
       # get the right line information for error messages.
-      name: Optional[str],
-      stack: Tuple[state.FrameType, ...],
-  ) -> Optional[abstract.BaseValue]:
+      name: str | None,
+      stack: tuple[state.FrameType, ...],
+  ) -> abstract.BaseValue | None:
     """Change annotation / record errors where required."""
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls

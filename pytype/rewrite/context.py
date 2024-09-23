@@ -9,7 +9,6 @@ New Context attributes should also be added to the ContextType protocol in
 abstract/base.py.
 """
 
-from typing import Optional
 
 from pytype import config
 from pytype import load_pytd
@@ -38,8 +37,8 @@ class Context:
 
   def __init__(
       self,
-      options: Optional[config.Options] = None,
-      pytd_loader: Optional[load_pytd.Loader] = None,
+      options: config.Options | None = None,
+      pytd_loader: load_pytd.Loader | None = None,
       *,
       src: str,
   ):

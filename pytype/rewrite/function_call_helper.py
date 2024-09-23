@@ -1,6 +1,7 @@
 """Function call helper used by VM frames."""
 
-from typing import Generic, Optional, Sequence, TypeVar
+from collections.abc import Sequence
+from typing import Generic, TypeVar
 
 from pytype import datatypes
 from pytype.rewrite import context
@@ -80,7 +81,7 @@ class FunctionCallHelper(Generic[_FrameT]):
   def make_function_args_ex(
       self,
       starargs: _Var,
-      starstarargs: Optional[_Var],
+      starstarargs: _Var | None,
   ) -> abstract.Args[_FrameT]:
     """Makes function args from variable positional and keyword arguments."""
     # Convert *args

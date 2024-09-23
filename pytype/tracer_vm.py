@@ -1,11 +1,12 @@
 """Code for checking and inferring types."""
 
 import collections
+from collections.abc import Sequence
 import dataclasses
 import enum
 import logging
 import re
-from typing import Any, Dict, Sequence, Tuple, Union
+from typing import Any, Union
 
 import attrs
 from pytype import state as frame_state
@@ -29,8 +30,8 @@ log = logging.getLogger(__name__)
 # have names like "<listcomp>" and "<genexpr>".
 _SKIP_FUNCTION_RE = re.compile(r"<(?!lambda)\w+>$")
 
-_InstanceCacheType = Dict[
-    abstract.InterpreterClass, Dict[Any, Union["_InitClassState", cfg.Variable]]
+_InstanceCacheType = dict[
+    abstract.InterpreterClass, dict[Any, Union["_InitClassState", cfg.Variable]]
 ]
 
 _METHOD_TYPES = abstract.INTERPRETER_FUNCTION_TYPES + (
@@ -44,8 +45,8 @@ class _CallRecord:
   node: cfg.CFGNode
   function: cfg.Binding
   signatures: Sequence[abstract.PyTDSignature]
-  positional_arguments: Tuple[Union[cfg.Binding, cfg.Variable], ...]
-  keyword_arguments: Tuple[Tuple[str, Union[cfg.Binding, cfg.Variable]], ...]
+  positional_arguments: tuple[cfg.Binding | cfg.Variable, ...]
+  keyword_arguments: tuple[tuple[str, cfg.Binding | cfg.Variable], ...]
   return_value: cfg.Variable
 
 

@@ -23,7 +23,7 @@ This is less uniform, and therefore not recommended to use other than for
 input/output.
 """
 
-from typing import Any, Dict, FrozenSet, Tuple
+from typing import Any
 
 import attrs
 from pycnite import marshal as pyc_marshal
@@ -73,7 +73,7 @@ class ConstantError(Exception):
 class _Constant:
   """A folded python constant."""
 
-  typ: Tuple[str, Any]
+  typ: tuple[str, Any]
   value: Any
   elements: Any
   op: opcodes.Opcode
@@ -90,20 +90,20 @@ class _Constant:
 class _Collection:
   """A linear collection (e.g. list, tuple, set)."""
 
-  types: FrozenSet[Any]
-  values: Tuple[Any, ...]
-  elements: Tuple[Any, ...]
+  types: frozenset[Any]
+  values: tuple[Any, ...]
+  elements: tuple[Any, ...]
 
 
 @attrs.define
 class _Map:
   """A dictionary."""
 
-  key_types: FrozenSet[Any]
-  keys: Tuple[Any, ...]
-  value_types: FrozenSet[Any]
-  values: Tuple[Any, ...]
-  elements: Dict[Any, Any]
+  key_types: frozenset[Any]
+  keys: tuple[Any, ...]
+  value_types: frozenset[Any]
+  values: tuple[Any, ...]
+  elements: dict[Any, Any]
 
 
 class _CollectionBuilder:

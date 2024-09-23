@@ -27,9 +27,10 @@ This file is tested by serialize_ast_test.py.
 # - There is also PrepareModuleBundle, which takes an iterable of (typically
 # builtin) modules to be encoded in one file.
 
+from collections.abc import Iterable
 import gzip
 import os
-from typing import Iterable, Optional, Tuple, TypeVar, Union
+from typing import TypeVar, Union
 
 import msgspec
 from pytype.pytd import pytd
@@ -146,7 +147,7 @@ def Save(
 
 
 def Serialize(
-    ast: pytd.TypeDeclUnit, src_path: Optional[str] = None, metadata=None
+    ast: pytd.TypeDeclUnit, src_path: str | None = None, metadata=None
 ) -> bytes:
   out = serialize_ast.SerializeAst(ast, src_path, metadata)
   return Encode(out)
@@ -158,7 +159,7 @@ def SerializeAndSave(
     *,
     compress: bool = False,
     open_function=open,
-    src_path: Optional[str] = None,
+    src_path: str | None = None,
     metadata=None,
 ) -> None:
   out = serialize_ast.SerializeAst(ast, src_path, metadata)
@@ -166,7 +167,7 @@ def SerializeAndSave(
 
 
 def PrepareModuleBundle(
-    modules: Iterable[Tuple[str, str, pytd.TypeDeclUnit]],
+    modules: Iterable[tuple[str, str, pytd.TypeDeclUnit]],
 ) -> serialize_ast.ModuleBundle:
   raw = lambda ast, filename: msgspec.Raw(Serialize(ast, src_path=filename))
   return tuple(

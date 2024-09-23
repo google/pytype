@@ -1,7 +1,7 @@
 """Imports map data structure."""
 
+from collections.abc import Mapping, Sequence
 import dataclasses
-from typing import Mapping, Sequence
 
 
 @dataclasses.dataclass(frozen=True)

@@ -3,7 +3,7 @@
 import collections
 import dataclasses
 import enum
-from typing import Dict, List, Optional, Set, Union, cast
+from typing import Optional, Union, cast
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -23,7 +23,7 @@ _MatchSuccessType = Optional[bool]
 _Value = Union[str, abstract.BaseValue]
 
 
-def _get_class_values(cls: abstract.Class) -> Optional[List[_Value]]:
+def _get_class_values(cls: abstract.Class) -> list[_Value] | None:
   """Get values for a class with a finite set of instances."""
   if not isinstance(cls, abstract.Class):
     return None
@@ -33,7 +33,7 @@ def _get_class_values(cls: abstract.Class) -> Optional[List[_Value]]:
     return None
 
 
-def _get_enum_members(enum_cls: abstract.Class) -> List[str]:
+def _get_enum_members(enum_cls: abstract.Class) -> list[str]:
   """Get members of an enum class."""
   if isinstance(enum_cls, abstract.PyTDClass):
     # We don't construct a special class for pytd enums, so we have to get the
@@ -78,7 +78,7 @@ class _Option:
 
   def __init__(self, typ=None):
     self.typ: abstract.BaseValue = typ
-    self.values: Set[_Value] = set()
+    self.values: set[_Value] = set()
     self.indefinite: bool = False
 
   @property
@@ -96,7 +96,7 @@ class _OptionSet:
   def __init__(self):
     # Collection of options, stored as a dict rather than a set so we can find a
     # given option efficiently.
-    self._options: Dict[abstract.Class, _Option] = {}
+    self._options: dict[abstract.Class, _Option] = {}
 
   def __iter__(self):
     yield from self._options.values()
@@ -128,7 +128,7 @@ class _OptionSet:
     else:
       self._options[cls].indefinite = True
 
-  def cover_instance(self, val) -> List[_Value]:
+  def cover_instance(self, val) -> list[_Value]:
     """Remove an instance from the match options."""
     assert isinstance(val, abstract.Instance)
     cls = val.cls
@@ -151,7 +151,7 @@ class _OptionSet:
         opt.indefinite = True
       return [val] if opt.indefinite else []
 
-  def cover_type(self, val) -> List[_Value]:
+  def cover_type(self, val) -> list[_Value]:
     """Remove a class and any associated instances from the match options."""
     if val not in self._options:
       return []
@@ -175,7 +175,7 @@ class _OptionTracker:
     self.options: _OptionSet = _OptionSet()
     self.could_contain_anything: bool = False
     # The types of the match var within each case branch
-    self.cases: Dict[int, _OptionSet] = collections.defaultdict(_OptionSet)
+    self.cases: dict[int, _OptionSet] = collections.defaultdict(_OptionSet)
     self.is_valid: bool = True
 
     for d in match_var.data:
@@ -201,7 +201,7 @@ class _OptionTracker:
           narrowed.append(opt.typ.instantiate(node))
       return self.ctx.join_variables(node, narrowed)
 
-  def cover(self, line, var) -> List[_Value]:
+  def cover(self, line, var) -> list[_Value]:
     ret = []
     for d in var.data:
       if isinstance(d, abstract.Instance):
@@ -212,7 +212,7 @@ class _OptionTracker:
         self.cases[line].add_type(d)
     return ret
 
-  def cover_from_cmp(self, line, case_var) -> List[_Value]:
+  def cover_from_cmp(self, line, case_var) -> list[_Value]:
     """Cover cases based on a CMP match."""
     ret = []
     # If we compare `match_var == constant`, add the type of `constant` to the
@@ -236,7 +236,7 @@ class _OptionTracker:
         self.invalidate()
     return ret
 
-  def cover_from_none(self, line) -> List[_Value]:
+  def cover_from_none(self, line) -> list[_Value]:
     cls = self.ctx.convert.none_type
     self.cases[line].add_type(cls)
     return self.options.cover_type(cls)
@@ -305,7 +305,7 @@ class IncompleteMatch:
   """A list of uncovered cases, for error reporting."""
 
   line: int
-  cases: Set[str]
+  cases: set[str]
 
 
 class BranchTracker:
@@ -313,10 +313,10 @@ class BranchTracker:
 
   def __init__(self, ast_matches, ctx):
     self.matches = _Matches(ast_matches)
-    self._option_tracker: Dict[int, Dict[int, _OptionTracker]] = (
+    self._option_tracker: dict[int, dict[int, _OptionTracker]] = (
         collections.defaultdict(dict)
     )
-    self._match_types: Dict[int, Set[_MatchTypes]] = collections.defaultdict(
+    self._match_types: dict[int, set[_MatchTypes]] = collections.defaultdict(
         set
     )
     self._active_ends = set()
@@ -350,7 +350,7 @@ class BranchTracker:
       ret.append(self.ctx.vm.init_class(node, cls))
     return self.ctx.join_variables(node, ret)
 
-  def _register_case_branch(self, op: opcodes.Opcode) -> Optional[int]:
+  def _register_case_branch(self, op: opcodes.Opcode) -> int | None:
     match_line = self.matches.match_cases.get(op.line)
     if match_line is None:
       return None
@@ -485,7 +485,7 @@ class BranchTracker:
 
   def check_ending(
       self, op: opcodes.Opcode, implicit_return: bool = False
-  ) -> List[IncompleteMatch]:
+  ) -> list[IncompleteMatch]:
     """Check if we have ended a match statement with leftover cases."""
     line = op.line
     if implicit_return:

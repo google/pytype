@@ -1,7 +1,6 @@
 """Utilities for quoting, name-mangling, etc."""
 
 import re
-from typing import List
 
 
 # The partial prefix was originally `~` and some part of the protocol inference
@@ -50,7 +49,7 @@ def preprocess_pytd(text: str) -> str:
   return text.replace("~", PARTIAL)
 
 
-def pack_namedtuple(name: str, fields: List[str]) -> str:
+def pack_namedtuple(name: str, fields: list[str]) -> str:
   """Generate a name for a namedtuple proxy class."""
   return f"namedtuple_{name}_{'_'.join(fields)}"
 

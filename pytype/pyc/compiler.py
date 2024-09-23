@@ -1,13 +1,13 @@
 """Python executable used to compile to bytecode."""
 
 import atexit
+from collections.abc import Iterable
 import io
 import os
 import re
 import subprocess
 import sys
 import tempfile
-from typing import Iterable, List, Optional, Tuple
 
 from pytype import pytype_source_utils
 from pytype import utils
@@ -49,7 +49,7 @@ class CompileError(Exception):
 
 
 def compile_src_string_to_pyc_string(
-    src, filename, python_version, python_exe: List[str], mode="exec"
+    src, filename, python_version, python_exe: list[str], mode="exec"
 ):
   """Compile Python source code to pyc data.
 
@@ -109,7 +109,7 @@ def compile_src_string_to_pyc_string(
     raise OSError("_compile.py produced invalid result")
 
 
-def get_python_executable(version: Tuple[int, ...]) -> Optional[List[str]]:
+def get_python_executable(version: tuple[int, ...]) -> list[str] | None:
   """Get a python executable corresponding to version.
 
   Args:
@@ -143,7 +143,7 @@ def can_compile_bytecode_natively(python_version):
   return python_version == sys.version_info[:2]
 
 
-def _get_python_exes(python_version) -> Iterable[List[str]]:
+def _get_python_exes(python_version) -> Iterable[list[str]]:
   """Find possible python executables to use.
 
   Arguments:
@@ -163,7 +163,7 @@ def _get_python_exes(python_version) -> Iterable[List[str]]:
     yield python_exe
 
 
-def _get_python_exe_version(python_exe: List[str]):
+def _get_python_exe_version(python_exe: list[str]):
   """Determine the major and minor version of given Python executable.
 
   Arguments:

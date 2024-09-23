@@ -1,4 +1,4 @@
-from typing import Sequence
+from collections.abc import Sequence
 
 from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions

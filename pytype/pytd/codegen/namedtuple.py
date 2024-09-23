@@ -1,6 +1,6 @@
 """Generate pytd classes for named tuples."""
 
-from typing import Any, List, Tuple
+from typing import Any
 
 from pytype.pytd import escape
 from pytype.pytd import pytd
@@ -18,9 +18,7 @@ class NamedTuple:
     self.cls = self._new_named_tuple(self.name, fields)
 
   def _new_named_tuple(
-      self,
-      class_name: str,
-      fields: List[Tuple[str, Any]]
+      self, class_name: str, fields: list[tuple[str, Any]]
   ) -> pytd.Class:
     """Generates a pytd class for a named tuple.
 

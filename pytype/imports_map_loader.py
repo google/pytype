@@ -3,7 +3,6 @@
 import collections
 import logging
 import os
-from typing import Dict, List, Optional, Tuple
 
 from pytype import imports_map
 from pytype.platform_utils import path_utils
@@ -12,8 +11,8 @@ log = logging.getLogger(__name__)
 
 
 # Type aliases.
-_MultimapType = Dict[str, List[str]]
-_ItemType = Tuple[str, str]
+_MultimapType = dict[str, list[str]]
+_ItemType = tuple[str, str]
 
 
 class ImportsMapBuilder:
@@ -22,7 +21,7 @@ class ImportsMapBuilder:
   def __init__(self, options):
     self.options = options
 
-  def _read_from_file(self, path) -> List[_ItemType]:
+  def _read_from_file(self, path) -> list[_ItemType]:
     """Read the imports_map file."""
     items = []
     with self.options.open_function(path) as f:
@@ -33,7 +32,7 @@ class ImportsMapBuilder:
           items.append((short_path, path))
     return items
 
-  def _build_multimap(self, items: List[_ItemType]) -> _MultimapType:
+  def _build_multimap(self, items: list[_ItemType]) -> _MultimapType:
     """Build a multimap from a list of (short_path, path) pairs."""
     # TODO(mdemello): Keys should ideally be modules, not short paths.
     imports_multimap = collections.defaultdict(set)
@@ -99,9 +98,7 @@ class ImportsMapBuilder:
 
     return imports_map.ImportsMap(items=dir_paths, unused=unused_files)
 
-  def build_from_file(
-      self, path: Optional[str]
-  ) -> Optional[imports_map.ImportsMap]:
+  def build_from_file(self, path: str | None) -> imports_map.ImportsMap | None:
     """Create an ImportsMap from a .imports_info file.
 
     Builds a dict of short_path to full name
@@ -119,8 +116,8 @@ class ImportsMapBuilder:
     return self.build_from_items(items)
 
   def build_from_items(
-      self, items: Optional[List[_ItemType]]
-  ) -> Optional[imports_map.ImportsMap]:
+      self, items: list[_ItemType] | None
+  ) -> imports_map.ImportsMap | None:
     """Create a file mapping from a list of (short path, path) tuples.
 
     Builds a dict of short_path to full name

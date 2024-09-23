@@ -1,9 +1,10 @@
 """Objects modelling VM state. (Frames etc.)."""
 
 import collections
+from collections.abc import Collection
 import itertools
 import logging
-from typing import Any, Collection, Dict, List, Optional, Tuple, Union
+from typing import Any, Union
 
 from pytype import compare
 from pytype import metrics
@@ -293,11 +294,11 @@ class Frame(utils.ContextWeakrefMixin):
       f_globals: abstract.LazyConcreteDict,
       f_locals: abstract.LazyConcreteDict,
       f_back: FrameType,
-      callargs: Dict[str, cfg.Variable],
-      closure: Optional[Tuple[cfg.Variable, ...]],
-      func: Optional[cfg.Binding],
-      first_arg: Optional[cfg.Variable],
-      substs: Collection[Dict[str, cfg.Variable]],
+      callargs: dict[str, cfg.Variable],
+      closure: tuple[cfg.Variable, ...] | None,
+      func: cfg.Binding | None,
+      first_arg: cfg.Variable | None,
+      substs: Collection[dict[str, cfg.Variable]],
   ):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
@@ -408,8 +409,8 @@ class Frame(utils.ContextWeakrefMixin):
 
     # All InterpreterFunction objects created while this frame was at the top of
     # the frame stack.
-    self.functions_created_in_frame: Dict[
-        str, List[abstract.InterpreterFunction]
+    self.functions_created_in_frame: dict[
+        str, list[abstract.InterpreterFunction]
     ] = collections.defaultdict(list)
 
   def __repr__(self):  # pragma: no cover

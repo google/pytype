@@ -6,7 +6,6 @@ import logging
 import os
 import sys
 import traceback
-from typing import Optional
 
 import libcst
 from pytype import __version__
@@ -41,8 +40,8 @@ class AnalysisResult:
   """Preserve all state and results from running pytype."""
 
   context: context.Context
-  ast: Optional[pytd.TypeDeclUnit]
-  pyi: Optional[str]
+  ast: pytd.TypeDeclUnit | None
+  pyi: str | None
 
 
 def read_source_file(input_filename, open_function=open):
@@ -97,8 +96,8 @@ def check_py(src, options=None, loader=None):
 
 def generate_pyi_ast(
     src: str,
-    options: Optional[config.Options] = None,
-    loader: Optional[load_pytd.Loader] = None,
+    options: config.Options | None = None,
+    loader: load_pytd.Loader | None = None,
 ) -> analyze.Analysis:
   """Run the inferencer on a string of source code, producing output.
 
@@ -138,7 +137,7 @@ def generate_pyi_ast(
 
 def _output_ast(
     ast: pytd.TypeDeclUnit,
-    options: Optional[config.Options] = None,
+    options: config.Options | None = None,
 ) -> str:
   """Transforms the given analysis result into a pyi representation.
 

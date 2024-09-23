@@ -5,7 +5,6 @@ import enum
 import os
 import re
 import shutil
-from typing import List, Optional, Tuple
 
 import libcst as cst
 from libcst import codemod
@@ -87,7 +86,7 @@ def _get_diff(a, b):
 
 
 def merge_files(
-    *, py_path: str, pyi_path: str, mode: Mode, backup: Optional[str] = None
+    *, py_path: str, pyi_path: str, mode: Mode, backup: str | None = None
 ) -> bool:
   """Merges a .py and a .pyi (experimental: or a pickled pytd) file."""
 
@@ -120,9 +119,9 @@ def merge_tree(
     *,
     py_path: str,
     pyi_path: str,
-    backup: Optional[str] = None,
+    backup: str | None = None,
     verbose: bool = False,
-) -> Tuple[List[str], List[Tuple[str, MergeError]]]:
+) -> tuple[list[str], list[tuple[str, MergeError]]]:
   """Merge .py files in a tree with the corresponding .pyi files."""
 
   errors = []

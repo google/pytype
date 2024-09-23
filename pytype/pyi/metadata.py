@@ -15,7 +15,7 @@ Note that only a subset of values is supported, see pyi/parser.py
 """
 
 import dataclasses
-from typing import Any, Dict, List
+from typing import Any
 
 from pytype.pyi import evaluator
 
@@ -25,8 +25,8 @@ class Call:
   """Convert callables in metadata to/from generic dicts."""
 
   fn: str
-  posargs: List[Any]
-  kwargs: Dict[str, Any]
+  posargs: list[Any]
+  kwargs: dict[str, Any]
 
   @classmethod
   def from_metadata(cls, md, posarg_names, kwarg_names):
@@ -93,7 +93,7 @@ def call_to_annotation(fn, *, posargs=None, kwargs=None):
   return to_string(out)
 
 
-def to_pytd(metadata: Dict[str, Any]):
+def to_pytd(metadata: dict[str, Any]):
   """Convert a metadata dict to a pytd string."""
   tag = metadata.get("tag")
   if tag in _CALLABLES:

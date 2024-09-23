@@ -1,8 +1,8 @@
 """Abstract-representation-independent base class for pretty printing."""
 
 import abc
+from collections.abc import Iterable
 import re
-from typing import Iterable
 
 from pytype.pytd import escape
 from pytype.pytd import optimize

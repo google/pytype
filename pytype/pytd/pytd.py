@@ -16,9 +16,10 @@ To test how these classes serialize, see serialize_ast_test.py.
 
 from __future__ import annotations
 
+from collections.abc import Generator
 import enum
 import itertools
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Union
 
 from pytype.pytd.parse import node
 
@@ -43,14 +44,14 @@ class TypeDeclUnit(Node, eq=False):
   """
 
   name: str
-  constants: Tuple[Constant, ...]
-  type_params: Tuple[TypeParameterU, ...]
-  classes: Tuple[Class, ...]
-  functions: Tuple[Function, ...]
-  aliases: Tuple[Alias, ...]
+  constants: tuple[Constant, ...]
+  type_params: tuple[TypeParameterU, ...]
+  classes: tuple[Class, ...]
+  functions: tuple[Function, ...]
+  aliases: tuple[Alias, ...]
   # _name2item is the lookup cache. It should not be treated as a child or used
   # in equality or hash operations.
-  _name2item: Dict[str, Any] = {}
+  _name2item: dict[str, Any] = {}
 
   def _InitCache(self):
     # TODO(b/159053187): Put constants, functions, classes and aliases into a
@@ -88,7 +89,7 @@ class TypeDeclUnit(Node, eq=False):
   def __contains__(self, name):
     return bool(self.Get(name))
 
-  def IterChildren(self) -> Generator[Tuple[str, Any | None], None, None]:
+  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
     for name, child in super().IterChildren():
       if name == '_name2item':
         continue
@@ -113,7 +114,7 @@ class Constant(Node):
   # (bytes is excluded because it serializes the same as str.)
   # We can't use just `value: Any` because msgspec isn't able to decode
   # AnythingType in that case, since it's indistinguishable from a dict.
-  value: Optional[Union[AnythingType, int, str, bool, Tuple[str, ...]]] = None
+  value: AnythingType | int | str | bool | tuple[str, ...] | None = None
 
 
 class Alias(Node):
@@ -125,7 +126,7 @@ class Alias(Node):
   """
 
   name: str
-  type: Union[TypeU, Constant, Function, Module]
+  type: TypeU | Constant | Function | Module
 
 
 class Module(Node):
@@ -152,17 +153,17 @@ class Class(Node):
   """
 
   name: str
-  keywords: Tuple[Tuple[str, TypeU], ...]
-  bases: Tuple[Union[Class, TypeU], ...]
-  methods: Tuple[Function, ...]
-  constants: Tuple[Constant, ...]
-  classes: Tuple[Class, ...]
-  decorators: Tuple[Alias, ...]
-  slots: Optional[Tuple[str, ...]]
-  template: Tuple[TemplateItem, ...]
+  keywords: tuple[tuple[str, TypeU], ...]
+  bases: tuple[Class | TypeU, ...]
+  methods: tuple[Function, ...]
+  constants: tuple[Constant, ...]
+  classes: tuple[Class, ...]
+  decorators: tuple[Alias, ...]
+  slots: tuple[str, ...] | None
+  template: tuple[TemplateItem, ...]
   # _name2item is the lookup cache. It should not be treated as a child or used
   # in equality or hash operations.
-  _name2item: Dict[str, Any] = {}
+  _name2item: dict[str, Any] = {}
 
   def _InitCache(self):
     # TODO(b/159053187): Put constants, functions, classes and aliases into a
@@ -207,7 +208,7 @@ class Class(Node):
     nohash = self.Replace(_name2item=None)
     return super(Class, nohash).__hash__()
 
-  def IterChildren(self) -> Generator[Tuple[str, Any | None], None, None]:
+  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
     for name, child in super().IterChildren():
       if name == '_name2item':
         continue
@@ -256,10 +257,10 @@ class Function(Node):
   """
 
   name: str
-  signatures: Tuple[Signature, ...]
+  signatures: tuple[Signature, ...]
   kind: MethodKind
   flags: MethodFlag = MethodFlag.NONE
-  decorators: Tuple[Alias, ...] = ()
+  decorators: tuple[Alias, ...] = ()
 
   @property
   def is_abstract(self):
@@ -295,12 +296,12 @@ class Signature(Node):
     template: names for bindings for bounded types in params/return_type
   """
 
-  params: Tuple[Parameter, ...]
-  starargs: Optional[Parameter]
-  starstarargs: Optional[Parameter]
+  params: tuple[Parameter, ...]
+  starargs: Parameter | None
+  starstarargs: Parameter | None
   return_type: TypeU
-  exceptions: Tuple[TypeU, ...]
-  template: Tuple[TemplateItem, ...]
+  exceptions: tuple[TypeU, ...]
+  template: tuple[TemplateItem, ...]
 
   @property
   def has_optional(self):
@@ -329,7 +330,7 @@ class Parameter(Node):
   type: TypeU
   kind: ParameterKind
   optional: bool
-  mutated_type: Optional[TypeU]
+  mutated_type: TypeU | None
 
 
 class TypeParameter(Type):
@@ -349,10 +350,10 @@ class TypeParameter(Type):
   """
 
   name: str
-  constraints: Tuple[TypeU, ...] = ()
-  bound: Optional[TypeU] = None
-  default: Optional[Union[TypeU, Tuple[TypeU, ...]]] = None
-  scope: Optional[str] = None
+  constraints: tuple[TypeU, ...] = ()
+  bound: TypeU | None = None
+  default: TypeU | tuple[TypeU, ...] | None = None
+  scope: str | None = None
 
   def __lt__(self, other):
     try:
@@ -473,9 +474,9 @@ class ClassType(Type, frozen=False, eq=False):
   # base_visitor:_GetAncestorMap by making ClassType an ancestor of all the
   # Type subclasses. This is undesirable, because the cls pointer should be
   # treated as if it doesn't exist.
-  cls: Optional[Any] = None
+  cls: Any | None = None
 
-  def IterChildren(self) -> Generator[Tuple[str, Any | None], None, None]:
+  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
     # It is very important that visitors do not follow the cls pointer. To avoid
     # this, we claim that `name` is the only child.
     yield 'name', self.name
@@ -528,7 +529,7 @@ class NothingType(Type):
     return True
 
 
-def _FlattenTypes(type_list) -> Tuple[Type, ...]:
+def _FlattenTypes(type_list) -> tuple[Type, ...]:
   """Helper function for _SetOfTypes initialization."""
   assert type_list  # Disallow empty sets. Use NothingType for these.
   flattened = itertools.chain.from_iterable(
@@ -548,7 +549,7 @@ class _SetOfTypes(Type, frozen=False, eq=False):
   #       even though in most respects it acts like a frozenset.
   #       It also flattens the input, such that printing without
   #       parentheses gives the same result.
-  type_list: Tuple[TypeU, ...] = ()
+  type_list: tuple[TypeU, ...] = ()
 
   def __post_init__(self):
     self.type_list = _FlattenTypes(self.type_list)
@@ -586,8 +587,8 @@ class GenericType(Type):
     parameters: Type parameters. Tuple of instances of Type.
   """
 
-  base_type: Union[NamedType, ClassType, LateType]
-  parameters: Tuple[TypeU, ...]
+  base_type: NamedType | ClassType | LateType
+  parameters: tuple[TypeU, ...]
 
   @property
   def name(self):
@@ -641,12 +642,12 @@ class Concatenate(GenericType):
 
 
 class Literal(Type):
-  value: Union[int, str, bool, TypeU, Constant]
+  value: int | str | bool | TypeU | Constant
 
 
 class Annotated(Type):
   base_type: TypeU
-  annotations: Tuple[str, ...]
+  annotations: tuple[str, ...]
 
 
 # Types that can be a base type of GenericType:

@@ -2,7 +2,6 @@
 
 import dataclasses
 import logging
-from typing import Optional
 
 from pytype import config
 from pytype import load_pytd
@@ -22,8 +21,8 @@ class Analysis:
   """Analysis results."""
 
   context: context.Context
-  ast: Optional[pytd.TypeDeclUnit]
-  ast_deps: Optional[pytd.TypeDeclUnit]
+  ast: pytd.TypeDeclUnit | None
+  ast_deps: pytd.TypeDeclUnit | None
 
 
 def check_types(

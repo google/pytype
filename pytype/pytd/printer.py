@@ -3,7 +3,6 @@
 import collections
 import logging
 import re
-from typing import Dict, Optional
 
 from pytype import utils
 from pytype.pytd import base_visitor
@@ -20,9 +19,9 @@ class _TypingImports:
 
   def __init__(self):
     # Typing members that are imported via `from typing import ...`.
-    self._members: Dict[_AliasType, _NameType] = {}
+    self._members: dict[_AliasType, _NameType] = {}
     # The number of times that each typing member is used.
-    self._counts: Dict[_NameType, int] = collections.defaultdict(int)
+    self._counts: dict[_NameType, int] = collections.defaultdict(int)
 
   @property
   def members(self):
@@ -54,16 +53,16 @@ class _Imports:
   def __init__(self):
     self.track_imports = True
     self._typing = _TypingImports()
-    self._direct_imports: Dict[_AliasType, _NameType] = {}
-    self._from_imports: Dict[_NameType, Dict[_AliasType, _NameType]] = {}
+    self._direct_imports: dict[_AliasType, _NameType] = {}
+    self._from_imports: dict[_NameType, dict[_AliasType, _NameType]] = {}
     # Map from fully qualified import name to alias
-    self._reverse_alias_map: Dict[_NameType, _AliasType] = {}
+    self._reverse_alias_map: dict[_NameType, _AliasType] = {}
 
   @property
   def typing_members(self):
     return self._typing.members
 
-  def add(self, full_name: str, alias: Optional[str] = None):
+  def add(self, full_name: str, alias: str | None = None):
     """Adds an import.
 
     Examples:

@@ -1,6 +1,7 @@
 """Base class for module overlays."""
 
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 from pytype import datatypes
 from pytype.abstract import abstract
@@ -51,7 +52,7 @@ class Overlay(abstract.Module):
       self,
       name: str,
       member: BuilderType,
-      subst: Optional[Dict[str, cfg.Variable]] = None,
+      subst: dict[str, cfg.Variable] | None = None,
   ) -> cfg.Variable:
     val = member(self.ctx, self.name)
     val.module = self.name

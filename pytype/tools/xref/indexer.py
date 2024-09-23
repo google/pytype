@@ -6,7 +6,7 @@ import dataclasses
 import re
 import textwrap
 import types
-from typing import Any, List, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 from pytype import analyze
 from pytype import config
@@ -20,7 +20,6 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tools.traces import source
 from pytype.tools.traces import traces
-
 from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import node_utils
@@ -109,7 +108,7 @@ class PytypeValue:
   module: str
   name: str
   typ: Any
-  id: Optional[str] = dataclasses.field(default=None, init=False)
+  id: str | None = dataclasses.field(default=None, init=False)
 
   def __post_init__(self):
     self.id = self.module + "." + self.name
@@ -180,7 +179,7 @@ class DocString:
   length: int
 
   @classmethod
-  def from_node(cls: Type[_T], ast: types.ModuleType, node) -> Optional[_T]:
+  def from_node(cls: type[_T], ast: types.ModuleType, node) -> _T | None:
     """If the first element in node.body is a string, create a docstring."""
 
     # This should only be called on ClassDef and FunctionDef
@@ -219,8 +218,8 @@ class Definition:
   data: Any
   scope: str
   target: Any
-  doc: Optional[str]
-  id: Optional[str] = dataclasses.field(default=None, init=False)
+  doc: str | None
+  id: str | None = dataclasses.field(default=None, init=False)
 
   def __post_init__(self):
     self.id = self.scope + "." + self.name
@@ -244,7 +243,7 @@ class Definition:
     else:
       return "variable"
 
-  def subkind(self) -> Optional[str]:
+  def subkind(self) -> str | None:
     if self.typ == "Import" or self.typ == "ImportFrom":
       return "import"
     return None
@@ -269,7 +268,7 @@ class Remote:
   module: str
   name: str
   resolved: bool
-  id: Optional[str] = dataclasses.field(default=None, init=False)
+  id: str | None = dataclasses.field(default=None, init=False)
   typ: Any = dataclasses.field(default=None, init=False)
 
   def __post_init__(self):
@@ -331,10 +330,10 @@ class Reference:
   typ: Any
   data: Any
   scope: str
-  ref_scope: Optional[str]
+  ref_scope: str | None
   target: Any
   location: source.Location
-  id: Optional[str] = dataclasses.field(default=None, init=False)
+  id: str | None = dataclasses.field(default=None, init=False)
 
   def __post_init__(self):
     self.id = self.scope + "." + self.name
@@ -355,7 +354,7 @@ class NameArg:
 class ExprArg:
   """Representation of an expression function call argument."""
 
-  names: List[str]
+  names: list[str]
   type: Any
 
 
@@ -368,7 +367,7 @@ class Funcall:
   func: str
   location: source.Location
   end_location: source.Location
-  args: List[Any]
+  args: list[Any]
   return_type: str
 
 

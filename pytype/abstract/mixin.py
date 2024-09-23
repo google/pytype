@@ -1,7 +1,7 @@
 """Mixins for abstract.py."""
 
 import logging
-from typing import Any, Dict, Type
+from typing import Any
 
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
@@ -18,7 +18,7 @@ _make = abstract_utils._make  # pylint: disable=protected-access
 class MixinMeta(type):
   """Metaclass for mix-ins."""
 
-  __mixin_overloads__: Dict[str, Type[Any]]
+  __mixin_overloads__: dict[str, type[Any]]
   _HAS_DYNAMIC_ATTRIBUTES = True
 
   def __init__(cls, name, superclasses, *args, **kwargs):
@@ -226,7 +226,7 @@ class LazyMembers(metaclass=MixinMeta):
   copies of the same attribute, leading to subtle bugs.
   """
 
-  members: Dict[str, cfg.Variable]
+  members: dict[str, cfg.Variable]
 
   def init_mixin(self, member_map):
     self._member_map = member_map

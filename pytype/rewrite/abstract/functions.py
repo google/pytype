@@ -17,9 +17,10 @@ methods to implement `call` and `analyze`.
 
 import abc
 import collections
+from collections.abc import Mapping, Sequence
 import dataclasses
 import logging
-from typing import Any, Dict, Generic, List, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 from pytype import datatypes
 from pytype.blocks import blocks
@@ -31,7 +32,7 @@ from pytype.rewrite.abstract import internal
 log = logging.getLogger(__name__)
 
 _Var = base.AbstractVariableType
-_ArgDict = Dict[str, _Var]
+_ArgDict = dict[str, _Var]
 
 
 class FrameType(Protocol):
@@ -75,13 +76,13 @@ def _unpack_splats(elts):
 @dataclasses.dataclass
 class Args(Generic[_FrameT]):
   """Arguments to one function call."""
-  posargs: Tuple[_Var, ...] = ()
+  posargs: tuple[_Var, ...] = ()
   kwargs: Mapping[str, _Var] = datatypes.EMPTY_MAP
-  starargs: Optional[_Var] = None
-  starstarargs: Optional[_Var] = None
-  frame: Optional[_FrameT] = None
+  starargs: _Var | None = None
+  starstarargs: _Var | None = None
+  frame: _FrameT | None = None
 
-  def get_concrete_starargs(self) -> Tuple[Any, ...]:
+  def get_concrete_starargs(self) -> tuple[Any, ...]:
     """Returns a concrete tuple from starargs or raises ValueError."""
     if self.starargs is None:
       raise ValueError('No starargs to convert')
@@ -110,14 +111,14 @@ class _ArgMapper:
     new_posargs = _unpack_splats(self.args.posargs)
     self.args = dataclasses.replace(self.args, posargs=new_posargs)
 
-  def _expand_typed_star(self, star, n) -> List[_Var]:
+  def _expand_typed_star(self, star, n) -> list[_Var]:
     """Convert *xs: Sequence[T] -> [T, T, ...]."""
     del star  # not implemented yet
     return [self._ctx.consts.Any.to_variable() for _ in range(n)]
 
   def _partition_args_tuple(
       self, starargs_tuple
-  ) -> Tuple[List[_Var], List[_Var], List[_Var]]:
+  ) -> tuple[list[_Var], list[_Var], list[_Var]]:
     """Partition a sequence like a, b, c, *middle, x, y, z."""
     pre = []
     post = []
@@ -140,7 +141,7 @@ class _ArgMapper:
       required_posargs += 1
     return required_posargs
 
-  def _unpack_starargs(self) -> Tuple[Tuple[_Var, ...], Optional[_Var]]:
+  def _unpack_starargs(self) -> tuple[tuple[_Var, ...], _Var | None]:
     """Adjust *args and posargs based on function signature."""
     starargs_var = self.args.starargs
     posargs = self.args.posargs
@@ -279,7 +280,7 @@ class MappedArgs(Generic[_FrameT]):
   """Function call args that have been mapped to a signature and param names."""
   signature: 'Signature'
   argdict: _ArgDict
-  frame: Optional[_FrameT] = None
+  frame: _FrameT | None = None
 
 
 class _HasReturn(Protocol):
@@ -322,12 +323,12 @@ class Signature:
       self,
       ctx: base.ContextType,
       name: str,
-      param_names: Tuple[str, ...],
+      param_names: tuple[str, ...],
       *,
       posonly_count: int = 0,
-      varargs_name: Optional[str] = None,
-      kwonly_params: Tuple[str, ...] = (),
-      kwargs_name: Optional[str] = None,
+      varargs_name: str | None = None,
+      kwonly_params: tuple[str, ...] = (),
+      kwargs_name: str | None = None,
       defaults: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
       annotations: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
   ):
@@ -472,7 +473,7 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
 
   @property
   @abc.abstractmethod
-  def signatures(self) -> Tuple[Signature, ...]:
+  def signatures(self) -> tuple[Signature, ...]:
     """The function's signatures."""
 
   @abc.abstractmethod
@@ -505,8 +506,8 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
       self,
       ctx: base.ContextType,
       name: str,
-      signatures: Tuple[Signature, ...],
-      module: Optional[str] = None,
+      signatures: tuple[Signature, ...],
+      module: str | None = None,
   ):
     super().__init__(ctx)
     self._name = name
@@ -573,7 +574,7 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
       ctx: base.ContextType,
       name: str,
       code: blocks.OrderedCode,
-      enclosing_scope: Tuple[str, ...],
+      enclosing_scope: tuple[str, ...],
       parent_frame: _FrameT,
   ):
     super().__init__(

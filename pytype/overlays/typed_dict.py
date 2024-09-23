@@ -1,7 +1,6 @@
 """Implementation of TypedDict."""
 
 import dataclasses
-from typing import Dict, Optional, Set
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -12,7 +11,7 @@ from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
 
 
-def _is_required(value: abstract.BaseValue) -> Optional[bool]:
+def _is_required(value: abstract.BaseValue) -> bool | None:
   name = value.full_name
   if name == "typing.Required":
     return True
@@ -27,8 +26,8 @@ class TypedDictProperties:
   """Collection of typed dict properties passed between various stages."""
 
   name: str
-  fields: Dict[str, abstract.BaseValue]
-  required: Set[str]
+  fields: dict[str, abstract.BaseValue]
+  required: set[str]
   total: bool
 
   @property

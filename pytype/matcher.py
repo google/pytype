@@ -1,10 +1,11 @@
 """Matching logic for abstract values."""
 
 import collections
+from collections.abc import Iterable
 import contextlib
 import dataclasses
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, cast
 
 from pytype import datatypes
 from pytype import utils
@@ -29,8 +30,8 @@ _SubstType = datatypes.AliasingDict[str, cfg.Variable]
 _ViewType = datatypes.AccessTrackingDict[cfg.Variable, cfg.Binding]
 
 # For _UniqueMatches
-_ViewKeyType = Tuple[Tuple[int, Any], ...]
-_SubstKeyType = Dict[cfg.Variable, Any]
+_ViewKeyType = tuple[tuple[int, Any], ...]
+_SubstKeyType = dict[cfg.Variable, Any]
 
 
 def _is_callback_protocol(typ):
@@ -101,8 +102,8 @@ class MatchResult:
   """The result of a compute_one_match call."""
 
   success: bool
-  good_matches: List[GoodMatch]
-  bad_matches: List[BadMatch]
+  good_matches: list[GoodMatch]
+  bad_matches: list[BadMatch]
 
 
 class _UniqueMatches:
@@ -111,8 +112,8 @@ class _UniqueMatches:
   def __init__(self, node, keep_all_views):
     self._node = node
     self._keep_all_views = keep_all_views
-    self._data: Dict[
-        _ViewKeyType, List[Tuple[_SubstKeyType, _ViewType, _SubstType]]
+    self._data: dict[
+        _ViewKeyType, list[tuple[_SubstKeyType, _ViewType, _SubstType]]
     ] = collections.defaultdict(list)
 
   def insert(self, view, subst):
@@ -153,7 +154,7 @@ class _UniqueMatches:
     else:
       self._data[view_key].append(data_item)
 
-  def unique(self) -> Iterable[Tuple[_ViewType, _SubstType]]:
+  def unique(self) -> Iterable[tuple[_ViewType, _SubstType]]:
     for values in self._data.values():
       for _, view, subst in values:
         yield (view, subst)
@@ -195,8 +196,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._protocol_cache = set()
     # Map from (actual value, expected recursive type) pairs to whether matching
     # the value against the type succeeds.
-    self._recursive_annots_cache: Dict[
-        Tuple[abstract.BaseValue, abstract.BaseValue], bool
+    self._recursive_annots_cache: dict[
+        tuple[abstract.BaseValue, abstract.BaseValue], bool
     ] = {}
     self._error_subst = None
     self._type_params = _TypeParams()
@@ -242,7 +243,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     )
 
   def _get_bad_type(
-      self, name: Optional[str], expected: types.BaseValue
+      self, name: str | None, expected: types.BaseValue
   ) -> error_types.BadType:
     return error_types.BadType(
         name=name,
@@ -257,11 +258,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   # enforcement should be pushed to callers of compute_matches.
   def compute_matches(
       self,
-      args: List[types.Arg],
+      args: list[types.Arg],
       match_all_views: bool,
       keep_all_views: bool = False,
-      alias_map: Optional[datatypes.UnionFind] = None,
-  ) -> List[GoodMatch]:
+      alias_map: datatypes.UnionFind | None = None,
+  ) -> list[GoodMatch]:
     """Compute information about type parameters using one-way unification.
 
     Given the arguments of a function call, try to find substitutions that match
@@ -489,7 +490,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       other_type: abstract.BaseValue,
       subst: _SubstType,
       view: _ViewType,
-  ) -> Optional[_SubstType]:
+  ) -> _SubstType | None:
     """One-way unify value into pytd type given a substitution.
 
     Args:
@@ -531,7 +532,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       other_type: abstract.BaseValue,
       subst: _SubstType,
       view: _ViewType,
-  ) -> Optional[_SubstType]:
+  ) -> _SubstType | None:
     """Match after unwrapping any `Final` annotations."""
     if left.formal:
       # 'left' contains a TypeParameter. The code under analysis is likely doing
@@ -711,7 +712,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       new_value_binding: cfg.Binding,
       t: abstract.TypeParameter,
       subst: _SubstType,
-  ) -> Tuple[cfg.Variable, bool]:
+  ) -> tuple[cfg.Variable, bool]:
     if t.full_name in subst:
       # Merge the two variables.
       new_var = subst[t.full_name].AssignToNewVariable(self._node)
@@ -1130,11 +1131,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self,
       name: str,
       formal: abstract.BaseValue,
-      old_matches: Optional[List[GoodMatch]],
-      new_matches: List[GoodMatch],
+      old_matches: list[GoodMatch] | None,
+      new_matches: list[GoodMatch],
       keep_all_views: bool,
       has_self: bool,
-  ) -> List[GoodMatch]:
+  ) -> list[GoodMatch]:
     if not old_matches:
       return new_matches
     if not new_matches:
@@ -1640,7 +1641,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       other_type: abstract.BaseValue,
       subst: _SubstType,
       view: _ViewType,
-  ) -> Optional[_SubstType]:
+  ) -> _SubstType | None:
     dummy_dict = abstract.Instance(self.ctx.convert.dict_type, self.ctx)
     if (
         self._match_type_against_type(dummy_dict, other_type, subst, view)
@@ -1721,9 +1722,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self,
       cls: abstract.BaseValue,
       name: str,
-      instance: Optional[abstract.BaseValue],
+      instance: abstract.BaseValue | None,
       unbind: bool,
-  ) -> Tuple[Optional[cfg.Variable], bool]:
+  ) -> tuple[cfg.Variable | None, bool]:
     """Gets the specified attribute from cls, for protocol matching.
 
     Args:
@@ -1754,7 +1755,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _resolve_function_attribute_var(
       self, attribute: cfg.Variable, unbind: bool
-  ) -> Tuple[cfg.Variable, bool]:
+  ) -> tuple[cfg.Variable, bool]:
     """Returns a resolved attribute and whether any unbinding occurred."""
     if any(
         self._is_native_callable(attr)

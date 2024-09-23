@@ -2,7 +2,6 @@
 
 import abc
 import dataclasses
-from typing import Dict, List, Optional, Tuple
 
 from pytype.types import base
 
@@ -25,11 +24,11 @@ class Signature(abc.ABC):
   """
 
   name: str
-  param_names: Tuple[str, ...]
+  param_names: tuple[str, ...]
   posonly_count: int
-  varargs_name: Optional[str]
-  kwonly_params: Tuple[str, ...]
-  kwargs_name: Optional[str]
+  varargs_name: str | None
+  kwonly_params: tuple[str, ...]
+  kwargs_name: str | None
 
   @property
   def posonly_params(self):
@@ -60,10 +59,10 @@ class Args:
     starstarargs: The **kwargs parameter, or None.
   """
 
-  posargs: Tuple[base.Variable, ...]
-  namedargs: Dict[str, base.Variable]
-  starargs: Optional[base.Variable] = None
-  starstarargs: Optional[base.Variable] = None
+  posargs: tuple[base.Variable, ...]
+  namedargs: dict[str, base.Variable]
+  starargs: base.Variable | None = None
+  starstarargs: base.Variable | None = None
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -80,8 +79,8 @@ class Function(base.BaseValue):
 
   is_overload: bool
   name: str
-  decorators: List[str]
+  decorators: list[str]
 
-  def signatures(self) -> List[Signature]:
+  def signatures(self) -> list[Signature]:
     """All signatures of this function."""
     raise NotImplementedError()

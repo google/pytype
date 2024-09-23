@@ -7,7 +7,6 @@ import os
 #- OsAlias.node/kind variable
 #- OsAlias.subkind import
 #- OsAlias aliases ModuleOs
-import os as os_alias
 
 #- @"os.path" ref/imports ModuleOsPath
 import os.path
@@ -23,10 +22,8 @@ path.exists
 #- @name ref OsName
 os.name
 #- @name ref/imports OsName
-from os import name
 
 #- @name_alias defines/binding OsNameAlias
 #- OsNameAlias.node/kind variable
 #- OsNameAlias.subkind import
 #- OsNameAlias aliases OsName
-from os import name as name_alias

@@ -7,7 +7,7 @@ import abc
 import collections
 import dataclasses
 import logging
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -53,7 +53,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
   # Defaults for the args that we support (dataclasses only support 'init',
   # but the others default to false so they should not affect anything).
-  DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
+  DEFAULT_ARGS: ClassVar[dict[str, Any]] = {
       "init": True,
       "kw_only": False,
       "auto_attribs": False,
@@ -338,8 +338,8 @@ class ClassProperties:
   """Properties needed to construct a class."""
 
   name: str
-  fields: List[Field]
-  bases: List[Any]
+  fields: list[Field]
+  bases: list[Any]
 
   @classmethod
   def from_field_names(cls, name, field_names, ctx):

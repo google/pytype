@@ -1,13 +1,13 @@
 """Use pytype to analyze and infer types for an entire project."""
 
 import collections
+from collections.abc import Iterable, Sequence
 import importlib
 import itertools
 import logging
 import re
 import subprocess
 import sys
-from typing import Iterable, Sequence, Tuple
 
 from pytype import file_utils
 from pytype import module_utils
@@ -278,8 +278,11 @@ class PytypeRunner:
       report('%s: %s module %s', action, module.kind, module.name)
     return action
 
-  def yield_sorted_modules(self) -> Iterable[
-      Tuple[module_utils.Module, str, Sequence[module_utils.Module], str]]:
+  def yield_sorted_modules(
+      self,
+  ) -> Iterable[
+      tuple[module_utils.Module, str, Sequence[module_utils.Module], str]
+  ]:
     """Yield modules from our sorted source files."""
     for group, deps in self.sorted_sources:
       modules = []

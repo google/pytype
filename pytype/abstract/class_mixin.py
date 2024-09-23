@@ -1,8 +1,9 @@
 """Mixin for all class-like abstract classes."""
 
+from collections.abc import Mapping, Sequence
 import dataclasses
 import logging
-from typing import Any, List, Mapping, Optional, Sequence, Type
+from typing import Any
 
 from pytype import datatypes
 from pytype.abstract import abstract_utils
@@ -149,13 +150,13 @@ class ClassBuilderProperties:
   """
 
   name_var: cfg.Variable
-  bases: List[Any]
+  bases: list[Any]
   class_dict_var: cfg.Variable
-  metaclass_var: Optional[cfg.Variable] = None
-  new_class_var: Optional[cfg.Variable] = None
-  class_type: Optional[Type["Class"]] = None
-  decorators: Optional[List[str]] = None
-  undecorated_methods: Optional[FunctionMapType] = None
+  metaclass_var: cfg.Variable | None = None
+  new_class_var: cfg.Variable | None = None
+  class_type: type["Class"] | None = None
+  decorators: list[str] | None = None
+  undecorated_methods: FunctionMapType | None = None
 
 
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable

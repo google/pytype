@@ -9,7 +9,7 @@ import contextlib
 import logging
 import os
 import sys
-from typing import List, overload
+from typing import Literal, overload
 
 from pytype import datatypes
 from pytype import file_utils
@@ -19,7 +19,6 @@ from pytype import utils
 from pytype.errors import errors
 from pytype.pyc import compiler
 from pytype.typegraph import cfg_utils
-from typing_extensions import Literal
 
 
 LOG_LEVELS = [
@@ -46,7 +45,7 @@ class Options:
   _HAS_DYNAMIC_ATTRIBUTES = True
 
   @overload
-  def __init__(self, argv_or_options: List[str], command_line: Literal[True]):
+  def __init__(self, argv_or_options: list[str], command_line: Literal[True]):
     ...
 
   @overload

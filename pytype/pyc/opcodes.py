@@ -1,6 +1,6 @@
 """Opcode definitions."""
 
-from typing import Dict, List, Optional, Tuple, cast
+from typing import cast
 
 import attrs
 from pycnite import bytecode
@@ -31,7 +31,7 @@ class OpcodeMetadata:
   """Contextual metadata attached to opcodes."""
 
   # Function signature annotations in textual form
-  signature_annotations: Optional[Dict[str, str]] = None
+  signature_annotations: dict[str, str] | None = None
   # Code run out of line-number order, due to compiler optimisations.
   is_out_of_order: bool = False
 
@@ -107,7 +107,7 @@ class Opcode:
 
   @classmethod
   def for_python_version(
-      cls, version: Tuple[int, int]  # pylint: disable=unused-argument
+      cls, version: tuple[int, int]  # pylint: disable=unused-argument
   ):
     return cls
 
@@ -474,7 +474,7 @@ class YIELD_VALUE(OpcodeWithArg):
 
   @classmethod
   @override
-  def for_python_version(cls, version: Tuple[int, int]):
+  def for_python_version(cls, version: tuple[int, int]):
     if version <= (3, 11):
 
       # Intentionally use the same class name, so that __class__.__name__ stays
@@ -1143,7 +1143,7 @@ class LOAD_FROM_DICT_OR_DEREF(OpcodeWithArg):
 
 
 def _make_opcodes(
-    ops: List[pycnite.types.Opcode], python_version: Tuple[int, int]
+    ops: list[pycnite.types.Opcode], python_version: tuple[int, int]
 ):
   """Convert pycnite opcodes to pytype opcodes."""
   g = globals()
@@ -1214,7 +1214,7 @@ _IGNORED_EXCEPTION_TARGETS = (
 
 
 def _add_setup_except(
-    offset_to_op: Dict[float, Opcode], exc_table: pycnite.types.ExceptionTable
+    offset_to_op: dict[float, Opcode], exc_table: pycnite.types.ExceptionTable
 ):
   """Handle the exception table in 3.11+."""
   # In python 3.11, exception handling is no longer bytecode-based - see
@@ -1267,7 +1267,7 @@ def _add_setup_except(
 
 
 def _get_opcode_following_cleanup_throw_jump_pairs(
-    op_items: List[Tuple[int, Opcode]], start_i: int
+    op_items: list[tuple[int, Opcode]], start_i: int
 ):
   for i in range(start_i, len(op_items), 2):
     if (
@@ -1281,7 +1281,7 @@ def _get_opcode_following_cleanup_throw_jump_pairs(
 
 
 def _should_elide_opcode(
-    op_items: List[Tuple[int, Opcode]], i: int, python_version: Tuple[int, int]
+    op_items: list[tuple[int, Opcode]], i: int, python_version: tuple[int, int]
 ):
   """Returns `True` if the opcode on index `i` should be elided.
 
@@ -1332,7 +1332,7 @@ def _should_elide_opcode(
   return False
 
 
-def _make_opcode_list(offset_to_op, python_version: Tuple[int, int]):
+def _make_opcode_list(offset_to_op, python_version: tuple[int, int]):
   """Convert opcodes to a list and fill in opcode.index, next and prev."""
   ops = []
   offset_to_index = {}
@@ -1371,7 +1371,7 @@ def _add_jump_targets(ops, offset_to_index):
       op.target = ops[op.arg]
 
 
-def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> List[Opcode]:
+def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> list[Opcode]:
   """Build a list of opcodes from pycnite opcodes."""
   offset_to_op = _make_opcodes(dis_code.opcodes, dis_code.python_version)
   if dis_code.exception_table:
@@ -1381,7 +1381,7 @@ def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> List[Opcode]:
   return ops
 
 
-def dis(code: pycnite.types.CodeTypeBase) -> List[Opcode]:
+def dis(code: pycnite.types.CodeTypeBase) -> list[Opcode]:
   """Build a list of opcodes from a pycnite CodeType."""
   dis_code = bytecode.dis_all(code)
   return build_opcodes(dis_code)

@@ -2,9 +2,9 @@
 
 import abc
 import collections
+from collections.abc import Collection, Sequence
 import os
 import re
-from typing import Collection, List, Sequence, Tuple
 
 from pytype import module_utils
 from pytype import pytype_source_utils
@@ -32,17 +32,17 @@ class TypeshedStore(metaclass=abc.ABCMeta):
   """Underlying datastore for typeshed."""
 
   @abc.abstractmethod
-  def load_missing(self) -> List[str]:
+  def load_missing(self) -> list[str]:
     """List of modules that are known to be missing in typeshed."""
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def load_pytype_blocklist(self) -> List[str]:
+  def load_pytype_blocklist(self) -> list[str]:
     """List of modules that we maintain our own versions of."""
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def load_stdlib_versions(self) -> List[str]:
+  def load_stdlib_versions(self) -> list[str]:
     raise NotImplementedError()
 
   @abc.abstractmethod
@@ -55,11 +55,11 @@ class TypeshedStore(metaclass=abc.ABCMeta):
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def list_files(self, relpath) -> List[str]:
+  def list_files(self, relpath) -> list[str]:
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def load_file(self, relpath) -> Tuple[str, str]:
+  def load_file(self, relpath) -> tuple[str, str]:
     raise NotImplementedError()
 
 
@@ -78,7 +78,7 @@ class TypeshedFs(TypeshedStore):
   def filepath(self, relpath):
     return path_utils.join(self._root, relpath)
 
-  def load_file(self, relpath) -> Tuple[str, str]:
+  def load_file(self, relpath) -> tuple[str, str]:
     filename = self.filepath(relpath)
     with self._open_function(filename) as f:
       return relpath, f.read()
@@ -88,17 +88,17 @@ class TypeshedFs(TypeshedStore):
     _, data = self.load_file(relpath)
     return data.splitlines()
 
-  def load_missing(self) -> List[str]:
+  def load_missing(self) -> list[str]:
     """List of modules that are known to be missing in typeshed."""
     if not self._missing_file:
       return []
     return self._readlines(self._missing_file)
 
-  def load_pytype_blocklist(self) -> List[str]:
+  def load_pytype_blocklist(self) -> list[str]:
     """List of modules that we maintain our own versions of."""
     return self._readlines("tests/pytype_exclude_list.txt")
 
-  def load_stdlib_versions(self) -> List[str]:
+  def load_stdlib_versions(self) -> list[str]:
     return self._readlines("stdlib/VERSIONS")
 
 
@@ -137,7 +137,7 @@ class InternalTypeshedFs(TypeshedFs):
       return True
     return True
 
-  def load_file(self, relpath) -> Tuple[str, str]:
+  def load_file(self, relpath) -> tuple[str, str]:
     filepath = self.filepath(relpath)
     return relpath, pytype_source_utils.load_text_file(filepath)
 

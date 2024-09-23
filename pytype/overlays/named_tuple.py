@@ -1,7 +1,7 @@
 """Implementation of named tuples."""
 
 import dataclasses
-from typing import Any, List, Optional
+from typing import Any
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -45,8 +45,8 @@ class NamedTupleProperties:
   """Collection of properties used to construct a namedtuple."""
 
   name: str
-  fields: List[Field]
-  bases: List[Any]
+  fields: list[Field]
+  bases: list[Any]
 
   @classmethod
   def from_field_names(cls, name, field_names, ctx):
@@ -95,9 +95,9 @@ class _Args:
   """Args for both collections.namedtuple and typing.NamedTuple."""
 
   name: str
-  field_names: List[str]
-  field_types: Optional[List[Any]] = None
-  defaults: Optional[List[Any]] = None
+  field_names: list[str]
+  field_types: list[Any] | None = None
+  defaults: list[Any] | None = None
   rename: bool = False
 
 

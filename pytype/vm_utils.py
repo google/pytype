@@ -2,13 +2,13 @@
 
 import abc
 import collections.abc
+from collections.abc import Sequence
 import dataclasses
 import enum
 import itertools
 import logging
 import re
 import reprlib
-from typing import Optional, Sequence, Tuple, Union
 
 from pytype import overriding_checks
 from pytype import state as frame_state
@@ -112,7 +112,7 @@ class FinallyStateTracker:
   def __init__(self):
     self.stack = []
 
-  def process(self, op, state, ctx) -> Optional[str]:
+  def process(self, op, state, ctx) -> str | None:
     """Store state.why, or return it from a stored state."""
     if ctx.vm.is_setup_except(op):
       self.stack.append([op, None])
@@ -200,7 +200,7 @@ def _get_scopes(
     state,
     names: Sequence[str],
     ctx,
-) -> Sequence[Union[abstract.InterpreterClass, abstract.InterpreterFunction]]:
+) -> Sequence[abstract.InterpreterClass | abstract.InterpreterFunction]:
   """Gets the class or function objects for a sequence of nested scope names.
 
   For example, if the code under analysis is:
@@ -253,9 +253,7 @@ def _get_scopes(
   return scopes
 
 
-def get_name_error_details(
-    state, name: str, ctx
-) -> Optional[_NameErrorDetails]:
+def get_name_error_details(state, name: str, ctx) -> _NameErrorDetails | None:
   """Gets a detailed error message for [name-error]."""
   # 'name' is not defined in the current scope. To help the user better
   # understand UnboundLocalError and other similarly confusing errors, we look
@@ -1155,7 +1153,7 @@ def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
 
 def match_keys(
     node, obj_var: cfg.Variable, keys_var: cfg.Variable, ctx
-) -> Optional[cfg.Variable]:
+) -> cfg.Variable | None:
   """Pick values out of a mapping for pattern matching."""
   keys = _convert_keys(keys_var)
   if _var_maybe_unknown(obj_var):
@@ -1186,8 +1184,8 @@ def match_keys(
 
 @dataclasses.dataclass
 class ClassMatch:
-  success: Optional[bool]  # tri-state boolean for if-splitting
-  values: Optional[cfg.Variable]
+  success: bool | None  # tri-state boolean for if-splitting
+  values: cfg.Variable | None
 
   @property
   def matched(self):
@@ -1197,9 +1195,9 @@ class ClassMatch:
 
 def _match_builtin_class(
     node,
-    success: Optional[bool],
+    success: bool | None,
     cls: abstract.Class,
-    keys: Tuple[str, ...],
+    keys: tuple[str, ...],
     posarg_count: int,
     ctx,
 ) -> ClassMatch:

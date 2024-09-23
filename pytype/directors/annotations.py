@@ -1,14 +1,13 @@
 """Representation of variable annotations and typecomments in source code."""
 
 import dataclasses
-from typing import Dict, Optional
 
 
 @dataclasses.dataclass(frozen=True)
 class VariableAnnotation:
   """Store a variable annotation or typecomment."""
 
-  name: Optional[str]
+  name: str | None
   annotation: str
 
 
@@ -16,8 +15,8 @@ class VariableAnnotations:
   """Store variable annotations and typecomments for a program."""
 
   def __init__(self):
-    self.variable_annotations: Dict[int, VariableAnnotation] = {}
-    self.type_comments: Dict[int, str] = {}
+    self.variable_annotations: dict[int, VariableAnnotation] = {}
+    self.type_comments: dict[int, str] = {}
 
   def add_annotation(self, line: int, name: str, annotation: str):
     self.variable_annotations[line] = VariableAnnotation(name, annotation)
@@ -26,7 +25,7 @@ class VariableAnnotations:
     self.type_comments[line] = annotation
 
   @property
-  def annotations(self) -> Dict[int, VariableAnnotation]:
+  def annotations(self) -> dict[int, VariableAnnotation]:
     # It's okay to overwrite type comments with variable annotations here
     # because _FindIgnoredTypeComments in vm.py will flag ignored comments.
     ret = {

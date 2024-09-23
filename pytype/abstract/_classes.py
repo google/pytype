@@ -1,7 +1,7 @@
 """Abstract class representations."""
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -117,11 +117,11 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def __init__(
       self,
       name: str,
-      bases: List[cfg.Variable],
-      members: Dict[str, cfg.Variable],
+      bases: list[cfg.Variable],
+      members: dict[str, cfg.Variable],
       cls: _base.BaseValue,
-      first_opcode: Optional[opcodes.Opcode],
-      undecorated_methods: Optional[class_mixin.FunctionMapType],
+      first_opcode: opcodes.Opcode | None,
+      undecorated_methods: class_mixin.FunctionMapType | None,
       ctx: _ContextType,
   ):
     self._bases = bases
@@ -330,7 +330,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
   def get_undecorated_method(
       self, name: str, node: cfg.CFGNode
-  ) -> Optional[cfg.Variable]:
+  ) -> cfg.Variable | None:
     if name not in self._undecorated_methods:
       return None
     return self.ctx.program.NewVariable(
@@ -664,12 +664,12 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
 
   def __init__(
       self,
-      base_cls: Union[PyTDClass, InterpreterClass],
-      formal_type_parameters: Union[
-          abstract_utils.LazyFormalTypeParameters, Dict[str, _base.BaseValue]
-      ],
+      base_cls: PyTDClass | InterpreterClass,
+      formal_type_parameters: (
+          abstract_utils.LazyFormalTypeParameters | dict[str, _base.BaseValue]
+      ),
       ctx: _ContextType,
-      template: Optional[Tuple[_TypeParamType, ...]] = None,
+      template: tuple[_TypeParamType, ...] | None = None,
   ):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
@@ -773,7 +773,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     return self.base_cls.members
 
   @property
-  def formal_type_parameters(self) -> Dict[Union[str, int], _base.BaseValue]:
+  def formal_type_parameters(self) -> dict[str | int, _base.BaseValue]:
     self._load_formal_type_parameters()
     return self._formal_type_parameters  # pytype: disable=bad-return-type
 

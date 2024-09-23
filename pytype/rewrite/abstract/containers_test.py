@@ -1,5 +1,3 @@
-from typing import Dict, List, Set, Tuple
-
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import containers
 from pytype.rewrite.tests import test_utils
@@ -23,7 +21,7 @@ class ListTest(BaseTest):
   def test_constant_type(self):
     a = self.const_var("a")
     c = containers.List(self.ctx, [a])
-    assert_type(c.constant, List[_Var])
+    assert_type(c.constant, list[_Var])
 
   def test_append(self):
     l1 = containers.List(self.ctx, [self.const_var("a")])
@@ -44,7 +42,7 @@ class DictTest(BaseTest):
     a = self.const_var("a")
     b = self.const_var("b")
     c = containers.Dict(self.ctx, {a: b})
-    assert_type(c.constant, Dict[_Var, _Var])
+    assert_type(c.constant, dict[_Var, _Var])
 
   def test_setitem(self):
     d1 = containers.Dict(self.ctx, {})
@@ -64,7 +62,7 @@ class SetTest(BaseTest):
   def test_constant_type(self):
     a = self.const_var("a")
     c = containers.Set(self.ctx, {a})
-    assert_type(c.constant, Set[_Var])
+    assert_type(c.constant, set[_Var])
 
   def test_add(self):
     c1 = containers.Set(self.ctx, set())
@@ -78,7 +76,7 @@ class TupleTest(BaseTest):
     a = self.const_var("a")
     b = self.const_var("b")
     c = containers.Tuple(self.ctx, (a, b))
-    assert_type(c.constant, Tuple[_Var, ...])
+    assert_type(c.constant, tuple[_Var, ...])
 
 
 if __name__ == "__main__":

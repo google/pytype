@@ -1,9 +1,10 @@
 """Utilities for checking function overrides used in vm.py."""
 
+from collections.abc import Mapping
 import dataclasses
 import enum
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -619,7 +620,7 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
   ctx.method_signature_map[cls] = class_signature_map
 
 
-def _get_defining_class(sig: function.Signature) -> Optional[str]:
+def _get_defining_class(sig: function.Signature) -> str | None:
   if "self" in sig.annotations:
     return sig.annotations["self"].full_name
   elif "." in sig.name:
