@@ -116,7 +116,7 @@ class UnionFind:
             used.add(y)
             comp.append(y)
         comps.append(comp)
-    return f"{comps!r}"
+    return repr(comps)
 
 
 class AccessTrackingDict(Dict[_K, _V]):
