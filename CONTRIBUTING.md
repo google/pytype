@@ -38,12 +38,23 @@ dependencies.
    Python version that pytype can run under (see [Requirements](README.md#requirements)).
    Make sure you also install the developer package (often named python3.x-dev).
 
-Required Python packages are listed in the [requirements.txt](requirements.txt)
-file in this repository. They can be installed with pip with the following
+Required Python packages are listed in the [requirements.in](requirements.in)
+file in this repository. They should match and be a superset of those listed in
+[setup.cfg](setup.cfg).
+
+Pinned versions of all these dependencies can be installed with the following
 command:
 
 ```shell
 pip install -r requirements.txt
+```
+
+These dependencies should occasionally be refreshed to latest versions with this
+command:
+
+```shell
+pip install uv
+uv pip compile --universal -U requirements.in -o requirements.txt
 ```
 
 The Pytype Git repository also contains few Git submodules. Before building

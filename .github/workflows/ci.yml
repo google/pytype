@@ -44,7 +44,7 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Install Dependencies
-      run: pip install -r requirements.txt
+      run: pip install --no-deps -r requirements.txt
 
     - name: Build
       run: python build_scripts/build.py
@@ -75,7 +75,7 @@ jobs:
       run: sudo apt-get install -y bison cmake flex g++
 
     - name: Install Dependencies
-      run: pip install -r requirements.txt
+      run: pip install --no-deps -r requirements.txt
 
     - name: Lint
       if: matrix.python-version == '3.12'
