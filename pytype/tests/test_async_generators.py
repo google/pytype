@@ -401,6 +401,20 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         },
     )
 
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
+  def test_async_gen_coroutines(self):
+    self.Check("""
+      from typing import Any, AsyncGenerator, Coroutine
+      async def gen():
+          yield 42
+
+      x0: AsyncGenerator[int, None] = gen()
+      x1: Coroutine[Any, Any, int] = gen().__anext__()
+      x2: Coroutine[Any, Any, int] = gen().asend(None)
+      x3: Coroutine[Any, Any, int] = gen().athrow(BaseException)
+      x4: Coroutine[Any, Any, None] = gen().aclose()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
