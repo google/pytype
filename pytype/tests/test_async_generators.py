@@ -273,12 +273,10 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         async def __aiter__(self) -> AsyncIterator[int]:
           yield 5
 
-      def f(i: AsyncIterator[int]): pass
-
-      f(aiter(gen1()))
-      f(aiter(gen2()))
-      f(aiter(gen3()))
-      f(aiter(gen4()))
+      x1: AsyncIterator[int] = aiter(gen1())
+      x2: AsyncIterator[int] = aiter(gen2())
+      x3: AsyncIterator[int] = aiter(gen3())
+      x4: AsyncIterator[int] = aiter(gen4())
     """)
 
   @test_utils.skipBeforePy((3, 10), "New in 3.10")
@@ -298,12 +296,10 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         async def __aiter__(self) -> AsyncIterator[int]:
           yield 5
 
-      def f(i: AsyncIterator[str]): pass
-
-      f(aiter(gen1()))  # wrong-arg-types[e1]
-      f(aiter(gen2()))  # this is ok because gen2() is effectively of type AsyncIterable[Any]
-      f(aiter(gen3()))  # wrong-arg-types[e3]
-      f(aiter(gen4()))  # wrong-arg-types[e4]
+      x1: AsyncIterator[str] = aiter(gen1())  # annotation-type-mismatch[e1]
+      x2: AsyncIterator[str] = aiter(gen2())  # this is ok because gen2() is effectively of type AsyncIterable[Any]
+      x3: AsyncIterator[str] = aiter(gen3())  # annotation-type-mismatch[e3]
+      x4: AsyncIterator[str] = aiter(gen4())  # annotation-type-mismatch[e4]
 
       aiter([5])  # wrong-arg-types[e5]
     """)
@@ -338,18 +334,15 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         def __aiter__(self) -> Self:
           return self
 
-      def f(i: Awaitable[int]): pass
-      def g(i: Awaitable[int | str]): pass
+      x1: Awaitable[int] = anext(gen1())
+      x2: Awaitable[int] = anext(gen2())
+      x3: Awaitable[int] = anext(gen3())
+      x4: Awaitable[int] = anext(gen4())
 
-      f(anext(gen1()))
-      f(anext(gen2()))
-      f(anext(gen3()))
-      f(anext(gen4()))
-
-      g(anext(gen1(), "done"))
-      g(anext(gen2(), "done"))
-      g(anext(gen3(), "done"))
-      g(anext(gen4(), "done"))
+      y1: Awaitable[int | str] = anext(gen1(), "done")
+      y2: Awaitable[int | str] = anext(gen2(), "done")
+      y3: Awaitable[int | str] = anext(gen3(), "done")
+      y4: Awaitable[int | str] = anext(gen4(), "done")
     """)
 
   @test_utils.skipBeforePy((3, 10), "New in 3.10")
@@ -373,18 +366,15 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
         def __aiter__(self) -> Self:
           return self
 
-      def f(i: Awaitable[str]): pass
-      def g(i: Awaitable[str]): pass
+      x1: Awaitable[str] = anext(gen1())  # annotation-type-mismatch[e1]
+      x2: Awaitable[str] = anext(gen2())  # this is ok because gen2() is effectively of type AsyncIterator[Any]
+      x3: Awaitable[str] = anext(gen3())  # annotation-type-mismatch[e3]
+      x4: Awaitable[str] = anext(gen4())  # annotation-type-mismatch[e4]
 
-      f(anext(gen1()))  # wrong-arg-types[e1]
-      f(anext(gen2()))  # this is ok because gen2() is effectively of type AsyncIterator[Any]
-      f(anext(gen3()))  # wrong-arg-types[e3]
-      f(anext(gen4()))  # wrong-arg-types[e4]
-
-      g(anext(gen1(), b"done"))  # wrong-arg-types[e5]
-      g(anext(gen2(), b"done"))  # this is ok because gen2() is effectively of type AsyncIterator[Any]
-      g(anext(gen3(), b"done"))  # wrong-arg-types[e7]
-      g(anext(gen4(), b"done"))  # wrong-arg-types[e8]
+      y1: Awaitable[str] = anext(gen1(), b"done")  # annotation-type-mismatch[e5]
+      y2: Awaitable[str] = anext(gen2(), b"done")  # annotation-type-mismatch[e6]
+      y3: Awaitable[str] = anext(gen3(), b"done")  # annotation-type-mismatch[e7]
+      y4: Awaitable[str] = anext(gen4(), b"done")  # annotation-type-mismatch[e8]
 
       anext(iter([1]))  # wrong-arg-types[e9]
     """)
@@ -395,6 +385,7 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
             "e3": r"Awaitable\[str\].*Awaitable\[int\]",
             "e4": r"Awaitable\[str\].*Awaitable\[int\]",
             "e5": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
+            "e6": r"Awaitable\[str\].*Awaitable",
             "e7": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
             "e8": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
             "e9": r"AsyncIterator.*listiterator\[int\]",
