@@ -272,7 +272,12 @@ def compute_predecessors(
 
 
 class OrderableNode(PredecessorNode, Protocol):
-  id: int
+
+  def __lt__(self, other: "OrderableNode", /) -> bool:
+    ...
+
+  def __gt__(self, other: "OrderableNode", /) -> bool:
+    ...
 
 
 _OrderableNode = TypeVar("_OrderableNode", bound=OrderableNode)
@@ -287,8 +292,9 @@ def order_nodes(nodes: Sequence[_OrderableNode]) -> list[_OrderableNode]:
   process both the branches before that node).
 
   Args:
-    nodes: A list of nodes or blocks. They have two attributes: "id" (an int to
-      enable deterministic sorting) and "outgoing" (a list of nodes).
+    nodes: A list of nodes or blocks. They have an attribute `outgoing` (a list
+      of nodes) and define rich comparisons method `__lt__` and `__gt__` to
+      enable deterministic sorting.
 
   Returns:
     A list of nodes in the proper order.
@@ -308,9 +314,8 @@ def order_nodes(nodes: Sequence[_OrderableNode]) -> list[_OrderableNode]:
   while queue:
     # Find node with minimum amount of predecessors that's connected to a node
     # we already processed.
-    _, _, node = min(
-        (len(predecessors), node.id, node)
-        for node, predecessors in queue.items()
+    _, node = min(
+        (len(predecessors), node) for node, predecessors in queue.items()
     )
     del queue[node]
     if node in seen:

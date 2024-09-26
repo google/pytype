@@ -78,6 +78,12 @@ class Block:
   def __iter__(self):
     return self.code.__iter__()
 
+  def __lt__(self, other: Self) -> bool:
+    return (self.code[0].line, self.id) < (other.code[0].line, other.id)
+
+  def __gt__(self, other: Self) -> bool:
+    return (self.code[0].line, self.id) > (other.code[0].line, other.id)
+
 
 class OrderedCode:
   """Code object which knows about instruction ordering.
