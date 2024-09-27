@@ -1,6 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
-from typing import Any, Iterator, List, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Iterator, List, Optional, Tuple, Union, cast
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
@@ -55,7 +55,7 @@ class Block:
       instruction in our code object.
   """
 
-  def __init__(self, code: Sequence[opcodes.Opcode]):
+  def __init__(self, code: list[opcodes.Opcode]):
     self.id = code[0].index
     self.code = code
     self.incoming: set[Self] = set()

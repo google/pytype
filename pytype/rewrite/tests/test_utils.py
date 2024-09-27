@@ -41,7 +41,7 @@ class PytdTestBase(parser_test_base.ParserTest):
 
 class FakeOrderedCode(i4t.ProductionType[blocks.OrderedCode]):
 
-  def __init__(self, ops: Sequence[Sequence[opcodes.Opcode]], consts=()):
+  def __init__(self, ops: Sequence[list[opcodes.Opcode]], consts=()):
     self.order = [blocks.Block(block_ops) for block_ops in ops]
     self.consts = consts
 
