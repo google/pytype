@@ -5,7 +5,7 @@ import enum
 import os
 import re
 import shutil
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import libcst as cst
 from libcst import codemod
@@ -26,7 +26,7 @@ def _merge_csts(*, py_tree, pyi_tree):
   vis.store_stub_in_context(context, pyi_tree)
   return vis(
       context,
-      overwrite_existing_annotations=True,
+      overwrite_existing_annotations=False,
       strict_posargs_matching=False,
       strict_annotation_matching=True,
   ).transform_module(py_tree)
@@ -80,19 +80,16 @@ class Mode(enum.Enum):
   OVERWRITE = 3
 
 
-def _get_diff(a, b):
+def _get_diff(a, b) -> str:
   a, b = a.split("\n"), b.split("\n")
   diff = difflib.Differ().compare(a, b)
   return "\n".join(diff)
 
 
 def merge_files(
-    *, py_path: str, pyi_path: str, mode: Mode, backup: Optional[str] = None
+    *, py_path: str, pyi_path: str, mode: Mode, backup: str | None = None
 ) -> bool:
   """Merges a .py and a .pyi (experimental: or a pickled pytd) file."""
-
-  with open(py_path) as f:
-    py_src = f.read()
   _, ext = os.path.splitext(pyi_path)
   if re.fullmatch(r"\.pickled(-\d+)?", ext):
     with open(pyi_path, "rb") as file:
@@ -100,6 +97,18 @@ def merge_files(
   else:
     with open(pyi_path) as f:
       pyi_src = f.read()
+  return merge_files_src(py_path, pyi_src, mode, backup)
+
+
+def merge_files_src(
+    py_path: str,
+    pyi_src: str,
+    mode: Mode,
+    backup: str | None = None,
+) -> bool:
+  """Merges annotations from pyi_src content into the .py file py_path."""
+  with open(py_path) as f:
+    py_src = f.read()
   annotated_src = merge_sources(py=py_src, pyi=pyi_src)
   changed = annotated_src != py_src
   if mode == Mode.PRINT:
@@ -120,7 +129,7 @@ def merge_tree(
     *,
     py_path: str,
     pyi_path: str,
-    backup: Optional[str] = None,
+    backup: str | None = None,
     verbose: bool = False,
 ) -> Tuple[List[str], List[Tuple[str, MergeError]]]:
   """Merge .py files in a tree with the corresponding .pyi files."""
