@@ -2,6 +2,7 @@
 
 import collections
 import itertools
+from typing import Iterable, Protocol, Sequence, TypeVar
 
 
 # Limit on how many argument combinations we allow before aborting.
@@ -219,7 +220,16 @@ def walk_binding(binding, keep_binding=lambda _: True):
         bindings.extend(itertools.chain(*o.source_sets))
 
 
-def compute_predecessors(nodes):
+class PredecessorNode(Protocol):
+  outgoing: "Iterable[PredecessorNode]"
+
+
+_PredecessorNode = TypeVar("_PredecessorNode", bound=PredecessorNode)
+
+
+def compute_predecessors(
+    nodes: Iterable[_PredecessorNode],
+) -> dict[_PredecessorNode, set[_PredecessorNode]]:
   """Build a transitive closure.
 
   For a list of nodes, compute all the predecessors of each node.
@@ -261,7 +271,14 @@ def compute_predecessors(nodes):
   return predecessors
 
 
-def order_nodes(nodes):
+class OrderableNode(PredecessorNode, Protocol):
+  id: int
+
+
+_OrderableNode = TypeVar("_OrderableNode", bound=OrderableNode)
+
+
+def order_nodes(nodes: Sequence[_OrderableNode]) -> list[_OrderableNode]:
   """Build an ancestors first traversal of CFG nodes.
 
   This guarantees that at least one predecessor of a block is scheduled before
@@ -270,8 +287,8 @@ def order_nodes(nodes):
   process both the branches before that node).
 
   Args:
-    nodes: A list of nodes or blocks. They have two attributes: "incoming" and
-      "outgoing". Both are lists of other nodes.
+    nodes: A list of nodes or blocks. They have two attributes: "id" (an int to
+      enable deterministic sorting) and "outgoing" (a list of nodes).
 
   Returns:
     A list of nodes in the proper order.

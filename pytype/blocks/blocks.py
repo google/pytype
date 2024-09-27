@@ -1,12 +1,12 @@
 """Functions for computing the execution order of bytecode."""
 
-from typing import Any, List, Optional, Tuple, Union, cast
-
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Union, cast
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
 from pytype.pyc import opcodes
 from pytype.typegraph import cfg_utils
+from typing_extensions import Self
 
 STORE_OPCODES = (
     opcodes.STORE_NAME,
@@ -55,13 +55,13 @@ class Block:
       instruction in our code object.
   """
 
-  def __init__(self, code):
+  def __init__(self, code: Sequence[opcodes.Opcode]):
     self.id = code[0].index
     self.code = code
-    self.incoming = set()
-    self.outgoing = set()
+    self.incoming: set[Self] = set()
+    self.outgoing: set[Self] = set()
 
-  def connect_outgoing(self, target):
+  def connect_outgoing(self, target: Self):
     """Add an outgoing edge."""
     self.outgoing.add(target)
     target.incoming.add(self)
@@ -121,7 +121,12 @@ class OrderedCode:
   order: List[Block]
   python_version: Tuple[int, int]
 
-  def __init__(self, code, bytecode, order: List[Block]):
+  def __init__(
+      self,
+      code: pycnite.types.CodeTypeBase,
+      bytecode: list[opcodes.Opcode],
+      order: list[Block],
+  ):
     assert hasattr(code, "co_code")
     self.name = code.co_name
     self.filename = code.co_filename
@@ -169,13 +174,14 @@ class OrderedCode:
     return self.consts
 
   @property
-  def code_iter(self):
+  def code_iter(self) -> Iterator[opcodes.Opcode]:
     return (op for block in self.order for op in block)  # pylint: disable=g-complex-comprehension
 
   def get_first_opcode(self, skip_noop=False):
     for op in self.code_iter:
       if not skip_noop or not isinstance(op, _NOOP_OPCODES):
         return op
+    assert False, "OrderedCode should have at least one opcode"
 
   def has_opcode(self, op_type):
     return any(isinstance(op, op_type) for op in self.code_iter)
@@ -222,16 +228,16 @@ class BlockGraph:
   """CFG made up of ordered code blocks."""
 
   def __init__(self):
-    self.graph = {}
+    self.graph: dict[opcodes.Opcode, OrderedCode] = {}
 
-  def add(self, ordered_code):
+  def add(self, ordered_code: OrderedCode):
     self.graph[ordered_code.get_first_opcode()] = ordered_code
 
   def pretty_print(self):
     return str(self.graph)
 
 
-def add_pop_block_targets(bytecode):
+def add_pop_block_targets(bytecode: list[opcodes.Opcode]) -> None:
   """Modifies bytecode so that each POP_BLOCK has a block_target.
 
   This is to achieve better initial ordering of try/except and try/finally code.
@@ -309,7 +315,7 @@ def add_pop_block_targets(bytecode):
       todo.append((op.next, block_stack))
 
 
-def _split_bytecode(bytecode):
+def _split_bytecode(bytecode: list[opcodes.Opcode]) -> list[Block]:
   """Given a sequence of bytecodes, return basic blocks.
 
   This will split the code at "basic block boundaries". These occur at
@@ -340,7 +346,7 @@ def _split_bytecode(bytecode):
   return blocks
 
 
-def compute_order(bytecode):
+def compute_order(bytecode: list[opcodes.Opcode]) -> list[Block]:
   """Split bytecode into blocks and order the blocks.
 
   This builds an "ancestor first" ordering of the basic blocks of the bytecode.

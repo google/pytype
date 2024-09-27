@@ -67,6 +67,7 @@ class Opcode:
     self.prev = None
     self.next = None
     self.target = None
+    self.block_target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
     self.folded = None  # elided by constant folding
