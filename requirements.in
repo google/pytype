@@ -15,4 +15,4 @@ pydot>=1.4.2
 pylint>=3.0.0,!=3.2.4  # https://github.com/pylint-dev/pylint/issues/9751
 tabulate>=0.8.10
 toml>=0.10.2
-typing-extensions>=4.3.0
+typing-extensions>=4.4.0
