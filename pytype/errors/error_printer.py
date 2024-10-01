@@ -3,7 +3,6 @@
 import collections
 import dataclasses
 import enum
-from typing import List
 
 from pytype import matcher
 from pytype import pretty_printer_base
@@ -19,14 +18,14 @@ class BadReturn:
   expected: str
   bad_actual: str
   full_actual: str
-  error_details: List[str]
+  error_details: list[str]
 
 
 @dataclasses.dataclass
 class BadCall:
   expected: str
   actual: str
-  error_details: List[str]
+  error_details: list[str]
 
 
 class BadAttrType(enum.Enum):
@@ -210,8 +209,8 @@ class MatcherErrorPrinter:
 
   def print_error_details(
       self, details: error_types.MatcherErrorDetails
-  ) -> List[str]:
-    errors: List[str] = []
+  ) -> list[str]:
+    errors: list[str] = []
     if details.protocol:
       errors.append(self._print_protocol_error(details.protocol))
     if details.noniterable_str:
@@ -220,7 +219,7 @@ class MatcherErrorPrinter:
       errors.append(self._print_typed_dict_error(details.typed_dict))
     return ["\n" + err for err in errors]
 
-  def prepare_errorlog_details(self, bad: List[matcher.BadMatch]) -> List[str]:
+  def prepare_errorlog_details(self, bad: list[matcher.BadMatch]) -> list[str]:
     """Prepare printable annotation matching errors."""
     details = collections.defaultdict(set)
     for match in bad:
@@ -234,7 +233,7 @@ class MatcherErrorPrinter:
     return ret
 
   def print_return_types(
-      self, node: cfg.CFGNode, bad: List[matcher.BadMatch]
+      self, node: cfg.CFGNode, bad: list[matcher.BadMatch]
   ) -> BadReturn:
     """Print the actual and expected values for a return type."""
     formal = bad[0].expected.typ

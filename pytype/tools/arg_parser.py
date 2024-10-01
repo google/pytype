@@ -2,13 +2,13 @@
 
 import argparse
 import dataclasses
-from typing import Any, Dict, List
+from typing import Any
 
 from pytype import config as pytype_config
 
 
 # Type alias
-_ArgDict = Dict[str, Any]
+_ArgDict = dict[str, Any]
 Namespace = argparse.Namespace
 
 
@@ -45,7 +45,7 @@ class Parser:
     self._overrides = overrides or []
     self.pytype_single_args = pytype_single_args or {}
 
-  def parse_args(self, argv: List[str]) -> ParsedArgs:
+  def parse_args(self, argv: list[str]) -> ParsedArgs:
     """Parses argv.
 
     Args:

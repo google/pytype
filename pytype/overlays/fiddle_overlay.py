@@ -1,7 +1,7 @@
 """Implementation of types from the fiddle library."""
 
 import re
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -21,7 +21,7 @@ Variable = Any
 # Config[Foo] is used in two separate places. We use a tuple of the abstract
 # class of Foo and a string (either "Config" or "Partial") as a key and store
 # the generated Buildable instance (either Config or Partial) as a value.
-_INSTANCE_CACHE: Dict[Tuple[Node, abstract.Class, str], abstract.Instance] = {}
+_INSTANCE_CACHE: dict[tuple[Node, abstract.Class, str], abstract.Instance] = {}
 
 
 _CLASS_ALIASES = {
@@ -156,7 +156,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 
   def new_slot(
       self, node, unused_cls, *args, **kwargs
-  ) -> Tuple[Node, abstract.Instance]:
+  ) -> tuple[Node, abstract.Instance]:
     """Create a Config or Partial instance from args."""
 
     underlying = args[0].data[0]
@@ -166,7 +166,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     node, ret = make_instance(self.name, underlying, node, self.ctx)
     return node, ret.to_variable(node)
 
-  def getitem_slot(self, node, index_var) -> Tuple[Node, abstract.Instance]:
+  def getitem_slot(self, node, index_var) -> tuple[Node, abstract.Instance]:
     """Specialize the generic class with the value of index_var."""
 
     underlying = index_var.data[0]
@@ -175,7 +175,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     )
     return node, ret.to_variable(node)
 
-  def get_own_new(self, node, value) -> Tuple[Node, Variable]:
+  def get_own_new(self, node, value) -> tuple[Node, Variable]:
     new = abstract.NativeFunction("__new__", self.new_slot, self.ctx)
     return node, new.to_variable(node)
 
@@ -240,7 +240,7 @@ class Buildable(abstract.Instance, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
 
-  def getitem_slot(self, node, slice_var) -> Tuple[Node, abstract.Instance]:
+  def getitem_slot(self, node, slice_var) -> tuple[Node, abstract.Instance]:
     # We need to set this here otherwise we walk up the chain and call
     # getitem_slot on BuildableBuilder, which tries to create an
     # AnnotationContainer.
@@ -290,7 +290,7 @@ def _make_fields(typ, ctx):
 
 def make_instance(
     subclass_name: str, underlying: abstract.Class, node, ctx
-) -> Tuple[Node, abstract.BaseValue]:
+) -> tuple[Node, abstract.BaseValue]:
   """Generate a Buildable instance from an underlying template class."""
 
   subclass_name = _CLASS_ALIASES[subclass_name]

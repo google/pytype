@@ -6,9 +6,10 @@ tracking variables and conditions. Use FrameBase by subclassing it and adding a
 byte_{opcode_name} method implementing each opcode.
 """
 
+from collections.abc import Mapping
 import dataclasses
 import logging
-from typing import Dict, Generic, Mapping, TypeVar
+from typing import Generic, TypeVar
 
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
@@ -58,7 +59,7 @@ class FrameBase(Generic[_T]):
 
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
-    self._states: Dict[int, state.BlockState[_T]] = {}  # block id to state
+    self._states: dict[int, state.BlockState[_T]] = {}  # block id to state
     # Initialize the state of the first block.
     self._states[self._code.order[0].id] = state.BlockState(
         locals_=dict(self._initial_locals))

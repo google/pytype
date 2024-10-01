@@ -2,7 +2,7 @@
 
 import dataclasses
 import json
-from typing import Any, Dict, List, NewType
+from typing import Any, NewType
 
 from pytype.blocks import blocks
 
@@ -16,8 +16,8 @@ class SerializedBlock:
 
   id: BlockId
   code: str
-  incoming: List[BlockId]
-  outgoing: List[BlockId]
+  incoming: list[BlockId]
+  outgoing: list[BlockId]
 
   @classmethod
   def make(cls, namespace: str, block: blocks.Block):
@@ -37,7 +37,7 @@ class SerializedBlock:
 
 @dataclasses.dataclass
 class SerializedCode:
-  blocks: List[SerializedBlock]
+  blocks: list[SerializedBlock]
 
 
 class BlockGraphEncoder(json.JSONEncoder):
@@ -46,13 +46,13 @@ class BlockGraphEncoder(json.JSONEncoder):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
-  def _encode_code(self, code: SerializedCode) -> Dict[str, Any]:
+  def _encode_code(self, code: SerializedCode) -> dict[str, Any]:
     return {
         "_type": "Code",
         "blocks": [self._encode_block(b) for b in code.blocks],
     }
 
-  def _encode_block(self, block: SerializedBlock) -> Dict[str, Any]:
+  def _encode_block(self, block: SerializedBlock) -> dict[str, Any]:
     return {
         "_type": "Block",
         "id": block.id,

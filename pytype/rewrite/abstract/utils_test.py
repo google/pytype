@@ -1,5 +1,3 @@
-from typing import Tuple
-
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import utils
 from pytype.rewrite.tests import test_utils
@@ -28,14 +26,14 @@ class GetAtomicConstantTest(test_utils.ContextfulTestBase):
 
   def test_get_with_parameterized_type(self):
     var = self.ctx.consts[('a',)].to_variable()
-    const = utils.get_atomic_constant(var, Tuple[str, ...])
-    assert_type(const, Tuple[str, ...])
+    const = utils.get_atomic_constant(var, tuple[str, ...])
+    assert_type(const, tuple[str, ...])
     self.assertEqual(const, ('a',))
 
   def test_get_with_bad_parameterized_type(self):
     var = self.ctx.consts['a'].to_variable()
     with self.assertRaisesRegex(ValueError, 'expected tuple, got str'):
-      utils.get_atomic_constant(var, Tuple[str, ...])
+      utils.get_atomic_constant(var, tuple[str, ...])
 
 
 class JoinValuesTest(test_utils.ContextfulTestBase):

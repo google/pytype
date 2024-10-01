@@ -6,7 +6,6 @@ mappings.
 """
 
 import dataclasses
-from typing import List, Optional
 
 TYPEOBJECT_PREFIX = "tp_"
 NUMBER_PREFIX = "nb_"
@@ -40,13 +39,13 @@ class Slot:
   python_name: str
   c_name: str
   function_type: str
-  index: Optional[int] = None
-  opcode: Optional[str] = None
-  python_version: Optional[str] = "*"
-  symbol: Optional[str] = None
+  index: int | None = None
+  opcode: str | None = None
+  python_version: str | None = "*"
+  symbol: str | None = None
 
 
-SLOTS: List[Slot] = [
+SLOTS: list[Slot] = [
     # typeobject
     Slot("__new__", "tp_new", "new"),
     Slot("__init__", "tp_init", "init"),

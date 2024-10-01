@@ -1,6 +1,6 @@
 """Loads abstract representations of imported objects."""
 
-from typing import Any, Dict, Tuple, Type
+from typing import Any
 
 from pytype import load_pytd
 from pytype.pytd import pytd
@@ -22,8 +22,8 @@ class Constants:
 
   def __init__(self, ctx: abstract.ContextType):
     self._ctx = ctx
-    self._consts: Dict[Any, abstract.PythonConstant] = {}
-    self.singles: Dict[str, abstract.Singleton] = {}
+    self._consts: dict[Any, abstract.PythonConstant] = {}
+    self.singles: dict[str, abstract.Singleton] = {}
 
     for single in self._SINGLETONS:
       self.singles[single] = abstract.Singleton(
@@ -55,7 +55,7 @@ class Types:
   def __init__(self, ctx: abstract.ContextType):
     self._ctx = ctx
 
-  def __getitem__(self, raw_type: Type[Any]) -> abstract.BaseValue:
+  def __getitem__(self, raw_type: type[Any]) -> abstract.BaseValue:
     return self._ctx.abstract_loader.load_raw_type(raw_type)
 
 
@@ -98,7 +98,7 @@ class AbstractLoader:
     pytd_node = self._pytd_loader.lookup_pytd(module, name)
     return self._load_pytd_node(pytd_node)
 
-  def get_module_globals(self) -> Dict[str, abstract.BaseValue]:
+  def get_module_globals(self) -> dict[str, abstract.BaseValue]:
     """Gets a module's initial global namespace."""
     return {
         # TODO(b/324464265): Represent __builtins__ as a module.
@@ -109,7 +109,7 @@ class AbstractLoader:
         '__package__': self.consts[None],
     }
 
-  def load_raw_type(self, typ: Type[Any]) -> abstract.BaseValue:
+  def load_raw_type(self, typ: type[Any]) -> abstract.BaseValue:
     """Converts a raw type to an abstract value.
 
     For convenience, this method can also be called via ctx.types[typ].
@@ -126,7 +126,7 @@ class AbstractLoader:
     pytd_node = self._pytd_loader.lookup_pytd(typ.__module__, typ.__name__)
     return self._load_pytd_node(pytd_node)
 
-  def build_tuple(self, const: Tuple[Any, ...]) -> abstract.Tuple:
+  def build_tuple(self, const: tuple[Any, ...]) -> abstract.Tuple:
     """Convert a raw constant tuple to an abstract value."""
     ret = []
     for e in const:

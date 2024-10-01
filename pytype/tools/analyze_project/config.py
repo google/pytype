@@ -1,12 +1,13 @@
 """Config file processing."""
 
 import argparse
+from collections.abc import Callable
 import dataclasses
 import logging
 import os
 import sys
 import textwrap
-from typing import Any, Callable, Optional
+from typing import Any
 
 from pytype import config as pytype_config
 from pytype import file_utils
@@ -28,7 +29,7 @@ _TOML = '.toml'
 @dataclasses.dataclass(eq=True, frozen=True)
 class ArgInfo:
   flag: str
-  to_command_line: Optional[Callable[[Any], Any]]
+  to_command_line: Callable[[Any], Any] | None
 
 
 # A config item.
@@ -41,8 +42,8 @@ class ArgInfo:
 class Item:
   default: Any
   sample: Any
-  arg_info: Optional[ArgInfo]
-  comment: Optional[str]
+  arg_info: ArgInfo | None
+  comment: str | None
 
 
 # Generates both the default config and the sample config file. These items

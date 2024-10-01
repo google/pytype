@@ -2,7 +2,6 @@
 
 import dataclasses
 import logging
-from typing import Optional
 
 from pytype import context
 from pytype import convert_structural
@@ -25,8 +24,8 @@ QUICK_INFER_MAXIMUM_DEPTH = 1  # during quick inference
 @dataclasses.dataclass
 class Analysis:
   context: context.Context
-  ast: Optional[pytd.TypeDeclUnit]
-  ast_deps: Optional[pytd.TypeDeclUnit]
+  ast: pytd.TypeDeclUnit | None
+  ast_deps: pytd.TypeDeclUnit | None
 
 
 def check_types(

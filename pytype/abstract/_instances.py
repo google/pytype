@@ -2,7 +2,7 @@
 
 import contextlib
 import logging
-from typing import Dict as _Dict, Tuple as _Tuple, Union
+from typing import Union
 
 from pytype.abstract import _base
 from pytype.abstract import _instance_base
@@ -641,8 +641,8 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
   def update(
       self,
       node: cfg.CFGNode,
-      other_dict: Union["Dict", _Dict[str, cfg.Variable], _base.BaseValue],
-      omit: _Tuple[str, ...] = (),
+      other_dict: Union["Dict", dict[str, cfg.Variable], _base.BaseValue],
+      omit: tuple[str, ...] = (),
   ) -> None:
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():

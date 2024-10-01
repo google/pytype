@@ -5,7 +5,6 @@ are in mixin.py, and other abstract logic is in abstract_utils.py.
 """
 
 import logging
-from typing import Union as _Union
 
 from pytype.abstract import _base
 from pytype.abstract import _classes
@@ -100,4 +99,4 @@ PYTD_FUNCTION_TYPES = (BoundPyTDFunction, PyTDFunction)
 TYPE_VARIABLE_TYPES = (TypeParameter, ParamSpec)
 TYPE_VARIABLE_INSTANCES = (TypeParameterInstance, ParamSpecInstance)
 
-AmbiguousOrEmptyType = _Union[Unknown, Unsolvable, Empty]
+AmbiguousOrEmptyType = Unknown | Unsolvable | Empty

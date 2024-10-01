@@ -14,7 +14,6 @@ subclasses even though they all use ModuleInfo as a common interface.
 import abc
 import dataclasses
 import os
-from typing import Optional
 
 from pytype.pytd import pytd
 
@@ -55,7 +54,7 @@ class ModuleLoader(abc.ABC):
   """Base class for module loaders."""
 
   @abc.abstractmethod
-  def find_import(self, module_name: str) -> Optional[ModuleInfo]:
+  def find_import(self, module_name: str) -> ModuleInfo | None:
     raise NotImplementedError()
 
   @abc.abstractmethod

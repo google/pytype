@@ -1,6 +1,5 @@
 """Utilities to generate some basic types."""
 
-from typing import Tuple
 
 from pytype.pytd import pytd
 
@@ -9,7 +8,7 @@ _STRING_TYPES = ("str", "bytes", "unicode")
 
 
 # Type aliases
-_ParametersType = Tuple[pytd.Type, ...]
+_ParametersType = tuple[pytd.Type, ...]
 
 
 def pytd_list(typ: str) -> pytd.Type:

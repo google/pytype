@@ -1,7 +1,7 @@
 """Variables, bindings, and conditions."""
 
 import dataclasses
-from typing import ClassVar, FrozenSet
+from typing import ClassVar
 
 _frozen_dataclass = dataclasses.dataclass(frozen=True)
 
@@ -52,7 +52,7 @@ Not = _Not.make
 class _Composite(Condition):
   """Composition of conditions."""
 
-  conditions: FrozenSet[Condition]
+  conditions: frozenset[Condition]
 
   _ACCEPT: ClassVar[Condition]
   _IGNORE: ClassVar[Condition]

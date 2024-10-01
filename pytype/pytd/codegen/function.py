@@ -1,8 +1,8 @@
 """Function definitions in pyi files."""
 
+from collections.abc import Iterable
 import dataclasses
-
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 from pytype.pytd import pytd
 
@@ -28,7 +28,7 @@ class Param:
   """Internal representation of function parameters."""
 
   name: str
-  type: Optional[pytd.Type] = None
+  type: pytd.Type | None = None
   default: Any = None
   kind: pytd.ParameterKind = pytd.ParameterKind.REGULAR
 
@@ -51,7 +51,7 @@ class NameAndSig:
 
   name: str
   signature: pytd.Signature
-  decorators: Tuple[pytd.Alias, ...] = ()
+  decorators: tuple[pytd.Alias, ...] = ()
   is_abstract: bool = False
   is_coroutine: bool = False
   is_final: bool = False
@@ -59,10 +59,7 @@ class NameAndSig:
 
   @classmethod
   def make(
-      cls,
-      name: str,
-      args: List[Tuple[str, pytd.Type]],
-      return_type: pytd.Type
+      cls, name: str, args: list[tuple[str, pytd.Type]], return_type: pytd.Type
   ) -> "NameAndSig":
     """Make a new NameAndSig from an argument list."""
     params = tuple(Param(n, t).to_pytd() for (n, t) in args)
@@ -73,9 +70,7 @@ class NameAndSig:
 
 
 def pytd_return_type(
-    name: str,
-    return_type: Optional[pytd.Type],
-    is_async: bool
+    name: str, return_type: pytd.Type | None, is_async: bool
 ) -> pytd.Type:
   """Convert function return type to pytd."""
   if name == "__init__":
@@ -163,7 +158,7 @@ class _Property:
   arity: int
 
 
-def _property_decorators(name: str) -> Dict[str, _Property]:
+def _property_decorators(name: str) -> dict[str, _Property]:
   """Generates the property decorators for a method name."""
   return {
       "property": _Property("getter", 1),
@@ -176,9 +171,9 @@ def _property_decorators(name: str) -> Dict[str, _Property]:
 class _Properties:
   """Function property decorators."""
 
-  getter: Optional[pytd.Signature] = None
-  setter: Optional[pytd.Signature] = None
-  deleter: Optional[pytd.Signature] = None
+  getter: pytd.Signature | None = None
+  setter: pytd.Signature | None = None
+  deleter: pytd.Signature | None = None
 
   def set(self, prop, sig, name):
     assert hasattr(self, prop), prop
@@ -198,13 +193,13 @@ class _DecoratedFunction:
   """A mutable builder for pytd.Function values."""
 
   name: str
-  sigs: List[pytd.Signature]
+  sigs: list[pytd.Signature]
   is_abstract: bool = False
   is_coroutine: bool = False
   is_final: bool = False
-  decorators: Tuple[pytd.Alias, ...] = ()
-  properties: Optional[_Properties] = dataclasses.field(init=False)
-  prop_names: Dict[str, _Property] = dataclasses.field(init=False)
+  decorators: tuple[pytd.Alias, ...] = ()
+  properties: _Properties | None = dataclasses.field(init=False)
+  prop_names: dict[str, _Property] = dataclasses.field(init=False)
 
   @classmethod
   def make(cls, fn: NameAndSig):
@@ -276,8 +271,8 @@ class _DecoratedFunction:
 
 
 def merge_method_signatures(
-    name_and_sigs: List[NameAndSig],
-) -> List[pytd.Function]:
+    name_and_sigs: list[NameAndSig],
+) -> list[pytd.Function]:
   """Group the signatures by name, turning each group into a function."""
   functions = {}
   for fn in name_and_sigs:

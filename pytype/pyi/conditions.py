@@ -1,7 +1,6 @@
 """Process conditional blocks in pyi files."""
 
 import ast as astlib
-from typing import Optional, Tuple, Union
 
 from pytype.ast import visitor as ast_visitor
 from pytype.pyi import types
@@ -27,9 +26,9 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
 
   def _eval_comparison(
       self,
-      ident: Tuple[str, Optional[Union[int, slice]]],
+      ident: tuple[str, int | slice | None],
       op: str,
-      value: Union[str, int, Tuple[int, ...]],
+      value: str | int | tuple[int, ...],
   ) -> bool:
     """Evaluate a comparison and return a bool.
 

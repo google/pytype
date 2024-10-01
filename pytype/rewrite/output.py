@@ -1,6 +1,5 @@
 """Abstract -> pytd converter."""
 
-from typing import Union
 
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -150,7 +149,7 @@ class PytdConverter:
 
   def _function_to_pytd_def(
       self,
-      val: Union[abstract.SimpleFunction, abstract.BoundFunction],
+      val: abstract.SimpleFunction | abstract.BoundFunction,
   ) -> pytd.Function:
     """Converts an abstract function to a pytd.Function."""
     pytd_sigs = []

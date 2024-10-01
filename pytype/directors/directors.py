@@ -5,7 +5,6 @@ import collections
 import logging
 import sys
 
-from typing import Set
 
 from pytype import config
 from pytype.directors import annotations
@@ -354,14 +353,14 @@ class Director:
       else:
         raise _DirectiveError(f"Unknown pytype directive: '{command}'")
 
-  def _process_features(self, features: Set[str]):
+  def _process_features(self, features: set[str]):
     invalid = features - _ALLOWED_FEATURES
     if invalid:
       raise _DirectiveError(f"Unknown pytype features: {','.join(invalid)}")
     self.features |= features
 
   def _process_pragmas(
-      self, line: int, line_range: parser.LineRange, pragmas: Set[str]
+      self, line: int, line_range: parser.LineRange, pragmas: set[str]
   ):
     del line_range  # unused
     invalid = pragmas - _PRAGMAS
@@ -376,7 +375,7 @@ class Director:
       line: int,
       line_range: parser.LineRange,
       open_ended: bool,
-      values: Set[str],
+      values: set[str],
       *,
       disable: bool,
   ):

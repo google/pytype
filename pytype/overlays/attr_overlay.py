@@ -2,7 +2,7 @@
 
 import enum
 import logging
-from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Union
+from typing import Any, ClassVar, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -100,8 +100,8 @@ class AttrsBase(classgen.Decorator):
     return attr.name.lstrip("_")
 
   def _handle_auto_attribs(
-      self, auto_attribs: Optional[bool], local_ops, cls_name: str
-  ) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+      self, auto_attribs: bool | None, local_ops, cls_name: str
+  ) -> tuple[bool | None | _NoChange, Any]:
     del local_ops, cls_name  # unused
     # Why _NO_CHANGE instead of passing auto_attribs?
     # Because result is going into potentially an OrderedDict, where
@@ -292,7 +292,7 @@ class AttrsNextGenDefine(AttrsBase):
   """
 
   # Override the default arguments.
-  DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
+  DEFAULT_ARGS: ClassVar[dict[str, Any]] = {
       # Entries from Decorator.DEFAULT_ARGS
       "init": True,
       "kw_only": False,

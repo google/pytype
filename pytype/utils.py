@@ -7,7 +7,6 @@ import keyword
 import re
 import threading
 import traceback
-from typing import Union
 import weakref
 
 from pytype.platform_utils import path_utils
@@ -140,7 +139,7 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
-def native_str(s: Union[str, bytes], errors: str = "strict") -> str:
+def native_str(s: str | bytes, errors: str = "strict") -> str:
   """Convert a bytes object to the native str type."""
   if isinstance(s, str):
     return s

@@ -1,8 +1,9 @@
 """Utilities for working with the CFG."""
 
 import collections
+from collections.abc import Iterable, Sequence
 import itertools
-from typing import Iterable, Protocol, Sequence, TypeVar
+from typing import Protocol, TypeVar
 
 
 # Limit on how many argument combinations we allow before aborting.

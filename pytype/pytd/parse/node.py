@@ -12,14 +12,13 @@ documentation in the various visitor methods below for details.
 For examples of visitors, see pytd/visitors.py
 """
 
-from typing import Any, ClassVar, Type, TYPE_CHECKING
+from typing import Any, ClassVar, TYPE_CHECKING
 
 import msgspec
-
 from pytype import metrics
 
 if TYPE_CHECKING:
-  _Struct: Type[Any]
+  _Struct: type[Any]
 else:
   _Struct = msgspec.Struct
 

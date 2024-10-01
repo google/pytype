@@ -2,8 +2,6 @@
 
 import logging
 
-from typing import Dict as _Dict, List as _List, Set as _Set, Tuple as _Tuple
-
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import internal
 from pytype.rewrite.abstract import utils
@@ -14,10 +12,10 @@ log = logging.getLogger(__name__)
 _Var = base.AbstractVariableType
 
 
-class List(base.PythonConstant[_List[_Var]]):
+class List(base.PythonConstant[list[_Var]]):
   """Representation of a Python list."""
 
-  def __init__(self, ctx: base.ContextType, constant: _List[_Var]):
+  def __init__(self, ctx: base.ContextType, constant: list[_Var]):
     assert isinstance(constant, list), constant
     super().__init__(ctx, constant)
 
@@ -32,11 +30,13 @@ class List(base.PythonConstant[_List[_Var]]):
     return List(self._ctx, new_constant)
 
 
-class Dict(base.PythonConstant[_Dict[_Var, _Var]]):
+class Dict(base.PythonConstant[dict[_Var, _Var]]):
   """Representation of a Python dict."""
 
   def __init__(
-      self, ctx: base.ContextType, constant: _Dict[_Var, _Var],
+      self,
+      ctx: base.ContextType,
+      constant: dict[_Var, _Var],
   ):
     assert isinstance(constant, dict), constant
     super().__init__(ctx, constant)
@@ -69,10 +69,10 @@ class Dict(base.PythonConstant[_Dict[_Var, _Var]]):
     return internal.FunctionArgDict(self._ctx, new_const)
 
 
-class Set(base.PythonConstant[_Set[_Var]]):
+class Set(base.PythonConstant[set[_Var]]):
   """Representation of a Python set."""
 
-  def __init__(self, ctx: base.ContextType, constant: _Set[_Var]):
+  def __init__(self, ctx: base.ContextType, constant: set[_Var]):
     assert isinstance(constant, set), constant
     super().__init__(ctx, constant)
 
@@ -83,10 +83,10 @@ class Set(base.PythonConstant[_Set[_Var]]):
     return Set(self._ctx, self.constant | {val})
 
 
-class Tuple(base.PythonConstant[_Tuple[_Var, ...]]):
+class Tuple(base.PythonConstant[tuple[_Var, ...]]):
   """Representation of a Python tuple."""
 
-  def __init__(self, ctx: base.ContextType, constant: _Tuple[_Var, ...]):
+  def __init__(self, ctx: base.ContextType, constant: tuple[_Var, ...]):
     assert isinstance(constant, tuple), constant
     super().__init__(ctx, constant)
 

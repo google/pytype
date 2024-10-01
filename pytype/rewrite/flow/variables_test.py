@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import Union
 
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
@@ -67,14 +67,14 @@ class VariableTest(unittest.TestCase):
 
   def test_get_atomic_value_with_parameterized_type(self):
     var = variables.Variable.from_value([0])
-    val = var.get_atomic_value(List[int])
-    assert_type(val, List[int])
+    val = var.get_atomic_value(list[int])
+    assert_type(val, list[int])
     self.assertEqual(val, [0])
 
   def test_get_atomic_value_with_wrong_parameterized_type(self):
     var = variables.Variable.from_value(0)
     with self.assertRaisesRegex(ValueError, 'expected list, got int'):
-      var.get_atomic_value(List[int])
+      var.get_atomic_value(list[int])
 
   def test_get_atomic_value_multiple_bindings(self):
     var = variables.Variable((variables.Binding(0), variables.Binding('')))
@@ -96,7 +96,7 @@ class VariableTest(unittest.TestCase):
   def test_values(self):
     var = variables.Variable.from_value(0)
     values = var.values
-    assert_type(values, Tuple[int, ...])
+    assert_type(values, tuple[int, ...])
     self.assertEqual(values, (0,))
 
   def test_with_name(self):

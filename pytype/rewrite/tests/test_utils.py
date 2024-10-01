@@ -1,9 +1,9 @@
 """Test utilities."""
 
+from collections.abc import Sequence
 import re
 import sys
 import textwrap
-from typing import Sequence
 
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
@@ -31,10 +31,14 @@ class PytdTestBase(parser_test_base.ParserTest):
       member = pytd_tree.Lookup(name)
     else:
       # Ignore aliases because they may be imports.
-      members = (pytd_tree.constants + pytd_tree.type_params +
-                 pytd_tree.classes + pytd_tree.functions)
+      members = (
+          pytd_tree.constants
+          + pytd_tree.type_params
+          + pytd_tree.classes
+          + pytd_tree.functions
+      )
       assert len(members) == 1
-      member, = members
+      (member,) = members
       name = member.name
     return member.Replace(name=f'<test>.{name}')
 
@@ -66,6 +70,8 @@ def skipFromPy(version, reason):
 
 def skipOnWin32(reason):
   return unittest.skipIf(sys.platform == 'win32', reason)
+
+
 # pylint: enable=invalid-name
 
 
@@ -116,7 +122,7 @@ def assemble_block(bytecode: str, *, consts=()) -> FakeOrderedCode:
     if not parts:
       continue
     if len(parts) == 1:
-      op, = parts
+      (op,) = parts
       arg = None
     else:
       op, arg, *extra = parts

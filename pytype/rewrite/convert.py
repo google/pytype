@@ -1,6 +1,5 @@
 """Conversion from pytd to abstract representations of Python values."""
 
-from typing import Optional, Tuple
 
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import abstract
@@ -74,7 +73,7 @@ class AbstractConverter:
   def pytd_function_to_value(
       self,
       func: pytd.Function,
-      func_name: Optional[Tuple[str, str]] = None,
+      func_name: tuple[str, str] | None = None,
   ) -> abstract.PytdFunction:
     """Converts a pytd function to an abstract function."""
     if func in self._cache.funcs:

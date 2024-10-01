@@ -1,8 +1,9 @@
 """Utilities for dealing with project configuration."""
 
 import abc
+from collections.abc import Iterable
 import configparser
-from typing import Iterable, Tuple, Type, TypeVar
+from typing import TypeVar
 
 from pytype.platform_utils import path_utils
 import toml
@@ -37,12 +38,12 @@ class ConfigSection(abc.ABC):
   @classmethod
   @abc.abstractmethod
   def create_from_file(
-      cls: Type[_ConfigSectionT], filepath: str, section: str
+      cls: type[_ConfigSectionT], filepath: str, section: str
   ) -> _ConfigSectionT:
     """Create a ConfigSection if the file at filepath has section."""
 
   @abc.abstractmethod
-  def items(self) -> Iterable[Tuple[str, str]]:
+  def items(self) -> Iterable[tuple[str, str]]:
     ...
 
 

@@ -4,7 +4,6 @@ import contextlib
 import inspect
 import itertools
 import logging
-from typing import Optional, Type
 
 from pytype.abstract import _base
 from pytype.abstract import _classes
@@ -29,7 +28,7 @@ class Function(_instance_base.SimpleValue, types.Function):
     ctx: context.Context instance.
   """
 
-  bound_class: Type["BoundFunction"]
+  bound_class: type["BoundFunction"]
 
   def __init__(self, name, ctx):
     super().__init__(name, ctx)
@@ -470,7 +469,7 @@ class SignedFunction(Function):
     return self._has_self_annot
 
   @contextlib.contextmanager
-  def set_self_annot(self, annot_class: Optional[_base.BaseValue]):
+  def set_self_annot(self, annot_class: _base.BaseValue | None):
     """Set the annotation for `self` in a class."""
     self_name = self.signature.param_names[0]
     old_self = self.signature.annotations.get(self_name)

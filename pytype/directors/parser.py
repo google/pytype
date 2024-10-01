@@ -2,12 +2,12 @@
 
 import ast
 import collections
+from collections.abc import Mapping, Sequence
 import dataclasses
 import io
 import logging
 import re
 import tokenize
-from typing import List, Mapping, Optional, Sequence, Tuple
 
 from pytype.ast import visitor
 
@@ -119,7 +119,7 @@ class _BlockReturns:
 class _MatchCase:
   start: int
   end: int
-  as_name: Optional[str]
+  as_name: str | None
   is_underscore: bool
   match_line: int
 
@@ -128,7 +128,7 @@ class _MatchCase:
 class _Match:
   start: int
   end: int
-  cases: List[_MatchCase]
+  cases: list[_MatchCase]
 
 
 class _Matches:
@@ -477,7 +477,7 @@ def _process_comment(line, lineno, col):
     yield _StructuredComment(lineno, tool, data, open_ended)
 
 
-def parse_src(src: str, python_version: Tuple[int, int]):
+def parse_src(src: str, python_version: tuple[int, int]):
   """Parses a string of source code into an ast."""
   return _SourceTree(
       ast.parse(src, feature_version=python_version[1]), _process_comments(src)

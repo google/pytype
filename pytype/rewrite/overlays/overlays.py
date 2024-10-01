@@ -4,17 +4,18 @@ An overlay generates extra typing information that cannot be expressed in a pyi
 file. For example, collections.namedtuple is a factory method that generates
 class definitions at runtime. An overlay is used to generate these classes.
 """
-from typing import Callable, Dict, Tuple, Type, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from pytype.rewrite.abstract import abstract
 
-_FuncTypeType = Type[abstract.PytdFunction]
+_FuncTypeType = type[abstract.PytdFunction]
 _FuncTypeTypeT = TypeVar('_FuncTypeTypeT', bound=_FuncTypeType)
 _ClsTransformFunc = Callable[[abstract.ContextType, abstract.SimpleClass], None]
 _ClsTransformFuncT = TypeVar('_ClsTransformFuncT', bound=_ClsTransformFunc)
 
-FUNCTIONS: Dict[Tuple[str, str], _FuncTypeType] = {}
-CLASS_TRANSFORMS: Dict[str, _ClsTransformFunc] = {}
+FUNCTIONS: dict[tuple[str, str], _FuncTypeType] = {}
+CLASS_TRANSFORMS: dict[str, _ClsTransformFunc] = {}
 
 
 def register_function(

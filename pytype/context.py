@@ -2,7 +2,6 @@
 
 import contextlib
 import logging
-from typing import Dict, List, Tuple
 
 from pytype import annotation_utils
 from pytype import attribute
@@ -36,7 +35,7 @@ class Context:
   ):
     # Inputs
     self.options = options
-    self.python_version: Tuple[int, int] = options.python_version
+    self.python_version: tuple[int, int] = options.python_version
     self.loader = loader
     self.generate_unknowns = not options.check and options.protocols
 
@@ -58,9 +57,9 @@ class Context:
     self.program.default_data = self.convert.unsolvable
 
     # Other context
-    self.callself_stack: List[cfg.Variable] = []
+    self.callself_stack: list[cfg.Variable] = []
     # Map from builtin names to canonical objects.
-    self.special_builtins: Dict[str, abstract.BaseValue] = {
+    self.special_builtins: dict[str, abstract.BaseValue] = {
         # The super() function.
         "super": self.convert.super_type,
         # The object type.
@@ -100,8 +99,8 @@ class Context:
     self.recursion_allowed = False
     # Map from classes to maps from names of the instance methods
     # of the class to their signatures.
-    self.method_signature_map: Dict[
-        abstract.Class, Dict[str, function.Signature]
+    self.method_signature_map: dict[
+        abstract.Class, dict[str, function.Signature]
     ] = {}
     # Cache used by InterpreterFunction.
     # There isn't a more appropriate place to put it while ensuring that the

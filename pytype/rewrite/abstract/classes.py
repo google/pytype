@@ -1,10 +1,10 @@
 """Abstract representations of classes."""
 
 import abc
+from collections.abc import Mapping, Sequence
 import dataclasses
 import logging
-
-from typing import Dict, List, Mapping, Optional, Protocol, Sequence
+from typing import Optional, Protocol
 
 from pytype import datatypes
 from pytype.pytd import mro as mro_lib
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 class _HasMembers(Protocol):
 
-  members: Dict[str, base.BaseValue]
+  members: dict[str, base.BaseValue]
 
 
 @dataclasses.dataclass
@@ -36,10 +36,10 @@ class SimpleClass(base.BaseValue):
       self,
       ctx: base.ContextType,
       name: str,
-      members: Dict[str, base.BaseValue],
+      members: dict[str, base.BaseValue],
       bases: Sequence['SimpleClass'] = (),
       keywords: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
-      module: Optional[str] = None,
+      module: str | None = None,
   ):
     super().__init__(ctx)
     self.name = name
@@ -48,7 +48,7 @@ class SimpleClass(base.BaseValue):
     self.keywords = keywords
     self.module = module
     self._canonical_instance: Optional['FrozenInstance'] = None
-    self._mro: Optional[Sequence['SimpleClass']] = None
+    self._mro: Sequence['SimpleClass'] | None = None
 
     if isinstance((init := members.get('__init__')),
                   functions_lib.SimpleFunction):
@@ -62,7 +62,7 @@ class SimpleClass(base.BaseValue):
     # 'setUpClass' to its setup methods and 'setUp' to its initializers.
 
     # classmethods called on a class immediately after creation
-    self.setup_methods: List[str] = []
+    self.setup_methods: list[str] = []
     # classmethod called to create a class instance
     self.constructor = '__new__'
     # instance methods called on an instance immediately after creation
@@ -83,13 +83,13 @@ class SimpleClass(base.BaseValue):
       return self.name
 
   @property
-  def metaclass(self) -> Optional[base.BaseValue]:
+  def metaclass(self) -> base.BaseValue | None:
     for cls in self.mro():
       if 'metaclass' in cls.keywords:
         return cls.keywords['metaclass']
     return None
 
-  def get_attribute(self, name: str) -> Optional[base.BaseValue]:
+  def get_attribute(self, name: str) -> base.BaseValue | None:
     if name in self.members:
       return self.members[name]
     mro = self.mro()
@@ -162,11 +162,12 @@ class InterpreterClass(SimpleClass):
       self,
       ctx: base.ContextType,
       name: str,
-      members: Dict[str, base.BaseValue],
+      members: dict[str, base.BaseValue],
       bases: Sequence[SimpleClass],
       keywords: Mapping[str, base.BaseValue],
       functions: Sequence[functions_lib.InterpreterFunction],
-      classes: Sequence['InterpreterClass']):
+      classes: Sequence['InterpreterClass'],
+  ):
     super().__init__(ctx, name, members, bases, keywords)
     # Functions and classes defined in this class's body. Unlike 'members',
     # ignores the effects of post-definition transformations like decorators.
@@ -192,9 +193,10 @@ class BaseInstance(base.BaseValue):
     self.members = members
 
   @abc.abstractmethod
-  def set_attribute(self, name: str, value: base.BaseValue) -> None: ...
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    ...
 
-  def get_attribute(self, name: str) -> Optional[base.BaseValue]:
+  def get_attribute(self, name: str) -> base.BaseValue | None:
     if name in self.members:
       return self.members[name]
     cls_attribute = self.cls.get_attribute(name)
@@ -206,7 +208,7 @@ class BaseInstance(base.BaseValue):
 class MutableInstance(BaseInstance):
   """Instance of a class."""
 
-  members: Dict[str, base.BaseValue]
+  members: dict[str, base.BaseValue]
 
   def __init__(self, ctx: base.ContextType, cls: SimpleClass):
     super().__init__(ctx, cls, {})
@@ -273,7 +275,7 @@ class Module(BaseInstance, types.Module):
     # We don't allow modifying imported modules.
     log.info('Ignoring attribute set on %r: %s -> %r', self, name, value)
 
-  def get_attribute(self, name: str) -> Optional[base.BaseValue]:
+  def get_attribute(self, name: str) -> base.BaseValue | None:
     try:
       return self._ctx.abstract_loader.load_value(self.name, name)
     except KeyError:

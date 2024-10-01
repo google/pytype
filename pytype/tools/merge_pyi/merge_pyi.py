@@ -5,7 +5,6 @@ import enum
 import os
 import re
 import shutil
-from typing import List, Tuple
 
 import libcst as cst
 from libcst import codemod
@@ -131,7 +130,7 @@ def merge_tree(
     pyi_path: str,
     backup: str | None = None,
     verbose: bool = False,
-) -> Tuple[List[str], List[Tuple[str, MergeError]]]:
+) -> tuple[list[str], list[tuple[str, MergeError]]]:
   """Merge .py files in a tree with the corresponding .pyi files."""
 
   errors = []

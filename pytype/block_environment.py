@@ -1,14 +1,13 @@
 """Track python variables in relation to the block graph."""
 
-from typing import Dict, List, Set
 
 from pytype.blocks import blocks
 from pytype.typegraph import cfg
 
 
-LocalValues = List[cfg.Variable]
-LocalsDict = Dict[str, LocalValues]
-BlockLocals = Dict[blocks.Block, LocalsDict]
+LocalValues = list[cfg.Variable]
+LocalsDict = dict[str, LocalValues]
+BlockLocals = dict[blocks.Block, LocalsDict]
 
 
 class Environment:
@@ -18,7 +17,7 @@ class Environment:
     self.block_locals: BlockLocals = {}
     # Blocks whose outgoing edges cannot be traversed. This can happen if, for
     # example, a block unconditionally raises an exception.
-    self._dead_ends: Set[blocks.Block] = set()
+    self._dead_ends: set[blocks.Block] = set()
 
   def mark_dead_end(self, block):
     self._dead_ends.add(block)

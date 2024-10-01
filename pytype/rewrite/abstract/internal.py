@@ -1,7 +1,6 @@
 """Abstract types used internally by pytype."""
 
 import collections
-from typing import Dict, Optional, Tuple
 
 import immutabledict
 
@@ -18,7 +17,7 @@ class FunctionArgTuple(base.BaseValue):
   def __init__(
       self,
       ctx: base.ContextType,
-      constant: Tuple[_Var, ...] = (),
+      constant: tuple[_Var, ...] = (),
       indefinite: bool = False,
   ):
     super().__init__(ctx)
@@ -41,7 +40,7 @@ class FunctionArgDict(base.BaseValue):
   def __init__(
       self,
       ctx: base.ContextType,
-      constant: Optional[Dict[str, _Var]] = None,
+      constant: dict[str, _Var] | None = None,
       indefinite: bool = False,
   ):
     super().__init__(ctx)
@@ -50,7 +49,7 @@ class FunctionArgDict(base.BaseValue):
     self.constant = constant
     self.indefinite = indefinite
 
-  def _check_keys(self, constant: Dict[str, _Var]):
+  def _check_keys(self, constant: dict[str, _Var]):
     """Runtime check to ensure the invariant."""
     assert isinstance(constant, dict), constant
     if not all(isinstance(k, str) for k in constant):

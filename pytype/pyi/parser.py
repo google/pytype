@@ -8,7 +8,7 @@ import keyword
 import re
 import sys
 import tokenize
-from typing import Any, List, Optional, Tuple, Union, cast
+from typing import Any, cast
 
 from pytype.ast import debug
 from pytype.pyi import conditions
@@ -33,7 +33,7 @@ ParseError = types.ParseError
 _UNKNOWN_IMPORT = "__unknown_import__"
 
 
-def _import_from_module(module: Optional[str], level: int) -> str:
+def _import_from_module(module: str | None, level: int) -> str:
   """Convert a typedast import's 'from' into one that add_import expects."""
   if module is None:
     return {1: "__PACKAGE__", 2: "__PARENT__"}[level]
@@ -60,9 +60,9 @@ class _TypeVariable:
 
   kind: str  # TypeVar or ParamSpec
   name: str
-  bound: Optional[pytd.Type]
-  constraints: List[pytd.Type]
-  default: Optional[Union[pytd.Type, List[pytd.Type]]]
+  bound: pytd.Type | None
+  constraints: list[pytd.Type]
+  default: pytd.Type | list[pytd.Type] | None
 
   @classmethod
   def from_call(cls, kind: str, node: astlib.Call):
@@ -70,7 +70,7 @@ class _TypeVariable:
     if not node.args:
       raise ParseError(f"Missing arguments to {kind}")
     name = cast(types.Pyval, node.args[0])
-    constraints = cast(List[pytd.Type], node.args[1:])
+    constraints = cast(list[pytd.Type], node.args[1:])
     if not types.Pyval.is_str(name):
       raise ParseError(f"Bad arguments to {kind}")
     bound = None
@@ -161,7 +161,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     try:
       a = astlib.parse(annotation)
       # Unwrap the module the parser puts around the source string
-      typ = cast(List[astlib.Expr], a.body)[0].value
+      typ = cast(list[astlib.Expr], a.body)[0].value
       return self.visit(_ConvertConstantsVisitor(self.filename).visit(typ))
     except ParseError as e:
       # Clear out position information since it is relative to the typecomment
@@ -292,7 +292,7 @@ class _MetadataVisitor(visitor.BaseVisitor):
     return evaluator.literal_eval(node)
 
 
-def _flatten_splices(body: List[Any]) -> List[Any]:
+def _flatten_splices(body: list[Any]) -> list[Any]:
   """Flatten a list with nested Splices."""
   if not any(isinstance(x, Splice) for x in body):
     return body
@@ -856,7 +856,7 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   return ast_root_node
 
 
-def _feature_version(python_version: Tuple[int, ...]) -> int:
+def _feature_version(python_version: tuple[int, ...]) -> int:
   """Get the python feature version for the parser."""
   if len(python_version) == 1:
     return sys.version_info.minor
@@ -876,7 +876,7 @@ _TOPLEVEL_PYI_OPTIONS = (
 class PyiOptions:
   """Pyi parsing options."""
 
-  python_version: Tuple[int, int] = sys.version_info[:2]
+  python_version: tuple[int, int] = sys.version_info[:2]
   platform: str = sys.platform
   strict_primitive_comparisons: bool = True
 
@@ -890,18 +890,18 @@ class PyiOptions:
 
 def parse_string(
     src: str,
-    name: Optional[str] = None,
-    filename: Optional[str] = None,
-    options: Optional[PyiOptions] = None,
+    name: str | None = None,
+    filename: str | None = None,
+    options: PyiOptions | None = None,
 ):
   return parse_pyi(src, filename=filename, module_name=name, options=options)
 
 
 def parse_pyi(
     src: str,
-    filename: Optional[str],
+    filename: str | None,
     module_name: str,
-    options: Optional[PyiOptions] = None,
+    options: PyiOptions | None = None,
     debug_mode: bool = False,
 ) -> pytd.TypeDeclUnit:
   """Parse a pyi string."""

@@ -1,10 +1,11 @@
 """Visitor(s) for walking ASTs."""
 
 import collections
+from collections.abc import Callable
 import itertools
 import logging
 import re
-from typing import Callable, List, Optional, Set, TypeVar, cast
+from typing import TypeVar, cast
 
 from pytype import datatypes
 from pytype import module_utils
@@ -780,7 +781,7 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   def LeaveClass(self, unused_node):
     self.class_names.pop()
 
-  def _LookupScopedName(self, name: str) -> Optional[pytd.Node]:
+  def _LookupScopedName(self, name: str) -> pytd.Node | None:
     """Look up a name in the chain of nested class scopes."""
     scopes = [self.unit.name]
     prefix = f"{self.unit.name}."
@@ -1253,7 +1254,7 @@ class CreateTypeParametersForSignatures(Visitor):
 class VerifyVisitor(Visitor):
   """Visitor for verifying pytd ASTs. For tests."""
 
-  _all_templates: Set[pytd.Node]
+  _all_templates: set[pytd.Node]
 
   def __init__(self):
     super().__init__()
@@ -2154,7 +2155,7 @@ class ClearClassPointers(Visitor):
 class ReplaceModulesWithAny(_RemoveTypeParametersFromGenericAny):
   """Replace all references to modules in a list with AnythingType."""
 
-  def __init__(self, module_list: List[str]):
+  def __init__(self, module_list: list[str]):
     super().__init__()
     self._any_modules = module_list
 

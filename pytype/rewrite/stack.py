@@ -1,6 +1,6 @@
 """Data stack."""
 
-from typing import List, Sequence
+from collections.abc import Sequence
 
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
@@ -13,7 +13,7 @@ class DataStack:
   """Data stack."""
 
   def __init__(self):
-    self._stack: List[_Var] = []
+    self._stack: list[_Var] = []
 
   def push(self, var: _Var) -> None:
     self._stack.append(var)

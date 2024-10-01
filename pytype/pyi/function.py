@@ -3,7 +3,7 @@
 import ast as astlib
 import dataclasses
 import textwrap
-from typing import Any, List, Optional, cast
+from typing import Any, cast
 
 from pytype.pyi import types
 from pytype.pytd import pytd
@@ -81,7 +81,7 @@ class NameAndSig(pytd_function.NameAndSig):
     """Constructor from an ast.FunctionDef node."""
     name = function.name
 
-    decorators = cast(List[pytd.Alias], function.decorator_list)
+    decorators = cast(list[pytd.Alias], function.decorator_list)
     mutually_exclusive = {"property", "staticmethod", "classmethod"}
     if len({d.type.name for d in decorators} & mutually_exclusive) > 1:
       raise _ParseError(
@@ -149,7 +149,7 @@ class NameAndSig(pytd_function.NameAndSig):
 def _pytd_signature(
     function: astlib.FunctionDef,
     is_async: bool,
-    exceptions: Optional[List[pytd.Type]] = None,
+    exceptions: list[pytd.Type] | None = None,
 ) -> pytd.Signature:
   """Construct a pytd signature from an ast.FunctionDef node."""
   name = function.name
@@ -183,7 +183,7 @@ def _pytd_signature(
   )
 
 
-def _pytd_star_param(arg: astlib.arg) -> Optional[pytd.Parameter]:
+def _pytd_star_param(arg: astlib.arg) -> pytd.Parameter | None:
   """Return a pytd.Parameter for a *args argument."""
   if not arg:
     return None
@@ -197,14 +197,14 @@ def _pytd_star_param(arg: astlib.arg) -> Optional[pytd.Parameter]:
   return pytd_function.pytd_star_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types
 
 
-def _pytd_starstar_param(arg: Optional[astlib.arg]) -> Optional[pytd.Parameter]:
+def _pytd_starstar_param(arg: astlib.arg | None) -> pytd.Parameter | None:
   """Return a pytd.Parameter for a **kwargs argument."""
   if not arg:
     return None
   return pytd_function.pytd_starstar_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types
 
 
-def _apply_defaults(params: List[Param], defaults: List[Any]) -> None:
+def _apply_defaults(params: list[Param], defaults: list[Any]) -> None:
   for p, d in zip(reversed(params), reversed(defaults)):
     if d is None:
       continue

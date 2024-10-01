@@ -2,8 +2,9 @@
 
 import ast as astlib
 import collections
+from collections.abc import Sequence
 import itertools
-from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, TypeVar
 
 from pytype import utils
 from pytype.pyi import classdef
@@ -41,7 +42,7 @@ class _DuplicateDefsError(Exception):
     )
 
 
-def _split_definitions(defs: List[Any]):
+def _split_definitions(defs: list[Any]):
   """Return [constants], [functions] given a mixed list of definitions."""
   constants = []
   functions = []
@@ -145,7 +146,7 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
 
 
 def _pytd_literal(
-    parameters: List[Any], aliases: Dict[str, pytd.Alias]
+    parameters: list[Any], aliases: dict[str, pytd.Alias]
 ) -> pytd.Type:
   """Create a pytd.Literal."""
   literal_parameters = []
@@ -194,7 +195,7 @@ def _convert_annotated(x):
     raise _ParseError(f"Cannot convert metadata {x}")
 
 
-def _pytd_annotated(parameters: List[Any]) -> pytd.Type:
+def _pytd_annotated(parameters: list[Any]) -> pytd.Type:
   """Create a pytd.Annotated."""
   if len(parameters) < 2:
     raise _ParseError(
@@ -298,8 +299,8 @@ def _contains_any_type(ast, type_names):
 class _PropertyToConstant(visitors.Visitor):
   """Convert some properties to constant types."""
 
-  type_param_names: List[str]
-  const_properties: List[List[pytd.Function]]
+  type_param_names: list[str]
+  const_properties: list[list[pytd.Function]]
 
   def EnterTypeDeclUnit(self, node):
     self.type_param_names = [x.name for x in node.type_params]
@@ -354,7 +355,7 @@ class Definitions:
 
   def __init__(self, module_info):
     self.module_info = module_info
-    self.type_map: Dict[str, Any] = {}
+    self.type_map: dict[str, Any] = {}
     self.constants = []
     self.aliases = {}
     self.type_params = []
@@ -547,7 +548,7 @@ class Definitions:
         name = alias.module_name
     return name
 
-  def matches_type(self, name: str, target: Union[str, Tuple[str, ...]]):
+  def matches_type(self, name: str, target: str | tuple[str, ...]):
     """Checks whether 'name' matches the 'target' type."""
     if isinstance(target, tuple):
       return any(self.matches_type(name, t) for t in target)
@@ -680,7 +681,7 @@ class Definitions:
     else:
       return builder(base_type, parameters)
 
-  def resolve_type(self, name: Union[str, pytd_node.Node]) -> pytd.Type:
+  def resolve_type(self, name: str | pytd_node.Node) -> pytd.Type:
     """Return the fully resolved name for an alias.
 
     Args:
@@ -705,8 +706,8 @@ class Definitions:
 
   def new_type(
       self,
-      name: Union[str, pytd_node.Node],
-      parameters: Optional[List[pytd.Type]] = None,
+      name: str | pytd_node.Node,
+      parameters: list[pytd.Type] | None = None,
   ) -> pytd.Type:
     """Return the AST for a type.
 
@@ -753,7 +754,7 @@ class Definitions:
         raise _ParseError(f"Missing options to {base_type.name}")
       return base_type
 
-  def _validate_decorators(self, decorators: List[pytd.Alias]):
+  def _validate_decorators(self, decorators: list[pytd.Alias]):
     """Validate a class decorator list."""
     # Check for some function/method-only decorators
     nonclass = (
@@ -976,7 +977,7 @@ def _check_module_functions(functions):
     )
 
 
-def _remove_duplicates(nodes: List[_NodeT]) -> List[_NodeT]:
+def _remove_duplicates(nodes: list[_NodeT]) -> list[_NodeT]:
   # This will keep the *last* node with a given name, while preserving order.
   unique_nodes = {node.name: node for node in nodes}
   return list(unique_nodes.values())
@@ -990,7 +991,7 @@ def _is_import(node):
   )
 
 
-def _check_for_duplicate_defs(*defs: List[_NodeT]) -> List[List[_NodeT]]:
+def _check_for_duplicate_defs(*defs: list[_NodeT]) -> list[list[_NodeT]]:
   """Check lists of definitions for duplicates."""
   # Duplicates within the same list of definitions are fine, since the list is
   # ordered. The last one wins. However, we will raise an error if, e.g., we

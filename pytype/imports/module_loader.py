@@ -1,7 +1,6 @@
 """Load module type information from the filesystem."""
 
 import logging
-from typing import Optional, Set, Tuple
 
 from pytype import config
 from pytype import file_utils
@@ -19,9 +18,9 @@ class _PathFinder:
 
   def __init__(self, options: config.Options):
     self.options = options
-    self.accessed_imports_paths: Set[str] = set()
+    self.accessed_imports_paths: set[str] = set()
 
-  def find_import(self, module_name: str) -> Optional[Tuple[str, bool]]:
+  def find_import(self, module_name: str) -> tuple[str, bool] | None:
     """Search through pythonpath for a module.
 
     Loops over self.options.pythonpath, taking care of the semantics for
@@ -61,14 +60,14 @@ class _PathFinder:
           return full_path, True
     return None
 
-  def get_pyi_path(self, path: str) -> Optional[str]:
+  def get_pyi_path(self, path: str) -> str | None:
     """Get a pyi file from path if it exists."""
     path = self._get_pyi_path_no_access_audit(path)
     if path is not None:
       self.accessed_imports_paths.add(path)
     return path
 
-  def _get_pyi_path_no_access_audit(self, path: str) -> Optional[str]:
+  def _get_pyi_path_no_access_audit(self, path: str) -> str | None:
     """Get a pyi file, without recording that it was accessed."""
     if self.options.imports_map is not None:
       if path in self.options.imports_map:
@@ -93,7 +92,7 @@ class ModuleLoader(base.ModuleLoader):
     self.options = options
     self._path_finder = _PathFinder(options)
 
-  def find_import(self, module_name: str) -> Optional[base.ModuleInfo]:
+  def find_import(self, module_name: str) -> base.ModuleInfo | None:
     """See if the loader can find a file to import for the module."""
     found_import = self._path_finder.find_import(module_name)
     if found_import is None:
@@ -135,7 +134,7 @@ class ModuleLoader(base.ModuleLoader):
         else "none",
     )
 
-  def get_unused_imports_map_paths(self) -> Set[str]:
+  def get_unused_imports_map_paths(self) -> set[str]:
     if not self.options.imports_map:
       return set()
     return (

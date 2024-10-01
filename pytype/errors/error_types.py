@@ -1,7 +1,8 @@
 """Types for structured errors."""
 
+from collections.abc import Sequence
 import dataclasses
-from typing import Optional, Sequence, Tuple
+from typing import Optional
 
 from pytype.types import types
 
@@ -24,7 +25,7 @@ class ReturnValueMixin:
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadType:
-  name: Optional[str]
+  name: str | None
   typ: types.BaseValue
   error_details: Optional["MatcherErrorDetails"] = None
 
@@ -83,8 +84,8 @@ class DictKeyMissing(Exception, ReturnValueMixin):
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadCall:
   sig: types.Signature
-  passed_args: Sequence[Tuple[str, types.BaseValue]]
-  bad_param: Optional[BadType]
+  passed_args: Sequence[tuple[str, types.BaseValue]]
+  bad_param: BadType | None
 
 
 class InvalidParameters(FailedFunctionCall):
@@ -166,7 +167,7 @@ class MissingParameter(InvalidParameters):
 
 class TypedDictKeyMissing(DictKeyMissing):
 
-  def __init__(self, typed_dict: types.BaseValue, key: Optional[str]):
+  def __init__(self, typed_dict: types.BaseValue, key: str | None):
     super().__init__(key)
     self.typed_dict = typed_dict
 
@@ -226,6 +227,6 @@ class TypedDictError(Exception):
 
 @dataclasses.dataclass
 class MatcherErrorDetails:
-  protocol: Optional[ProtocolError] = None
-  noniterable_str: Optional[NonIterableStrError] = None
-  typed_dict: Optional[TypedDictError] = None
+  protocol: ProtocolError | None = None
+  noniterable_str: NonIterableStrError | None = None
+  typed_dict: TypedDictError | None = None

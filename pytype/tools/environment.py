@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from typing import List
 
 from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
@@ -17,7 +16,7 @@ def check_pytype_or_die():
     sys.exit(1)
 
 
-def check_python_version(exe: List[str], required):
+def check_python_version(exe: list[str], required):
   """Check if exe is a python executable with the required version."""
   try:
     # python --version outputs to stderr for earlier versions
@@ -32,7 +31,7 @@ def check_python_version(exe: List[str], required):
     return False, None
 
 
-def check_python_exe_or_die(required) -> List[str]:
+def check_python_exe_or_die(required) -> list[str]:
   """Check if a python executable with the required version is in path."""
   error = []
   if sys.platform == "win32":

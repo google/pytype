@@ -1,7 +1,7 @@
 """Abstract attribute handling."""
 
 import logging
-from typing import Optional, Tuple, Union
+from typing import Optional
 
 from pytype import datatypes
 from pytype import utils
@@ -16,7 +16,7 @@ from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 
-_NodeAndMaybeVarType = Tuple[cfg.CFGNode, Optional[cfg.Variable]]
+_NodeAndMaybeVarType = tuple[cfg.CFGNode, Optional[cfg.Variable]]
 
 
 class AbstractAttributeHandler(utils.ContextWeakrefMixin):
@@ -208,7 +208,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     return False
 
   def _should_look_for_submodule(
-      self, module: abstract.Module, attr_var: Optional[cfg.Variable]
+      self, module: abstract.Module, attr_var: cfg.Variable | None
   ):
     # Given a module and an attribute looked up from its contents, determine
     # whether a possible submodule with the same name as the attribute should
@@ -238,7 +238,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       node: cfg.CFGNode,
       module: abstract.Module,
       name: str,
-      valself: Optional[cfg.Binding] = None,
+      valself: cfg.Binding | None = None,
   ) -> _NodeAndMaybeVarType:
     """Get an attribute from a module."""
     try:
@@ -258,7 +258,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       node: cfg.CFGNode,
       cls: abstract.Class,
       name: str,
-      valself: Optional[cfg.Binding] = None,
+      valself: cfg.Binding | None = None,
   ) -> _NodeAndMaybeVarType:
     """Get an attribute from a class."""
     if (
@@ -282,7 +282,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       node: cfg.CFGNode,
       obj: abstract.SimpleValue,
       name: str,
-      valself: Optional[cfg.Binding] = None,
+      valself: cfg.Binding | None = None,
   ) -> _NodeAndMaybeVarType:
     """Get an attribute from an instance."""
     cls = None if obj.cls.full_name == "builtins.type" else obj.cls
@@ -456,7 +456,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
   def _get_attribute_computed(
       self,
       node: cfg.CFGNode,
-      cls: Union[abstract.Class, abstract.AmbiguousOrEmptyType],
+      cls: abstract.Class | abstract.AmbiguousOrEmptyType,
       name: str,
       valself: cfg.Binding,
       compute_function: str,

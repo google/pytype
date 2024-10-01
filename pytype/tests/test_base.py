@@ -4,7 +4,6 @@ import contextlib
 import logging
 import sys
 import textwrap
-from typing import Tuple
 
 # from absl import flags
 from pytype import analyze
@@ -73,7 +72,7 @@ class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
   _loader: load_pytd.Loader
-  python_version: Tuple[int, int] = sys.version_info[:2]
+  python_version: tuple[int, int] = sys.version_info[:2]
 
   @classmethod
   def setUpClass(cls):

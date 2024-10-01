@@ -3,7 +3,7 @@
 import argparse
 import contextlib
 import itertools
-from typing import Dict, Optional, TypeVar
+from typing import TypeVar
 
 import immutabledict
 
@@ -119,7 +119,7 @@ class UnionFind:
     return repr(comps)
 
 
-class AccessTrackingDict(Dict[_K, _V]):
+class AccessTrackingDict(dict[_K, _V]):
   """A dict that tracks access of its original items."""
 
   def __init__(self, d=()):
@@ -157,7 +157,7 @@ class AccessTrackingDict(Dict[_K, _V]):
     return self
 
 
-class MonitorDict(Dict[_K, _V]):
+class MonitorDict(dict[_K, _V]):
   """A dictionary that monitors changes to its cfg.Variable values.
 
   This dictionary takes arbitrary objects as keys and cfg.Variable objects as
@@ -185,7 +185,7 @@ class AliasingDictConflictError(Exception):
     self.existing_name = existing_name
 
 
-class AliasingDict(Dict[_K, _V]):
+class AliasingDict(dict[_K, _V]):
   """A dictionary that supports key aliasing.
 
   This dictionary provides a way to register aliases for a key, which are then
@@ -194,7 +194,7 @@ class AliasingDict(Dict[_K, _V]):
   supported; supported methods are get(), values(), items(), copy() and keys().
   """
 
-  def __init__(self, *args, aliases: Optional[UnionFind] = None, **kwargs):
+  def __init__(self, *args, aliases: UnionFind | None = None, **kwargs):
     if aliases is not None:
       self._aliases = aliases
     elif args and isinstance(args[0], AliasingDict):

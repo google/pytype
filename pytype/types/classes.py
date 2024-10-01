@@ -1,8 +1,9 @@
 """Basic datatypes for classes."""
 
 import abc
+from collections.abc import Mapping, Sequence
 import dataclasses
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 from pytype.types import base
 

@@ -1,6 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
-from typing import Any, Iterator, List, Optional, Tuple, Union, cast
+from collections.abc import Iterator
+from typing import Any, cast
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
@@ -106,20 +107,20 @@ class OrderedCode:
   """
 
   name: str
-  qualname: Optional[str]
-  filename: Union[bytes, str]
-  consts: Tuple[Any, ...]
-  names: Tuple[str, ...]
+  qualname: str | None
+  filename: bytes | str
+  consts: tuple[Any, ...]
+  names: tuple[str, ...]
   argcount: int
   posonlyargcount: int
   kwonlyargcount: int
-  varnames: Tuple[str, ...]
-  cellvars: Tuple[str, ...]
-  freevars: Tuple[str, ...]
-  localsplus: Tuple[str, ...]
-  exception_table: Tuple[Any, ...]
-  order: List[Block]
-  python_version: Tuple[int, int]
+  varnames: tuple[str, ...]
+  cellvars: tuple[str, ...]
+  freevars: tuple[str, ...]
+  localsplus: tuple[str, ...]
+  exception_table: tuple[Any, ...]
+  order: list[Block]
+  python_version: tuple[int, int]
 
   def __init__(
       self,
@@ -414,7 +415,7 @@ def _process(
 
 def process_code(
     code: pycnite.types.CodeTypeBase,
-) -> Tuple[OrderedCode, BlockGraph]:
+) -> tuple[OrderedCode, BlockGraph]:
   dis_code = pyc_bytecode.dis_all(code)
   block_graph = BlockGraph()
   ordered = _process(dis_code, block_graph)

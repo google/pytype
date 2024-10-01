@@ -5,7 +5,6 @@ serializing it to disk. Further users only need to read the serialized data from
 disk, which is faster to digest than a pyi file.
 """
 
-from typing import List, Optional, Set, Tuple
 
 import msgspec
 from pytype import utils
@@ -96,11 +95,11 @@ class SerializableAst(msgspec.Struct):
   """
 
   ast: pytd.TypeDeclUnit
-  dependencies: List[Tuple[str, Set[str]]]
-  late_dependencies: List[Tuple[str, Set[str]]]
-  src_path: Optional[str]
-  metadata: List[str]
-  class_type_nodes: Optional[List[pytd.ClassType]] = None
+  dependencies: list[tuple[str, set[str]]]
+  late_dependencies: list[tuple[str, set[str]]]
+  src_path: str | None
+  metadata: list[str]
+  class_type_nodes: list[pytd.ClassType] | None = None
 
   def __post_init__(self):
     # TODO(tsudol): I do not believe we actually use self.class_type_nodes for
@@ -125,7 +124,7 @@ class SerializableAst(msgspec.Struct):
 # ModuleBundle is the type used when serializing builtins, i.e. when pytype is
 # invoked with --precompile_builtins. It comprises a tuple of tuples of module
 # name (strings) and encoded SerializableAst (msgspec.Raw).
-ModuleBundle = Tuple[Tuple[str, msgspec.Raw], ...]
+ModuleBundle = tuple[tuple[str, msgspec.Raw], ...]
 
 
 def SerializeAst(ast, src_path=None, metadata=None) -> SerializableAst:

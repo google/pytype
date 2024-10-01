@@ -2,7 +2,7 @@
 
 import ast as astlib
 import dataclasses
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from pytype.pytd import pytd
 
@@ -80,7 +80,7 @@ class Raise:
 
 @dataclasses.dataclass
 class SlotDecl:
-  slots: Tuple[str, ...]
+  slots: tuple[str, ...]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -91,8 +91,8 @@ class Pyval(astlib.AST):
 
   type: str
   value: Any
-  lineno: Optional[int]
-  col_offset: Optional[int]
+  lineno: int | None
+  col_offset: int | None
 
   @classmethod
   def from_const(cls, node: astlib.Constant):

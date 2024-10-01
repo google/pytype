@@ -1,8 +1,7 @@
 """Trace function arguments, return values and calls to other functions."""
 
 import dataclasses
-
-from typing import Any, List
+from typing import Any
 
 from pytype.pytd import escape
 from pytype.pytd import pytd
@@ -34,17 +33,17 @@ class Param:
 @dataclasses.dataclass
 class Call:
   function_id: str
-  args: List[Arg]
+  args: list[Arg]
   location: str
 
 
 @dataclasses.dataclass
 class Function:
   id: str
-  params: List[Any] = dataclasses.field(default_factory=list)
-  param_attrs: List[Any] = dataclasses.field(default_factory=list)
-  local_attrs: List[Any] = dataclasses.field(default_factory=list)
-  calls: List[Any] = dataclasses.field(default_factory=list)
+  params: list[Any] = dataclasses.field(default_factory=list)
+  param_attrs: list[Any] = dataclasses.field(default_factory=list)
+  local_attrs: list[Any] = dataclasses.field(default_factory=list)
+  calls: list[Any] = dataclasses.field(default_factory=list)
   ret: Any = dataclasses.field(default=None)
   location: Any = dataclasses.field(default=None)
 
