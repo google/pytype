@@ -151,7 +151,7 @@ def is_file_script(filename, directory=None):
   # of course we assume that they start with a shebang
   file_path = expand_path(filename, directory)
   if path_utils.isfile(file_path):
-    with open(file_path, "r") as fi:
+    with open(file_path) as fi:
       try:
         line = fi.readline().rstrip().lower()
       except UnicodeDecodeError:

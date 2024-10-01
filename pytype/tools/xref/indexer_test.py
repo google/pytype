@@ -161,7 +161,7 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
       }
 
       f = file_utils.replace_separator
-      expected = set((x[0], x[1], f(x[2])) for x in expected)
+      expected = {(x[0], x[1], f(x[2])) for x in expected}
 
       # Resolve filepaths within the tempdir.
       expected = [(ref, target, d[path]) for (ref, target, path) in expected]

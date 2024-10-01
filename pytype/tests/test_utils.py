@@ -547,7 +547,7 @@ def test_data_file(filename):
   code = path_utils.join(
       pytype_dir, file_utils.replace_separator("test_data/"), filename
   )
-  with open(code, "r") as f:
+  with open(code) as f:
     return f.read()
 
 

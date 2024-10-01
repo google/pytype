@@ -134,7 +134,7 @@ class TypegraphEncoder(json.JSONEncoder):
     }
 
   def _encode_variable(self, variable: cfg.Variable) -> Dict[str, Any]:
-    self._bindings.update(((b.id, b) for b in variable.bindings))
+    self._bindings.update((b.id, b) for b in variable.bindings)
     return {
         "_type": "Variable",
         "id": variable.id,

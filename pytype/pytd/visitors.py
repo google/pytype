@@ -705,7 +705,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       existing_name = existing.type.name or existing.type.__class__.__name__
       a_name = a.type.name or a.type.__class__.__name__
       raise KeyError(
-          "Duplicate top level items: {!r}, {!r}".format(existing_name, a_name)
+          f"Duplicate top level items: {existing_name!r}, {a_name!r}"
       )
     return out
 
