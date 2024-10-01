@@ -8,41 +8,9 @@ if [[ -z "$PLAT" ]]; then
   exit 1
 fi
 
-dnf install -y ninja-build gettext-devel python3-devel # gettext is for flex
-
-# TODO: what should be the update cadence for these?
-BISON_VERSION='3.6'
-FLEX_VERSION='2.6.4'
-
-untar() {
-  mkdir -pv "$1"
-  tar -C "$1" -xzvf "${1}.tar.gz" --strip-components=1
-  rm -vf "${1}.tar.gz"
-}
-
-TD="$(mktemp -d)"
-pushd "$TD" || exit 1
-
-# Install Flex
-curl -sSL \
-  -o flex.tar.gz \
-  "https://github.com/westes/flex/releases/download/v${FLEX_VERSION}/flex-${FLEX_VERSION}.tar.gz"
-untar flex
-pushd flex
-./autogen.sh && ./configure && make && make install
-popd
-
-# Install GNU Bison
-curl -sSL \
-  -o bison.tar.gz \
-  "https://ftp.gnu.org/gnu/bison/bison-${BISON_VERSION}.tar.gz"
-untar bison
-pushd bison
-./configure && make && make install
-
+dnf install -y ninja-build python3-devel flex bison
 cd /io
 dirs -c
-rm -rf "$TD"
 
 cmake --version
 ninja --version
