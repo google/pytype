@@ -214,7 +214,7 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: List[int] = dataclasses.field(default_factory=f) # annotation-type-mismatch[e]
     """)
-    self.assertErrorRegexes(err, {"e": r"Union\[int, str\]"})
+    self.assertErrorRegexes(err, {"e": r"int \| str"})
 
   def test_field_no_init(self):
     ty = self.Infer("""

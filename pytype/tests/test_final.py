@@ -551,7 +551,7 @@ class TestFinalInPyi(test_base.BaseTest):
         b = k.random()  # attribute-error[e]
       """)
     self.assertErrorSequences(
-        err, {"e": ["No attribute", "random", "Final[List[str]]"]}
+        err, {"e": ["No attribute", "random", "Final[list[str]]"]}
     )
 
 

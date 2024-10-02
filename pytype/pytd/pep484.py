@@ -58,6 +58,11 @@ _COMPAT_ITEMS = [
 ]
 
 
+# These builtins can be stored inside pytype despite not being real, this is an
+# implementation detail to be preserved and eventually fixed.
+FAKE_BUILTINS = frozenset(("generator", "coroutine", "asyncgenerator"))
+
+
 # The PEP 484 definition of built-in types.
 # E.g. "typing.List" is used to represent the "list" type.
 TYPING_TO_BUILTIN = {

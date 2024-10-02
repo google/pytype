@@ -19,6 +19,7 @@ py_library(
     pytype._utils
     pytype.debug
     pytype.pretty_printer_base
+    pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.types.types
 )

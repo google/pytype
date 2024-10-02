@@ -493,9 +493,9 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     expected = textwrap.dedent("""
       import foo
-      from typing import Any, List, Union
+      from typing import Any
 
-      def f(x: Union[int, slice]) -> List[Any]: ...
+      def f(x: int | slice) -> list[Any]: ...
       def g(x: foo.C.C2) -> None: ...
     """).strip()
     tree = self.Parse(src)
@@ -708,12 +708,10 @@ class TestVisitors(parser_test_base.ParserTest):
           D = A.B.C
     """)
     expected = textwrap.dedent("""
-      from typing import Type
-
       class foo.A:
           class foo.A.B:
               class foo.A.B.C: ...
-              D: Type[foo.A.B.C]
+              D: type[foo.A.B.C]
     """).strip()
     self.assertMultiLineEqual(
         expected,
@@ -736,10 +734,8 @@ class TestVisitors(parser_test_base.ParserTest):
         def f(self, x: A.B) -> A.B: ...
     """)
     expected = textwrap.dedent("""
-      from typing import Type
-
       foo.b: foo.A.B
-      foo.C: Type[foo.A.B]
+      foo.C: type[foo.A.B]
 
       class foo.A:
           class foo.A.B: ...
@@ -789,13 +785,11 @@ class TestVisitors(parser_test_base.ParserTest):
       def e(a: Union[bool, None]) -> Union[bool, None]: ...
     """)
     expected = textwrap.dedent("""
-      from typing import Optional, Union
-
       def a(a: float) -> int: ...
       def b(a: float) -> int: ...
-      def c(a: object) -> Union[float, int]: ...
+      def c(a: object) -> float | int: ...
       def d(a: float) -> int: ...
-      def e(a: Optional[bool]) -> Optional[bool]: ...
+      def e(a: bool | None) -> bool | None: ...
     """)
     self.assertMultiLineEqual(
         expected.strip(), pytd_utils.Print(self.ToAST(src)).strip()
@@ -806,7 +800,7 @@ class TestVisitors(parser_test_base.ParserTest):
         pytd.NamedType("tuple"),
         (pytd.NamedType("str"), pytd.NamedType("float")),
     )
-    self.assertEqual("Tuple[str, float]", pytd_utils.Print(t))
+    self.assertEqual("tuple[str, float]", pytd_utils.Print(t))
 
   def test_verify_heterogeneous_tuple(self):
     # Error: does not inherit from Generic
@@ -948,10 +942,8 @@ class TestVisitors(parser_test_base.ParserTest):
       def h(x: Union[None]) -> None: ...
     """)
     expected = textwrap.dedent("""
-      from typing import Optional, Union
-
-      def f(x: Optional[str]) -> None: ...
-      def g(x: Optional[Union[str, int]]) -> None: ...
+      def f(x: str | None) -> None: ...
+      def g(x: str | int | None) -> None: ...
       def h(x: None) -> None: ...
     """)
     self.assertMultiLineEqual(
@@ -1095,13 +1087,11 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(
         pytd_utils.Print(self.Parse(src), multiline_args=True),
         textwrap.dedent("""
-           from typing import List
-
            def f(
                x: int,
                y: str,
                z: bool
-           ) -> List[str]: ...
+           ) -> list[str]: ...
         """).strip(),
     )
 
@@ -1234,12 +1224,10 @@ class RemoveNamePrefixTest(parser_test_base.ParserTest):
           D = A.B.C
     """)
     expected = textwrap.dedent("""
-      from typing import Type
-
       class A:
           class B:
               class C: ...
-              D: Type[A.B.C]
+              D: type[A.B.C]
     """).strip()
     tree = self.Parse(src)
 

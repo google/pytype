@@ -214,10 +214,10 @@ class UnionOrTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1b": r"str.*bytes.*Union\[bytes, int\]",
-            "e1i": r"str.*int.*Union\[bytes, int\]",
-            "e2": r"str.*int.*Union\[int, str\]",
-            "e3": r"str.*int.*Union\[int, str\]",
+            "e1b": r"str.*bytes.*\bbytes \| int",
+            "e1i": r"str.*int.*\bbytes \| int",
+            "e2": r"str.*int.*\bint \| str",
+            "e3": r"str.*int.*\bint \| str",
         },
     )
 
@@ -239,7 +239,7 @@ class UnionOrTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1": r"str.*Union\[bytes, int\]",
+            "e1": r"str.*\bbytes \| int",
         },
     )
 

@@ -33,7 +33,7 @@ class CheckerTest(test_base.BaseTest):
         return [object()]  # bad-return-type[e]
       f()[0] += 1
     """)
-    self.assertErrorRegexes(errorlog, {"e": r"List\[int\].*List\[object\]"})
+    self.assertErrorRegexes(errorlog, {"e": r"list\[int\].*list\[object\]"})
 
   def test_use_varargs_and_kwargs(self):
     self.Check("""
@@ -120,7 +120,7 @@ class CheckerTest(test_base.BaseTest):
       def f(x) -> List[int]:
         return ["", x]  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errorlog, {"e": r"List\[int\].*List\[str\]"})
+    self.assertErrorRegexes(errorlog, {"e": r"list\[int\].*list\[str\]"})
 
   def test_no_param_binding(self):
     errorlog = self.CheckWithErrors("""
@@ -128,7 +128,7 @@ class CheckerTest(test_base.BaseTest):
         x = []
         return x  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errorlog, {"e": r"None.*List\[nothing\]"})
+    self.assertErrorRegexes(errorlog, {"e": r"None.*list\[nothing\]"})
 
   def test_attribute_in_incomplete_instance(self):
     errorlog = self.CheckWithErrors("""
@@ -142,7 +142,7 @@ class CheckerTest(test_base.BaseTest):
           self.z = Foo.z  # attribute-error[e2]
     """)
     self.assertErrorRegexes(
-        errorlog, {"e1": r"y.*List\[Foo\]", "e2": r"z.*Type\[Foo\]"}
+        errorlog, {"e1": r"y.*list\[Foo\]", "e2": r"z.*type\[Foo\]"}
     )
 
   def test_bad_getitem(self):
@@ -184,7 +184,7 @@ class CheckerTest(test_base.BaseTest):
         {
             "e": (
                 r"bad option 'str' in return type.*"
-                r"Expected: int.*Actually returned: Union\[int, str\]"
+                r"Expected: int.*Actually returned: int \| str"
             )
         },
     )

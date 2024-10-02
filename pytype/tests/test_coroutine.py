@@ -361,7 +361,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
         {
             "e1": r"No attribute.*__aiter__",
             "e2": r"No attribute.*__anext__",
-            "e3": r"Awaitable.*Union\[int, str\]",
+            "e3": r"Awaitable.*int \| str",
         },
     )
 

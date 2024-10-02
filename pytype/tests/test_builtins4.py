@@ -88,7 +88,7 @@ class MapTest(test_base.BaseTest):
       map(func, ['str'])  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]}
+        errors, {"e": ["Expected", "Iterable[int]", "Actual", "list[str]"]}
     )
 
   def test_abspath(self):
@@ -567,7 +567,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     _, errors = self.InferWithErrors("""
       int(0, 1)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
+    self.assertErrorRegexes(errors, {"e": r"bytes \| str\b.*int"})
 
   def test_removed_builtins(self):
     self.CheckWithErrors("""

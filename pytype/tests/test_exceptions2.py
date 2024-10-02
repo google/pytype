@@ -104,7 +104,7 @@ class TestExceptionsPy3(test_base.BaseTest):
       with Foo():
         print(0)
     """)
-    self.assertErrorSequences(errors, {"e": ["Optional[Type[BaseException]]"]})
+    self.assertErrorSequences(errors, {"e": ["type[BaseException] | None"]})
 
   def test_yield_from(self):
     self.Check("""

@@ -18,9 +18,7 @@ class ErrorTest(test_base.BaseTest):
       x = (3.14, "")
       f(x[i])  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(
-        errors, {"e": r"Actually passed:.*Union\[float, str\]"}
-    )
+    self.assertErrorRegexes(errors, {"e": r"Actually passed:.*float \| str"})
 
   def test_invalid_annotations(self):
     _, errors = self.InferWithErrors("""
@@ -64,7 +62,7 @@ class ErrorTest(test_base.BaseTest):
         x = [float]
       f(x)  # wrong-arg-types[e]
     """)
-    error = ["Actual", "Union[List[Type[float]], Type[dict]]"]
+    error = ["Actual", "list[type[float]] | type[dict]"]
     self.assertErrorSequences(errors, {"e": error})
 
   def test_wrong_brackets(self):
@@ -101,9 +99,9 @@ class ErrorTest(test_base.BaseTest):
         errors,
         {
             "e1": ["(int, str)", "Not a type"],
-            "e2": ["instance of Tuple[int, ...]", "Not a type"],
+            "e2": ["instance of tuple[int, ...]", "Not a type"],
             "e3": ["{'a': 1}", "Not a type"],
-            "e4": ["instance of Dict[str, int]", "Not a type"],
+            "e4": ["instance of dict[str, int]", "Not a type"],
         },
     )
 
@@ -162,7 +160,7 @@ class ErrorTest(test_base.BaseTest):
             "e2": ["x: Y"],
             "e3": ["x: W"],
             "e4": ["Iterator"],
-            "e5": ["Union[X, int]"],
+            "e5": ["X | int"],
         },
     )
 
@@ -281,7 +279,7 @@ class ErrorTest(test_base.BaseTest):
       Y = X[str]  # invalid-annotation[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Union[Any, int][str]", "Union[Any, int]", "0", "1"]}
+        errors, {"e": ["(Any | int)[str]", "Any | int", "0", "1"]}
     )
 
   def test_optional_union(self):
@@ -290,7 +288,7 @@ class ErrorTest(test_base.BaseTest):
       X = Union[int, str, None]
       Y = X[float]  # invalid-annotation[e]
     """)
-    self.assertErrorSequences(errors, {"e": "Optional[Union[int, str]"})
+    self.assertErrorSequences(errors, {"e": "int | str | None"})
 
   def test_nested_class(self):
     errors = self.CheckWithErrors("""
@@ -326,12 +324,12 @@ class ErrorTest(test_base.BaseTest):
         errors,
         {
             "e1": [
-                "{'a': 1, 'b': 'hello'}: Dict[str, Union[int, str]]",
-                "[1, 2]: List[int]",
+                "{'a': 1, 'b': 'hello'}: dict[str, int | str]",
+                "[1, 2]: list[int]",
             ],
             "e2": [
-                "{...: ...}: Dict[Union[int, str], Union[A, int]",
-                "[..., 2]: List[Union[A, int]]",
+                "{...: ...}: dict[int | str, A | int",
+                "[..., 2]: list[A | int]",
             ],
         },
     )
@@ -414,7 +412,7 @@ class AssertTypeTest(test_base.BaseTest):
         assert_type(y, 'int')  # assert-type[e]
         if __random__:
           x = A()
-        assert_type(x, 'Union[A, int]')
+        assert_type(x, 'A | int')
     """)
     self.assertErrorSequences(
         errors,
@@ -457,7 +455,7 @@ class AssertTypeTest(test_base.BaseTest):
       from typing import Set, Union
       x: Set[Union[int, str]]
       y: Set[Union[str, bytes]]
-      assert_type(x | y, "Set[Union[bytes, int, str]]")
+      assert_type(x | y, "set[bytes | int | str]")
     """)
 
 

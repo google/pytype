@@ -83,7 +83,7 @@ class MatchTest(test_base.BaseTest):
       bad2: X = [[0]]  # annotation-type-mismatch
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Annotation", "List[X]", "Assignment", "List[int]"]}
+        errors, {"e": ["Annotation", "list[X]", "Assignment", "list[int]"]}
     )
 
   def test_value(self):
@@ -96,7 +96,7 @@ class MatchTest(test_base.BaseTest):
       bad: List[int] = x  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Annotation", "List[int]", "Assignment", "List[X]"]}
+        errors, {"e": ["Annotation", "list[int]", "Assignment", "list[X]"]}
     )
 
   def test_value_and_type(self):
@@ -111,7 +111,7 @@ class MatchTest(test_base.BaseTest):
       bad: Bad = x  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Annotation", "Set[Bad]", "Assignment", "List[X1]"]}
+        errors, {"e": ["Annotation", "set[Bad]", "Assignment", "list[X1]"]}
     )
 
   def test_union_as_type(self):
@@ -128,7 +128,7 @@ class MatchTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors,
         {
-            "e": ["Annotation", "Union[List[X], str]", "Assignment", "int"],
+            "e": ["Annotation", "list[X] | str", "Assignment", "int"],
         },
     )
 
@@ -146,9 +146,9 @@ class MatchTest(test_base.BaseTest):
         {
             "e": [
                 "Annotation",
-                "Union[int, list]",
+                "int | list",
                 "Assignment",
-                "Union[List[X], str]",
+                "list[X] | str",
             ]
         },
     )
@@ -175,11 +175,11 @@ class MatchTest(test_base.BaseTest):
         {
             "e": [
                 "Annotation",
-                "Union[Set[Bad1], str]",
+                "set[Bad1] | str",
                 "Assignment",
-                "List[X1]",
+                "list[X1]",
                 "In assignment",
-                "Union[List[X1], str]",
+                "list[X1] | str",
             ],
         },
     )
@@ -490,9 +490,8 @@ class PyiTest(test_base.BaseTest):
               errors,
               {
                   "e": (
-                      r"Annotation: Union\[List\[foo.X(\[T\])?\[int\]\],"
-                      r" int\].*"
-                      r"Assignment: List\[str\]"
+                      r"Annotation: int \|"
+                      r" list\[foo.X(\[T\])?\[int\]\].*Assignment: list\[str\]"
                   )
               },
           )
@@ -517,7 +516,7 @@ class PyiTest(test_base.BaseTest):
     ]):
       self.Check("""
         import bar
-        assert_type(bar.Y, "Type[Union[List[bar.foo.X[T][str]], str]]")
+        assert_type(bar.Y, "type[list[bar.foo.X[T][str]] | str]")
       """)
 
   def test_dataclass(self):

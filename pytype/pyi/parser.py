@@ -271,7 +271,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
 
   def visit_BoolOp(self, node):
     if isinstance(node.op, astlib.Or):
-      raise ParseError("Deprecated syntax `x or y`; use `Union[x, y]` instead")
+      raise ParseError("Deprecated syntax `x or y`; use `x | y` instead")
     else:
       raise ParseError(f"Unexpected operator {node.op}")
 

@@ -174,7 +174,7 @@ class TypeVarTest(test_base.BaseTest):
             "e1": r"list.*set",
             "e2": r"str.*int",
             "e3": r"bool.*int",
-            "e4": r"List\[bool\].*List\[Union\[float, int\]\]",
+            "e4": r"list\[bool\].*list\[float \| int\]",
         },
     )
 
@@ -199,7 +199,7 @@ class TypeVarTest(test_base.BaseTest):
       u = ...  # type: Union[int, float]
     """,
     )
-    self.assertErrorRegexes(errors, {"e": r"Union\[float, int\].*str"})
+    self.assertErrorRegexes(errors, {"e": r"float \| int.*str"})
 
   def test_type_parameter_type(self):
     ty = self.Infer("""
@@ -230,7 +230,7 @@ class TypeVarTest(test_base.BaseTest):
         return x()[0]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\]"}
+        errors, {"e": r"Expected.*int.*Actual.*type\[Sequence\]"}
     )
 
   def test_print_nested_type_parameter(self):
@@ -240,9 +240,7 @@ class TypeVarTest(test_base.BaseTest):
       def f(x: List[T]): ...
       f([""])  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(
-        errors, {"e": r"List\[Union\[float, int\]\].*List\[str\]"}
-    )
+    self.assertErrorRegexes(errors, {"e": r"list\[float \| int\].*list\[str\]"})
 
   def test_constraint_subtyping(self):
     _, errors = self.InferWithErrors("""
@@ -388,7 +386,7 @@ class TypeVarTest(test_base.BaseTest):
       def f() -> Optional[T]:
         return 42 if __random__ else None  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Optional\[str\].*int"})
+    self.assertErrorRegexes(errors, {"e": r"str \| None.*int"})
 
   def test_unicode_literals(self):
     ty = self.Infer("""
@@ -506,7 +504,7 @@ class TypeVarTest(test_base.BaseTest):
       Foo = Union[T, List[T], Dict[T, List[U]], complex]
       def f(x: Foo[int]): ...  # invalid-annotation[e]
     """)
-    self.assertErrorRegexes(err, {"e": "Union.*2.*got.*1"})
+    self.assertErrorRegexes(err, {"e": " | .*2.*got.*1"})
 
   def test_cast_generic_tuple(self):
     self.Check("""
@@ -1125,8 +1123,8 @@ class TypeVarTestPy3(test_base.BaseTest):
       self.assertErrorRegexes(
           errors,
           {
-              "e1": r"Union\[float, int\].*str",
-              "e2": r"Union\[bytes, str\].*int",
+              "e1": r"float \| int\b.*str",
+              "e2": r"bytes \| str\b.*int",
           },
       )
 

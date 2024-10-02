@@ -90,8 +90,8 @@ class TypedDictTest(test_base.BaseTest):
                 "Type annotation",
                 "key y",
                 "TypedDict A",
-                "Annotation: Union[int, str]",
-                "Assignment: List[nothing]",
+                "Annotation: int | str",
+                "Assignment: list[nothing]",
             ]
         },
     )

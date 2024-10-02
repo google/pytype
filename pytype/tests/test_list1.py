@@ -94,7 +94,7 @@ class ListTest(test_base.BaseTest):
       g = ...  # type: List[Union[int, str]]
       """,
     )
-    self.assertErrorRegexes(errors, {"e": r"__getitem__ on List"})
+    self.assertErrorRegexes(errors, {"e": r"__getitem__ on list"})
 
   def test_index_out_of_range(self):
     ty = self.Infer("""

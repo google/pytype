@@ -358,9 +358,8 @@ class PrintVisitor(base_visitor.Visitor):
         "typing.OrderedDict",
     ):
       return False
-    if node.type == f"Type[{full_typing_name}]":
+    if node.type == f"type[{full_typing_name}]":
       self._imports.add(full_typing_name, node.name)
-      self._imports.decrement_typing_count("Type")
       self._local_names.remove(node.name)
       return True
 
@@ -625,9 +624,10 @@ class PrintVisitor(base_visitor.Visitor):
       self._DecrementParameterImports(node.type)
       return node.name + suffix
     elif node.name == "cls" and re.fullmatch(
-        rf"Type\[{class_name}(\[.+\])?\]", node.type
+        rf"(?:Type|type)\[{class_name}(?:\[.+\])?\]", node.type
     ):
-      self._imports.decrement_typing_count("Type")
+      if node.type.startswith("Type"):
+        self._imports.decrement_typing_count("Type")
       self._DecrementParameterImports(node.type[5:-1])
       return node.name + suffix
     elif node.type is None:
@@ -738,7 +738,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
-    if name in pep484.BUILTIN_TO_TYPING:
+    if name in pep484.FAKE_BUILTINS:
       return self._FromTyping(pep484.BUILTIN_TO_TYPING[name])
     else:
       return name
@@ -758,12 +758,12 @@ class PrintVisitor(base_visitor.Visitor):
       else:
         assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
-    return (
-        self.MaybeCapitalize(node.base_type)
-        + "["
-        + ", ".join(str(p) for p in parameters)
-        + "]"
-    )
+    if isinstance(node.base_type, pytd.UnionType):
+      base_type = "(" + node.base_type + ")"
+    else:
+      base_type = self.MaybeCapitalize(node.base_type)
+
+    return base_type + "[" + ", ".join(str(p) for p in parameters) + "]"
 
   def VisitCallableType(self, node):
     typ = self.MaybeCapitalize(node.base_type)
@@ -786,23 +786,13 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitUnionType(self, node):
     """Convert a union type ("x or y") to a string."""
-    type_list = self._FormSetTypeList(node)
-    return self._BuildUnion(type_list)
-
-  def VisitIntersectionType(self, node):
-    """Convert a intersection type ("x and y") to a string."""
-    type_list = self._FormSetTypeList(node)
-    return self._BuildIntersection(type_list)
-
-  def _FormSetTypeList(self, node):
-    """Form list of types within a set type."""
     type_list = dict.fromkeys(node.type_list)
     if self.in_parameter:
       for compat, name in pep484.get_compat_items():
         # name can replace compat.
         if compat in type_list and name in type_list:
           del type_list[compat]
-    return type_list
+    return self._BuildUnion(type_list)
 
   def _BuildUnion(self, type_list):
     """Builds a union of the types in type_list.
@@ -811,48 +801,25 @@ class PrintVisitor(base_visitor.Visitor):
       type_list: A list of strings representing types.
 
     Returns:
-      A string representing the union of the types in type_list. Simplifies
-      Union[X] to X and Union[X, None] to Optional[X].
+      A string representing the union of the types in type_list.
     """
     # Collect all literals, so we can print them using the Literal[x1, ..., xn]
     # syntactic sugar.
     literals = []
     new_type_list = []
+    optional = False
     for t in type_list:
-      match = re.fullmatch(r"Literal\[(?P<content>.*)\]", t)
-      if match:
+      if t == "None":
+        optional = True
+      elif match := re.fullmatch(r"Literal\[(?P<content>.*)\]", t):
         literals.append(match.group("content"))
       else:
         new_type_list.append(t)
     if literals:
       new_type_list.append(f"Literal[{', '.join(literals)}]")
-    if len(new_type_list) == 1:
-      return new_type_list[0]
-    elif "None" in new_type_list:
-      return (
-          self._FromTyping("Optional")
-          + "["
-          + self._BuildUnion(t for t in new_type_list if t != "None")
-          + "]"
-      )
-    else:
-      return self._FromTyping("Union") + "[" + ", ".join(new_type_list) + "]"
-
-  def _BuildIntersection(self, type_list):
-    """Builds a intersection of the types in type_list.
-
-    Args:
-      type_list: A list of strings representing types.
-
-    Returns:
-      A string representing the intersection of the types in type_list.
-      Simplifies Intersection[X] to X and Intersection[X, None] to Optional[X].
-    """
-    type_list = tuple(type_list)
-    if len(type_list) == 1:
-      return type_list[0]
-    else:
-      return " and ".join(type_list)
+    if optional:
+      new_type_list.append("None")
+    return " | ".join(new_type_list)
 
   def EnterLiteral(self, _):
     assert not self.in_literal

@@ -286,11 +286,9 @@ class ParserTest(parser_test_base.ParserTestBase):
           C = A.B
     """,
         """
-      from typing import Type
-
       class A:
           class B: ...
-          C: Type[A.B]
+          C: type[A.B]
     """,
     )
 
@@ -302,9 +300,7 @@ class ParserTest(parser_test_base.ParserTestBase):
       C = A.B
     """,
         """
-      from typing import Type
-
-      C: Type[A.B]
+      C: type[A.B]
 
       class A:
           class B: ...
@@ -543,13 +539,13 @@ class ParserTest(parser_test_base.ParserTestBase):
 
   def test_type_param_arguments(self):
     self.check("""
-      from typing import List, TypeVar
+      from typing import TypeVar
 
-      T = TypeVar('T', List[int], List[str])""")
+      T = TypeVar('T', list[int], list[str])""")
     self.check("""
-      from typing import List, TypeVar
+      from typing import TypeVar
 
-      T = TypeVar('T', bound=List[str])""")
+      T = TypeVar('T', bound=list[str])""")
     # 'covariant' and 'contravariant' are ignored for now.
     self.check(
         """
@@ -662,9 +658,7 @@ class ParserTest(parser_test_base.ParserTestBase):
       __all__ = ['a']
     """,
         """
-      from typing import List
-
-      __all__: List[str] = ...
+      __all__: list[str] = ...
     """,
     )
 
@@ -931,11 +925,11 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
     # Tuple[T] and Tuple[T, ...] are distinct.
     self.check(
         "from typing import Tuple\n\nx = ...  # type: Tuple[int]",
-        "from typing import Tuple\n\nx: Tuple[int]",
+        "x: tuple[int]",
     )
     self.check(
         "from typing import Tuple\n\nx = ...  # type: Tuple[int, ...]",
-        "from typing import Tuple\n\nx: Tuple[int, ...]",
+        "x: tuple[int, ...]",
     )
 
   def test_tuple(self):
@@ -945,9 +939,7 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
 
       x = ...  # type: Tuple[int, str]""",
         """
-      from typing import Tuple
-
-      x: Tuple[int, str]""",
+      x: tuple[int, str]""",
     )
     self.check_error(
         """
@@ -966,9 +958,7 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
       def f() -> Tuple[()]: ...
     """,
         """
-      from typing import Tuple
-
-      def f() -> Tuple[()]: ...
+      def f() -> tuple[()]: ...
     """,
     )
 
@@ -2860,15 +2850,15 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
       def f(x: Alias[S]) -> S: ...
       def g(x: Alias[str]) -> str: ...""",
         """
-      from typing import List, TypeVar
+      from typing import TypeVar
 
-      Alias = List[List[T]]
+      Alias = list[list[T]]
 
       S = TypeVar('S')
       T = TypeVar('T')
 
-      def f(x: List[List[S]]) -> S: ...
-      def g(x: List[List[str]]) -> str: ...""",
+      def f(x: list[list[S]]) -> S: ...
+      def g(x: list[list[str]]) -> str: ...""",
     )
 
   def test_partial_replacement(self):
@@ -2879,13 +2869,13 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
       V = TypeVar('V')
       def f(x: DictAlias[str]) -> None: ...""",
         """
-      from typing import Dict, TypeVar
+      from typing import TypeVar
 
-      DictAlias = Dict[int, V]
+      DictAlias = dict[int, V]
 
       V = TypeVar('V')
 
-      def f(x: Dict[int, str]) -> None: ...""",
+      def f(x: dict[int, str]) -> None: ...""",
     )
 
   def test_multiple_parameters(self):
@@ -2897,14 +2887,14 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
       V = TypeVar('V')
       def f(x: Alias[K, V]) -> Dict[K, V]: ...""",
         """
-      from typing import Dict, List, TypeVar
+      from typing import TypeVar
 
-      Alias = List[Dict[K, V]]
+      Alias = list[dict[K, V]]
 
       K = TypeVar('K')
       V = TypeVar('V')
 
-      def f(x: List[Dict[K, V]]) -> Dict[K, V]: ...""",
+      def f(x: list[dict[K, V]]) -> dict[K, V]: ...""",
     )
 
   def test_union(self):
@@ -2916,14 +2906,14 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
       S = TypeVar('S')
       def f(x: Alias[S, T]) -> Union[S, T]: ...""",
         """
-      from typing import List, TypeVar, Union
+      from typing import TypeVar
 
-      Alias = Union[List[T], List[S]]
+      Alias = list[T] | list[S]
 
       S = TypeVar('S')
       T = TypeVar('T')
 
-      def f(x: Union[List[S], List[T]]) -> Union[S, T]: ...""",
+      def f(x: list[S] | list[T]) -> S | T: ...""",
     )
 
   def test_repeated_type_parameter(self):
@@ -2934,13 +2924,13 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
       T = TypeVar('T')
       def f(x: Alias[str]) -> None: ...""",
         """
-      from typing import Dict, TypeVar
+      from typing import TypeVar
 
-      Alias = Dict[T, T]
+      Alias = dict[T, T]
 
       T = TypeVar('T')
 
-      def f(x: Dict[str, str]) -> None: ...""",
+      def f(x: dict[str, str]) -> None: ...""",
     )
 
   def test_wrong_parameter_count(self):
@@ -2963,11 +2953,11 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
       def f(x: Alias[str]) -> None: ...
     """,
         """
-      from typing import AnyStr, List
+      from typing import AnyStr
 
-      Alias = List[AnyStr]
+      Alias = list[AnyStr]
 
-      def f(x: List[str]) -> None: ...
+      def f(x: list[str]) -> None: ...
     """,
     )
 
@@ -3077,9 +3067,9 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x: Literal[True, 0, b"", "", None]
     """,
         """
-      from typing import Literal, Optional
+      from typing import Literal
 
-      x: Optional[Literal[True, 0, b'', '']]
+      x: Literal[True, 0, b'', ''] | None
     """,
     )
 
@@ -3132,11 +3122,11 @@ class LiteralTest(parser_test_base.ParserTestBase):
       y: Literal[1, Literal[2, Literal[3]]]
     """,
         """
-      from typing import Literal, Optional
+      from typing import Literal
 
       MyLiteralAlias = Literal[42]
 
-      x: Optional[Literal[42, True]]
+      x: Literal[42, True] | None
       y: Literal[1, 2, 3]
     """,
     )
@@ -3270,7 +3260,7 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x: Literal[list[int]]
     """,
         2,
-        "Literal[List[int]] not supported",
+        "Literal[list[int]] not supported",
     )
 
 
@@ -3620,11 +3610,11 @@ class AnnotatedTest(parser_test_base.ParserTestBase):
       def f() -> Annotated[list[int], a.b.C(3)]: ...
     """,
         """
-      from typing import Annotated, Any, List
+      from typing import Annotated, Any
 
       a: Any
 
-      def f() -> Annotated[List[int], {'tag': 'call', 'fn': 'a.b.C', 'posargs': (3,), 'kwargs': {}}]: ...
+      def f() -> Annotated[list[int], {'tag': 'call', 'fn': 'a.b.C', 'posargs': (3,), 'kwargs': {}}]: ...
     """,
     )
 
@@ -3934,11 +3924,9 @@ class UnionOrTest(parser_test_base.ParserTestBase):
       def h(x: str | None) -> None: ...
     """,
         """
-      from typing import Optional, Union
-
-      def f(x: Union[int, str]) -> None: ...
-      def g(x: Union[bool, str, float]) -> None: ...
-      def h(x: Optional[str]) -> None: ...
+      def f(x: int | str) -> None: ...
+      def g(x: bool | str | float) -> None: ...
+      def h(x: str | None) -> None: ...
     """,
     )
 
@@ -3950,12 +3938,11 @@ class UnionOrTest(parser_test_base.ParserTestBase):
       def f(x: X | str) -> None: ...
     """,
         """
-      from typing import Optional
       from typing_extensions import TypeAlias
 
       X = None
 
-      def f(x: Optional[str]) -> None: ...
+      def f(x: str | None) -> None: ...
     """,
     )
 
@@ -3971,10 +3958,9 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """,
         """
-      from typing import List
       from typing_extensions import TypeGuard
 
-      def f(x: List[object]) -> TypeGuard[List[str]]: ...
+      def f(x: list[object]) -> TypeGuard[list[str]]: ...
   """,
     )
 
@@ -3986,9 +3972,9 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """,
         """
-      from typing import List, TypeGuard
+      from typing import TypeGuard
 
-      def f(x: List[object]) -> TypeGuard[List[str]]: ...
+      def f(x: list[object]) -> TypeGuard[list[str]]: ...
     """,
     )
 
@@ -4169,14 +4155,14 @@ class TypingSelfTest(parser_test_base.ParserTestBase):
           def f(cls) -> Self: ...
     """,
         """
-      from typing import Type, TypeVar
+      from typing import TypeVar
       from typing_extensions import Self
 
       _SelfA = TypeVar('_SelfA', bound=A)
 
       class A:
           @classmethod
-          def f(cls: Type[_SelfA]) -> _SelfA: ...
+          def f(cls: type[_SelfA]) -> _SelfA: ...
     """,
     )
 
@@ -4189,13 +4175,13 @@ class TypingSelfTest(parser_test_base.ParserTestBase):
         def __new__(cls) -> Self: ...
     """,
         """
-      from typing import Type, TypeVar
+      from typing import TypeVar
       from typing_extensions import Self
 
       _SelfA = TypeVar('_SelfA', bound=A)
 
       class A:
-          def __new__(cls: Type[_SelfA]) -> _SelfA: ...
+          def __new__(cls: type[_SelfA]) -> _SelfA: ...
     """,
     )
 
@@ -4209,13 +4195,13 @@ class TypingSelfTest(parser_test_base.ParserTestBase):
           def f(self) -> List[Self]: ...
     """,
         """
-      from typing import List, TypeVar
+      from typing import TypeVar
       from typing_extensions import Self
 
       _SelfA = TypeVar('_SelfA', bound=A)
 
       class A:
-          def f(self: _SelfA) -> List[_SelfA]: ...
+          def f(self: _SelfA) -> list[_SelfA]: ...
     """,
     )
 
@@ -4319,12 +4305,10 @@ class GetAttrInAnnotationTest(parser_test_base.ParserTestBase):
       def f(x: Union[str, getattr(X, 'None')]) -> None: ...
     """,
         """
-      from typing import Union
-
       class X:
           class None: ...
 
-      def f(x: Union[str, X.None]) -> None: ...
+      def f(x: str | X.None) -> None: ...
     """,
     )
 
@@ -4370,10 +4354,10 @@ class UnpackTest(parser_test_base.ParserTestBase):
       def f(x: tuple[Unpack[_Ts]]): ...
     """,
         """
-      from typing import Any, Tuple
+      from typing import Any
       from typing_extensions import TypeVarTuple, TypeVarTuple as _Ts, Unpack
 
-      def f(x: Tuple[Any, ...]) -> Any: ...
+      def f(x: tuple[Any, ...]) -> Any: ...
     """,
     )
 

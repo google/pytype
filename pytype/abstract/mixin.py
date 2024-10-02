@@ -163,7 +163,7 @@ class HasSlots(metaclass=MixinMeta):
 class NestedAnnotation(metaclass=MixinMeta):
   """An annotation containing inner types, such as a Union.
 
-  For example, in `Union[int, str]`, `int` and `str` are the annotation's inner
+  For example, in `int | str`, `int` and `str` are the annotation's inner
   types. Classes that inherit from this mixin should implement:
 
   get_inner_types(): Returns a sequence of (key, typ) of the inner types. A

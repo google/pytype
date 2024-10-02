@@ -88,13 +88,10 @@ class PrettyPrinterBase(abc.ABC):
       if literal_contents:
         literal = f"Literal[{', '.join(sorted(literal_contents))}]"
         new_types.append(literal)
-      if len(new_types) > 1:
-        out = f"Union[{', '.join(sorted(new_types))}]"
-      else:
-        out = new_types[0]
+      new_types.sort()
       if optional:
-        out = f"Optional[{out}]"
-      return out
+        new_types.append("None")
+      return " | ".join(new_types)
     else:
       # TODO(mdemello): change this to Never
       return "nothing"

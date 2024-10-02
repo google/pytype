@@ -150,9 +150,9 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1": r"bool.*Union\[int, str\]",
-            "e2": r"bool.*Union\[int, str\]",
-            "e3": r"bool.*Union\[int, str\]",
+            "e1": r"bool.*int \| str",
+            "e2": r"bool.*int \| str",
+            "e3": r"bool.*int \| str",
         },
     )
 
@@ -384,10 +384,10 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
             "e1": r"Awaitable\[str\].*Awaitable\[int\]",
             "e3": r"Awaitable\[str\].*Awaitable\[int\]",
             "e4": r"Awaitable\[str\].*Awaitable\[int\]",
-            "e5": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
+            "e5": r"Awaitable\[str\].*Awaitable\[bytes | int\]",
             "e6": r"Awaitable\[str\].*Awaitable",
-            "e7": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
-            "e8": r"Awaitable\[str\].*Awaitable\[Union\[bytes, int\]\]",
+            "e7": r"Awaitable\[str\].*Awaitable\[bytes | int\]",
+            "e8": r"Awaitable\[str\].*Awaitable\[bytes | int\]",
             "e9": r"AsyncIterator.*listiterator\[int\]",
         },
     )

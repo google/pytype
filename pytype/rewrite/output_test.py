@@ -169,7 +169,7 @@ class ToPytdTypeTest(OutputTestBase):
     t = self.ctx.pytd_converter.to_pytd_type(
         abstract.SimpleClass(self.ctx, 'C', {})
     )
-    self.assertPytdEqual(t, 'Type[C]')
+    self.assertPytdEqual(t, 'type[C]')
 
   def test_mutable_instance(self):
     instance = abstract.MutableInstance(
@@ -206,7 +206,7 @@ class ToPytdTypeTest(OutputTestBase):
         self.ctx, (self.ctx.consts[0], self.ctx.consts[None])
     )
     self.assertPytdEqual(
-        self.ctx.pytd_converter.to_pytd_type(union), 'Optional[int]'
+        self.ctx.pytd_converter.to_pytd_type(union), 'int | None'
     )
 
 
@@ -231,7 +231,7 @@ class ToPytdInstanceTypeTest(OutputTestBase):
         ),
     )
     self.assertPytdEqual(
-        self.ctx.pytd_converter.to_pytd_type_of_instance(union), 'Union[C, D]'
+        self.ctx.pytd_converter.to_pytd_type_of_instance(union), 'C | D'
     )
 
 
