@@ -31,21 +31,20 @@ def _merge_csts(*, py_tree, pyi_tree):
   ).transform_module(py_tree)
 
 
-def _is_any_annotation(annotation: expression.Annotation | None):
-  return (
-      annotation
-      and isinstance(annotation, expression.Name)
-      and annotation.value == "Any"
-  )
-
-
 class RemoveAnyTransformer(cst.CSTTransformer):
   """Transform away every `Any` annotations in function returns and variable assignments."""
+
+  def _is_any_annotation(self, annotation: expression.Annotation | None):
+    return (
+        annotation
+        and isinstance(annotation, expression.Name)
+        and annotation.value == "Any"
+    )
 
   def leave_FunctionDef(
       self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
   ) -> cst.CSTNode:
-    if original_node.returns and _is_any_annotation(
+    if original_node.returns and self._is_any_annotation(
         original_node.returns.annotation
     ):
       return updated_node.with_changes(returns=None)
@@ -54,7 +53,7 @@ class RemoveAnyTransformer(cst.CSTTransformer):
   def leave_AnnAssign(
       self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
   ) -> cst.CSTNode:
-    if _is_any_annotation(original_node.annotation):
+    if self._is_any_annotation(original_node.annotation):
       return cst.Assign(
           targets=[cst.AssignTarget(target=updated_node.target)],
           value=updated_node.value,
@@ -63,10 +62,47 @@ class RemoveAnyTransformer(cst.CSTTransformer):
     return original_node
 
 
+class RemoveTrivialTypesTransformer(cst.CSTTransformer):
+  """Strips out trivial type of basic-types on variable assignments."""
+
+  def _is_trivial_type(self, annotation: expression.Annotation) -> bool:
+    return annotation.annotation is not None and (
+        (
+            isinstance(annotation.annotation, expression.Name)
+            and annotation.annotation.value
+            in ("int", "str", "float", "bool", "complex")
+        )
+        or
+        # pytype infers enum members to be literal types, the type
+        # annotation in that position is undesirable.
+        (
+            isinstance(annotation.annotation, expression.Subscript)
+            and isinstance(annotation.annotation.value, expression.Name)
+            and annotation.annotation.value.value == "Literal"
+        )
+    )
+
+  def leave_AnnAssign(
+      self, original_node: cst.AnnAssign, updated_node: cst.AnnAssign
+  ) -> cst.AnnAssign | cst.RemovalSentinel:
+    if (
+        self._is_trivial_type(original_node.annotation)
+        and updated_node.value is None
+    ):
+      # We need to remove the statement, because otherwise it will be an
+      # invalid syntax in python . e.g. `a: str` --> `a`.
+      return cst.RemovalSentinel.REMOVE
+    return original_node
+
+
 def merge_sources(*, py: str, pyi: str) -> str:
   try:
     py_cst = cst.parse_module(py)
-    pyi_cst = cst.parse_module(pyi).visit(RemoveAnyTransformer())
+    pyi_cst = (
+        cst.parse_module(pyi)
+        .visit(RemoveAnyTransformer())
+        .visit(RemoveTrivialTypesTransformer())
+    )
     merged_cst = _merge_csts(py_tree=py_cst, pyi_tree=pyi_cst)
     return merged_cst.code
   except Exception as e:  # pylint: disable=broad-except

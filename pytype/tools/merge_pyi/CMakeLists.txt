@@ -60,6 +60,12 @@ filegroup(
     test_data/defaults.pep484.py
     test_data/defaults.py
     test_data/defaults.pyi
+    test_data/enum_annot.pep484.py
+    test_data/enum_annot.py
+    test_data/enum_annot.pyi
+    test_data/func_annot.pep484.py
+    test_data/func_annot.py
+    test_data/func_annot.pyi
     test_data/heuristics.pep484.py
     test_data/heuristics.py
     test_data/heuristics.pyi
