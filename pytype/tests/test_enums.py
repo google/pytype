@@ -255,7 +255,7 @@ class EnumOverlayTest(test_base.BaseTest):
           B = "b"
         assert_type(M["A"].value, "int")
         assert_type(M["B"].value, "str")
-        assert_type(M[e.a_string].value, "Union[int, str]")
+        assert_type(M[e.a_string].value, "int | str")
         _ = M["C"]  # attribute-error
       """,
           pythonpath=[d.path],
@@ -343,7 +343,6 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_value_lookup(self):
     self.CheckWithErrors("""
       import enum
-      from typing import Union
       class M(enum.Enum):
         A = 1
       assert_type(M(1), "M")
@@ -356,7 +355,7 @@ class EnumOverlayTest(test_base.BaseTest):
         B = "str"
       assert_type(N(1), "N")
       assert_type(N("str"), "N")
-      assert_type(N(499).value, "Union[int, str]")
+      assert_type(N(499).value, "int | str")
       N(M.A)  # wrong-arg-types
     """)
 
@@ -520,7 +519,7 @@ class EnumOverlayTest(test_base.BaseTest):
       1 in M  # unsupported-operands
 
       # __iter__
-      assert_type([e for e in M], "List[M]")
+      assert_type([e for e in M], "list[M]")
 
       # __len__
       assert_type(len(M), "int")
@@ -552,7 +551,7 @@ class EnumOverlayTest(test_base.BaseTest):
         1 in M  # unsupported-operands
 
         # __iter__
-        assert_type([e for e in M], "List[m.M]")
+        assert_type([e for e in M], "list[m.M]")
 
         # __len__
         assert_type(len(M), "int")

@@ -288,7 +288,7 @@ class ConvertTest(test_base.UnitTest):
     (sig,) = f.signatures
     annot = sig.signature.annotations["args"]
     self.assertEqual(
-        pytd_utils.Print(annot.to_pytd_type_of_instance()), "Tuple[int, ...]"
+        pytd_utils.Print(annot.to_pytd_type_of_instance()), "tuple[int, ...]"
     )
 
   def test_function_with_starstarargs(self):
@@ -304,7 +304,7 @@ class ConvertTest(test_base.UnitTest):
     (sig,) = f.signatures
     annot = sig.signature.annotations["kwargs"]
     self.assertEqual(
-        pytd_utils.Print(annot.to_pytd_type_of_instance()), "Dict[str, int]"
+        pytd_utils.Print(annot.to_pytd_type_of_instance()), "dict[str, int]"
     )
 
   def test_mro(self):

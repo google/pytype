@@ -31,8 +31,8 @@ class SelfTest(test_base.BaseTest):
           return [self]
       class B(A):
         pass
-      assert_type(A().f(), "List[A]")
-      assert_type(B().f(), "List[B]")
+      assert_type(A().f(), "list[A]")
+      assert_type(B().f(), "list[B]")
     """)
 
   def test_parameter(self):
@@ -374,8 +374,8 @@ class SelfPyiTest(test_base.BaseTest):
         import foo
         class B(foo.A):
           pass
-        assert_type(foo.A().f(), "List[foo.A]")
-        assert_type(B().f(), "List[B]")
+        assert_type(foo.A().f(), "list[foo.A]")
+        assert_type(B().f(), "list[B]")
       """)
 
   def test_parameter(self):
@@ -617,8 +617,8 @@ class SelfReingestTest(test_base.BaseTest):
         import foo
         class B(foo.A):
           pass
-        assert_type(foo.A().f(), "List[foo.A]")
-        assert_type(B().f(), "List[B]")
+        assert_type(foo.A().f(), "list[foo.A]")
+        assert_type(B().f(), "list[B]")
       """)
 
   def test_parameter(self):

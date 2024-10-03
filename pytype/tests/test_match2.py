@@ -62,7 +62,7 @@ class MatchTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      expected = r"Callable\[\[Union\[bool, int\]\], Union\[bool, int\]\]"
+      expected = r"Callable\[\[bool \| int\], bool \| int\]"
       self.assertErrorRegexes(
           errors,
           {

@@ -1659,10 +1659,10 @@ class ImportTest(test_base.BaseTest):
           ty,
           """
         from foo import bar
-        from typing import Type, TypeVar
+        from typing import TypeVar
         _Tfoo = TypeVar("_Tfoo", bound=foo)
         class foo:
-          def __new__(cls: Type[_Tfoo]) -> _Tfoo: ...
+          def __new__(cls: type[_Tfoo]) -> _Tfoo: ...
       """,
       )
 

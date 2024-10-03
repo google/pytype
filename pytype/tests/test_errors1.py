@@ -308,12 +308,12 @@ class ErrorTest(test_base.BaseTest):
         e2_msg = "No attribute 'bar' on None"
         e3_msg = "No attribute 'bar' on int"
       else:
-        e2_msg = "No attribute 'bar' on int\nIn Optional[int]"
-        e3_msg = "No attribute 'bar' on None\nIn Optional[int]"
+        e2_msg = "No attribute 'bar' on int\nIn int | None"
+        e3_msg = "No attribute 'bar' on None\nIn int | None"
       self.assertErrorSequences(
           errors,
           {
-              "e1": ["No attribute 'foo' on Type[Foo]"],
+              "e1": ["No attribute 'foo' on type[Foo]"],
               "e2": [e2_msg],
               "e3": [e3_msg],
               "e4": ["No attribute 'baz' on module 'modfoo'"],
@@ -353,7 +353,7 @@ class ErrorTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      self.assertErrorSequences(errors, {"e": ["List[int]", "List[str]"]})
+      self.assertErrorSequences(errors, {"e": ["list[int]", "list[str]"]})
 
   def test_too_many_args(self):
     errors = self.CheckWithErrors("""
@@ -596,14 +596,14 @@ class ErrorTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      pattern = ["Expected", "Union[int, str]", "Actually passed"]
+      pattern = ["Expected", "int | str", "Actually passed"]
       self.assertErrorSequences(errors, {"e": pattern})
 
   def test_print_type_arg(self):
     errors = self.CheckWithErrors("""
       hex(int)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Actually passed.*Type\[int\]"})
+    self.assertErrorRegexes(errors, {"e": r"Actually passed.*type\[int\]"})
 
   def test_delete_from_set(self):
     errors = self.CheckWithErrors("""
@@ -692,7 +692,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors,
         {
-            "e1": ["Actually passed:", "self, x: List[nothing]"],
+            "e1": ["Actually passed:", "self, x: list[nothing]"],
             "e2": ["_, foobar"],
             "e3": ["Actually passed:", "self, x, foobar"],
             "e4": ["Actually passed:", "self, x, x"],
@@ -721,7 +721,7 @@ class ErrorTest(test_base.BaseTest):
         def __init__(self):
           super(B, A).__init__()  # A cannot be the second argument to super  # wrong-arg-types[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["Type[B]", "Type[A]"]})
+    self.assertErrorSequences(errors, {"e": ["type[B]", "type[A]"]})
 
   def test_bad_name_import(self):
     with test_utils.Tempdir() as d:
@@ -780,7 +780,7 @@ class ErrorTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      error = ["Expected", "Type[a.A]", "Actual", "Type[a.C]"]
+      error = ["Expected", "type[a.A]", "Actual", "type[a.C]"]
       self.assertErrorSequences(errors, {"e": error})
       self.assertTypesMatchPytd(
           ty,
@@ -812,7 +812,7 @@ class ErrorTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      expected_error = ["Expected", "Type[a.A[int]]", "Actual", "Type[a.B]"]
+      expected_error = ["Expected", "type[a.A[int]]", "Actual", "type[a.B]"]
       self.assertErrorSequences(errors, {"e": expected_error})
 
   def test_mro_error(self):
@@ -953,21 +953,21 @@ class ErrorTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       X = type("X", (42,), {"a": 1})  # wrong-arg-types[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["Actual", "Tuple[int]"]})
+    self.assertErrorSequences(errors, {"e": ["Actual", "tuple[int]"]})
 
   def test_half_bad_type_bases(self):
     errors = self.CheckWithErrors("""
       X = type("X", (42, object), {"a": 1})  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Actual", "Tuple[int, Type[object]]"]}
+        errors, {"e": ["Actual", "tuple[int, type[object]]"]}
     )
 
   def test_bad_type_members(self):
     errors = self.CheckWithErrors("""
       X = type("X", (int, object), {0: 1})  # wrong-arg-types[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["Actual", "Dict[int, int]"]})
+    self.assertErrorSequences(errors, {"e": ["Actual", "dict[int, int]"]})
 
   def test_recursion(self):
     with test_utils.Tempdir() as d:
@@ -1027,7 +1027,7 @@ class ErrorTest(test_base.BaseTest):
       x = {"a": 1}
       y = x.a  # attribute-error[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["a", "Dict[str, int]"]})
+    self.assertErrorSequences(errors, {"e": ["a", "dict[str, int]"]})
 
   def test_bad_pyi_dict(self):
     with test_utils.Tempdir() as d:
@@ -1090,7 +1090,7 @@ class ErrorTest(test_base.BaseTest):
       f("hello")
       f([])
     """)
-    self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"List.*int"})
+    self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"list.*int"})
 
   def test_kwarg_order(self):
     with test_utils.Tempdir() as d:
@@ -1128,7 +1128,7 @@ class ErrorTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       class Bar(None if __random__ else 42): pass  # base-class-error[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["Optional[<instance of int>]"]})
+    self.assertErrorSequences(errors, {"e": ["<instance of int> | None"]})
 
   @test_utils.skipUnlessPy(
       (3, 10), (3, 12), reason="3.10/3.12: log one error per bad option"
@@ -1196,7 +1196,7 @@ class ErrorTest(test_base.BaseTest):
       a = "".join(a)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"\(.*List\[int\]\)$"}
+        errors, {"e": r"\(.*list\[int\]\)$"}
     )  # no protocol details
 
   def test_protocol_signatures(self):
@@ -1237,7 +1237,7 @@ class ErrorTest(test_base.BaseTest):
         y = x if __random__ else None
         return y.groups()  # attribute-error[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Optional\[Any\]"})
+    self.assertErrorRegexes(errors, {"e": r"Any \| None"})
 
 
 class OperationsTest(test_base.BaseTest):
@@ -1297,7 +1297,7 @@ class RevealTypeTest(test_base.BaseTest):
       reveal_type([1,2,3])  # reveal-type[e3]
     """)
     self.assertErrorSequences(
-        errors, {"e1": ["Type[Foo]"], "e2": ["Foo"], "e3": ["List[int]"]}
+        errors, {"e1": ["type[Foo]"], "e2": ["Foo"], "e3": ["list[int]"]}
     )
 
   def test_reveal_type_expression(self):
@@ -1306,7 +1306,7 @@ class RevealTypeTest(test_base.BaseTest):
       y = "foo"
       reveal_type(x or y)  # reveal-type[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["Union[int, str]"]})
+    self.assertErrorSequences(errors, {"e": ["int | str"]})
 
   def test_combine_containers(self):
     errors = self.CheckWithErrors("""
@@ -1315,7 +1315,7 @@ class RevealTypeTest(test_base.BaseTest):
       y: Set[Union[str, bytes]]
       reveal_type(x | y)  # reveal-type[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["Set[Union[bytes, int, str]]"]})
+    self.assertErrorSequences(errors, {"e": ["set[bytes | int | str]"]})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):
@@ -1326,7 +1326,7 @@ class InPlaceOperationsTest(test_base.BaseTest):
       def f(): v = []; v += 3  # unsupported-operands[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["+=", "List", "int", "__iadd__ on List", "Iterable"]}
+        errors, {"e": ["+=", "list", "int", "__iadd__ on list", "Iterable"]}
     )
 
 
@@ -1339,14 +1339,14 @@ class NoSymbolOperationsTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(
         errors,
-        {"e": r"item retrieval.*List.*str.*__getitem__ on List.*SupportsIndex"},
+        {"e": r"item retrieval.*list.*str.*__getitem__ on list.*SupportsIndex"},
     )
 
   def test_delitem(self):
     errors = self.CheckWithErrors("""
       def f(): v = {'foo': 3}; del v[3]  # unsupported-operands[e]
     """)
-    d = "Dict[str, int]"
+    d = "dict[str, int]"
     self.assertErrorSequences(
         errors, {"e": ["item deletion", d, "int", f"__delitem__ on {d}", "str"]}
     )
@@ -1359,8 +1359,8 @@ class NoSymbolOperationsTest(test_base.BaseTest):
         errors,
         {
             "e": (
-                r"item assignment.*List.*str.*__setitem__ on"
-                r" List.*SupportsIndex"
+                r"item assignment.*list.*str.*__setitem__ on"
+                r" list.*SupportsIndex"
             )
         },
     )

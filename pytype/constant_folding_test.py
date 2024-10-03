@@ -257,23 +257,23 @@ class TypeBuilderTest(TypeBuilderTestBase):
 
   def test_homogeneous_list(self):
     val = self._convert(("list", int))
-    self.assertPytd(val, "List[int]")
+    self.assertPytd(val, "list[int]")
 
   def test_heterogeneous_list(self):
     val = self._convert(("list", (int, str)))
-    self.assertPytd(val, "List[Union[int, str]]")
+    self.assertPytd(val, "list[int | str]")
 
   def test_homogeneous_map(self):
     val = self._convert(("map", str, int))
-    self.assertPytd(val, "Dict[str, int]")
+    self.assertPytd(val, "dict[str, int]")
 
   def test_heterogeneous_map(self):
     val = self._convert(("map", (str, int), (("list", str), str)))
-    self.assertPytd(val, "Dict[Union[int, str], Union[List[str], str]]")
+    self.assertPytd(val, "dict[int | str, list[str] | str]")
 
   def test_tuple(self):
     val = self._convert(("tuple", str, int, bool))
-    self.assertPytd(val, "Tuple[str, int, bool]")
+    self.assertPytd(val, "tuple[str, int, bool]")
 
 
 class PyvalTest(TypeBuilderTestBase):
@@ -291,7 +291,7 @@ class PyvalTest(TypeBuilderTestBase):
     """)
     a = defs["a"].data[0]
     b = defs["b"].data[0]
-    self.assertPytd(a, "List[Union[int, str]]")
+    self.assertPytd(a, "list[int | str]")
     self.assertPytd(b, "str")
     self.assertEqual(a.pyval[0].data[0].pyval, 1)
 
@@ -303,9 +303,9 @@ class PyvalTest(TypeBuilderTestBase):
     a = defs["a"].data[0]
     b = defs["b"].data[0]
     c = defs["c"].data[0]
-    t1 = "List[Union[int, str]]"
-    t2 = "List[int]"
-    self.assertPytd(a, f"List[Union[{t2}, {t1}]]")
+    t1 = "list[int | str]"
+    t2 = "list[int]"
+    self.assertPytd(a, f"list[{t2} | {t1}]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
 
@@ -318,12 +318,12 @@ class PyvalTest(TypeBuilderTestBase):
     b = defs["b"].data[0]
     c = defs["c"].data[0]
     d = defs["d"].data[0]
-    t1 = "List[int]"
-    t2 = "List[str]"
-    self.assertPytd(a, "List[Union[List[int], List[str]]]")
+    t1 = "list[int]"
+    t2 = "list[str]"
+    self.assertPytd(a, "list[list[int] | list[str]]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
-    self.assertPytd(d, "List[Union[List[int], List[str]]]")
+    self.assertPytd(d, "list[list[int] | list[str]]")
 
   def test_long_list_of_tuples(self):
     elts = ["  (1, 2),", "  ('a', False),"] * 82
@@ -334,12 +334,12 @@ class PyvalTest(TypeBuilderTestBase):
     b = defs["b"].data[0]
     c = defs["c"].data[0]
     d = defs["d"].data[0]
-    t1 = "Tuple[int, int]"
-    t2 = "Tuple[str, bool]"
-    self.assertPytd(a, f"List[Union[{t1}, {t2}]]")
+    t1 = "tuple[int, int]"
+    t2 = "tuple[str, bool]"
+    self.assertPytd(a, f"list[{t1} | {t2}]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
-    self.assertPytd(d, f"List[Union[{t1}, {t2}]]")
+    self.assertPytd(d, f"list[{t1} | {t2}]")
 
   def test_simple_map(self):
     defs = self._process("""
@@ -350,7 +350,7 @@ class PyvalTest(TypeBuilderTestBase):
     a = defs["a"].data[0]
     b = defs["b"].data[0]
     c = defs["c"].data[0]
-    self.assertPytd(a, "Dict[str, Union[int, str]]")
+    self.assertPytd(a, "dict[str, int | str]")
     self.assertPytd(b, "int")
     self.assertPytd(c, "str")
     self.assertEqual(a.pyval["b"].data[0].pyval, 1)
@@ -377,9 +377,9 @@ class PyvalTest(TypeBuilderTestBase):
     b = defs["b"].data[0]
     c = defs["c"].data[0]
     d = defs["d"].data[0]
-    t1 = "List[Union[int, str]]"
-    t2 = "Dict[str, Union[bool, int]]"
-    self.assertPytd(a, f"Dict[str, Union[{t2}, {t1}]]")
+    t1 = "list[int | str]"
+    t2 = "dict[str, bool | int]"
+    self.assertPytd(a, f"dict[str, {t2} | {t1}]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
     self.assertPytd(d, "int")
@@ -401,14 +401,14 @@ class PyvalTest(TypeBuilderTestBase):
     src = ["a = {"] + elts + ["}"]
     defs = self._process("\n".join(src))
     a = defs["a"].data[0]
-    self.assertPytd(a, "Dict[str, List[int]]")
+    self.assertPytd(a, "dict[str, list[int]]")
 
   def test_long_map_with_tuple_keys(self):
     elts = [f"  ({i}, True): 'a'," for i in range(64)]
     src = ["a = {"] + elts + ["}"]
     defs = self._process("\n".join(src))
     a = defs["a"].data[0]
-    self.assertPytd(a, "Dict[Tuple[int, bool], str]")
+    self.assertPytd(a, "dict[tuple[int, bool], str]")
     self.assertFalse(a.pyval)
 
   def test_nested_long_map(self):
@@ -426,10 +426,10 @@ class PyvalTest(TypeBuilderTestBase):
     d = defs["d"].data[0]
     e = defs["e"].data[0]
     self.assertPytd(a, "int")
-    self.assertPytd(b, "Dict[str, List[Union[bool, int]]]")
-    self.assertPytd(c, "Dict[str, int]")
+    self.assertPytd(b, "dict[str, list[bool | int]]")
+    self.assertPytd(c, "dict[str, int]")
     self.assertPytd(d, "int")
-    self.assertPytd(e, "List[Union[bool, int]]")
+    self.assertPytd(e, "list[bool | int]")
 
 
 if __name__ == "__main__":

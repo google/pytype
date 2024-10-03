@@ -31,7 +31,7 @@ class FunctionCommentWithAnnotationsTest(test_base.BaseTest):
     """,
     )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"}
+        errors, {"e": r"Annotation: list\[str\].*Assignment: list\[None\]"}
     )
 
 

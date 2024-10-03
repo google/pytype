@@ -107,7 +107,7 @@ class TestUnpack(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      self.assertErrorRegexes(errors, {"e": r"w: A.*w: Union.int,.str."})
+      self.assertErrorRegexes(errors, {"e": r"w: A.*w: int \| str"})
 
   def test_unpack_concrete_in_function_args(self):
     self.CheckWithErrors("""

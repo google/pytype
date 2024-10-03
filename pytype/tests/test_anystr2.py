@@ -64,7 +64,7 @@ class AnyStrTest(test_base.BaseTest):
     )]):
       self.Check("""
         import foo
-        assert_type(foo.dofoo().name, 'Optional[str]')
+        assert_type(foo.dofoo().name, 'str | None')
       """)
 
 
@@ -129,7 +129,7 @@ class AnyStrTestPy3(test_base.BaseTest):
       v2 = ...  # type: Any
     """,
     )
-    self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
+    self.assertErrorRegexes(errors, {"e": r"bytes \| str\b.*int"})
 
   def test_constraint_mismatch(self):
     _, errors = self.InferWithErrors("""

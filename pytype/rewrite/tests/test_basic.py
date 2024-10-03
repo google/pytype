@@ -156,7 +156,7 @@ class ImportsTest(RewriteTest):
 
   def test_builtins(self):
     self.Check("""
-      assert_type(__builtins__.int, "Type[int]")
+      assert_type(__builtins__.int, "type[int]")
     """)
 
   def test_dotted_import(self):

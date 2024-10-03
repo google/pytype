@@ -16,14 +16,14 @@ class TestPEP484(parser_test_base.ParserTest):
     t = pytd.GenericType(
         pytd.NamedType("typing.Optional"), (pytd.NamedType("str"),)
     )
-    self.assertEqual(self.convert(t), "Optional[str]")
+    self.assertEqual(self.convert(t), "str | None")
 
   def test_convert_union(self):
     t = pytd.GenericType(
         pytd.NamedType("typing.Union"),
         (pytd.NamedType("str"), pytd.NamedType("float")),
     )
-    self.assertEqual(self.convert(t), "Union[str, float]")
+    self.assertEqual(self.convert(t), "str | float")
 
   def test_convert_list(self):
     t = pytd.NamedType("typing.List")

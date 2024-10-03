@@ -270,7 +270,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
     """)
     self.assertMultiLineEqual(
         pytd_utils.Print(ty.Lookup("foo")),
-        "def foo(x: X) -> Union[bytes, str]: ...",
+        "def foo(x: X) -> bytes | str: ...",
     )
 
   def test_bad_call(self):

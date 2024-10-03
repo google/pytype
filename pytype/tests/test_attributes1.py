@@ -832,7 +832,7 @@ class TestAttributes(test_base.BaseTest):
       for _ in v:  # attribute-error[e]
         pass
     """)
-    self.assertErrorRegexes(errors, {"e": r"__iter__.*int.*Union\[Foo, int\]"})
+    self.assertErrorRegexes(errors, {"e": r"__iter__.*int.*\bFoo \| int"})
 
   def test_bad_contains(self):
     errors = self.CheckWithErrors("""
@@ -843,9 +843,7 @@ class TestAttributes(test_base.BaseTest):
       if 42 in v:  # unsupported-operands[e]
         pass
     """)
-    self.assertErrorRegexes(
-        errors, {"e": r"'in'.*'.*Union\[Foo, int\]' and 'int'"}
-    )
+    self.assertErrorRegexes(errors, {"e": r"'in'.*'.*\bFoo \| int' and 'int'"})
 
   def test_subclass_shadowing(self):
     with test_utils.Tempdir() as d:

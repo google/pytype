@@ -11,6 +11,7 @@ from typing import IO, TypeVar
 from pytype import debug
 from pytype import pretty_printer_base
 from pytype import utils
+from pytype.abstract import abstract
 from pytype.errors import error_printer
 from pytype.errors import error_types
 from pytype.pytd import slots
@@ -1054,6 +1055,8 @@ class VmErrorLog(ErrorLog):
   ):
     """Log an error for an annotation with the wrong number of parameters."""
     base_type = self._pp.print_type_of_instance(annot)
+    if isinstance(annot, abstract.Union):
+      base_type = f"({base_type})"
     full_type = base_type + self._print_params_helper(params)
     if template:
       templated_type = f"{base_type}[{', '.join(template)}]"

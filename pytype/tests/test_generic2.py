@@ -90,7 +90,7 @@ class GenericBasicTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1": r"Union\[float, int\].*str",
+            "e1": r"float \| int\b.*str",
             "e2": r"x: int.*x: str",
             "e3": r"y: int.*y: str",
         },

@@ -71,11 +71,11 @@ class TupleTest(test_base.BaseTest):
       g(("",))  # okay
       g(tuple([""]))  # okay
     """)
-    x = r"Tuple\[str, \.\.\.\]"
-    y = r"Tuple\[str\]"
-    tuple_int = r"Tuple\[int\]"
-    tuple_ints = r"Tuple\[int, \.\.\.\]"
-    tuple_str_str = r"Tuple\[str, str\]"
+    x = r"tuple\[str, \.\.\.\]"
+    y = r"tuple\[str\]"
+    tuple_int = r"tuple\[int\]"
+    tuple_ints = r"tuple\[int, \.\.\.\]"
+    tuple_str_str = r"tuple\[str, str\]"
     self.assertErrorRegexes(
         errors,
         {
@@ -133,12 +133,12 @@ class TupleTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      expected = r"Tuple\[int, str\]"
-      actual = r"Tuple\[str, int\]"
+      expected = r"tuple\[int, str\]"
+      actual = r"tuple\[str, int\]"
       self.assertErrorRegexes(
           errors,
           {
-              "e1": rf"Type\[{expected}\].*Type\[{actual}\]",
+              "e1": rf"type\[{expected}\].*type\[{actual}\]",
               "e2": rf"{expected}.*{actual}",
               "e3": r"%s.*foo\.A" % expected,
           },

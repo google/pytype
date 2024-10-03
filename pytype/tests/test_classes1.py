@@ -205,11 +205,11 @@ class ClassesTest(test_base.BaseTest):
     self.assertTypesMatchPytd(
         ty,
         """
-      from typing import Type, TypeVar
+      from typing import TypeVar
       _TFoo = TypeVar('_TFoo', bound=Foo)
       class Foo:
         @classmethod
-        def factory(cls: Type[_TFoo], *args, **kwargs) -> _TFoo: ...
+        def factory(cls: type[_TFoo], *args, **kwargs) -> _TFoo: ...
     """,
     )
 

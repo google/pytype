@@ -253,7 +253,7 @@ class AnnotationTest(test_base.BaseTest):
         return y  # bad-return-type[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*int.*Actual.*Union(?=.*complex).*str"}
+        errors, {"e": r"Expected.*int.*Actual.*complex \| str"}
     )
 
   @test_utils.skipUnlessPy(
@@ -714,7 +714,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1": r"List\[int\] or List\[str\].*constant",
+            "e1": r"list\[int\] or list\[str\].*constant",
             "e2": r"int or str.*constant",
         },
     )
@@ -745,11 +745,11 @@ class AnnotationTest(test_base.BaseTest):
     )
     error1 = (
         r"Expected.*Mapping\[str, int\].*"
-        r"Actually passed.*Dict\[str, float\]"
+        r"Actually passed.*dict\[str, float\]"
     )
     error2 = (
         r"Expected.*Mapping\[str, int\].*"
-        r"Actually passed.*Dict\[float, int\]"
+        r"Actually passed.*dict\[float, int\]"
     )
     self.assertErrorRegexes(errors, {"e1": error1, "e2": error2})
 
@@ -1263,7 +1263,7 @@ class AnnotationTest(test_base.BaseTest):
           cluster_info_config[''] = {}  # container-type-mismatch[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Container: Dict\[_K, _V\].*_V: int.*_V: Dict"}
+        errors, {"e": r"Container: dict\[_K, _V\].*_V: int.*_V: dict"}
     )
 
   def test_check_defaults(self):
@@ -1375,7 +1375,7 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
       x: List[int] = []
       x.append("hello")  # container-type-mismatch[e]
     """)
-    pattern = r"Container.*List\[_T\].*Allowed.*int.*New.*str"
+    pattern = r"Container.*list\[_T\].*Allowed.*int.*New.*str"
     self.assertErrorRegexes(errors, {"e": pattern})
 
   def test_varargs(self):
@@ -1394,7 +1394,7 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
       def quack(x, *args: int) -> Tuple[int, ...]: ...
     """,
     )
-    error = r"Expected.*Iterable\[int\].*Actually passed.*Tuple\[float\]"
+    error = r"Expected.*Iterable\[int\].*Actually passed.*tuple\[float\]"
     self.assertErrorRegexes(errors, {"e": error})
 
   def test_container_multiple_mutations(self):
@@ -1404,7 +1404,7 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
       x["hello"] = 1.0  # container-type-mismatch[e]
     """)
     pattern = (
-        r"New container.*for x.*Dict\[_K, _V\].*"
+        r"New container.*for x.*dict\[_K, _V\].*"
         + r"Allowed.*_K.*int.*_V.*str.*"
         r"New.*_K.*str.*_V.*float"
     )
@@ -1475,8 +1475,8 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
           errors,
           {
               "e": (
-                  r"Allowed contained types.*Dict\[str, int\].*"
-                  r"New contained types.*List\[Dict\[str, int\]\]"
+                  r"Allowed contained types.*dict\[str, int\].*"
+                  r"New contained types.*list\[dict\[str, int\]\]"
               )
           },
       )

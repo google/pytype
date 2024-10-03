@@ -92,7 +92,7 @@ class TestAttributes(test_base.BaseTest):
     """,
     )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"}
+        errors, {"e": r"Annotation: list\[int\].*Assignment: list\[str\]"}
     )
 
   def test_set_attribute_in_other_class(self):

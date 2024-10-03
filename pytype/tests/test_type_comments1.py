@@ -732,7 +732,7 @@ class AssignmentCommentTest(test_base.BaseTest):
     """,
     )
     self.assertErrorRegexes(
-        errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"}
+        errors, {"e": r"Annotation: list\[str\].*Assignment: list\[None\]"}
     )
 
   def test_multiple_assignments(self):

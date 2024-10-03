@@ -547,7 +547,7 @@ class TestOptimize(parser_test_base.ParserTest):
         NEW = TypeVar('NEW')
         class MyClass(typing.Generic[T], object):
             def append(self, x: NEW) -> Any:
-                self = MyClass[Union[T, NEW]]
+                self = MyClass[T | NEW]
     """)
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.AbsorbMutableParameters())
@@ -555,7 +555,7 @@ class TestOptimize(parser_test_base.ParserTest):
     self_type = (
         new_tree.Lookup("MyClass").Lookup("append").signatures[0].params[0].type
     )
-    self.assertEqual(pytd_utils.Print(self_type), "MyClass[Union[T, NEW]]")
+    self.assertEqual(pytd_utils.Print(self_type), "MyClass[T | NEW]")
 
   def test_merge_type_parameters(self):
     # This test uses pytd of the kind that's typically the output of

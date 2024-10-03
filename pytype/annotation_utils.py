@@ -521,8 +521,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         frame_name = method.name
       details += f" for {desc} {frame_name!r}"
     if "AnyStr" in out_of_scope_params:
-      str_type = "Union[str, bytes]"
-      details += f"\nNote: For all string types, use {str_type}."
+      details += "\nNote: For all string types, use `str | bytes`."
     self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):

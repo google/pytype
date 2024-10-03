@@ -1206,6 +1206,7 @@ class CreateTypeParametersForSignatures(Visitor):
       return pytd_utils.Print(
           sig.return_type
       ) == safe_class_name and pytd_utils.Print(sig.params[0].type) in (
+          f"type[{safe_class_name}]",
           f"Type[{safe_class_name}]",
           safe_class_name,
       )
@@ -1633,12 +1634,12 @@ class ExpandSignatures(Visitor):
   """Expand to Cartesian product of parameter types.
 
   For example, this transforms
-    def f(x: Union[int, float], y: Union[int, float]) -> Union[str, unicode]
+    def f(x: int | float, y: int | float) -> str | unicode
   to
-    def f(x: int, y: int) -> Union[str, unicode]
-    def f(x: int, y: float) -> Union[str, unicode]
-    def f(x: float, y: int) -> Union[str, unicode]
-    def f(x: float, y: float) -> Union[str, unicode]
+    def f(x: int, y: int) -> str | unicode
+    def f(x: int, y: float) -> str | unicode
+    def f(x: float, y: int) -> str | unicode
+    def f(x: float, y: float) -> str | unicode
 
   The expansion by this class is typically *not* an optimization. But it can be
   the precursor for optimizations that need the expanded signatures, and it can
