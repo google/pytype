@@ -461,6 +461,76 @@ class TypeGuardTest(test_base.BaseTest):
         assert_type(e2, int)
     """)
 
+  def test_only_use_visible_bindings(self):
+    with self.DepTree([(
+        "foo.pyi",
+        """
+        from typing import TypeGuard
+        class Foo: ...
+        def isfoo(x: object) -> TypeGuard[Foo]: ...
+        """,
+    )]):
+      self.Check("""
+        import foo
+
+        value = 1
+        del value  # add "Deleted" binding for `value`
+        value = 2
+        if foo.isfoo(value):
+          print(value)  # "Deleted" binding should not be visible here
+      """)
+
+  def test_dont_hide_previous_bindings(self):
+    with self.DepTree([(
+        "foo.pyi",
+        """
+        from typing import TypeGuard
+        class Foo: ...
+        class Bar: ...
+        class Baz: ...
+        def isbar(x: object) -> TypeGuard[Bar]: ...
+        def isbaz(x: object) -> TypeGuard[Baz]: ...
+        """,
+    )]):
+      errors = self.CheckWithErrors("""
+        import foo
+
+        def takes_foo(x: foo.Foo):
+          pass
+
+        def test(x: foo.Foo):
+          is_bar = foo.isbar(x)
+          is_baz = foo.isbaz(x)
+          takes_foo(x)
+          reveal_type(x)  # reveal-type[e]
+      """)
+      # This documents a slightly incorrect type inference. Arguably `x` should
+      # just be `Foo` here.
+      self.assertErrorSequences(
+          errors, {"e": "Union[foo.Bar, foo.Baz, foo.Foo]"}
+      )
+
+  def test_type_guard_matches_input_type(self):
+    with self.DepTree([(
+        "foo.pyi",
+        """
+        from typing import TypeGuard
+        class Foo: ...
+        def isfoo(x: object) -> TypeGuard[Foo]: ...
+        """,
+    )]):
+      self.Check("""
+        import foo
+
+        class Test:
+          def __init__(self, value: foo.Foo):
+            if not foo.isfoo(value):
+              raise ValueError('"value" must be a Foo')
+            self.value = value
+
+        print(Test(foo.Foo()).value)  # .value must be defined here
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
