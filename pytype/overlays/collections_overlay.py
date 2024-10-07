@@ -33,4 +33,7 @@ class ABCOverlay(typing_overlay.Redirect):
   """A custom overlay for the 'collections.abc' module."""
 
   def __init__(self, ctx):
-    super().__init__("collections.abc", {"Set": "typing.AbstractSet"}, ctx)
+    # collections.abc.Set equates to typing.AbstractSet rather than typing.Set.
+    # This is the only such mismatch.
+    aliases = {"Set": "typing.AbstractSet"}
+    super().__init__("collections.abc", aliases, ctx)
