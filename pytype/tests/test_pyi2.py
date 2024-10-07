@@ -129,6 +129,16 @@ class PYITest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
+      self.Check(
+          """
+        from typing import Type, List, Union
+        import foo
+        assert_type(foo.X1, Type[List[int]])
+        assert_type(foo.X2, Type[List[foo.Z[str]]])
+        assert_type(foo.X3, Type[Union[foo.Z[int], int]])
+      """,
+          pythonpath=[d.path],
+      )
 
   def test_bare_callable(self):
     with self.DepTree([(

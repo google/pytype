@@ -390,14 +390,17 @@ class AssertTypeTest(test_base.BaseTest):
 
   def test_assert_type(self):
     _, errors = self.InferWithErrors("""
-      from typing import Union
+      from typing import List, Union
       class A: pass
-      def f(x: int, y: str, z):
+      def f(x: int, y: List[str], z):
         assert_type(x, int)
         assert_type(y, int)  # assert-type[e]
         if __random__:
           x = A()
         assert_type(x, Union[A, int])
+        assert_type(x, A | int)
+        assert_type(y, List[str])
+        assert_type(y, list[str])
     """)
     self.assertErrorSequences(
         errors,
@@ -408,13 +411,17 @@ class AssertTypeTest(test_base.BaseTest):
 
   def test_assert_type_str(self):
     _, errors = self.InferWithErrors("""
+      from typing import List, Union
       class A: pass
-      def f(x: int, y: str, z):
+      def f(x: int, y: List[str], z):
         assert_type(x, 'int')
         assert_type(y, 'int')  # assert-type[e]
         if __random__:
           x = A()
         assert_type(x, 'Union[A, int]')
+        assert_type(x, 'A | int')
+        assert_type(y, 'List[str]')
+        assert_type(y, 'list[str]')
     """)
     self.assertErrorSequences(
         errors,
@@ -458,6 +465,7 @@ class AssertTypeTest(test_base.BaseTest):
       x: Set[Union[int, str]]
       y: Set[Union[str, bytes]]
       assert_type(x | y, "Set[Union[bytes, int, str]]")
+      assert_type(x | y, set[int | str | bytes])
     """)
 
 
