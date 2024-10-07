@@ -735,7 +735,12 @@ class TestVisitors(parser_test_base.ParserTest):
         b: A.B
         def f(self, x: A.B) -> A.B: ...
     """)
-    expected = textwrap.dedent("""
+    ast = self.Parse(src)
+
+    ast = ast.Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
       from typing import Type
 
       foo.b: foo.A.B
@@ -749,14 +754,29 @@ class TestVisitors(parser_test_base.ParserTest):
           def f(self, x: foo.A.B) -> foo.A.B: ...
 
       def foo.f(x: foo.A.B) -> foo.A.B: ...
-    """).strip()
+    """).strip(),
+    )
+
+    # Check that even after `RemoveNamePrefix`, the type annotation for `self`
+    # is skipped from being printed.
+    ast = ast.Visit(visitors.RemoveNamePrefix())
     self.assertMultiLineEqual(
-        expected,
-        pytd_utils.Print(
-            self.Parse(src)
-            .Replace(name="foo")
-            .Visit(visitors.ResolveLocalNames())
-        ),
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
+      from typing import Type
+
+      b: A.B
+      C: Type[A.B]
+
+      class A:
+          class B: ...
+
+      class D:
+          b: A.B
+          def f(self, x: A.B) -> A.B: ...
+
+      def f(x: A.B) -> A.B: ...
+    """).strip(),
     )
 
   def test_add_name_prefix_on_nested_class_method(self):
@@ -765,18 +785,28 @@ class TestVisitors(parser_test_base.ParserTest):
         class B:
           def copy(self) -> A.B: ...
     """)
-    expected = textwrap.dedent("""
+    ast = self.Parse(src)
+
+    ast = ast.Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
       class foo.A:
           class foo.A.B:
               def copy(self) -> foo.A.B: ...
-    """).strip()
+    """).strip(),
+    )
+
+    # Check that even after `RemoveNamePrefix`, the type annotation for `self`
+    # is skipped from being printed.
+    ast = ast.Visit(visitors.RemoveNamePrefix())
     self.assertMultiLineEqual(
-        expected,
-        pytd_utils.Print(
-            self.Parse(src)
-            .Replace(name="foo")
-            .Visit(visitors.ResolveLocalNames())
-        ),
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
+      class A:
+          class B:
+              def copy(self) -> A.B: ...
+    """).strip(),
     )
 
   def test_print_merge_types(self):

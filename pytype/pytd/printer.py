@@ -136,7 +136,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def __init__(self, multiline_args=False):
     super().__init__()
-    self.class_names = []  # allow nested classes
+    self.class_names = []  # can contain nested classes
     self.in_alias = False
     self.in_parameter = False
     self.in_literal = False
@@ -614,18 +614,36 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
-    # For parameterized class, for example: ClsName[T, V].
-    # Its name is `ClsName` before `[`.
-    class_name = self.class_names[-1].split("[")[0] if self.class_names else ""
+
+    def class_name():
+      if not self.class_names:
+        return ""
+      # For the typical case with a nested class, `self.class_names` looks like:
+      # ['module.submodule.Class', 'module.submodule.Class.NestedClass']
+      # And `node.type` looks like: 'module.submodule.Class.NestedClass'.
+      # So we can just take the innermost class name and they will match.
+      #
+      # However, if `visitors.RemoveNamePrefix()` has been applied, then it's:
+      # ['Class', 'NestedClass']
+      # And `node.type` looks like: 'Class.NestedClass'.
+      # So, need to join the class names for these values to match.
+      prefixes_have_been_removed = (
+          "." in node.type and "." not in self.class_names[-1]
+      )
+      if prefixes_have_been_removed:
+        return ".".join(_strip_generics(c) for c in self.class_names)
+      return _strip_generics(self.class_names[-1])
+
     if isinstance(self.old_node.type, pytd.AnythingType):
       # Abbreviated form. "Any" is the default.
       self._imports.decrement_typing_count("Any")
       return node.name + suffix
-    elif node.name == "self" and class_name == node.type.split("[")[0]:
+    # TODO: this should not be relying on the parameter names "self"/"cls".
+    elif node.name == "self" and class_name() == _strip_generics(node.type):
       self._DecrementParameterImports(node.type)
       return node.name + suffix
     elif node.name == "cls" and re.fullmatch(
-        rf"Type\[{class_name}(\[.+\])?\]", node.type
+        rf"Type\[{class_name()}(\[.+\])?\]", node.type
     ):
       self._imports.decrement_typing_count("Type")
       self._DecrementParameterImports(node.type[5:-1])
@@ -870,3 +888,8 @@ class PrintVisitor(base_visitor.Visitor):
     base = self._FromTyping("Annotated")
     annotations = ", ".join(node.annotations)
     return f"{base}[{node.base_type}, {annotations}]"
+
+
+def _strip_generics(type_name: str) -> str:
+  """Strips generic parameters from a type name."""
+  return type_name.split("[", 1)[0]
