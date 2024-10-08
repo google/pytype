@@ -3,6 +3,7 @@
 import collections
 from collections.abc import Iterable
 import dataclasses
+import functools
 import logging
 import os
 
@@ -419,11 +420,7 @@ class Loader:
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
     self._module_loader = module_loader.ModuleLoader(options)
-    pyi_options = parser.PyiOptions.from_toplevel_options(options)
-    self._builtin_loader = builtin_stubs.BuiltinLoader(pyi_options)
-    self._typeshed_loader = typeshed.TypeshedLoader(
-        pyi_options, missing_modules
-    )
+    self._missing_modules = missing_modules
     self._resolver = _Resolver(self.builtins)
     self._late_type_loader = _LateTypeLoader(self)
     self._import_name_cache = {}  # performance cache
@@ -432,6 +429,18 @@ class Loader:
     # Paranoid verification that pytype.main properly checked the flags:
     if options.imports_map is not None:
       assert options.pythonpath == [""], options.pythonpath
+
+  @functools.cached_property
+  def _typeshed_loader(self):
+    return typeshed.TypeshedLoader(self._pyi_options, self._missing_modules)
+
+  @functools.cached_property
+  def _builtin_loader(self):
+    return builtin_stubs.BuiltinLoader(self._pyi_options)
+
+  @functools.cached_property
+  def _pyi_options(self):
+    return parser.PyiOptions.from_toplevel_options(self.options)
 
   def get_default_ast(self):
     return builtin_stubs.GetDefaultAst(
