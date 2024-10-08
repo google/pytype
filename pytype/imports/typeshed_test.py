@@ -113,7 +113,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
           file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n"
       )
       self.ts._store = TypeshedTestFs(d.path)
-      _, src = self.ts.get_module_file("stdlib", "foo", (3, 10))
+      filename, src = self.ts.get_module_file("stdlib", "foo", (3, 10))
+    self.assertEqual(file_utils.replace_separator("stdlib/foo.pyi"), filename)
     self.assertEqual(src, "x: int\n")
 
 
