@@ -3107,7 +3107,7 @@ class VirtualMachine:
     unchanged = self.ctx.program.NewVariable()
     state, tos = state.pop()
     for b in tos.bindings:
-      if b.data.full_name in ("builtins.generator", "builtins.coroutine"):
+      if b.data.full_name in ("typing.Generator", "typing.Coroutine"):
         unchanged.PasteBinding(b)
       else:
         get_iter.PasteBinding(b)
@@ -3250,7 +3250,7 @@ class VirtualMachine:
   def _get_generator_yield(self, node, generator_var):
     yield_var = self.frame.yield_variable.AssignToNewVariable(node)
     for generator in generator_var.data:
-      if generator.full_name == "builtins.generator":
+      if generator.full_name == "typing.Generator":
         yield_value = generator.get_instance_type_parameter(abstract_utils.T)
         yield_var.PasteVariable(yield_value, node)
     return yield_var
@@ -3272,7 +3272,7 @@ class VirtualMachine:
               generator.cls, (abstract.ParameterizedClass, abstract.PyTDClass)
           )
           and generator.cls.full_name
-          in ("typing.Awaitable", "builtins.coroutine", "builtins.generator")
+          in ("typing.Awaitable", "typing.Coroutine", "typing.Generator")
       ):
         if generator.cls.full_name == "typing.Awaitable":
           ret = generator.get_instance_type_parameter(abstract_utils.T)

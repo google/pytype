@@ -754,13 +754,6 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitModule(self, node):
     return "module"
 
-  def MaybeCapitalize(self, name):
-    """Capitalize a generic type, if necessary."""
-    if name in pep484.PYTYPE_SPECIFIC_FAKE_BUILTINS:
-      return self._FromTyping(pep484.PYTYPE_SPECIFIC_FAKE_BUILTINS[name])
-    else:
-      return name
-
   def VisitGenericType(self, node):
     """Convert a generic type to a string."""
     parameters = node.parameters
@@ -776,15 +769,10 @@ class PrintVisitor(base_visitor.Visitor):
       else:
         assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
-    return (
-        self.MaybeCapitalize(node.base_type)
-        + "["
-        + ", ".join(str(p) for p in parameters)
-        + "]"
-    )
+    return node.base_type + "[" + ", ".join(str(p) for p in parameters) + "]"
 
   def VisitCallableType(self, node):
-    typ = self.MaybeCapitalize(node.base_type)
+    typ = node.base_type
     if len(node.args) == 1 and node.args[0] in self._paramspec_names:
       return f"{typ}[{node.args[0]}, {node.ret}]"
     elif node.args and "Concatenate" in node.args[0]:

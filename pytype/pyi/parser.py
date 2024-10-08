@@ -395,7 +395,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         abstract = True
       elif self.defs.matches_type(
           d.name,
-          ("builtins.coroutine", "asyncio.coroutine", "coroutines.coroutine"),
+          ("typing.Coroutine", "asyncio.coroutine", "coroutines.coroutine"),
       ):
         coroutine = True
       elif self.defs.matches_type(d.name, "typing.final"):
