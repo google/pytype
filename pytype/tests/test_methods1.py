@@ -576,7 +576,7 @@ class MethodsTest(test_base.BaseTest):
     self.Check("""
       def f(nr, **kwargs):
         return kwargs
-      assert_type(f(3), "Dict[nothing, nothing]")
+      assert_type(f(3), "dict[nothing, nothing]")
     """)
 
   def test_starstar_deep(self):

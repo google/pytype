@@ -64,7 +64,7 @@ class ErrorTest(test_base.BaseTest):
         x = [float]
       f(x)  # wrong-arg-types[e]
     """)
-    error = ["Actual", "Union[List[Type[float]], Type[dict]]"]
+    error = ["Actual", "Union[list[type[float]], type[dict]]"]
     self.assertErrorSequences(errors, {"e": error})
 
   def test_wrong_brackets(self):
@@ -101,9 +101,9 @@ class ErrorTest(test_base.BaseTest):
         errors,
         {
             "e1": ["(int, str)", "Not a type"],
-            "e2": ["instance of Tuple[int, ...]", "Not a type"],
+            "e2": ["instance of tuple[int, ...]", "Not a type"],
             "e3": ["{'a': 1}", "Not a type"],
-            "e4": ["instance of Dict[str, int]", "Not a type"],
+            "e4": ["instance of dict[str, int]", "Not a type"],
         },
     )
 
@@ -326,12 +326,12 @@ class ErrorTest(test_base.BaseTest):
         errors,
         {
             "e1": [
-                "{'a': 1, 'b': 'hello'}: Dict[str, Union[int, str]]",
-                "[1, 2]: List[int]",
+                "{'a': 1, 'b': 'hello'}: dict[str, Union[int, str]]",
+                "[1, 2]: list[int]",
             ],
             "e2": [
-                "{...: ...}: Dict[Union[int, str], Union[A, int]",
-                "[..., 2]: List[Union[A, int]]",
+                "{...: ...}: dict[Union[int, str], Union[A, int]",
+                "[..., 2]: list[Union[A, int]]",
             ],
         },
     )

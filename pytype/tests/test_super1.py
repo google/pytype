@@ -229,7 +229,7 @@ class SuperTest(test_base.BaseTest):
     )
     self.assertErrorRegexes(
         errors,
-        {"e1": r"'foo' on super", "e2": r"Type\[super\].*Type\[object\]"},
+        {"e1": r"'foo' on super", "e2": r"type\[super\].*type\[object\]"},
     )
 
   def test_super_under_decorator(self):

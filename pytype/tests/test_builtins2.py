@@ -448,9 +448,9 @@ class BuiltinTests2(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1": r"Set\[int\]",
-            "e2": r"FrozenSet\[int\]",
-            "e3": r"Dict\[bool, int\]",
+            "e1": r"set\[int\]",
+            "e2": r"frozenset\[int\]",
+            "e3": r"dict\[bool, int\]",
         },
     )
 

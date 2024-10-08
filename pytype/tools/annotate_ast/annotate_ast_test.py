@@ -43,9 +43,9 @@ class AnnotaterTest(test_base.BaseTest):
 
     expected = {
         (1, 'Name', 'a'): 'int',
-        (2, 'Name', 'b'): 'Dict[int, str]',
-        (3, 'Name', 'c'): 'List[int]',
-        (4, 'Name', 'd'): 'Tuple[int, int]',
+        (2, 'Name', 'b'): 'dict[int, str]',
+        (3, 'Name', 'c'): 'list[int]',
+        (4, 'Name', 'd'): 'tuple[int, int]',
     }
     self.assertEqual(expected, self.get_annotations_dict(module))
 

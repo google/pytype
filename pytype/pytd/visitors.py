@@ -1206,6 +1206,7 @@ class CreateTypeParametersForSignatures(Visitor):
       return pytd_utils.Print(
           sig.return_type
       ) == safe_class_name and pytd_utils.Print(sig.params[0].type) in (
+          f"type[{safe_class_name}]",
           f"Type[{safe_class_name}]",
           safe_class_name,
       )

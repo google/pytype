@@ -405,7 +405,7 @@ class ImportPathsTest(_LoaderTest):
       )
       module2 = loader.import_name("module2")
       (f,) = module2.Lookup("module2.f").signatures
-      self.assertEqual("List[int]", pytd_utils.Print(f.return_type))
+      self.assertEqual("list[int]", pytd_utils.Print(f.return_type))
 
   def test_import_map_congruence(self):
     with test_utils.Tempdir() as d:
@@ -782,10 +782,9 @@ class ImportPathsTest(_LoaderTest):
       self.assertEqual(
           pytd_utils.Print(bar),
           textwrap.dedent("""
-        import typing
         from builtins import list as List
 
-        def bar.f() -> typing.List[int]: ...
+        def bar.f() -> list[int]: ...
       """).strip(),
       )
 
@@ -976,7 +975,7 @@ class ImportTypeMacroTest(_LoaderTest):
     """,
     )
     self.assertEqual(
-        pytd_utils.Print(ast.Lookup("b.Strings").type), "List[str]"
+        pytd_utils.Print(ast.Lookup("b.Strings").type), "list[str]"
     )
 
   def test_union(self):
@@ -992,13 +991,13 @@ class ImportTypeMacroTest(_LoaderTest):
     """,
     )
     self.assertEqual(
-        pytd_utils.Print(ast.Lookup("b.Strings").type), "Union[str, List[str]]"
+        pytd_utils.Print(ast.Lookup("b.Strings").type), "Union[str, list[str]]"
     )
 
   def test_bad_parameterization(self):
     with self.assertRaisesRegex(
         load_pytd.BadDependencyError,
-        r"Union\[T, List\[T\]\] expected 1 parameters, got 2",
+        r"Union\[T, list\[T\]\] expected 1 parameters, got 2",
     ):
       self._import(
           a="""

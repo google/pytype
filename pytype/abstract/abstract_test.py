@@ -463,7 +463,7 @@ class FunctionTest(AbstractTestBase):
         ),
     )
     self.assertEqual(
-        repr(sig), "def f(self: Any, *args: Tuple[Any, ...]) -> Any"
+        repr(sig), "def f(self: Any, *args: tuple[Any, ...]) -> Any"
     )
     self.assertIs(sig.annotations["self"], self._ctx.convert.unsolvable)
     args_type = sig.annotations["args"]
@@ -1221,7 +1221,7 @@ class SimpleFunctionTest(AbstractTestBase):
     )
     fp = self._ctx.pytd_convert.value_to_pytd_def(node, f, f.name)
     f_str = (
-        "def test(a: str, b: int = ..., *c: str, d: Dict[str, int] = ...,"
+        "def test(a: str, b: int = ..., *c: str, d: dict[str, int] = ...,"
         " e: int, **f: str) -> str: ..."
     )
     self.assertEqual(pytd_utils.Print(fp), f_str)

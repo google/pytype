@@ -88,7 +88,7 @@ class MapTest(test_base.BaseTest):
       map(func, ['str'])  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]}
+        errors, {"e": ["Expected", "Iterable[int]", "Actual", "list[str]"]}
     )
 
   def test_abspath(self):

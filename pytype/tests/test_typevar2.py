@@ -174,7 +174,7 @@ class TypeVarTest(test_base.BaseTest):
             "e1": r"list.*set",
             "e2": r"str.*int",
             "e3": r"bool.*int",
-            "e4": r"List\[bool\].*List\[Union\[float, int\]\]",
+            "e4": r"list\[bool\].*list\[Union\[float, int\]\]",
         },
     )
 
@@ -230,7 +230,7 @@ class TypeVarTest(test_base.BaseTest):
         return x()[0]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*int.*Actual.*Type\[Sequence\]"}
+        errors, {"e": r"Expected.*int.*Actual.*type\[Sequence\]"}
     )
 
   def test_print_nested_type_parameter(self):
@@ -241,7 +241,7 @@ class TypeVarTest(test_base.BaseTest):
       f([""])  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"List\[Union\[float, int\]\].*List\[str\]"}
+        errors, {"e": r"list\[Union\[float, int\]\].*list\[str\]"}
     )
 
   def test_constraint_subtyping(self):

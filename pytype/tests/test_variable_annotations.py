@@ -33,7 +33,7 @@ class VariableAnnotationsBasicTest(test_base.BaseTest):
       """,
           pythonpath=[d.path],
       )
-      self.assertErrorRegexes(errors, {"e1": r"int.*List", "e2": r"int.*str"})
+      self.assertErrorRegexes(errors, {"e1": r"int.*list", "e2": r"int.*str"})
 
   def test_typevar_annot_with_subclass(self):
     self.Check("""

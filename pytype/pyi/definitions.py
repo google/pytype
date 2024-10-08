@@ -589,11 +589,8 @@ class Definitions:
     if t.name is None:
       return False
     module, _, name = t.name.rpartition(".")
-    return (
-        not module
-        and name in pep484.BUILTIN_TO_TYPING
-        or module == "typing"
-        and name in pep484.ALL_TYPING_NAMES
+    return (not module and name in pep484.BUILTIN_TO_TYPING) or (
+        module == "typing" and name in pep484.ALL_TYPING_NAMES
     )
 
   def _check_for_illegal_parameters(self, base_type, parameters, is_callable):

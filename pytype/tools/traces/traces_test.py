@@ -158,9 +158,13 @@ class MatchAttributeTest(MatchAstTestCase):
     # The second attribute is at the wrong location due to limitations of
     # source.Code.get_attr_location(), but we can at least test that we get the
     # right number of traces with the right types.
-    self.assertTracesEqual(matches, [
-        ((4, 5), "LOAD_ATTR", "real", ("Type[Foo]", "bool")),
-        ((4, 5), "LOAD_ATTR", "real", ("int", "int"))])
+    self.assertTracesEqual(
+        matches,
+        [
+            ((4, 5), "LOAD_ATTR", "real", ("type[Foo]", "bool")),
+            ((4, 5), "LOAD_ATTR", "real", ("int", "int")),
+        ],
+    )
 
   def test_property(self):
     matches = self._get_traces("""
@@ -194,7 +198,7 @@ class MatchNameTest(MatchAstTestCase):
       x[0] = (1,
               2)
     """, ast.Name)
-    x_annot = "List[Union[int, Tuple[int, int]]]"
+    x_annot = "list[Union[int, tuple[int, int]]]"
     self.assertTracesEqual(matches, [((1, 0), "STORE_NAME", "x", (x_annot,)),
                                      ((2, 0), "LOAD_NAME", "x", (x_annot,))])
 
@@ -218,9 +222,13 @@ class MatchCallTest(MatchAstTestCase):
           return x
       Foo().f(42)
     """, ast.Call)
-    self.assertTracesEqual(matches, [
-        ((4, 0), _CALLFUNC_OP, "Foo", ("Type[Foo]", "Foo")),
-        ((4, 0), _CALLMETH_OP, "f", ("Callable[[Any], Any]", "int"))])
+    self.assertTracesEqual(
+        matches,
+        [
+            ((4, 0), _CALLFUNC_OP, "Foo", ("type[Foo]", "Foo")),
+            ((4, 0), _CALLMETH_OP, "f", ("Callable[[Any], Any]", "int")),
+        ],
+    )
 
   def test_multiple_bindings(self):
     matches = self._get_traces("""

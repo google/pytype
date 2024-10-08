@@ -520,7 +520,7 @@ class EnumOverlayTest(test_base.BaseTest):
       1 in M  # unsupported-operands
 
       # __iter__
-      assert_type([e for e in M], "List[M]")
+      assert_type([e for e in M], "list[M]")
 
       # __len__
       assert_type(len(M), "int")
@@ -552,7 +552,7 @@ class EnumOverlayTest(test_base.BaseTest):
         1 in M  # unsupported-operands
 
         # __iter__
-        assert_type([e for e in M], "List[m.M]")
+        assert_type([e for e in M], "list[m.M]")
 
         # __len__
         assert_type(len(M), "int")

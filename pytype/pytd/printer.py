@@ -358,9 +358,8 @@ class PrintVisitor(base_visitor.Visitor):
         "typing.OrderedDict",
     ):
       return False
-    if node.type == f"Type[{full_typing_name}]":
+    if node.type == f"type[{full_typing_name}]":
       self._imports.add(full_typing_name, node.name)
-      self._imports.decrement_typing_count("Type")
       self._local_names.remove(node.name)
       return True
 
@@ -643,9 +642,10 @@ class PrintVisitor(base_visitor.Visitor):
       self._DecrementParameterImports(node.type)
       return node.name + suffix
     elif node.name == "cls" and re.fullmatch(
-        rf"Type\[{class_name()}(\[.+\])?\]", node.type
+        rf"(?:Type|type)\[{class_name()}(?:\[.+\])?\]", node.type
     ):
-      self._imports.decrement_typing_count("Type")
+      if node.type.startswith("Type"):
+        self._imports.decrement_typing_count("Type")
       self._DecrementParameterImports(node.type[5:-1])
       return node.name + suffix
     elif node.type is None:
@@ -756,8 +756,8 @@ class PrintVisitor(base_visitor.Visitor):
 
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
-    if name in pep484.BUILTIN_TO_TYPING:
-      return self._FromTyping(pep484.BUILTIN_TO_TYPING[name])
+    if name in pep484.PYTYPE_SPECIFIC_FAKE_BUILTINS:
+      return self._FromTyping(pep484.PYTYPE_SPECIFIC_FAKE_BUILTINS[name])
     else:
       return name
 
