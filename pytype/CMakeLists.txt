@@ -18,7 +18,7 @@ toplevel_py_binary(
   MAIN
     main.py
   DEPS
-    .main_deps
+    .main
 )
 
 py_library(
@@ -322,6 +322,20 @@ py_library(
     pytype.pyi.parser
     pytype.pytd.pytd
     pytype.rewrite.rewrite
+)
+
+py_library(
+  NAME
+    main
+  DEPS
+    ._utils
+    .config
+    .io
+    .load_pytd
+    .metrics
+    pytype.imports.imports
+    pytype.pytd.pytd
+    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -758,20 +772,6 @@ py_test(
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.tests.test_base
-)
-
-py_library(
-  NAME
-    main_deps
-  DEPS
-    ._utils
-    .config
-    .io
-    .load_pytd
-    .metrics
-    pytype.imports.imports
-    pytype.pytd.pytd
-    pytype.pytd.parse.parse
 )
 
 add_subdirectory(abstract)
