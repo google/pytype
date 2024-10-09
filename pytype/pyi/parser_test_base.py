@@ -3,21 +3,27 @@
 import re
 import textwrap
 
+from typing import Any
+
 from pytype.pyi import parser
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
-IGNORE = object()
+
+IGNORE: Any = object()
 
 
 class ParserTestBase(test_base.UnitTest):
   """Base class for pyi parsing tests."""
 
-  def setUp(self):
+  def setUp(self) -> None:
     super().setUp()
     self.options = parser.PyiOptions(python_version=self.python_version)
 
-  def parse(self, src, name=None, version=None, platform="linux"):
+  def parse(
+      self, src, name=None, version=None, platform="linux"
+  ) -> pytd.TypeDeclUnit:
     if version:
       self.options.python_version = version
     self.options.platform = platform
@@ -67,7 +73,7 @@ class ParserTestBase(test_base.UnitTest):
       self.assertMultiLineEqual(expected.rstrip(), actual)
     return ast
 
-  def check_error(self, src, expected_line, message):
+  def check_error(self, src, expected_line, message) -> None:
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src).lstrip(), options=self.options)

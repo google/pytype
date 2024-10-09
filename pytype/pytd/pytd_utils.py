@@ -13,16 +13,19 @@ locally or within a larger repository.
 import collections
 import itertools
 import re
+from typing import Any, TypeVar
 
 from pytype import utils
 from pytype.pytd import printer
 from pytype.pytd import pytd
 from pytype.pytd import pytd_visitors
 
+_T0 = TypeVar("_T0")
 
-ANON_PARAM = re.compile(r"_[0-9]+")
 
-_TUPLE_NAMES = ("builtins.tuple", "typing.Tuple")
+ANON_PARAM: re.Pattern[str] = re.compile(r"_[0-9]+")
+
+_TUPLE_NAMES: tuple[str, str] = ("builtins.tuple", "typing.Tuple")
 
 
 def UnpackUnion(t):
@@ -39,7 +42,9 @@ def UnpackGeneric(t, basename):
   return None
 
 
-def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
+def MakeClassOrContainerType(
+    base_type: _T0, type_arguments, homogeneous
+) -> pytd.GenericType | _T0:
   """If we have type params, build a generic type, a normal type otherwise."""
   if not type_arguments and (homogeneous or base_type.name not in _TUPLE_NAMES):
     return base_type
@@ -54,7 +59,7 @@ def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
   return container_type(base_type, tuple(type_arguments))
 
 
-def Concat(*args, **kwargs):
+def Concat(*args, **kwargs) -> pytd.TypeDeclUnit:
   """Concatenate two or more pytd ASTs."""
   assert all(isinstance(arg, pytd.TypeDeclUnit) for arg in args)
   name = kwargs.get("name")
@@ -157,7 +162,7 @@ def CanonicalOrdering(n):
   return n.Visit(pytd_visitors.CanonicalOrderingVisitor())
 
 
-def GetAllSubClasses(ast):
+def GetAllSubClasses(ast) -> collections.defaultdict:
   """Compute a class->subclasses mapping.
 
   Args:
@@ -178,7 +183,7 @@ def Print(ast, multiline_args=False):
   return ast.Visit(printer.PrintVisitor(multiline_args))
 
 
-def MakeTypeAnnotation(ast, multiline_args=False):
+def MakeTypeAnnotation(ast, multiline_args=False) -> tuple[Any, Any]:
   """Returns a type annotation and any added typing imports."""
   vis = printer.PrintVisitor(multiline_args)
   annotation = ast.Visit(vis)
@@ -192,7 +197,7 @@ def CreateModule(name="<empty>", **kwargs):
   return module.Replace(**kwargs)
 
 
-def WrapTypeDeclUnit(name, items):
+def WrapTypeDeclUnit(name, items) -> pytd.TypeDeclUnit:
   """Given a list (classes, functions, etc.), wrap a pytd around them.
 
   Args:
@@ -266,7 +271,7 @@ def WrapTypeDeclUnit(name, items):
   )
 
 
-def _check_intersection(items1, items2, name1, name2):
+def _check_intersection(items1, items2, name1, name2) -> None:
   """Check for duplicate identifiers."""
   items = set(items1) & set(items2)
   if items:
@@ -292,18 +297,18 @@ def _check_intersection(items1, items2, name1, name2):
 class TypeBuilder:
   """Utility class for building union types."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.union = pytd.NothingType()
     self.tags = set()
 
-  def add_type(self, other):
+  def add_type(self, other) -> None:
     """Add a new pytd type to the types represented by this TypeBuilder."""
     if isinstance(other, pytd.Annotated):
       self.tags.update(other.annotations)
       other = other.base_type
     self.union = JoinTypes([self.union, other])
 
-  def wrap(self, base):
+  def wrap(self, base) -> None:
     """Wrap the type in a generic type."""
     self.union = pytd.GenericType(
         base_type=pytd.NamedType(base), parameters=(self.union,)
@@ -316,14 +321,14 @@ class TypeBuilder:
     else:
       return self.union
 
-  def __bool__(self):
+  def __bool__(self) -> bool:
     return not isinstance(self.union, pytd.NothingType)
 
   # For running under Python 2
   __nonzero__ = __bool__
 
 
-def NamedOrClassType(name, cls):
+def NamedOrClassType(name, cls) -> pytd.ClassType | pytd.NamedType:
   """Create Classtype / NamedType."""
   if cls is None:
     return pytd.NamedType(name)
@@ -331,7 +336,7 @@ def NamedOrClassType(name, cls):
     return pytd.ClassType(name, cls)
 
 
-def NamedTypeWithModule(name, module=None):
+def NamedTypeWithModule(name, module=None) -> pytd.NamedType:
   """Create NamedType, dotted if we have a module."""
   if module is None:
     return pytd.NamedType(name)
@@ -342,10 +347,10 @@ def NamedTypeWithModule(name, module=None):
 class OrderedSet(dict):
   """A simple ordered set."""
 
-  def __init__(self, iterable=None):
+  def __init__(self, iterable=None) -> None:
     super().__init__((item, None) for item in (iterable or []))
 
-  def add(self, item):
+  def add(self, item) -> None:
     self[item] = None
 
 
@@ -361,13 +366,13 @@ def ASTeq(ast1: pytd.TypeDeclUnit, ast2: pytd.TypeDeclUnit):
   )
 
 
-def GetTypeParameters(node):
+def GetTypeParameters(node) -> list:
   collector = pytd_visitors.CollectTypeParameters()
   node.Visit(collector)
   return collector.params
 
 
-def DummyMethod(name, *params):
+def DummyMethod(name, *params) -> pytd.Function:
   """Create a simple method using only "Any"s as types.
 
   Arguments:
@@ -403,7 +408,7 @@ def DummyMethod(name, *params):
   )
 
 
-def MergeBaseClass(cls, base):
+def MergeBaseClass(cls, base) -> pytd.Class:
   """Merge a base class into a subclass.
 
   Arguments:

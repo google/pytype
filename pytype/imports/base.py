@@ -14,8 +14,12 @@ subclasses even though they all use ModuleInfo as a common interface.
 import abc
 import dataclasses
 import os
+from typing import TypeVar
 
 from pytype.pytd import pytd
+
+
+_TModuleInfo = TypeVar("_TModuleInfo", bound="ModuleInfo")
 
 
 # Allow a file to be used as the designated default pyi for blacklisted files
@@ -26,7 +30,7 @@ DEFAULT_PYI_PATH_SUFFIX = None
 PREFIX = "pytd:"
 
 
-def internal_stub_filename(filename):
+def internal_stub_filename(filename) -> str:
   """Filepath for pytype's internal pytd files."""
   return PREFIX + filename
 
@@ -40,10 +44,12 @@ class ModuleInfo:
   file_exists: bool = True
 
   @classmethod
-  def internal_stub(cls, module_name: str, filename: str):
+  def internal_stub(
+      cls: type[_TModuleInfo], module_name: str, filename: str
+  ) -> _TModuleInfo:
     return cls(module_name, internal_stub_filename(filename))
 
-  def is_default_pyi(self):
+  def is_default_pyi(self) -> bool:
     return self.filename == os.devnull or (
         DEFAULT_PYI_PATH_SUFFIX
         and self.filename.endswith(DEFAULT_PYI_PATH_SUFFIX)

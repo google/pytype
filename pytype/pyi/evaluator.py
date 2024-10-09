@@ -12,7 +12,7 @@ import ast as astlib
 from pytype.pyi import types
 
 
-_NUM_TYPES = (int, float, complex)
+_NUM_TYPES: tuple[type[int], type[float], type[complex]] = (int, float, complex)
 
 
 # pylint: disable=invalid-unary-operand-type

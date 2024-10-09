@@ -1,22 +1,28 @@
 """Utilities for parsing pytd files for builtins."""
 
+from typing import Any, TypeVar, Union
+
 from pytype import pytype_source_utils
 from pytype.imports import base
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
+from pytype.pytd import pytd
 from pytype.pytd import visitors
+
+
+_T1 = TypeVar("_T1")
 
 # TODO(rechen): It would be nice to get rid of GetBuiltinsAndTyping, and let the
 # loader call BuiltinsAndTyping.load directly, but the cache currently prevents
 # slowdowns in tests that create loaders willy-nilly.  Maybe load_pytd.py can
 # warn if there are more than n loaders in play, at any given time.
-_cached_builtins_pytd = []
+_cached_builtins_pytd: list = []
 
 # pylint: disable=invalid-name
 # We use a mix of camel case and snake case method names in this file.
 
 
-def InvalidateCache():
+def InvalidateCache() -> None:
   if _cached_builtins_pytd:
     del _cached_builtins_pytd[0]
 
@@ -36,19 +42,19 @@ def __getattr__(name: Any) -> Any: ...
 
 
 # If you have a Loader available, use loader.get_default_ast() instead.
-def GetDefaultAst(options):
+def GetDefaultAst(options) -> pytd.TypeDeclUnit:
   return parser.parse_string(src=DEFAULT_SRC, options=options)
 
 
 class BuiltinsAndTyping:
   """The builtins and typing modules, which need to be treated specially."""
 
-  def _parse_predefined(self, name, options):
+  def _parse_predefined(self, name, options) -> pytd.TypeDeclUnit:
     _, src = GetPredefinedFile("builtins", name, ".pytd")
     mod = parser.parse_string(src, name=name, options=options)
     return mod
 
-  def load(self, options):
+  def load(self, options) -> tuple[Any, Any]:
     """Read builtins.pytd and typing.pytd, and return the parsed modules."""
     t = self._parse_predefined("typing", options)
     b = self._parse_predefined("builtins", options)
@@ -73,7 +79,7 @@ class BuiltinsAndTyping:
 
 def GetPredefinedFile(
     stubs_subdir, module, extension=".pytd", as_package=False
-):
+) -> tuple[str, Any]:
   """Get the contents of a predefined PyTD, typically with a file name *.pytd.
 
   Arguments:
@@ -98,10 +104,12 @@ def GetPredefinedFile(
 class BuiltinLoader(base.BuiltinLoader):
   """Load builtins from the pytype source tree."""
 
-  def __init__(self, options):
+  def __init__(self, options) -> None:
     self.options = options
 
-  def _parse_predefined(self, pytd_subdir, module, as_package=False):
+  def _parse_predefined(
+      self, pytd_subdir, module, as_package=False
+  ) -> pytd.TypeDeclUnit | None:
     """Parse a pyi/pytd file in the pytype source tree."""
     try:
       filename, src = GetPredefinedFile(
@@ -115,7 +123,9 @@ class BuiltinLoader(base.BuiltinLoader):
     assert ast.name == module
     return ast
 
-  def load_module(self, namespace, module_name):
+  def load_module(
+      self, namespace, module_name: _T1
+  ) -> tuple[Union[str, _T1], Any]:
     """Load a stub that ships with pytype."""
     mod = self._parse_predefined(namespace, module_name)
     # For stubs in pytype's stubs/ directory, we use the module name prefixed

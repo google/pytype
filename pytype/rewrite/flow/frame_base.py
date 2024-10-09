@@ -18,7 +18,7 @@ from pytype.rewrite.flow import variables
 
 _T = TypeVar('_T')
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 _FINAL = -1
 

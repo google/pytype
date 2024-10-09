@@ -4,7 +4,7 @@
 from pytype.pytd import pytd
 
 
-_STRING_TYPES = ("str", "bytes", "unicode")
+_STRING_TYPES: tuple[str, str, str] = ("str", "bytes", "unicode")
 
 
 # Type aliases

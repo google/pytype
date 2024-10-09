@@ -32,16 +32,21 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+from typing import Any
 
 
 # Starting with Python 3.12, `dis` collections contain pseudo instructions and
 # instrumented instructions. These are opcodes with values >= MIN_PSEUDO_OPCODE
 # and >= MIN_INSTRUMENTED_OPCODE.
 # Pytype doesn't care about those, so we ignore them here.
-_MIN_INSTRUMENTED_OPCODE = getattr(opcode, 'MIN_INSTRUMENTED_OPCODE', 237)
+_MIN_INSTRUMENTED_OPCODE: Any = getattr(opcode, 'MIN_INSTRUMENTED_OPCODE', 237)
 
 
-def generate_diffs(argv):
+def generate_diffs(
+    argv,
+) -> tuple[
+    list[list[str]], list, list, list[str], list[str], Any, Any, list[str]
+]:
   """Generate diffs."""
   version1, version2 = argv
 
@@ -223,7 +228,7 @@ def generate_diffs(argv):
   )
 
 
-def _get_arg_type(dis, opname):
+def _get_arg_type(dis, opname) -> str | None:
   all_types = ['CONST', 'NAME', 'JREL', 'JABS', 'LOCAL', 'FREE', 'NARGS']
   for t in all_types:
     k = f'HAS_{t}'
@@ -232,7 +237,7 @@ def _get_arg_type(dis, opname):
   return None
 
 
-def _diff_intrinsic_descs(old, new, new_version):
+def _diff_intrinsic_descs(old, new, new_version) -> tuple[list, list[list[str]]]:
   """Diff intrinsic descriptions and returns mapping and stubs if they differ."""
   if old == new:
     return [], []
@@ -259,7 +264,7 @@ def _get_inline_cache_entries(dis, opname):
   )
 
 
-def main(argv):
+def main(argv) -> None:
   (
       classes,
       stubs,

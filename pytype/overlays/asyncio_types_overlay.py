@@ -1,14 +1,20 @@
 """Implementation of special members of types and asyncio module."""
 
+from typing import Any, TypeVar
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.overlays import overlay
+
+_T0 = TypeVar("_T0")
+_TCoroutineDecorator = TypeVar(
+    "_TCoroutineDecorator", bound="CoroutineDecorator"
+)
 
 
 class TypesOverlay(overlay.Overlay):
   """A custom overlay for the 'types' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {"coroutine": CoroutineDecorator.make}
     ast = ctx.loader.import_name("types")
     super().__init__(ctx, "types", member_map, ast)
@@ -17,7 +23,7 @@ class TypesOverlay(overlay.Overlay):
 class AsyncioOverlay(overlay.Overlay):
   """A custom overlay for the 'asyncio' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {}
     if ctx.python_version <= (3, 10):
       member_map["coroutine"] = CoroutineDecorator.make
@@ -29,10 +35,12 @@ class CoroutineDecorator(abstract.PyTDFunction):
   """Implements the @types.coroutine and @asyncio.coroutine decorator."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(
+      cls: type[_TCoroutineDecorator], ctx, module
+  ) -> _TCoroutineDecorator:
     return super().make("coroutine", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     """Marks the function as a generator-based coroutine."""
     del func, alias_map  # unused
     self.match_args(node, args)

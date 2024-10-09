@@ -7,6 +7,7 @@ import keyword
 import re
 import threading
 import traceback
+from typing import Any, Callable
 import weakref
 
 from pytype.platform_utils import path_utils
@@ -23,7 +24,7 @@ COLOR_ERROR_NAME_TEMPLATE = (
 # We disable the check that keeps pytype from running on not-yet-supported
 # versions when we detect that a pytype test is executing, in order to be able
 # to test upcoming versions.
-def _validate_python_version_upper_bound():
+def _validate_python_version_upper_bound() -> bool:
   for frame_summary in traceback.extract_stack():
     head, tail = path_utils.split(frame_summary.filename)
     if "/pytype/" in head + "/" and (
@@ -40,17 +41,17 @@ class UsageError(Exception):
   """Raise this for top-level usage errors."""
 
 
-def format_version(python_version):
+def format_version(python_version) -> str:
   """Format a version tuple into a dotted version string."""
   return ".".join(str(x) for x in python_version)
 
 
-def version_from_string(version_string):
+def version_from_string(version_string) -> tuple:
   """Parse a version string like "3.7" into a tuple."""
   return tuple(map(int, version_string.split(".")))
 
 
-def validate_version(python_version):
+def validate_version(python_version) -> None:
   """Raise an exception if the python version is unsupported."""
   if len(python_version) != 2:
     # This is typically validated in the option parser, but check here too in
@@ -86,7 +87,7 @@ def strip_prefix(string, prefix):
   return string
 
 
-def maybe_truncate(s, length=30):
+def maybe_truncate(s, length=30) -> str:
   """Truncate long strings (and append '...'), but leave short strings alone."""
   s = str(s)
   if len(s) > length - 3:
@@ -114,7 +115,7 @@ def pretty_conjunction(conjunction):
     return "(" + " & ".join(conjunction) + ")"
 
 
-def pretty_dnf(dnf):
+def pretty_dnf(dnf) -> str:
   """Pretty-print a disjunctive normal form (disjunction of conjunctions).
 
   E.g. [["a", "b"], ["c"]] -> "(a & b) | c".
@@ -131,11 +132,11 @@ def pretty_dnf(dnf):
     return " | ".join(pretty_conjunction(c) for c in dnf)
 
 
-def numeric_sort_key(s):
+def numeric_sort_key(s) -> tuple:
   return tuple((int(e) if e.isdigit() else e) for e in re.split(r"(\d+)", s))
 
 
-def concat_tuples(tuples):
+def concat_tuples(tuples) -> tuple:
   return tuple(itertools.chain.from_iterable(tuples))
 
 
@@ -157,7 +158,7 @@ def list_strip_prefix(l, prefix):
   return l[len(prefix) :] if list_startswith(l, prefix) else l
 
 
-def invert_dict(d):
+def invert_dict(d) -> collections.defaultdict:
   """Invert a dictionary.
 
   Converts a dictionary (mapping strings to lists of strings) to a dictionary
@@ -177,7 +178,7 @@ def invert_dict(d):
   return inverted
 
 
-def unique_list(xs):
+def unique_list(xs) -> list:
   """Return a unique list from an iterable, preserving order."""
   seen = set()
   out = []
@@ -206,7 +207,7 @@ class DynamicVar:
   in conjunction with a decorator.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     self._local = threading.local()
 
   def _values(self):
@@ -238,10 +239,10 @@ class AnnotatingDecorator:
     lookup: maps functions to their attributes.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.lookup = {}
 
-  def __call__(self, value):
+  def __call__(self, value) -> Callable[[Any], Any]:
     def decorate(f):
       self.lookup[f.__name__] = value
       return f
@@ -253,7 +254,7 @@ class ContextWeakrefMixin:
 
   __slots__ = ["ctx_weakref"]
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     self.ctx_weakref = weakref.ref(ctx)
 
   @property

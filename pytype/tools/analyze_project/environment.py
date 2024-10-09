@@ -9,11 +9,11 @@ from pytype import utils
 class PytdFileSystem(fs.ExtensionRemappingFileSystem):
   """File system that remaps .py file extensions to pytd."""
 
-  def __init__(self, underlying):
+  def __init__(self, underlying) -> None:
     super().__init__(underlying, 'pytd')
 
 
-def create_importlab_environment(conf, typeshed):
+def create_importlab_environment(conf, typeshed) -> environment.Environment:
   """Create an importlab environment from the python version and path."""
   python_version = utils.version_from_string(conf.python_version)
   path = fs.Path()

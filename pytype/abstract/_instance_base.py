@@ -1,6 +1,7 @@
 """Abstract representation of instances."""
 
 import logging
+from typing import Any, TypeVar
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -9,7 +10,9 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.errors import error_types
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
@@ -47,7 +50,7 @@ class SimpleValue(_base.BaseValue):
     self._fullhash = None
     self._cached_changestamps = self._get_changestamps()
 
-  def _get_changestamps(self):
+  def _get_changestamps(self) -> tuple[Any, Any]:
     return (
         self.members.changestamp,
         self._instance_type_parameters.changestamp,
@@ -73,7 +76,7 @@ class SimpleValue(_base.BaseValue):
   def maybe_missing_members(self, v):
     self._maybe_missing_members = v
 
-  def has_instance_type_parameter(self, name):
+  def has_instance_type_parameter(self, name) -> bool:
     """Check if the key is in `instance_type_parameters`."""
     name = abstract_utils.full_type_name(self, name)
     return name in self.instance_type_parameters
@@ -89,7 +92,7 @@ class SimpleValue(_base.BaseValue):
       self.instance_type_parameters[name] = param
     return param
 
-  def merge_instance_type_parameter(self, node, name, value):
+  def merge_instance_type_parameter(self, node, name, value) -> None:
     """Set the value of a type parameter.
 
     This will always add to the type parameter unlike set_attribute which will
@@ -109,7 +112,7 @@ class SimpleValue(_base.BaseValue):
     else:
       self.instance_type_parameters[name] = value
 
-  def _call_helper(self, node, obj, binding, args):
+  def _call_helper(self, node, obj, binding, args) -> tuple[Any, Any]:
     obj_binding = binding if obj == binding.data else obj.to_binding(node)
     node, var = self.ctx.attribute_handler.get_attribute(
         node, obj, "__call__", obj_binding
@@ -133,7 +136,7 @@ class SimpleValue(_base.BaseValue):
       # value will lead to a not-callable error anyways.
       return 0
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"<{self.name} [{self.cls!r}]>"
 
   def _get_class(self):
@@ -152,7 +155,7 @@ class SimpleValue(_base.BaseValue):
   def cls(self, cls):
     self._cls = cls
 
-  def set_class(self, node, var):
+  def set_class(self, node: _T0, var) -> _T0:
     """Set the __class__ of an instance, for code that does "x.__class__ = y."""
     # Simplification: Setting __class__ is done rarely, and supporting this
     # action would complicate pytype considerably by forcing us to track the
@@ -166,7 +169,7 @@ class SimpleValue(_base.BaseValue):
         self.cls = self.ctx.convert.unsolvable
     return node
 
-  def update_caches(self, force=False):
+  def update_caches(self, force=False) -> None:
     cur_changestamps = self._get_changestamps()
     if self._cached_changestamps == cur_changestamps and not force:
       return
@@ -205,7 +208,7 @@ class SimpleValue(_base.BaseValue):
       self._type_key = frozenset(key)
     return self._type_key
 
-  def _unique_parameters(self):
+  def _unique_parameters(self) -> list:
     parameters = super()._unique_parameters()
     parameters.extend(self.instance_type_parameters.values())
     return parameters
@@ -217,14 +220,14 @@ class SimpleValue(_base.BaseValue):
 class Instance(SimpleValue):
   """An instance of some object."""
 
-  def __init__(self, cls, ctx, container=None):
+  def __init__(self, cls, ctx, container=None) -> None:
     super().__init__(cls.name, ctx)
     self.cls = cls
     self._instance_type_parameters_loaded = False
     self._container = container
     cls.register_instance(self)
 
-  def _load_instance_type_parameters(self):
+  def _load_instance_type_parameters(self) -> None:
     if self._instance_type_parameters_loaded:
       return
     all_formal_type_parameters = datatypes.AliasingDict()

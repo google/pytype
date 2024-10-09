@@ -1,9 +1,9 @@
 """Utilities for working with the CFG."""
 
 import collections
-from collections.abc import Iterable, Sequence
+from collections.abc import Generator, Iterable, Sequence
 import itertools
-from typing import Protocol, TypeVar
+from typing import Any, Protocol, TypeVar
 
 
 # Limit on how many argument combinations we allow before aborting.
@@ -18,7 +18,7 @@ from typing import Protocol, TypeVar
 DEEP_VARIABLE_LIMIT = 1024
 
 
-def variable_product(variables):
+def variable_product(variables) -> itertools.product:
   """Take the Cartesian product of a number of Variables.
 
   Args:
@@ -31,7 +31,9 @@ def variable_product(variables):
   return itertools.product(*(v.bindings for v in variables))
 
 
-def _variable_product_items(variableitems, complexity_limit):
+def _variable_product_items(
+    variableitems, complexity_limit
+) -> Generator[list, Any, None]:
   """Take the Cartesian product of a list of (key, value) tuples.
 
   See variable_product_dict below.
@@ -63,11 +65,11 @@ class TooComplexError(Exception):
 class ComplexityLimit:
   """A class that raises TooComplexError if we hit a limit."""
 
-  def __init__(self, limit):
+  def __init__(self, limit) -> None:
     self.limit = limit
     self.count = 0
 
-  def inc(self, add=1):
+  def inc(self, add=1) -> None:
     self.count += add
     if self.count >= self.limit:
       raise TooComplexError()
@@ -104,7 +106,9 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
   )
 
 
-def _deep_values_list_product(values_list, seen, complexity_limit):
+def _deep_values_list_product(
+    values_list, seen, complexity_limit
+) -> list[tuple]:
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
@@ -196,7 +200,9 @@ def merge_bindings(program, node, bindings):
   return v
 
 
-def walk_binding(binding, keep_binding=lambda _: True):
+def walk_binding(
+    binding, keep_binding=lambda _: True
+) -> Generator[Any, Any, None]:
   """Helper function to walk a binding's origins.
 
   Args:
@@ -332,7 +338,7 @@ def order_nodes(nodes: Sequence[_OrderableNode]) -> list[_OrderableNode]:
   return order
 
 
-def topological_sort(nodes):
+def topological_sort(nodes) -> Generator[Any, Any, None]:
   """Sort a list of nodes topologically.
 
   This will order the nodes so that any node that appears in the "incoming"

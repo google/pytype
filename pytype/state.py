@@ -14,18 +14,18 @@ from pytype.abstract import abstract
 from pytype.blocks import blocks
 from pytype.typegraph import cfg
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 # A special constant, returned by split_conditions() to signal that the
 # condition cannot be satisfied with any known bindings.
-UNSATISFIABLE = object()
+UNSATISFIABLE: Any = object()
 
 # Represents the `not None` condition for restrict_condition().
-NOT_NONE = object()
+NOT_NONE: Any = object()
 
 FrameType = Union["SimpleFrame", "Frame"]
 # This should be context.Context, which can't be imported due to a circular dep.
-_ContextType = Any
+_ContextType: Any = Any
 
 
 class FrameState(utils.ContextWeakrefMixin):
@@ -33,7 +33,9 @@ class FrameState(utils.ContextWeakrefMixin):
 
   __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
 
-  def __init__(self, data_stack, block_stack, node, ctx, exception, why):
+  def __init__(
+      self, data_stack, block_stack, node, ctx, exception, why
+  ):
     super().__init__(ctx)
     self.data_stack = data_stack
     self.block_stack = block_stack
@@ -85,7 +87,7 @@ class FrameState(utils.ContextWeakrefMixin):
     else:
       return ()
 
-  def pop(self):
+  def pop(self) -> tuple[Any, Any]:
     """Pop a value from the value stack."""
     if not self.data_stack:
       raise IndexError("Trying to pop from an empty stack")
@@ -96,7 +98,7 @@ class FrameState(utils.ContextWeakrefMixin):
     """Pop a value from the value stack and discard it."""
     return self.set_stack(self.data_stack[:-1])
 
-  def popn(self, n):
+  def popn(self, n) -> tuple[Any, Any]:
     """Return n values, ordered oldest-to-newest."""
     if not n:
       # Not an error: E.g. function calls with no parameters pop zero items
@@ -245,7 +247,7 @@ class SimpleFrame:
   error logging.
   """
 
-  def __init__(self, opcode=None, node=None, f_globals=None):
+  def __init__(self, opcode=None, node=None, f_globals=None) -> None:
     self.f_code = None  # for recursion detection
     self.f_builtins = None
     self.f_globals = f_globals
@@ -413,14 +415,14 @@ class Frame(utils.ContextWeakrefMixin):
         str, list[abstract.InterpreterFunction]
     ] = collections.defaultdict(list)
 
-  def __repr__(self):  # pragma: no cover
+  def __repr__(self) -> str:  # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
         id(self),
         self.f_code.filename,
         self.f_lineno,
     )
 
-  def copy_free_vars(self, n):
+  def copy_free_vars(self, n) -> None:
     offset = len(self.cells) - len(self.f_code.freevars)
     for i in range(n):
       self.cells[i + offset] = self.closure[i]
@@ -447,7 +449,7 @@ class Condition:
     binding: A Binding for the condition's constraints.
   """
 
-  def __init__(self, node, dnf):
+  def __init__(self, node, dnf) -> None:
     # The condition is represented by a dummy variable with a single binding
     # to None.  The origins for this binding are the dnf clauses.
     self._var = node.program.NewVariable()
@@ -461,7 +463,7 @@ class Condition:
     return self._binding
 
 
-_restrict_counter = metrics.MapCounter("state_restrict")
+_restrict_counter: metrics.MapCounter = metrics.MapCounter("state_restrict")
 
 
 def _match_condition(value, condition):

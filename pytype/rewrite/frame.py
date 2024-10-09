@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping, Sequence
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 from pycnite import marshal as pyc_marshal
 from pytype import datatypes
@@ -16,7 +16,9 @@ from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
 
-log = logging.getLogger(__name__)
+_TFrame = TypeVar('_TFrame', bound='Frame')
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # Type aliases
 _Var = variables.Variable[abstract.BaseValue]
@@ -24,13 +26,13 @@ _VarMap = Mapping[str, _Var]
 _FrameFunction = abstract.InterpreterFunction['Frame']
 
 # This enum will be used frequently, so alias it
-_Flags = pyc_marshal.Flags
+_Flags: type[pyc_marshal.Flags] = pyc_marshal.Flags
 
 
 class _ShadowedNonlocals:
   """Tracks shadowed nonlocal names."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self._enclosing: set[str] = set()
     self._globals: set[str] = set()
 
@@ -40,10 +42,10 @@ class _ShadowedNonlocals:
   def add_global(self, name: str) -> None:
     self._globals.add(name)
 
-  def has_enclosing(self, name: str):
+  def has_enclosing(self, name: str) -> bool:
     return name in self._enclosing
 
-  def has_global(self, name: str):
+  def has_global(self, name: str) -> bool:
     return name in self._globals
 
   def get_global_names(self) -> frozenset[str]:
@@ -99,7 +101,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Handler for function calls.
     self._call_helper = function_call_helper.FunctionCallHelper(ctx, self)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'Frame({self.name})'
 
   @classmethod
@@ -160,7 +162,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         for name, var in self._final_locals.items()
     })
 
-  def _log_stack(self):
+  def _log_stack(self) -> None:
     log.debug('stack: %r', self._stack)
 
   def store_local(self, name: str, var: _Var) -> None:
@@ -367,7 +369,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         self.load_attr(instance_var, method_name),
     )
 
-  def _pop_jump_if_false(self, opcode):
+  def _pop_jump_if_false(self, opcode) -> None:
     unused_var = self._stack.pop()
     # TODO(b/324465215): Construct the real conditions for this jump.
     jump_state = self._current_state.with_condition(conditions.Condition())
@@ -384,18 +386,18 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # ---------------------------------------------------------------
   # Opcodes with no typing effects
 
-  def byte_NOP(self, opcode):
+  def byte_NOP(self, opcode) -> None:
     del opcode  # unused
 
-  def byte_PRINT_EXPR(self, opcode):
+  def byte_PRINT_EXPR(self, opcode) -> None:
     del opcode  # unused
     self._stack.pop_and_discard()
 
-  def byte_PRECALL(self, opcode):
+  def byte_PRECALL(self, opcode) -> None:
     # Internal cpython use
     del opcode  # unused
 
-  def byte_RESUME(self, opcode):
+  def byte_RESUME(self, opcode) -> None:
     # Internal cpython use
     del opcode  # unused
 
@@ -413,28 +415,28 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       val = self._ctx.consts[const]
     return val.to_variable()
 
-  def byte_LOAD_CONST(self, opcode):
+  def byte_LOAD_CONST(self, opcode) -> None:
     self._stack.push(self._get_const(opcode.arg))
 
-  def byte_RETURN_VALUE(self, opcode):
+  def byte_RETURN_VALUE(self, opcode) -> None:
     self._returns.append(self._stack.pop())
 
-  def byte_RETURN_CONST(self, opcode):
+  def byte_RETURN_CONST(self, opcode) -> None:
     self._returns.append(self._get_const(opcode.arg))
 
-  def byte_STORE_NAME(self, opcode):
+  def byte_STORE_NAME(self, opcode) -> None:
     self.store_local(opcode.argval, self._stack.pop())
 
-  def byte_STORE_FAST(self, opcode):
+  def byte_STORE_FAST(self, opcode) -> None:
     self.store_local(opcode.argval, self._stack.pop())
 
-  def byte_STORE_GLOBAL(self, opcode):
+  def byte_STORE_GLOBAL(self, opcode) -> None:
     self.store_global(opcode.argval, self._stack.pop())
 
-  def byte_STORE_DEREF(self, opcode):
+  def byte_STORE_DEREF(self, opcode) -> None:
     self.store_deref(opcode.argval, self._stack.pop())
 
-  def byte_STORE_ATTR(self, opcode):
+  def byte_STORE_ATTR(self, opcode) -> None:
     attr_name = opcode.argval
     attr, target = self._stack.popn(2)
     if not target.name:
@@ -442,25 +444,25 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     full_name = f'{target.name}.{attr_name}'
     self.store_local(full_name, attr)
 
-  def _unpack_function_annotations(self, packed_annot):
+  def _unpack_function_annotations(self, packed_annot) -> dict:
     if self._code.python_version >= (3, 10):
       # In Python 3.10+, packed_annot is a tuple of variables:
       # (param_name1, param_type1, param_name2, param_type2, ...)
-      annot_seq = abstract.get_atomic_constant(packed_annot, tuple)
+      annot_seq = abstract.get_atomic_constant(packed_annot, tuple)  # pytype: disable=wrong-arg-types
       double_num_annots = len(annot_seq)
       assert not double_num_annots % 2
       annot = {}
       for i in range(double_num_annots // 2):
-        name = abstract.get_atomic_constant(annot_seq[i * 2], str)
+        name = abstract.get_atomic_constant(annot_seq[i * 2], str)  # pytype: disable=wrong-arg-types
         annot[name] = annot_seq[i * 2 + 1]
     else:
       # Pre-3.10, packed_annot was a name->param_type dictionary.
-      annot = abstract.get_atomic_constant(packed_annot, dict)
+      annot = abstract.get_atomic_constant(packed_annot, dict)  # pytype: disable=wrong-arg-types
     return annot
 
-  def byte_MAKE_FUNCTION(self, opcode):
+  def byte_MAKE_FUNCTION(self, opcode) -> None:
     # Aliases for readability
-    pop_const = lambda t: abstract.get_atomic_constant(self._stack.pop(), t)
+    pop_const = lambda t: abstract.get_atomic_constant(self._stack.pop(), t)  # pytype: disable=wrong-arg-types
     arg = opcode.arg
     # Get name and code object
     if self._code.python_version >= (3, 11):
@@ -505,11 +507,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       self._functions.append(func)
     self._stack.push(func.to_variable())
 
-  def byte_PUSH_NULL(self, opcode):
+  def byte_PUSH_NULL(self, opcode) -> None:
     del opcode  # unused
     self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
 
-  def byte_LOAD_NAME(self, opcode):
+  def byte_LOAD_NAME(self, opcode) -> None:
     name = opcode.argval
     try:
       var = self.load_local(name)
@@ -517,19 +519,19 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       var = self.load_global(name)
     self._stack.push(var)
 
-  def byte_LOAD_FAST(self, opcode):
+  def byte_LOAD_FAST(self, opcode) -> None:
     name = opcode.argval
     self._stack.push(self.load_local(name))
 
-  def byte_LOAD_DEREF(self, opcode):
+  def byte_LOAD_DEREF(self, opcode) -> None:
     name = opcode.argval
     self._stack.push(self.load_deref(name))
 
-  def byte_LOAD_CLOSURE(self, opcode):
+  def byte_LOAD_CLOSURE(self, opcode) -> None:
     name = opcode.argval
     self._stack.push(self.load_deref(name))
 
-  def byte_LOAD_GLOBAL(self, opcode):
+  def byte_LOAD_GLOBAL(self, opcode) -> None:
     if self._code.python_version >= (3, 11) and opcode.arg & 1:
       # Compiler-generated marker that will be consumed in byte_CALL
       # We are loading a global and calling it as a function.
@@ -537,7 +539,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     name = opcode.argval
     self._stack.push(self.load_global(name))
 
-  def byte_LOAD_ATTR(self, opcode):
+  def byte_LOAD_ATTR(self, opcode) -> None:
     attr_name = opcode.argval
     target_var = self._stack.pop()
     if self._code.python_version >= (3, 12) and opcode.arg & 1:
@@ -547,14 +549,14 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       self._stack.push(self.load_attr(target_var, attr_name))
 
-  def byte_LOAD_METHOD(self, opcode):
+  def byte_LOAD_METHOD(self, opcode) -> None:
     method_name = opcode.argval
     instance_var = self._stack.pop()
     (var1, var2) = self._load_method(instance_var, method_name)
     self._stack.push(var1)
     self._stack.push(var2)
 
-  def byte_IMPORT_NAME(self, opcode):
+  def byte_IMPORT_NAME(self, opcode) -> None:
     full_name = opcode.argval
     unused_level_var, fromlist = self._stack.popn(2)
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
@@ -576,7 +578,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       self._ctx.errorlog.import_error(self.stack, full_name)
     self._stack.push(module.to_variable())
 
-  def byte_IMPORT_FROM(self, opcode):
+  def byte_IMPORT_FROM(self, opcode) -> None:
     attr_name = opcode.argval
     module = self._stack.top().get_atomic_value()
     attr = module.get_attribute(attr_name)
@@ -589,11 +591,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # ---------------------------------------------------------------
   # Function and method calls
 
-  def byte_KW_NAMES(self, opcode):
+  def byte_KW_NAMES(self, opcode) -> None:
     # Stores a list of kw names to be retrieved by CALL
     self._call_helper.set_kw_names(opcode.argval)
 
-  def byte_CALL(self, opcode):
+  def byte_CALL(self, opcode) -> None:
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
     if not sentinel.has_atomic_value(self._ctx.consts.singles['NULL']):
       raise NotImplementedError('CALL not fully implemented')
@@ -601,25 +603,25 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
-  def byte_CALL_FUNCTION(self, opcode):
+  def byte_CALL_FUNCTION(self, opcode) -> None:
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
     callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
-  def byte_CALL_FUNCTION_KW(self, opcode):
+  def byte_CALL_FUNCTION_KW(self, opcode) -> None:
     kwnames_var = self._stack.pop()
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
     kwnames = [
-        abstract.get_atomic_constant(key, str)
-        for key in abstract.get_atomic_constant(kwnames_var, tuple)
+        abstract.get_atomic_constant(key, str)  # pytype: disable=wrong-arg-types
+        for key in abstract.get_atomic_constant(kwnames_var, tuple)  # pytype: disable=wrong-arg-types
     ]
     self._call_helper.set_kw_names(kwnames)
     callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
-  def byte_CALL_FUNCTION_EX(self, opcode):
+  def byte_CALL_FUNCTION_EX(self, opcode) -> None:
     if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       starstarargs = self._stack.pop()
     else:
@@ -633,7 +635,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       self._stack.pop_and_discard()
     self._call_function(func, callargs)
 
-  def byte_CALL_METHOD(self, opcode):
+  def byte_CALL_METHOD(self, opcode) -> None:
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
     # pop the NULL off the stack (see LOAD_METHOD)
@@ -644,79 +646,79 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # Pytype tracks variables in enclosing scopes by name rather than emulating
   # the runtime's approach with cells and freevars, so we can ignore the opcodes
   # that deal with the latter.
-  def byte_MAKE_CELL(self, opcode):
+  def byte_MAKE_CELL(self, opcode) -> None:
     del opcode  # unused
 
-  def byte_COPY_FREE_VARS(self, opcode):
+  def byte_COPY_FREE_VARS(self, opcode) -> None:
     del opcode  # unused
 
-  def byte_LOAD_BUILD_CLASS(self, opcode):
+  def byte_LOAD_BUILD_CLASS(self, opcode) -> None:
     self._stack.push(self._ctx.consts.singles['__build_class__'].to_variable())
 
   # ---------------------------------------------------------------
   # Operators
 
-  def unary_operator(self, name):
+  def unary_operator(self, name) -> None:
     x = self._stack.pop()
     f = self.load_attr(x, name)
     self._call_function(f, abstract.Args())
 
-  def binary_operator(self, name):
+  def binary_operator(self, name) -> None:
     (x, y) = self._stack.popn(2)
     ret = operators.call_binary(self._ctx, name, x, y)
     self._stack.push(ret)
 
-  def inplace_operator(self, name):
+  def inplace_operator(self, name) -> None:
     (x, y) = self._stack.popn(2)
     ret = operators.call_inplace(self._ctx, self, name, x, y)
     self._stack.push(ret)
 
-  def byte_UNARY_NEGATIVE(self, opcode):
+  def byte_UNARY_NEGATIVE(self, opcode) -> None:
     self.unary_operator('__neg__')
 
-  def byte_UNARY_POSITIVE(self, opcode):
+  def byte_UNARY_POSITIVE(self, opcode) -> None:
     self.unary_operator('__pos__')
 
-  def byte_UNARY_INVERT(self, opcode):
+  def byte_UNARY_INVERT(self, opcode) -> None:
     self.unary_operator('__invert__')
 
-  def byte_BINARY_MATRIX_MULTIPLY(self, opcode):
+  def byte_BINARY_MATRIX_MULTIPLY(self, opcode) -> None:
     self.binary_operator('__matmul__')
 
-  def byte_BINARY_ADD(self, opcode):
+  def byte_BINARY_ADD(self, opcode) -> None:
     self.binary_operator('__add__')
 
-  def byte_BINARY_SUBTRACT(self, opcode):
+  def byte_BINARY_SUBTRACT(self, opcode) -> None:
     self.binary_operator('__sub__')
 
-  def byte_BINARY_MULTIPLY(self, opcode):
+  def byte_BINARY_MULTIPLY(self, opcode) -> None:
     self.binary_operator('__mul__')
 
-  def byte_BINARY_MODULO(self, opcode):
+  def byte_BINARY_MODULO(self, opcode) -> None:
     self.binary_operator('__mod__')
 
-  def byte_BINARY_LSHIFT(self, opcode):
+  def byte_BINARY_LSHIFT(self, opcode) -> None:
     self.binary_operator('__lshift__')
 
-  def byte_BINARY_RSHIFT(self, opcode):
+  def byte_BINARY_RSHIFT(self, opcode) -> None:
     self.binary_operator('__rshift__')
 
-  def byte_BINARY_AND(self, opcode):
+  def byte_BINARY_AND(self, opcode) -> None:
     self.binary_operator('__and__')
 
-  def byte_BINARY_XOR(self, opcode):
+  def byte_BINARY_XOR(self, opcode) -> None:
     self.binary_operator('__xor__')
 
-  def byte_BINARY_OR(self, opcode):
+  def byte_BINARY_OR(self, opcode) -> None:
     self.binary_operator('__or__')
 
-  def byte_BINARY_FLOOR_DIVIDE(self, opcode):
+  def byte_BINARY_FLOOR_DIVIDE(self, opcode) -> None:
     self.binary_operator('__floordiv__')
 
-  def byte_BINARY_TRUE_DIVIDE(self, opcode):
+  def byte_BINARY_TRUE_DIVIDE(self, opcode) -> None:
     self.binary_operator('__truediv__')
 
-  def byte_BINARY_POWER(self, opcode):
+  def byte_BINARY_POWER(self, opcode) -> None:
     self.binary_operator('__pow__')
 
   def byte_BINARY_SUBSCR(self, opcode):
@@ -730,46 +732,46 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     ret = obj.set_type_parameters(subscr_var)
     self._stack.push(ret.to_variable())
 
-  def byte_INPLACE_MATRIX_MULTIPLY(self, opcode):
+  def byte_INPLACE_MATRIX_MULTIPLY(self, opcode) -> None:
     self.inplace_operator('__imatmul__')
 
-  def byte_INPLACE_ADD(self, opcode):
+  def byte_INPLACE_ADD(self, opcode) -> None:
     self.inplace_operator('__iadd__')
 
-  def byte_INPLACE_SUBTRACT(self, opcode):
+  def byte_INPLACE_SUBTRACT(self, opcode) -> None:
     self.inplace_operator('__isub__')
 
-  def byte_INPLACE_MULTIPLY(self, opcode):
+  def byte_INPLACE_MULTIPLY(self, opcode) -> None:
     self.inplace_operator('__imul__')
 
-  def byte_INPLACE_MODULO(self, opcode):
+  def byte_INPLACE_MODULO(self, opcode) -> None:
     self.inplace_operator('__imod__')
 
-  def byte_INPLACE_POWER(self, opcode):
+  def byte_INPLACE_POWER(self, opcode) -> None:
     self.inplace_operator('__ipow__')
 
-  def byte_INPLACE_LSHIFT(self, opcode):
+  def byte_INPLACE_LSHIFT(self, opcode) -> None:
     self.inplace_operator('__ilshift__')
 
-  def byte_INPLACE_RSHIFT(self, opcode):
+  def byte_INPLACE_RSHIFT(self, opcode) -> None:
     self.inplace_operator('__irshift__')
 
-  def byte_INPLACE_AND(self, opcode):
+  def byte_INPLACE_AND(self, opcode) -> None:
     self.inplace_operator('__iand__')
 
-  def byte_INPLACE_XOR(self, opcode):
+  def byte_INPLACE_XOR(self, opcode) -> None:
     self.inplace_operator('__ixor__')
 
-  def byte_INPLACE_OR(self, opcode):
+  def byte_INPLACE_OR(self, opcode) -> None:
     self.inplace_operator('__ior__')
 
-  def byte_INPLACE_FLOOR_DIVIDE(self, opcode):
+  def byte_INPLACE_FLOOR_DIVIDE(self, opcode) -> None:
     self.inplace_operator('__ifloordiv__')
 
-  def byte_INPLACE_TRUE_DIVIDE(self, opcode):
+  def byte_INPLACE_TRUE_DIVIDE(self, opcode) -> None:
     self.inplace_operator('__itruediv__')
 
-  def byte_BINARY_OP(self, opcode):
+  def byte_BINARY_OP(self, opcode) -> None:
     """Implementation of BINARY_OP opcode."""
     # Python 3.11 unified a lot of BINARY_* and INPLACE_* opcodes into a single
     # BINARY_OP. The underlying operations remain unchanged, so we can just
@@ -820,36 +822,36 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     constant = factory(self._ctx, typ(elements))
     self._stack.push(constant.to_variable())
 
-  def byte_BUILD_TUPLE(self, opcode):
+  def byte_BUILD_TUPLE(self, opcode) -> None:
     self._build_collection_from_stack(opcode, tuple, factory=abstract.Tuple)
 
-  def byte_BUILD_LIST(self, opcode):
+  def byte_BUILD_LIST(self, opcode) -> None:
     self._build_collection_from_stack(opcode, list, factory=abstract.List)
 
-  def byte_BUILD_SET(self, opcode):
+  def byte_BUILD_SET(self, opcode) -> None:
     self._build_collection_from_stack(opcode, set, factory=abstract.Set)
 
-  def byte_BUILD_MAP(self, opcode):
+  def byte_BUILD_MAP(self, opcode) -> None:
     n_elts = opcode.arg
     args = self._stack.popn(2 * n_elts)
     ret = {args[2 * i]: args[2 * i + 1] for i in range(n_elts)}
     ret = abstract.Dict(self._ctx, ret)
     self._stack.push(ret.to_variable())
 
-  def byte_BUILD_CONST_KEY_MAP(self, opcode):
+  def byte_BUILD_CONST_KEY_MAP(self, opcode) -> None:
     n_elts = opcode.arg
     keys = self._stack.pop()
     # Note that `keys` is a tuple of raw python values; we do not convert them
     # to abstract objects because they are used internally to construct function
     # call args.
-    keys = abstract.get_atomic_constant(keys, tuple)
+    keys = abstract.get_atomic_constant(keys, tuple)  # pytype: disable=wrong-arg-types
     assert len(keys) == n_elts
     vals = self._stack.popn(n_elts)
     ret = dict(zip(keys, vals))
     ret = abstract.Dict(self._ctx, ret)
     self._stack.push(ret.to_variable())
 
-  def byte_LIST_APPEND(self, opcode):
+  def byte_LIST_APPEND(self, opcode) -> None:
     # Used by the compiler e.g. for [x for x in ...]
     count = opcode.arg
     val = self._stack.pop()
@@ -860,7 +862,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.append(val))
 
-  def byte_SET_ADD(self, opcode):
+  def byte_SET_ADD(self, opcode) -> None:
     # Used by the compiler e.g. for {x for x in ...}
     count = opcode.arg
     val = self._stack.pop()
@@ -868,7 +870,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.add(val))
 
-  def byte_MAP_ADD(self, opcode):
+  def byte_MAP_ADD(self, opcode) -> None:
     # Used by the compiler e.g. for {x, y for x, y in ...}
     count = opcode.arg
     # The value is at the top of the stack, followed by the key.
@@ -892,7 +894,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
           self._ctx, [abstract.Splat(self._ctx, val).to_variable()]
       )
 
-  def byte_LIST_EXTEND(self, opcode):
+  def byte_LIST_EXTEND(self, opcode) -> None:
     count = opcode.arg
     update_var = self._stack.pop()
     update = self._unpack_list_extension(update_var)
@@ -919,11 +921,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       raise ValueError('Unexpected dict update:', val)
 
-  def byte_DICT_MERGE(self, opcode):
+  def byte_DICT_MERGE(self, opcode) -> None:
     # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
     self.byte_DICT_UPDATE(opcode)
 
-  def byte_DICT_UPDATE(self, opcode):
+  def byte_DICT_UPDATE(self, opcode) -> None:
     count = opcode.arg
     update_var = self._stack.pop()
     update = self._unpack_dict_update(update_var)
@@ -939,13 +941,13 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._replace_atomic_stack_value(count, ret)
 
   def _list_to_tuple(self, var: _Var) -> _Var:
-    target = abstract.get_atomic_constant(var, list)
+    target = abstract.get_atomic_constant(var, list)  # pytype: disable=wrong-arg-types
     return abstract.Tuple(self._ctx, tuple(target)).to_variable()
 
-  def byte_LIST_TO_TUPLE(self, opcode):
+  def byte_LIST_TO_TUPLE(self, opcode) -> None:
     self._stack.push(self._list_to_tuple(self._stack.pop()))
 
-  def byte_FORMAT_VALUE(self, opcode):
+  def byte_FORMAT_VALUE(self, opcode) -> None:
     if opcode.arg & pyc_marshal.Flags.FVS_MASK:
       self._stack.pop_and_discard()
     # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
@@ -954,7 +956,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     ret = self._ctx.types[str].instantiate().to_variable()
     self._stack.push(ret)
 
-  def byte_BUILD_STRING(self, opcode):
+  def byte_BUILD_STRING(self, opcode) -> None:
     # Pop n arguments off the stack and build a string out of them
     self._stack.popn(opcode.arg)
     ret = self._ctx.types[str].instantiate().to_variable()
@@ -963,51 +965,51 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # ---------------------------------------------------------------
   # Branches and jumps
 
-  def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode):
+  def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode) -> None:
     self._pop_jump_if_false(opcode)
 
-  def byte_POP_JUMP_IF_FALSE(self, opcode):
+  def byte_POP_JUMP_IF_FALSE(self, opcode) -> None:
     self._pop_jump_if_false(opcode)
 
-  def byte_JUMP_FORWARD(self, opcode):
+  def byte_JUMP_FORWARD(self, opcode) -> None:
     self._merge_state_into(self._current_state, opcode.argval)
 
   # ---------------------------------------------------------------
   # Stack manipulation
 
-  def byte_POP_TOP(self, opcode):
+  def byte_POP_TOP(self, opcode) -> None:
     del opcode  # unused
     self._stack.pop_and_discard()
 
-  def byte_DUP_TOP(self, opcode):
+  def byte_DUP_TOP(self, opcode) -> None:
     del opcode  # unused
     self._stack.push(self._stack.top())
 
-  def byte_DUP_TOP_TWO(self, opcode):
+  def byte_DUP_TOP_TWO(self, opcode) -> None:
     del opcode  # unused
     a, b = self._stack.popn(2)
     for v in (a, b, a, b):
       self._stack.push(v)
 
-  def byte_ROT_TWO(self, opcode):
+  def byte_ROT_TWO(self, opcode) -> None:
     del opcode  # unused
     self._stack.rotn(2)
 
-  def byte_ROT_THREE(self, opcode):
+  def byte_ROT_THREE(self, opcode) -> None:
     del opcode  # unused
     self._stack.rotn(3)
 
-  def byte_ROT_FOUR(self, opcode):
+  def byte_ROT_FOUR(self, opcode) -> None:
     del opcode  # unused
     self._stack.rotn(4)
 
-  def byte_ROT_N(self, opcode):
+  def byte_ROT_N(self, opcode) -> None:
     self._stack.rotn(opcode.arg)
 
   # ---------------------------------------------------------------
   # Intrinsic function calls
 
-  def _call_intrinsic(self, opcode):
+  def _call_intrinsic(self, opcode) -> None:
     try:
       intrinsic_impl = getattr(self, f'byte_intrinsic_{opcode.argval}')
     except AttributeError as e:
@@ -1016,11 +1018,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       ) from e
     intrinsic_impl()
 
-  def byte_CALL_INTRINSIC_1(self, opcode):
+  def byte_CALL_INTRINSIC_1(self, opcode) -> None:
     self._call_intrinsic(opcode)
 
-  def byte_CALL_INTRINSIC_2(self, opcode):
+  def byte_CALL_INTRINSIC_2(self, opcode) -> None:
     self._call_intrinsic(opcode)
 
-  def byte_intrinsic_INTRINSIC_LIST_TO_TUPLE(self):
+  def byte_intrinsic_INTRINSIC_LIST_TO_TUPLE(self) -> None:
     self._stack.push(self._list_to_tuple(self._stack.pop()))

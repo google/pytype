@@ -68,17 +68,17 @@ class _Builder:
 class _TypedDictBuilder(_Builder):
   """Build a typed dict."""
 
-  CLASSES = ("typing.TypedDict", "typing_extensions.TypedDict")
+  CLASSES: tuple[str, str] = ("typing.TypedDict", "typing_extensions.TypedDict")
 
-  def matches_class(self, c):
+  def matches_class(self, c) -> bool:
     return c.name in self.CLASSES
 
-  def matches_base(self, c):
+  def matches_base(self, c) -> bool:
     return any(
         isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases
     )
 
-  def matches_mro(self, c):
+  def matches_mro(self, c) -> bool:
     # Check if we have typed dicts in the MRO by seeing if we have already
     # created a TypedDictClass for one of the ancestor classes.
     return any(
@@ -96,17 +96,17 @@ class _TypedDictBuilder(_Builder):
 class _NamedTupleBuilder(_Builder):
   """Build a namedtuple."""
 
-  CLASSES = ("typing.NamedTuple",)
+  CLASSES: tuple[str] = ("typing.NamedTuple",)
 
-  def matches_class(self, c):
+  def matches_class(self, c) -> bool:
     return c.name in self.CLASSES
 
-  def matches_base(self, c):
+  def matches_base(self, c) -> bool:
     return any(
         isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases
     )
 
-  def matches_mro(self, c):
+  def matches_mro(self, c) -> bool:
     # We only create namedtuples by direct inheritance
     return False
 
@@ -117,7 +117,10 @@ class _NamedTupleBuilder(_Builder):
     return self.convert.make_namedtuple(name, pytd_cls)
 
 
-_BUILDERS = (_TypedDictBuilder, _NamedTupleBuilder)
+_BUILDERS: tuple[type[_TypedDictBuilder], type[_NamedTupleBuilder]] = (
+    _TypedDictBuilder,
+    _NamedTupleBuilder,
+)
 
 
 def maybe_build_from_pytd(name, pytd_cls, ctx):

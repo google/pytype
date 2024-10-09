@@ -17,7 +17,7 @@ class Binding(Generic[_T]):
   value: _T
   condition: conditions.Condition = conditions.TRUE
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if self.condition is conditions.TRUE:
       return f'Bind[{self.value}]'
     return f'Bind[{self.value} if {self.condition}]'
@@ -61,17 +61,19 @@ class Variable(Generic[_T]):
   def get_atomic_value(self, typ: None = ...) -> _T:
     ...
 
-  def get_atomic_value(self, typ=None):
+  def get_atomic_value(self, typ: None = None) -> '_T':
     """Gets this variable's value if there's exactly one, errors otherwise."""
     if not self.is_atomic():
       desc = 'many' if len(self.bindings) > 1 else 'few'
       raise ValueError(
-          f'Too {desc} bindings for {self.display_name()}: {self.bindings}')
+          f'Too {desc} bindings for {self.display_name()}: {self.bindings}'
+      )
     value = self.bindings[0].value
     if typ and not isinstance(value, (runtime_type := get_origin(typ) or typ)):
       raise ValueError(
           f'Wrong type for {self.display_name()}: expected '
-          f'{runtime_type.__name__}, got {value.__class__.__name__}')
+          f'{runtime_type.__name__}, got {value.__class__.__name__}'
+      )
     return value
 
   def is_atomic(self, typ: type[_T] | None = None) -> bool:
@@ -100,7 +102,7 @@ class Variable(Generic[_T]):
     new_binding = dataclasses.replace(self.bindings[0], value=value)
     return dataclasses.replace(self, bindings=(new_binding,))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     bindings = ' | '.join(repr(b) for b in self.bindings)
     if self.name:
       return f'Var[{self.name} -> {bindings}]'

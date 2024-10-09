@@ -15,9 +15,11 @@ Note that only a subset of values is supported, see pyi/parser.py
 """
 
 import dataclasses
-from typing import Any
+from typing import Any, TypeVar
 
 from pytype.pyi import evaluator
+
+_TCall = TypeVar("_TCall", bound="Call")
 
 
 @dataclasses.dataclass
@@ -29,21 +31,21 @@ class Call:
   kwargs: dict[str, Any]
 
   @classmethod
-  def from_metadata(cls, md, posarg_names, kwarg_names):
+  def from_metadata(cls: type[_TCall], md, posarg_names, kwarg_names) -> _TCall:
     fn = md["tag"]
     posargs = [md[k] for k in posarg_names if k in md]
     kwargs = {k: md[k] for k in kwarg_names if k in md}
     return cls(fn, posargs, kwargs)
 
   @classmethod
-  def from_call_dict(cls, md):
+  def from_call_dict(cls: type[_TCall], md) -> _TCall:
     assert md["tag"] == "call"
     fn = md["fn"]
     posargs = md["posargs"] or []
     kwargs = md["kwargs"] or {}
     return cls(fn, posargs, kwargs)
 
-  def to_metadata(self, posarg_names, kwarg_names):
+  def to_metadata(self, posarg_names, kwarg_names: list[str]) -> dict:
     out = {"tag": self.fn}
     for name, arg in zip(posarg_names, self.posargs):
       out[name] = arg
@@ -52,7 +54,7 @@ class Call:
         out[name] = self.kwargs[name]
     return out
 
-  def to_call_dict(self):
+  def to_call_dict(self) -> dict[str, list | str | dict[str, Any]]:
     return {
         "tag": "call",
         "fn": self.fn,
@@ -60,7 +62,7 @@ class Call:
         "kwargs": self.kwargs,
     }
 
-  def to_pytd(self):
+  def to_pytd(self) -> str:
     posargs = ", ".join(map(repr, self.posargs))
     kwargs = ", ".join(f"{k}={v!r}" for k, v in self.kwargs.items())
     if posargs and kwargs:
@@ -71,10 +73,12 @@ class Call:
 
 # Convert some callables to their own specific metadata dicts.
 # {fn: (posarg_names, kwarg_names)}
-_CALLABLES = {"Deprecated": (["reason"], [])}
+_CALLABLES: dict[str, tuple[list[str], list[None]]] = {
+    "Deprecated": (["reason"], [])
+}
 
 
-def to_string(val: Any):
+def to_string(val: Any) -> str:
   return repr(val)
 
 
@@ -87,7 +91,7 @@ def call_to_annotation(fn, *, posargs=None, kwargs=None):
   call = Call(fn, posargs or (), kwargs or {})
   if fn in _CALLABLES:
     posarg_names, kwarg_names = _CALLABLES[fn]
-    out = call.to_metadata(posarg_names, kwarg_names)
+    out = call.to_metadata(posarg_names, kwarg_names)  # pytype: disable=attribute-error
   else:
     out = call.to_call_dict()
   return to_string(out)

@@ -1,15 +1,21 @@
 """Singleton abstract values."""
 
 import logging
+from typing import Any, Optional, TypeVar
 
 from pytype import datatypes
 from pytype.abstract import _base
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd.pytd import Class
 from pytype.typegraph import cfg
+from pytype.types import types
 
-log = logging.getLogger(__name__)
+
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class Unknown(_base.BaseValue):
@@ -28,9 +34,9 @@ class Unknown(_base.BaseValue):
   _current_id = 0
 
   # For simplicity, Unknown doesn't emulate descriptors:
-  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
+  IGNORED_ATTRIBUTES: list[str] = ["__get__", "__set__", "__getattribute__"]
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     name = escape.unknown(Unknown._current_id)
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict()
@@ -43,7 +49,7 @@ class Unknown(_base.BaseValue):
   def compute_mro(self):
     return self.default_mro()
 
-  def get_fullhash(self, seen=None):
+  def get_fullhash(self, seen=None) -> int:
     # Unknown needs its own implementation of get_fullhash to ensure equivalent
     # Unknowns produce the same hash. "Equivalent" in this case means "has the
     # same members," so member names are used in the hash instead of id().
@@ -61,7 +67,7 @@ class Unknown(_base.BaseValue):
       return v.to_pytd_type(node)
 
   @classmethod
-  def _make_params(cls, node, args, kwargs):
+  def _make_params(cls, node, args, kwargs) -> tuple:
     """Convert a list of types/variables to pytd parameters."""
 
     def _make_param(name, p):
@@ -97,14 +103,14 @@ class Unknown(_base.BaseValue):
     )
     return new
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     ret = self.ctx.convert.create_new_unknown(
         node, source=self.owner, action="call:" + self.name
     )
     self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
 
-  def argcount(self, _):
+  def argcount(self, _) -> int:
     return 0
 
   def to_variable(self, node):
@@ -114,7 +120,7 @@ class Unknown(_base.BaseValue):
     self.ctx.vm.trace_unknown(self.class_name, val)
     return v
 
-  def to_structural_def(self, node, class_name):
+  def to_structural_def(self, node, class_name) -> Class:
     """Convert this Unknown to a pytd.Class."""
     self_param = (
         pytd.Parameter(
@@ -168,7 +174,7 @@ class Singleton(_base.BaseValue):
   This is essentially an ABC for Unsolvable, Empty, and others.
   """
 
-  _instance = None
+  _instance: Optional["Singleton"] = None
 
   def __new__(cls, *args, **kwargs):
     # If cls is a subclass of a subclass of Singleton, cls._instance will be
@@ -182,10 +188,10 @@ class Singleton(_base.BaseValue):
     del name, valself
     return self.to_variable(node)
 
-  def compute_mro(self):
+  def compute_mro(self) -> tuple[types.BaseValue, Any]:
     return self.default_mro()
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     del func, args
     return node, self.to_variable(node)
 
@@ -219,14 +225,14 @@ class Empty(Singleton):
   convert.Converter._function_to_def and tracer_vm.CallTracer.pytd_for_types.
   """
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__("empty", ctx)
 
 
 class Deleted(Empty):
   """Assigned to variables that have del called on them."""
 
-  def __init__(self, line, ctx):
+  def __init__(self, line, ctx) -> None:
     super().__init__(ctx)
     self.line = line
     self.name = "deleted"
@@ -248,13 +254,13 @@ class Unsolvable(Singleton):
   only need one.
   """
 
-  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
+  IGNORED_ATTRIBUTES: list[str] = ["__get__", "__set__", "__getattribute__"]
 
   # Since an unsolvable gets generated e.g. for every unresolved import, we
   # can have multiple circular Unsolvables in a class' MRO. Treat those special.
   SINGLETON = True
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__("unsolveable", ctx)
 
   def get_special_attribute(self, node, name, _):
@@ -264,7 +270,7 @@ class Unsolvable(Singleton):
     else:
       return self.to_variable(node)
 
-  def argcount(self, _):
+  def argcount(self, _) -> int:
     return 0
 
 

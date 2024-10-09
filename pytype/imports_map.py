@@ -17,11 +17,11 @@ class ImportsMap:
   items: Mapping[str, str] = dataclasses.field(default_factory=dict)
   unused: Sequence[str] = dataclasses.field(default_factory=list)
 
-  def __getitem__(self, key: str):
+  def __getitem__(self, key: str) -> str:
     return self.items[key]
 
-  def __contains__(self, key: str):
+  def __contains__(self, key: str) -> bool:
     return key in self.items
 
-  def __len__(self):
+  def __len__(self) -> int:
     return len(self.items)

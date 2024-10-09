@@ -1,5 +1,7 @@
 """Implementation of special members of third_party/six."""
 
+from collections.abc import Callable
+from typing import Any
 from pytype.overlays import metaclass
 from pytype.overlays import overlay
 
@@ -7,7 +9,7 @@ from pytype.overlays import overlay
 class SixOverlay(overlay.Overlay):
   """A custom overlay for the 'six' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "add_metaclass": metaclass.AddMetaclass.make,
         "with_metaclass": metaclass.WithMetaclass.make,
@@ -20,7 +22,7 @@ class SixOverlay(overlay.Overlay):
     super().__init__(ctx, "six", member_map, ast)
 
 
-def build_version_bool(major):
+def build_version_bool(major) -> Callable[[Any, Any], Any]:
   def make(ctx, module):
     del module  # unused
     return ctx.convert.bool_values[ctx.python_version[0] == major]

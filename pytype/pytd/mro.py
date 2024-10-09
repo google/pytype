@@ -3,7 +3,7 @@
 from pytype.pytd import pytd
 
 
-def MergeSequences(seqs):
+def MergeSequences(seqs) -> list:
   """Merge a sequence of sequences into a single sequence.
 
   This code is copied from https://www.python.org/download/releases/2.3/mro/
@@ -45,7 +45,7 @@ def MergeSequences(seqs):
     res.append(cand)
 
 
-def Dedup(seq):
+def Dedup(seq) -> list:
   """Return a sequence in the same order, but with duplicates removed."""
   seen = set()
   result = []
@@ -58,7 +58,7 @@ def Dedup(seq):
 
 class MROError(Exception):  # pylint: disable=g-bad-exception-name
 
-  def __init__(self, seqs):
+  def __init__(self, seqs) -> None:
     super().__init__()
     self.mro_seqs = seqs
 
@@ -121,7 +121,7 @@ def _ComputeMRO(t, mros, lookup_ast):
     return [t]
 
 
-def GetBasesInMRO(cls, lookup_ast=None):
+def GetBasesInMRO(cls, lookup_ast=None) -> tuple:
   """Get the given class's bases in Python's method resolution order."""
   mros = {}
   base_mros = []

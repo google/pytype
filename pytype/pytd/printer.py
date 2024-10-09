@@ -3,12 +3,18 @@
 import collections
 import logging
 import re
+from typing import Any, TypeVar
 
 from pytype import utils
 from pytype.pytd import base_visitor
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants
+
+_NameType: type[str]
+_AliasType: type[str]
+
+_TPrintVisitor = TypeVar("_TPrintVisitor", bound="PrintVisitor")
 
 # Aliases for readability:
 _NameType = _AliasType = str
@@ -17,7 +23,7 @@ _NameType = _AliasType = str
 class _TypingImports:
   """Imports from the `typing` module."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     # Typing members that are imported via `from typing import ...`.
     self._members: dict[_AliasType, _NameType] = {}
     # The number of times that each typing member is used.
@@ -28,14 +34,14 @@ class _TypingImports:
     # Note that when a typing member has multiple aliases, this keeps only one.
     return {name: alias for alias, name in self._members.items()}
 
-  def add(self, name: str, alias: str):
+  def add(self, name: str, alias: str) -> None:
     self._counts[name] += 1
     self._members[alias] = name
 
-  def decrement_count(self, name: str):
+  def decrement_count(self, name: str) -> None:
     self._counts[name] -= 1
 
-  def to_import_statements(self):
+  def to_import_statements(self) -> list[str]:
     targets = []
     for alias, name in self._members.items():
       if not self._counts[name]:
@@ -50,7 +56,7 @@ class _TypingImports:
 class _Imports:
   """Imports tracker."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.track_imports = True
     self._typing = _TypingImports()
     self._direct_imports: dict[_AliasType, _NameType] = {}
@@ -94,7 +100,7 @@ class _Imports:
         self._from_imports.setdefault(module, {})[alias] = name
     self._reverse_alias_map[full_name] = alias
 
-  def decrement_typing_count(self, member: str):
+  def decrement_typing_count(self, member: str) -> None:
     self._typing.decrement_count(member)
 
   def get_alias(self, name: str):
@@ -102,7 +108,7 @@ class _Imports:
       return self._typing.members.get(utils.strip_prefix(name, "typing."))
     return self._reverse_alias_map.get(name)
 
-  def to_import_statements(self):
+  def to_import_statements(self) -> list:
     """Converts self to import statements."""
     imports = self._typing.to_import_statements()
     for alias, module in self._direct_imports.items():
@@ -127,14 +133,14 @@ class PrintVisitor(base_visitor.Visitor):
   """Visitor for converting ASTs back to pytd source code."""
 
   visits_all_node_types = True
-  unchecked_node_names = base_visitor.ALL_NODE_NAMES
+  unchecked_node_names: Any = base_visitor.ALL_NODE_NAMES
 
   INDENT = " " * 4
-  _RESERVED = frozenset(
+  _RESERVED: frozenset[str] = frozenset(
       parser_constants.RESERVED + parser_constants.RESERVED_PYTHON
   )
 
-  def __init__(self, multiline_args=False):
+  def __init__(self, multiline_args=False) -> None:
     super().__init__()
     self.class_names = []  # can contain nested classes
     self.in_alias = False
@@ -155,7 +161,7 @@ class PrintVisitor(base_visitor.Visitor):
   def typing_imports(self):
     return self._imports.typing_members
 
-  def copy(self):
+  def copy(self: _TPrintVisitor) -> _TPrintVisitor:
     # Note that copy.deepcopy is too slow to use here.
     copy = PrintVisitor(self.multiline_args)
     copy.in_alias = self.in_alias
@@ -203,7 +209,7 @@ class PrintVisitor(base_visitor.Visitor):
         return f"{prefix_alias}.{name}"
     raise AssertionError("This should never happen.")
 
-  def _FormatTypeParams(self, type_params):
+  def _FormatTypeParams(self, type_params) -> list[str]:
     formatted_type_params = []
     for t in type_params:
       if t.full_name == "typing.Self":
@@ -250,7 +256,7 @@ class PrintVisitor(base_visitor.Visitor):
     else:
       return name
 
-  def _IsAliasImport(self, node):
+  def _IsAliasImport(self, node) -> bool:
     if not self._unit or self.in_constant or self.in_signature:
       return False
     elif isinstance(node.type, pytd.Module):
@@ -262,7 +268,7 @@ class PrintVisitor(base_visitor.Visitor):
         and "." in node.type.name
     )
 
-  def _ProcessDecorators(self, node):
+  def _ProcessDecorators(self, node) -> list:
     # Our handling of class and function decorators is a bit hacky (see
     # output.py); this makes sure that typing classes read in directly from a
     # pyi file and then reemitted (e.g. in assertTypesMatchPytd) have their
@@ -274,7 +280,7 @@ class PrintVisitor(base_visitor.Visitor):
         self.VisitNamedType(d.type)
     return utils.unique_list(decorators)
 
-  def EnterTypeDeclUnit(self, unit):
+  def EnterTypeDeclUnit(self, unit) -> None:
     self._unit = unit
     definitions = (
         unit.classes
@@ -298,11 +304,11 @@ class PrintVisitor(base_visitor.Visitor):
         x.name for x in unit.type_params if isinstance(x, pytd.ParamSpec)
     }
 
-  def LeaveTypeDeclUnit(self, _):
+  def LeaveTypeDeclUnit(self, _) -> None:
     self._unit = None
     self._local_names = set()
 
-  def VisitTypeDeclUnit(self, node):
+  def VisitTypeDeclUnit(self, node) -> str:
     """Convert the AST for an entire module back to a string."""
     for t in self.old_node.type_params:
       if isinstance(t, pytd.ParamSpec):
@@ -335,13 +341,13 @@ class PrintVisitor(base_visitor.Visitor):
     )
     return "\n\n".join(sections_as_string)
 
-  def EnterConstant(self, node):
+  def EnterConstant(self, node) -> None:
     self.in_constant = True
 
-  def LeaveConstant(self, node):
+  def LeaveConstant(self, node) -> None:
     self.in_constant = False
 
-  def _DropTypingConstant(self, node):
+  def _DropTypingConstant(self, node) -> bool | None:
     # Hack to account for a corner case in late annotation handling.
     # If we have a top-level constant of the exact form
     #   Foo: Type[typing.Foo]
@@ -383,11 +389,11 @@ class PrintVisitor(base_visitor.Visitor):
     suffix = " = ..." if node.value else ""
     return f"{node.name}: {node.type}{suffix}"
 
-  def EnterAlias(self, node):
+  def EnterAlias(self, node) -> None:
     if self.in_function or self._IsAliasImport(node):
       self._imports.track_imports = False
 
-  def LeaveAlias(self, _):
+  def LeaveAlias(self, _) -> None:
     self._imports.track_imports = True
 
   def VisitAlias(self, node):
@@ -400,7 +406,7 @@ class PrintVisitor(base_visitor.Visitor):
       return node.type
     return f"{node.name} = {node.type}"
 
-  def EnterClass(self, node):
+  def EnterClass(self, node) -> set[str]:
     """Entering a class - record class name for children's use."""
     n = node.name
     if node.template:
@@ -414,11 +420,11 @@ class PrintVisitor(base_visitor.Visitor):
     # of 'Any' when generating a decorator for an InterpreterClass.)
     return {"decorators"}
 
-  def LeaveClass(self, unused_node):
+  def LeaveClass(self, unused_node) -> None:
     self._class_members.clear()
     self.class_names.pop()
 
-  def VisitClass(self, node):
+  def VisitClass(self, node) -> str:
     """Visit a class, producing a multi-line, properly indented string."""
     bases = node.bases
     if bases == ("TypedDict",):
@@ -471,13 +477,13 @@ class PrintVisitor(base_visitor.Visitor):
     lines = decorators + header + slots + classes + constants + methods
     return "\n".join(lines) + "\n"
 
-  def EnterFunction(self, node):
+  def EnterFunction(self, node) -> None:
     self.in_function = True
 
-  def LeaveFunction(self, node):
+  def LeaveFunction(self, node) -> None:
     self.in_function = False
 
-  def VisitFunction(self, node):
+  def VisitFunction(self, node) -> str:
     """Visit function, producing multi-line string (one for each signature)."""
     function_name = node.name
     if self.old_node.decorators:
@@ -524,13 +530,13 @@ class PrintVisitor(base_visitor.Visitor):
     else:
       return self.Print(node.Replace(type=pytd.AnythingType(), optional=False))
 
-  def EnterSignature(self, node):
+  def EnterSignature(self, node) -> None:
     self.in_signature = True
 
-  def LeaveSignature(self, node):
+  def LeaveSignature(self, node) -> None:
     self.in_signature = False
 
-  def VisitSignature(self, node):
+  def VisitSignature(self, node) -> str:
     """Visit a signature, producing a string."""
     if node.return_type == "nothing":
       return_type = self._FromTyping("Never")  # a prettier alias for nothing
@@ -594,15 +600,15 @@ class PrintVisitor(base_visitor.Visitor):
       params = ", ".join(params)
       return f"({params}){ret}:{''.join(body)}"
 
-  def EnterParameter(self, unused_node):
+  def EnterParameter(self, unused_node) -> None:
     assert not self.in_parameter
     self.in_parameter = True
 
-  def LeaveParameter(self, unused_node):
+  def LeaveParameter(self, unused_node) -> None:
     assert self.in_parameter
     self.in_parameter = False
 
-  def _DecrementParameterImports(self, name):
+  def _DecrementParameterImports(self, name) -> None:
     if "[" not in name:
       return
     param = name.split("[", 1)[-1]
@@ -658,7 +664,7 @@ class PrintVisitor(base_visitor.Visitor):
     """Convert a template to a string."""
     return node.type_param
 
-  def _UseExistingModuleAlias(self, name):
+  def _UseExistingModuleAlias(self, name) -> str | None:
     prefix, suffix = name.rsplit(".", 1)
     while prefix:
       prefix_alias = self._imports.get_alias(prefix)
@@ -668,7 +674,7 @@ class PrintVisitor(base_visitor.Visitor):
       suffix = f"{remainder}.{suffix}"
     return None
 
-  def _GuessModule(self, maybe_module):
+  def _GuessModule(self, maybe_module) -> tuple[Any, Any]:
     """Guess which part of the given name is the module prefix."""
     if "." not in maybe_module:
       return maybe_module, ""
@@ -735,7 +741,7 @@ class PrintVisitor(base_visitor.Visitor):
     """Convert an anything type to a string."""
     return self._FromTyping("Any")
 
-  def VisitNothingType(self, unused_node):
+  def VisitNothingType(self, unused_node) -> str:
     """Convert the nothing type to a string."""
     return "nothing"
 
@@ -745,13 +751,13 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitParamSpec(self, node):
     return node.name
 
-  def VisitParamSpecArgs(self, node):
+  def VisitParamSpecArgs(self, node) -> str:
     return f"{node.name}.args"
 
-  def VisitParamSpecKwargs(self, node):
+  def VisitParamSpecKwargs(self, node) -> str:
     return f"{node.name}.kwargs"
 
-  def VisitModule(self, node):
+  def VisitModule(self, node) -> str:
     return "module"
 
   def VisitGenericType(self, node):
@@ -771,7 +777,7 @@ class PrintVisitor(base_visitor.Visitor):
       parameters = ("...",) + parameters[1:]
     return node.base_type + "[" + ", ".join(str(p) for p in parameters) + "]"
 
-  def VisitCallableType(self, node):
+  def VisitCallableType(self, node) -> str:
     typ = node.base_type
     if len(node.args) == 1 and node.args[0] in self._paramspec_names:
       return f"{typ}[{node.args[0]}, {node.ret}]"
@@ -782,7 +788,7 @@ class PrintVisitor(base_visitor.Visitor):
       args = ", ".join(node.args)
       return f"{typ}[[{args}], {node.ret}]"
 
-  def VisitConcatenate(self, node):
+  def VisitConcatenate(self, node) -> str:
     base = self._FromTyping("Concatenate")
     parameters = ", ".join(node.parameters)
     return f"{base}[{parameters}]"
@@ -800,7 +806,7 @@ class PrintVisitor(base_visitor.Visitor):
     type_list = self._FormSetTypeList(node)
     return self._BuildIntersection(type_list)
 
-  def _FormSetTypeList(self, node):
+  def _FormSetTypeList(self, node) -> dict[Any, None]:
     """Form list of types within a set type."""
     type_list = dict.fromkeys(node.type_list)
     if self.in_parameter:
@@ -860,19 +866,19 @@ class PrintVisitor(base_visitor.Visitor):
     else:
       return " and ".join(type_list)
 
-  def EnterLiteral(self, _):
+  def EnterLiteral(self, _) -> None:
     assert not self.in_literal
     self.in_literal = True
 
-  def LeaveLiteral(self, _):
+  def LeaveLiteral(self, _) -> None:
     assert self.in_literal
     self.in_literal = False
 
-  def VisitLiteral(self, node):
+  def VisitLiteral(self, node) -> str:
     base = self._FromTyping("Literal")
     return f"{base}[{node.value}]"
 
-  def VisitAnnotated(self, node):
+  def VisitAnnotated(self, node) -> str:
     base = self._FromTyping("Annotated")
     annotations = ", ".join(node.annotations)
     return f"{base}[{node.base_type}, {annotations}]"

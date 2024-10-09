@@ -1,6 +1,7 @@
 """Implementation of TypedDict."""
 
 import dataclasses
+from typing import Any, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -9,6 +10,11 @@ from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
+
+
+_T0 = TypeVar("_T0")
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
 
 
 def _is_required(value: abstract.BaseValue) -> bool | None:
@@ -38,7 +44,7 @@ class TypedDictProperties:
   def optional(self):
     return self.keys - self.required
 
-  def add(self, k, v, total):
+  def add(self, k, v, total) -> None:
     """Adds key and value."""
     req = _is_required(v)
     if req is None:
@@ -52,7 +58,7 @@ class TypedDictProperties:
     if required:
       self.required.add(k)
 
-  def check_keys(self, keys):
+  def check_keys(self, keys) -> tuple[Any, set]:
     keys = set(keys)
     missing = (self.keys - keys) & self.required
     extra = keys - self.keys
@@ -62,7 +68,7 @@ class TypedDictProperties:
 class TypedDictBuilder(abstract.PyTDClass):
   """Factory for creating typing.TypedDict classes."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     pyval = ctx.loader.lookup_pytd("typing", "TypedDict")
     super().__init__("TypedDict", pyval, ctx)
     # Signature for the functional constructor
@@ -73,7 +79,7 @@ class TypedDictBuilder(abstract.PyTDClass):
         self.ctx, "typing.TypedDict", sig
     )
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     """Call the functional constructor."""
     props = self._extract_args(args)
     cls = TypedDictClass(props, self, self.ctx)
@@ -88,7 +94,7 @@ class TypedDictBuilder(abstract.PyTDClass):
       bad = error_types.BadType(name, typ)
       raise error_types.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
 
-  def _extract_args(self, args):
+  def _extract_args(self, args) -> TypedDictProperties:
     if len(args.posargs) != 2:
       raise error_types.WrongArgCount(self.fn_sig, args, self.ctx)
     name = self._extract_param(args, 0, "name", str, self.ctx.convert.str_type)
@@ -114,7 +120,7 @@ class TypedDictBuilder(abstract.PyTDClass):
       props.add(k, value, total)
     return props
 
-  def _validate_bases(self, cls_name, bases):
+  def _validate_bases(self, cls_name, bases) -> None:
     """Check that all base classes are valid."""
     for base_var in bases:
       for base in base_var.data:
@@ -126,7 +132,7 @@ class TypedDictBuilder(abstract.PyTDClass):
               self.ctx.vm.frames, base_var, details
           )
 
-  def _merge_base_class_fields(self, bases, props):
+  def _merge_base_class_fields(self, bases, props) -> None:
     """Add the merged list of base class fields to the fields dict."""
     # Updates props in place, raises an error if a duplicate key is encountered.
     provenance = {k: props.name for k in props.fields}
@@ -145,7 +151,7 @@ class TypedDictBuilder(abstract.PyTDClass):
             props.add(k, v, base.props.total)
             provenance[k] = base.name
 
-  def make_class(self, node, bases, f_locals, total):
+  def make_class(self, node: _T0, bases, f_locals, total) -> tuple[_T0, Any]:
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
     # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
     # applies here.
@@ -193,7 +199,7 @@ class TypedDictBuilder(abstract.PyTDClass):
     cls_var = cls.to_variable(node)
     return node, cls_var
 
-  def make_class_from_pyi(self, cls_name, pytd_cls):
+  def make_class_from_pyi(self, cls_name, pytd_cls) -> "TypedDictClass":
     """Make a TypedDictClass from a pyi class."""
     # NOTE: Returns the abstract class, not a variable.
     name = pytd_cls.name or cls_name
@@ -223,16 +229,16 @@ class TypedDictBuilder(abstract.PyTDClass):
 class TypedDictClass(abstract.PyTDClass):
   """A template for typed dicts."""
 
-  def __init__(self, props, base_cls, ctx):
+  def __init__(self, props, base_cls, ctx) -> None:
     self.props = props
     self._base_cls = base_cls  # TypedDictBuilder for constructing subclasses
     super().__init__(props.name, ctx.convert.dict_type.pytd_cls, ctx)
     self.init_method = self._make_init(props)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"TypedDictClass({self.name})"
 
-  def _make_init(self, props):
+  def _make_init(self, props) -> abstract.SimpleFunction:
     # __init__ method for type checking signatures.
     # We construct this here and pass it to TypedDictClass because we need
     # access to abstract.SimpleFunction.
@@ -247,7 +253,7 @@ class TypedDictClass(abstract.PyTDClass):
     }
     return abstract.SimpleFunction(sig, self.ctx)
 
-  def _new_instance(self, container, node, args):
+  def _new_instance(self, container, node, args) -> "TypedDict":
     self.init_method.match_and_map_args(node, args, None)
     ret = TypedDict(self.props, self.ctx)
     for k, v in args.namedargs.items():
@@ -278,7 +284,7 @@ class TypedDict(abstract.Dict):
   a regular dict.
   """
 
-  def __init__(self, props, ctx):
+  def __init__(self, props, ctx) -> None:
     super().__init__(ctx)
     self.props = props
     self.set_native_slot("__delitem__", self.delitem_slot)
@@ -292,15 +298,17 @@ class TypedDict(abstract.Dict):
   def class_name(self):
     return self.props.name
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"<TypedDict {self.class_name}>"
 
-  def _check_str_key(self, name):
+  def _check_str_key(self, name: _T0) -> _T0:
     if name not in self.fields:
       raise error_types.TypedDictKeyMissing(self, name)
     return name
 
-  def _check_str_key_value(self, node, name, value_var):
+  def _check_str_key_value(
+      self, node, name: _T1, value_var: _T2
+  ) -> tuple[_T1, _T2]:
     self._check_str_key(name)
     typ = self.fields[name]
     bad = self.ctx.matcher(node).compute_one_match(value_var, typ).bad_matches
@@ -323,37 +331,37 @@ class TypedDict(abstract.Dict):
       raise error_types.TypedDictKeyMissing(self, None) from e
     return self._check_str_key(name)
 
-  def _check_value(self, node, name_var, value_var):
+  def _check_value(self, node, name_var, value_var: _T2) -> _T2:
     """Check that value has the right type."""
     # We have already called check_key so name is in fields
     name = abstract_utils.get_atomic_python_constant(name_var, str)
     self._check_str_key_value(node, name, value_var)
     return value_var
 
-  def getitem_slot(self, node, name_var):
+  def getitem_slot(self, node, name_var) -> tuple[Any, Any]:
     # A typed dict getitem should have a concrete string arg. If we have a var
     # with multiple bindings just fall back to Any.
     self._check_key(name_var)
     return super().getitem_slot(node, name_var)
 
-  def setitem_slot(self, node, name_var, value_var):
+  def setitem_slot(self, node, name_var, value_var) -> tuple[Any, Any]:
     self._check_key(name_var)
     self._check_value(node, name_var, value_var)
     return super().setitem_slot(node, name_var, value_var)
 
-  def set_str_item(self, node, name, value_var):
+  def set_str_item(self, node: _T0, name, value_var) -> _T0:
     self._check_str_key_value(node, name, value_var)
     return super().set_str_item(node, name, value_var)
 
-  def delitem_slot(self, node, name_var):
+  def delitem_slot(self, node, name_var) -> tuple[Any, Any]:
     self._check_key(name_var)
     return self.call_pytd(node, "__delitem__", name_var)
 
-  def pop_slot(self, node, key_var, default_var=None):
+  def pop_slot(self, node, key_var, default_var=None) -> tuple[Any, Any]:
     self._check_key(key_var)
     return super().pop_slot(node, key_var, default_var)
 
-  def get_slot(self, node, key_var, default_var=None):
+  def get_slot(self, node: _T0, key_var, default_var=None) -> tuple[_T0, Any]:
     try:
       str_key = self._check_key(key_var)
     except error_types.TypedDictKeyMissing:
@@ -366,7 +374,7 @@ class TypedDict(abstract.Dict):
       # here, or just `default | None`?
       return node, default_var or self.ctx.convert.none.to_variable(node)
 
-  def merge_instance_type_parameter(self, node, name, value):
+  def merge_instance_type_parameter(self, node, name, value) -> None:
     _, _, short_name = name.rpartition(".")
     if short_name == abstract_utils.K:
       expected_length = 1
@@ -382,14 +390,14 @@ class TypedDict(abstract.Dict):
 
 def _is_typeddict(val: abstract.BaseValue):
   if isinstance(val, abstract.Union):
-    return all(_is_typeddict(v) for v in val.options)
+    return all(_is_typeddict(v) for v in val.options)  # pytype: disable=attribute-error
   return isinstance(val, TypedDictClass)
 
 
 class IsTypedDict(abstract.PyTDFunction):
   """Implementation of typing.is_typeddict."""
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     self.match_args(node, args)
     if args.posargs:
       tp = args.posargs[0]
@@ -410,9 +418,15 @@ class IsTypedDict(abstract.PyTDFunction):
 class _TypedDictItemRequiredness(overlay_utils.TypingContainer):
   """typing.(Not)Required."""
 
-  _REQUIREDNESS = None
+  _REQUIREDNESS: None = None
 
-  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
+  def _get_value_info(
+      self, inner, ellipses, allowed_ellipses=frozenset()
+  ) -> tuple[
+      tuple[int | str, ...],
+      tuple[abstract.BaseValue, ...],
+      type[abstract.ParameterizedClass],
+  ]:
     template, processed_inner, abstract_class = super()._get_value_info(
         inner, ellipses, allowed_ellipses
     )

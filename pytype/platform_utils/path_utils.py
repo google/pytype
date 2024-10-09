@@ -7,11 +7,16 @@ import functools
 import glob as glob_module
 import os
 import sys
+from typing import TypeVar
+
+AnyOrLiteralStr = TypeVar('AnyOrLiteralStr', str, bytes, str)
+AnyStr = TypeVar('AnyStr', str, bytes)
+_T0 = TypeVar('_T0')
 
 if sys.platform == 'win32':
   import ctypes  # pylint: disable=g-import-not-at-top
 
-  def _short_path_to_long_path(path: str):
+  def _short_path_to_long_path(path: str) -> str:
     """Convert to long path names in win32."""
     buffer = ctypes.create_unicode_buffer(0)
     required_size = ctypes.windll.kernel32.GetLongPathNameW(path, buffer, 0)
@@ -27,11 +32,11 @@ if sys.platform == 'win32':
 
 else:
 
-  def _short_path_to_long_path(path: str):
+  def _short_path_to_long_path(path: str) -> str:
     return path
 
 
-def _replace_driver_code(path: str):
+def _replace_driver_code(path: str) -> str:
   drive, other = os.path.splitdrive(path)
   drive = drive.capitalize()
   return os.path.join(drive, other)
@@ -39,18 +44,18 @@ def _replace_driver_code(path: str):
 
 if sys.platform == 'win32':
 
-  def standardize_return_path(path):
+  def standardize_return_path(path: _T0) -> _T0:
     path = _replace_driver_code(path)
     path = _short_path_to_long_path(path)
     return path
 
 else:
 
-  def standardize_return_path(path):
+  def standardize_return_path(path: _T0) -> _T0:
     return path
 
 
-def _standardize_return_path_wrapper(func):
+def _standardize_return_path_wrapper(func: _T0) -> _T0:
   """Standardize return path in win32."""
   if sys.platform == 'win32':
 

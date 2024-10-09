@@ -28,7 +28,7 @@ class BlockState(Generic[_T]):
     else:
       self._locals_with_block_condition = locals_with_block_condition
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return (f'BlockState(locals={self._locals}, condition={self._condition}, '
             f'locals_with_block_condition={self._locals_with_block_condition})')
 

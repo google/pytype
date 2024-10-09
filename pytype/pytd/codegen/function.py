@@ -2,15 +2,20 @@
 
 from collections.abc import Iterable
 import dataclasses
-from typing import Any
+from typing import Any, TypeVar
 
 from pytype.pytd import pytd
+
+_TNameAndSig = TypeVar("_TNameAndSig", bound="NameAndSig")
+_T_DecoratedFunction = TypeVar(
+    "_T_DecoratedFunction", bound="_DecoratedFunction"
+)
 
 
 class OverloadedDecoratorError(Exception):
   """Inconsistent decorators on an overloaded function."""
 
-  def __init__(self, name, typ):
+  def __init__(self, name, typ) -> None:
     msg = f"Overloaded signatures for '{name}' disagree on {typ} decorators"
     super().__init__(msg)
 
@@ -18,7 +23,7 @@ class OverloadedDecoratorError(Exception):
 class PropertyDecoratorError(Exception):
   """Inconsistent property decorators on an overloaded function."""
 
-  def __init__(self, name, explanation):
+  def __init__(self, name, explanation) -> None:
     msg = f"Invalid property decorators for '{name}': {explanation}"
     super().__init__(msg)
 
@@ -175,7 +180,7 @@ class _Properties:
   setter: pytd.Signature | None = None
   deleter: pytd.Signature | None = None
 
-  def set(self, prop, sig, name):
+  def set(self, prop, sig, name) -> None:
     assert hasattr(self, prop), prop
     if getattr(self, prop):
       msg = (f"need at most one each of @property, @{name}.setter, and "
@@ -184,7 +189,7 @@ class _Properties:
     setattr(self, prop, sig)
 
 
-def _has_decorator(fn, dec):
+def _has_decorator(fn, dec) -> bool:
   return any(d.type.name == dec for d in fn.decorators)
 
 
@@ -202,16 +207,19 @@ class _DecoratedFunction:
   prop_names: dict[str, _Property] = dataclasses.field(init=False)
 
   @classmethod
-  def make(cls, fn: NameAndSig):
+  def make(
+      cls: type[_T_DecoratedFunction], fn: NameAndSig
+  ) -> _T_DecoratedFunction:
     return cls(
         name=fn.name,
         sigs=[fn.signature],
         is_abstract=fn.is_abstract,
         is_coroutine=fn.is_coroutine,
         is_final=fn.is_final,
-        decorators=fn.decorators)
+        decorators=fn.decorators,
+    )
 
-  def __post_init__(self):
+  def __post_init__(self) -> None:
     self.prop_names = _property_decorators(self.name)
     prop_decorators = [d for d in self.decorators if d.name in self.prop_names]
     if prop_decorators:
@@ -220,7 +228,7 @@ class _DecoratedFunction:
     else:
       self.properties = None
 
-  def add_property(self, decorators, sig):
+  def add_property(self, decorators, sig) -> None:
     """Add a property overload."""
     assert decorators
     if len(decorators) > 1:

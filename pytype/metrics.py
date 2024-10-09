@@ -24,6 +24,7 @@ import os
 import re
 import time
 import types
+from typing import Any, Optional
 
 try:
   import tracemalloc  # pylint: disable=g-import-not-at-top
@@ -37,16 +38,16 @@ except ImportError:
 # need to write custom JsonEncoder and JsonDecoder classes per Metric subclass.
 
 # Register metric types for deserialization.
-_METRIC_TYPES = {}
+_METRIC_TYPES: dict = {}
 
 # Map from metric name to Metric object.
-_registered_metrics = {}
+_registered_metrics: dict = {}
 
 # Whether metrics should be collected.
-_enabled = False
+_enabled: Any = False
 
 
-def reset():
+def reset() -> None:
   """Resets this module to its initial state."""
   _METRIC_TYPES.clear()
   _registered_metrics.clear()
@@ -73,12 +74,12 @@ def _deserialize(typ, payload):
   return out
 
 
-def _serialize(obj):
+def _serialize(obj) -> list:
   """Return a json-serializable form of object."""
   return [obj.__class__.__name__, vars(obj)]
 
 
-def dump_all(objs, fp):
+def dump_all(objs, fp) -> None:
   """Write a list of metrics to a json file."""
   json.dump([_serialize(x) for x in objs], fp)
 
@@ -89,15 +90,15 @@ def load_all(fp):
   return [_deserialize(*x) for x in metrics]
 
 
-_METRIC_NAME_RE = re.compile(r"^[a-zA-Z_]\w+$")
+_METRIC_NAME_RE: re.Pattern = re.compile(r"^[a-zA-Z_]\w+$")
 
 
-def _validate_metric_name(name):
+def _validate_metric_name(name) -> None:
   if _METRIC_NAME_RE.match(name) is None:
     raise ValueError(f"Illegal metric name: {name}")
 
 
-def _prepare_for_test(enabled=True):
+def _prepare_for_test(enabled=True) -> None:
   """Setup metrics collection for a test."""
   _registered_metrics.clear()
   global _enabled
@@ -107,7 +108,7 @@ def _prepare_for_test(enabled=True):
 _platform_timer = time.time if os.name == "nt" else time.process_time
 
 
-def get_cpu_clock():
+def get_cpu_clock() -> float:
   """Returns CPU clock to keep compatibility with various Python versions."""
   return _platform_timer()
 
@@ -132,7 +133,7 @@ def get_metric(name, constructor, *args, **kwargs):
     return constructor(name, *args, **kwargs)
 
 
-def get_report():
+def get_report() -> str:
   """Return a string listing all metrics, one per line."""
   lines = [
       str(_registered_metrics[n]) + "\n" for n in sorted(_registered_metrics)
@@ -140,7 +141,7 @@ def get_report():
   return "".join(lines)
 
 
-def merge_from_file(metrics_file):
+def merge_from_file(metrics_file) -> None:
   """Merge metrics recorded in another file into the current metrics."""
   for metric in load_all(metrics_file):
     existing = _registered_metrics.get(metric.name)
@@ -156,7 +157,7 @@ def merge_from_file(metrics_file):
 class Metric(metaclass=_RegistryMeta):
   """Abstract base class for metrics."""
 
-  def __init__(self, name):
+  def __init__(self, name) -> None:
     """Initialize the metric and register it under the specified name."""
     if name is None:
       # We do not want to register this metric (e.g. we are deserializing a
@@ -181,18 +182,18 @@ class Metric(metaclass=_RegistryMeta):
     """Merge data from another metric of the same type."""
     raise NotImplementedError
 
-  def __str__(self):
+  def __str__(self) -> str:
     return f"{self._name}: {self._summary()}"
 
 
 class Counter(Metric):
   """A monotonically increasing metric."""
 
-  def __init__(self, name):
+  def __init__(self, name) -> None:
     super().__init__(name)
     self._total = 0
 
-  def inc(self, count=1):
+  def inc(self, count=1) -> None:
     """Increment the metric by the specified amount."""
     if count < 0:
       raise ValueError("Counter must be monotonically increasing.")
@@ -200,10 +201,10 @@ class Counter(Metric):
       return
     self._total += count
 
-  def _summary(self):
+  def _summary(self) -> str:
     return str(self._total)
 
-  def _merge(self, other):
+  def _merge(self, other) -> None:
     # pylint: disable=protected-access
     self._total += other._total
 
@@ -211,17 +212,17 @@ class Counter(Metric):
 class StopWatch(Metric):
   """A counter that measures the time spent in a "with" statement."""
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     self._start_time = get_cpu_clock()
 
-  def __exit__(self, exc_type, exc_value, traceback):
+  def __exit__(self, exc_type: None, exc_value: None, traceback: None) -> None:
     self._total = get_cpu_clock() - self._start_time
     del self._start_time
 
-  def _summary(self):
+  def _summary(self) -> str:
     return f"{self._total:f} seconds"
 
-  def _merge(self, other):
+  def _merge(self, other) -> None:
     # pylint: disable=protected-access
     self._total += other._total
 
@@ -229,38 +230,38 @@ class StopWatch(Metric):
 class ReentrantStopWatch(Metric):
   """A watch that supports being called multiple times and recursively."""
 
-  def __init__(self, name):
+  def __init__(self, name) -> None:
     super().__init__(name)
     self._time = 0
     self._calls = 0
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     if not self._calls:
       self._start_time = get_cpu_clock()
     self._calls += 1
 
-  def __exit__(self, exc_type, exc_value, traceback):
+  def __exit__(self, exc_type: None, exc_value: None, traceback: None) -> None:
     self._calls -= 1
     if not self._calls:
       self._time += get_cpu_clock() - self._start_time
       del self._start_time
 
-  def _merge(self, other):
+  def _merge(self, other) -> None:
     self._time += other._time  # pylint: disable=protected-access
 
-  def _summary(self):
+  def _summary(self) -> str:
     return f"time spend below this StopWatch: {self._time}"
 
 
 class MapCounter(Metric):
   """A set of related counters keyed by an arbitrary string."""
 
-  def __init__(self, name):
+  def __init__(self, name) -> None:
     super().__init__(name)
     self._counts = {}
     self._total = 0
 
-  def inc(self, key, count=1):
+  def inc(self, key, count=1) -> None:
     """Increment the metric by the specified amount.
 
     Args:
@@ -277,13 +278,13 @@ class MapCounter(Metric):
     self._counts[key] = self._counts.get(key, 0) + count
     self._total += count
 
-  def _summary(self):
+  def _summary(self) -> str:
     details = ", ".join(
         ["%s=%d" % (k, self._counts[k]) for k in sorted(self._counts)]
     )
     return "%d {%s}" % (self._total, details)
 
-  def _merge(self, other):
+  def _merge(self, other) -> None:
     # pylint: disable=protected-access
     for key, count in other._counts.items():
       self._counts[key] = self._counts.get(key, 0) + count
@@ -293,7 +294,7 @@ class MapCounter(Metric):
 class Distribution(Metric):
   """A metric to track simple statistics from a distribution of values."""
 
-  def __init__(self, name):
+  def __init__(self, name) -> None:
     super().__init__(name)
     self._count = 0  # Number of values.
     self._total = 0.0  # Sum of the values.
@@ -301,7 +302,7 @@ class Distribution(Metric):
     self._min = None
     self._max = None
 
-  def add(self, value):
+  def add(self, value) -> None:
     """Add a value to the distribution."""
     if not _enabled:
       return
@@ -315,11 +316,11 @@ class Distribution(Metric):
       self._min = min(self._min, value)
       self._max = max(self._max, value)
 
-  def _mean(self):
+  def _mean(self) -> None:
     if self._count:
       return self._total / float(self._count)
 
-  def _stdev(self):
+  def _stdev(self) -> Optional[float]:
     if self._count:
       variance = (self._squared * self._count - self._total * self._total) / (
           self._count * self._count
@@ -330,7 +331,7 @@ class Distribution(Metric):
         return 0.0
       return math.sqrt(variance)
 
-  def _summary(self):
+  def _summary(self) -> str:
     return "total=%s, count=%d, min=%s, max=%s, mean=%s, stdev=%s" % (
         self._total,
         self._count,
@@ -340,7 +341,7 @@ class Distribution(Metric):
         self._stdev(),
     )
 
-  def _merge(self, other):
+  def _merge(self, other) -> None:
     # pylint: disable=protected-access
     if other._count == 0:
       # Exit early so we don't have to worry about min/max of None.
@@ -361,7 +362,7 @@ class Snapshot(Metric):
 
   def __init__(
       self, name, enabled=False, groupby="lineno", nframes=1, count=10
-  ):
+  ) -> None:
     if enabled and tracemalloc is None:
       raise RuntimeError("tracemalloc module couldn't be imported")
     super().__init__(name)
@@ -382,15 +383,15 @@ class Snapshot(Metric):
     # options.memory_snapshot flag set by the --memory-snapshots option)
     self.enabled = _enabled and enabled
 
-  def _start_tracemalloc(self):
+  def _start_tracemalloc(self) -> None:
     tracemalloc.start(self.nframes)
     self.running = True
 
-  def _stop_tracemalloc(self):
+  def _stop_tracemalloc(self) -> None:
     tracemalloc.stop()
     self.running = False
 
-  def take_snapshot(self, where=""):
+  def take_snapshot(self, where="") -> None:
     """Stores a tracemalloc snapshot."""
     if not self.enabled:
       return
@@ -409,26 +410,26 @@ class Snapshot(Metric):
         )
     )
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     if not self.enabled:
       return
     self._start_tracemalloc()
     self.take_snapshot("__enter__")
 
-  def __exit__(self, exc_type, exc_value, traceback):
+  def __exit__(self, exc_type: None, exc_value: None, traceback: None) -> None:
     if not self.running:
       return
     self.take_snapshot("__exit__")
     self._stop_tracemalloc()
 
-  def _summary(self):
+  def _summary(self) -> str:
     return "\n\n".join(self.snapshots)
 
 
 class MetricsContext:
   """A context manager that configures metrics and writes their output."""
 
-  def __init__(self, output_path, open_function=open):
+  def __init__(self, output_path, open_function=open) -> None:
     """Initialize.
 
     Args:
@@ -440,12 +441,12 @@ class MetricsContext:
     self._open_function = open_function
     self._old_enabled = None  # Set in __enter__.
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     global _enabled
     self._old_enabled = _enabled
     _enabled = bool(self._output_path)
 
-  def __exit__(self, exc_type, exc_value, traceback):
+  def __exit__(self, exc_type: None, exc_value: None, traceback: None) -> None:
     global _enabled
     _enabled = self._old_enabled
     if self._output_path:

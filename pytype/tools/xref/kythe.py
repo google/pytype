@@ -48,7 +48,7 @@ class Edge:
 class Kythe:
   """Store a list of kythe graph entries."""
 
-  def __init__(self, source, args=None):
+  def __init__(self, source, args=None) -> None:
     if args:
       self.root = args.root
       self.corpus = args.corpus
@@ -64,13 +64,13 @@ class Kythe:
     self.file_vname = self._add_file(source.text)
     self._add_file_anchor()
 
-  def _encode(self, value):
+  def _encode(self, value) -> str:
     """Encode fact values as base64."""
     value_bytes = bytes(value, "utf-8")
     encoded_bytes = base64.b64encode(value_bytes)
     return encoded_bytes.decode("utf-8")
 
-  def _add_file(self, file_contents):
+  def _add_file(self, file_contents) -> VName:
     # File vnames are special-cased to have an empty signature and lang.
     vname = VName(
         signature="", language="", path=self.path, root=self.root,
@@ -79,7 +79,7 @@ class Kythe:
     self.add_fact(vname, "text", file_contents)
     return vname
 
-  def _add_file_anchor(self):
+  def _add_file_anchor(self) -> None:
     # Add a special anchor for the first byte of a file, so we can link to it.
     anchor_vname = self.add_anchor(0, 0)
     mod_vname = self.vname(FILE_ANCHOR_SIGNATURE)
@@ -87,14 +87,14 @@ class Kythe:
     self.add_edge(anchor_vname, "defines/implicit", mod_vname)
     self.add_edge(self.file_vname, "childof", mod_vname)
 
-  def _add_entry(self, entry):
+  def _add_entry(self, entry) -> None:
     """Make sure we don't have duplicate entries."""
     if entry in self._seen_entries:
       return
     self._seen_entries.add(entry)
     self.entries.append(entry)
 
-  def vname(self, signature, filepath=None, root=None):
+  def vname(self, signature, filepath=None, root=None) -> VName:
     return VName(
         signature=signature,
         path=filepath or self.path,
@@ -102,7 +102,7 @@ class Kythe:
         root=root or self.root,
         corpus=self.corpus)
 
-  def stdlib_vname(self, signature, filepath=None):
+  def stdlib_vname(self, signature, filepath=None) -> VName:
     return VName(
         signature=signature,
         path=filepath or self.path,
@@ -114,12 +114,12 @@ class Kythe:
     signature = "@%d:%d" % (start, end)
     return self.vname(signature)
 
-  def fact(self, source, fact_name, fact_value):
+  def fact(self, source, fact_name, fact_value) -> Fact:
     fact_name = "/kythe/" + fact_name
     fact_value = self._encode(fact_value)
     return Fact(source, fact_name, fact_value)
 
-  def edge(self, source, edge_name, target):
+  def edge(self, source, edge_name, target) -> Edge:
     edge_kind = "/kythe/edge/" + edge_name
     return Edge(source, edge_kind, target, "/")
 
@@ -148,10 +148,10 @@ class Kythe:
 def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
   """Generate kythe edges for definitions."""
 
-  for def_id in index.locs:
-    defn = index.defs[def_id]
-    for defloc in index.locs[def_id]:
-      defn = index.defs[defloc.def_id]
+  for def_id in index.locs:  # pytype: disable=attribute-error
+    defn = index.defs[def_id]  # pytype: disable=unsupported-operands
+    for defloc in index.locs[def_id]:  # pytype: disable=unsupported-operands
+      defn = index.defs[defloc.def_id]  # pytype: disable=unsupported-operands
       defn_vname = kythe.vname(defn.to_signature())
       start, end = index.get_def_offsets(defloc)
       anchor_vname = kythe.add_anchor(start, end)
@@ -171,7 +171,7 @@ def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
           source=anchor_vname, target=defn_vname, edge_name="defines/binding")
 
       try:
-        alias = index.aliases[defn.id]
+        alias = index.aliases[defn.id]  # pytype: disable=unsupported-operands
       except KeyError:
         pass
       else:
@@ -195,7 +195,7 @@ def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
             source=doc_vname, target=defn_vname, edge_name="documents")
 
 
-def _process_params(kythe, index):
+def _process_params(kythe, index) -> None:
   """Generate kythe edges for function parameters."""
 
   for fp in index.function_params:
@@ -273,7 +273,7 @@ def _process_childof(kythe: Kythe, index: indexer.Indexer):
     kythe.add_edge(source=source, target=target, edge_name="childof")
 
 
-def _process_calls(kythe, index):
+def _process_calls(kythe, index) -> None:
   """Generate kythe edges for function calls."""
 
   # Checks if a function call corresponds to a resolved reference, and generates
@@ -314,7 +314,7 @@ def _process_calls(kythe, index):
             assert False, ref  # pytype: disable=name-error
 
 
-def generate_graph(index, kythe_args):
+def generate_graph(index, kythe_args) -> Kythe:
   kythe = Kythe(index.source, kythe_args)
   _process_deflocs(kythe, index)
   _process_params(kythe, index)

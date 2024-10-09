@@ -1,8 +1,19 @@
 """Implementation of special members of Python's abc library."""
 
+from typing import Any, TypeVar
 from pytype.abstract import abstract
 from pytype.overlays import overlay
 from pytype.overlays import special_builtins
+
+_T0 = TypeVar("_T0")
+_TAbstractClassMethod = TypeVar(
+    "_TAbstractClassMethod", bound="AbstractClassMethod"
+)
+_TAbstractMethod = TypeVar("_TAbstractMethod", bound="AbstractMethod")
+_TAbstractProperty = TypeVar("_TAbstractProperty", bound="AbstractProperty")
+_TAbstractStaticMethod = TypeVar(
+    "_TAbstractStaticMethod", bound="AbstractStaticMethod"
+)
 
 
 def _set_abstract(args, argname):
@@ -19,7 +30,7 @@ def _set_abstract(args, argname):
 class ABCOverlay(overlay.Overlay):
   """A custom overlay for the 'abc' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "abstractclassmethod": AbstractClassMethod.make,
         "abstractmethod": AbstractMethod.make,
@@ -37,10 +48,12 @@ class AbstractClassMethod(special_builtins.ClassMethod):
   """Implements abc.abstractclassmethod."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(
+      cls: type[_TAbstractClassMethod], ctx, module
+  ) -> _TAbstractClassMethod:
     return super().make_alias("abstractclassmethod", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     _ = _set_abstract(args, "callable")
     return super().call(node, func, args, alias_map)
 
@@ -49,10 +62,10 @@ class AbstractMethod(abstract.PyTDFunction):
   """Implements the @abc.abstractmethod decorator."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(cls: type[_TAbstractMethod], ctx, module) -> _TAbstractMethod:
     return super().make("abstractmethod", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     """Marks that the given function is abstract."""
     del func, alias_map  # unused
     self.match_args(node, args)
@@ -63,10 +76,10 @@ class AbstractProperty(special_builtins.Property):
   """Implements the @abc.abstractproperty decorator."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(cls: type[_TAbstractProperty], ctx, module) -> _TAbstractProperty:
     return super().make_alias("abstractproperty", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     property_args = self._get_args(args)
     for v in property_args.values():
       for b in v.bindings:
@@ -86,9 +99,11 @@ class AbstractStaticMethod(special_builtins.StaticMethod):
   """Implements abc.abstractstaticmethod."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(
+      cls: type[_TAbstractStaticMethod], ctx, module
+  ) -> _TAbstractStaticMethod:
     return super().make_alias("abstractstaticmethod", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     _ = _set_abstract(args, "callable")
     return super().call(node, func, args, alias_map)

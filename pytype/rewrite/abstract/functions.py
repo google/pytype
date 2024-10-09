@@ -28,8 +28,13 @@ from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import containers
 from pytype.rewrite.abstract import internal
+from pytype.rewrite.flow import variables
 
-log = logging.getLogger(__name__)
+
+_TFrameType = TypeVar('_TFrameType', bound='FrameType')
+_TSignature = TypeVar('_TSignature', bound=pytd.Signature)
+
+log: logging.Logger = logging.getLogger(__name__)
 
 _Var = base.AbstractVariableType
 _ArgDict = dict[str, _Var]
@@ -60,7 +65,7 @@ class FrameType(Protocol):
 _FrameT = TypeVar('_FrameT', bound=FrameType)
 
 
-def _unpack_splats(elts):
+def _unpack_splats(elts) -> tuple:
   """Unpack any concrete splats and splice them into the sequence."""
   ret = []
   for e in elts:
@@ -106,7 +111,7 @@ class _ArgMapper:
     self.sig = sig
     self.argdict: _ArgDict = {}
 
-  def _expand_positional_args(self):
+  def _expand_positional_args(self) -> None:
     """Unpack concrete splats in posargs."""
     new_posargs = _unpack_splats(self.args.posargs)
     self.args = dataclasses.replace(self.args, posargs=new_posargs)
@@ -219,7 +224,7 @@ class _ArgMapper:
       # We have **kwargs but no *args in the invocation
       return tuple(pre), None
 
-  def _map_posargs(self):
+  def _map_posargs(self) -> None:
     posargs, starargs = self._unpack_starargs()
     argdict = dict(zip(self.sig.param_names, posargs))
     self.argdict.update(argdict)
@@ -229,7 +234,9 @@ class _ArgMapper:
         starargs = self._ctx.consts.Any.to_variable()
       self.argdict[self.sig.varargs_name] = starargs
 
-  def _unpack_starstarargs(self):
+  def _unpack_starstarargs(
+      self,
+  ) -> tuple[dict, variables.Variable[internal.FunctionArgDict]]:
     """Adjust **args and kwargs based on function signature."""
     starstarargs_var = self.args.starstarargs
     if starstarargs_var is None:
@@ -260,7 +267,7 @@ class _ArgMapper:
         self._ctx, starstarargs_dict, starstarargs.indefinite)
     return kwargs_dict, new_starstarargs.to_variable()
 
-  def _map_kwargs(self):
+  def _map_kwargs(self) -> None:
     kwargs, starstarargs = self._unpack_starstarargs()
     # Copy kwargs into argdict
     self.argdict.update(kwargs)
@@ -268,7 +275,7 @@ class _ArgMapper:
     if self.sig.kwargs_name:
       self.argdict[self.sig.kwargs_name] = starstarargs
 
-  def map_args(self):
+  def map_args(self) -> dict:
     self._expand_positional_args()
     self._map_kwargs()
     self._map_posargs()
@@ -296,7 +303,7 @@ class SimpleReturn:
   def __init__(self, return_value: base.BaseValue):
     self._return_value = return_value
 
-  def get_return_value(self):
+  def get_return_value(self) -> base.BaseValue:
     return self._return_value
 
 
@@ -414,7 +421,7 @@ class Signature:
         annotations=annotations,
     )
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     pp = self._ctx.errorlog.pretty_printer
 
     def fmt(param_name):
@@ -514,7 +521,7 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
     self._signatures = signatures
     self.module = module
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'SimpleFunction({self.full_name})'
 
   @property
@@ -589,7 +596,7 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     self._parent_frame = parent_frame
     self._call_cache = {}
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'InterpreterFunction({self.name})'
 
   @property
@@ -639,7 +646,7 @@ class BoundFunction(BaseFunction[_HasReturnT]):
     self.callself = callself
     self.underlying = underlying
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'BoundFunction({self.callself!r}, {self.underlying!r})'
 
   @property

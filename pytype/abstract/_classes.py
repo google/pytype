@@ -1,7 +1,8 @@
 """Abstract class representations."""
 
+from collections.abc import Generator
 import logging
-from typing import Any
+from typing import Any, TypeVar
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -21,12 +22,17 @@ from pytype.pytd.codegen import decorate
 from pytype.typegraph import cfg
 from pytype.types import types
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+_TParameterizedClass = TypeVar(
+    "_TParameterizedClass", bound="ParameterizedClass"
+)
+
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 # These classes can't be imported due to circular deps.
-_ContextType = Any  # context.Context
-_TypeParamType = Any  # typing.TypeParameter
+_ContextType: Any = Any  # context.Context
+_TypeParamType: Any = Any  # typing.TypeParameter
 
 
 class BuildClass(_base.BaseValue):
@@ -34,11 +40,11 @@ class BuildClass(_base.BaseValue):
 
   CLOSURE_NAME = "__class__"
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__("__build_class__", ctx)
     self.decorators = []
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     args = args.simplify(node, self.ctx)
     funcvar, name = args.posargs[0:2]
     kwargs = args.namedargs
@@ -141,7 +147,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     self._override_check()
     self._first_opcode = first_opcode
 
-  def _get_class(self):
+  def _get_class(self) -> "ParameterizedClass":
     return ParameterizedClass(
         self.ctx.convert.type_type, {abstract_utils.T: self}, self.ctx
     )
@@ -149,7 +155,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def get_first_opcode(self):
     return self._first_opcode
 
-  def update_method_type_params(self):
+  def update_method_type_params(self) -> None:
     # For function type parameters check
     methods = []
     # members of self._undecorated_methods that will be ignored for updating
@@ -171,7 +177,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     for m in methods:
       m.update_signature_scope(self)
 
-  def _type_param_check(self):
+  def _type_param_check(self) -> None:
     """Throw exception for invalid type parameters."""
     self.update_method_type_params()
     if self.template:
@@ -197,7 +203,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
             self, f"Conflicting value for TypeVar {t.full_name}"
         )
 
-  def _override_check(self):
+  def _override_check(self) -> None:
     """Checks for @typing.override errors."""
     for name, member in self.members.items():
       member_data = [
@@ -239,7 +245,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         return base
     return None
 
-  def collect_inner_cls_types(self, max_depth=5):
+  def collect_inner_cls_types(self, max_depth=5) -> set:
     """Collect all the type parameters from nested classes."""
     templates = set()
     if max_depth > 0:
@@ -254,7 +260,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
           templates.update(mbr.collect_inner_cls_types(max_depth - 1))
     return templates
 
-  def get_inner_classes(self):
+  def get_inner_classes(self) -> list:
     """Return the list of top-level nested classes."""
     inner_classes = []
     for member in self.members.values():
@@ -272,7 +278,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         inner_classes.append(value)
     return inner_classes
 
-  def get_own_attributes(self):
+  def get_own_attributes(self) -> set[str]:
     attributes = set(self.members)
     annotations_dict = abstract_utils.get_annotations_dict(self.members)
     if annotations_dict:
@@ -285,13 +291,13 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
     return {name for name, var in self.members.items() if _can_be_abstract(var)}
 
-  def register_instance(self, instance):
+  def register_instance(self, instance) -> None:
     self.instances.add(instance)
 
-  def register_canonical_instance(self, instance):
+  def register_canonical_instance(self, instance) -> None:
     self.canonical_instances.add(instance)
 
-  def bases(self):
+  def bases(self) -> list[cfg.Variable]:
     return self._bases
 
   def metaclass(self, node):
@@ -312,7 +318,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       # the frame is a SimpleFrame with no opcode.
       return super().instantiate(node, container)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"InterpreterClass({self.name})"
 
   def __contains__(self, name):
@@ -321,7 +327,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     annotations_dict = abstract_utils.get_annotations_dict(self.members)
     return annotations_dict and name in annotations_dict.annotated_locals
 
-  def has_protocol_base(self):
+  def has_protocol_base(self) -> bool:
     for base_var in self._bases:
       for base in base_var.data:
         if isinstance(base, PyTDClass) and base.full_name == "typing.Protocol":
@@ -350,7 +356,7 @@ class PyTDClass(
     mro: Method resolution order. An iterable of BaseValue.
   """
 
-  def __init__(self, name, pytd_cls, ctx):
+  def __init__(self, name, pytd_cls, ctx) -> None:
     # Apply decorators first, in case they set any properties that later
     # initialization code needs to read.
     self.has_explicit_init = any(x.name == "__init__" for x in pytd_cls.methods)
@@ -424,7 +430,7 @@ class PyTDClass(
     # If none of the special classes have matched, return the PyTDClass
     return c
 
-  def _populate_decorator_metadata(self):
+  def _populate_decorator_metadata(self) -> None:
     """Fill in class attribute metadata for decorators like @dataclass."""
     keyed_decorators = {}
     for decorator in self.decorators:
@@ -454,7 +460,7 @@ class PyTDClass(
       self._init_attr_metadata_from_pytd(decorator)
       self._recompute_init_from_metadata(key)
 
-  def _init_attr_metadata_from_pytd(self, decorator):
+  def _init_attr_metadata_from_pytd(self, decorator) -> None:
     """Initialise metadata[key] with a list of Attributes."""
     # Use the __init__ function as the source of truth for dataclass fields; if
     # this is a generated module we will have already processed ClassVar and
@@ -485,7 +491,7 @@ class PyTDClass(
       ]
     self.compute_attr_metadata(own_attrs, decorator)
 
-  def _recompute_init_from_metadata(self, key):
+  def _recompute_init_from_metadata(self, key) -> None:
     # Some decorated classes (dataclasses e.g.) have their __init__ function
     # set via traversing the MRO to collect initializers from decorated parent
     # classes as well. Since we don't have access to the MRO when initially
@@ -510,7 +516,7 @@ class PyTDClass(
         if isinstance(member, pytd.Function) and member.is_abstract
     }
 
-  def bases(self):
+  def bases(self) -> list:
     convert = self.ctx.convert
     converted_bases = []
     for base in self.pytd_cls.bases:
@@ -561,7 +567,9 @@ class PyTDClass(
     else:
       raise AssertionError(f"Invalid class member {pytd_utils.Print(member)}")
 
-  def _new_instance(self, container, node, args):
+  def _new_instance(
+      self, container, node, args
+  ) -> _instance_base.Instance | tuple:
     if self.full_name == "builtins.tuple" and args.is_empty():
       value = _instances.Tuple((), self.ctx)
     else:
@@ -577,10 +585,10 @@ class PyTDClass(
   def instantiate(self, node, container=None):
     return self.ctx.convert.pytd_cls_to_instance_var(self.pytd_cls, {}, node)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"PyTDClass({self.name})"
 
-  def __contains__(self, name):
+  def __contains__(self, name) -> bool:
     return name in self._member_map
 
   def convert_as_instance_attribute(self, name, instance):
@@ -624,7 +632,7 @@ class PyTDClass(
             subst[name] = self.ctx.new_unsolvable(self.ctx.root_node)
         return self._convert_member(name, c, subst)
 
-  def has_protocol_base(self):
+  def has_protocol_base(self) -> bool:
     for base in self.pytd_cls.bases:
       if base.name == "typing.Protocol":
         return True
@@ -640,7 +648,7 @@ class FunctionPyTDClass(PyTDClass):
   save the value of `func`, not just its type of Callable.
   """
 
-  def __init__(self, func, ctx):
+  def __init__(self, func, ctx) -> None:
     super().__init__("typing.Callable", ctx.convert.function_type.pytd_cls, ctx)
     self.func = func
 
@@ -694,12 +702,12 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     mixin.NestedAnnotation.init_mixin(self)
     self._type_param_check()
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "ParameterizedClass(cls={!r} params={})".format(
         self.base_cls, self._formal_type_parameters
     )
 
-  def _type_param_check(self):
+  def _type_param_check(self) -> None:
     """Throw exception for invalid type parameters."""
     # It will cause infinite recursion if `formal_type_parameters` is
     # `LazyFormalTypeParameters`
@@ -715,14 +723,14 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
         for k, v in self.formal_type_parameters.items()
     }
 
-  def __eq__(self, other):
+  def __eq__(self, other) -> bool:
     if isinstance(other, type(self)):
       return self.base_cls == other.base_cls and (
           self.formal_type_parameters == other.formal_type_parameters
       )
     return NotImplemented
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
   def __hash__(self):
@@ -750,10 +758,12 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
       hashval = self._hash
     return hashval
 
-  def __contains__(self, name):
+  def __contains__(self, name) -> bool:
     return name in self.base_cls
 
-  def _raw_formal_type_parameters(self):
+  def _raw_formal_type_parameters(
+      self,
+  ) -> Generator[tuple[Any, Any], Any, None]:
     assert isinstance(
         self._formal_type_parameters, abstract_utils.LazyFormalTypeParameters
     )
@@ -777,7 +787,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     self._load_formal_type_parameters()
     return self._formal_type_parameters  # pytype: disable=bad-return-type
 
-  def _load_formal_type_parameters(self):
+  def _load_formal_type_parameters(self) -> None:
     if self._formal_type_parameters_loaded:
       return
     if isinstance(
@@ -802,7 +812,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     )
     self._formal_type_parameters_loaded = True
 
-  def compute_mro(self):
+  def compute_mro(self) -> tuple:
     return (self,) + self.base_cls.mro[1:]
 
   def instantiate(self, node, container=None):
@@ -831,7 +841,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
   def cls(self, cls):
     self._cls = cls
 
-  def set_class(self, node, var):
+  def set_class(self, node, var) -> None:
     self.base_cls.set_class(node, var)
 
   @property
@@ -842,7 +852,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
   def official_name(self, official_name):
     self.base_cls.official_name = official_name
 
-  def _is_callable(self):
+  def _is_callable(self) -> bool:
     if not isinstance(self.base_cls, (InterpreterClass, PyTDClass)):
       # We don't know how to instantiate this base_cls.
       return False
@@ -860,7 +870,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     # the side of allowing such calls.
     return not self.is_abstract
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     if not self._is_callable():
       raise error_types.NotCallable(self)
     else:
@@ -872,10 +882,10 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
   def get_inner_types(self):
     return self.formal_type_parameters.items()
 
-  def update_inner_type(self, key, typ):
+  def update_inner_type(self, key, typ) -> None:
     self.formal_type_parameters[key] = typ
 
-  def replace(self, inner_types):
+  def replace(self: _TParameterizedClass, inner_types) -> _TParameterizedClass:
     inner_types = dict(inner_types)
     if isinstance(self, LiteralClass):
       if inner_types == self.formal_type_parameters:
@@ -904,17 +914,19 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
   When there are no args (CallableClass[[], ...]), ARGS contains abstract.Empty.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
+  def __init__(
+      self, base_cls, formal_type_parameters, ctx, template=None
+  ) -> None:
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
     self.num_args = len(self.formal_type_parameters) - 2
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"CallableClass({self.formal_type_parameters})"
 
-  def get_formal_type_parameters(self):
+  def get_formal_type_parameters(self) -> dict[Any, _base.BaseValue]:
     return {
         abstract_utils.full_type_name(
             self, abstract_utils.ARGS
@@ -924,7 +936,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
         ): self.formal_type_parameters[abstract_utils.RET],
     }
 
-  def call_slot(self, node, *args, **kwargs):
+  def call_slot(self, node: _T0, *args, **kwargs) -> tuple[_T0, Any]:
     """Implementation of CallableClass.__call__."""
     if kwargs:
       raise error_types.WrongKeywordArgs(
@@ -983,7 +995,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     """Get the callable's posargs as a list."""
     return [self.formal_type_parameters[i] for i in range(self.num_args)]
 
-  def has_paramspec(self):
+  def has_paramspec(self) -> bool:
     return _isinstance(
         self.formal_type_parameters[abstract_utils.ARGS],
         ("ParamSpec", "Concatenate"),
@@ -993,13 +1005,13 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
 class LiteralClass(ParameterizedClass):
   """The class of a typing.Literal."""
 
-  def __init__(self, instance, ctx, template=None):
+  def __init__(self, instance, ctx, template=None) -> None:
     base_cls = ctx.convert.lookup_value("typing", "Literal")
     formal_type_parameters = {abstract_utils.T: instance.cls}
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     self._instance = instance
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"LiteralClass({self._instance})"
 
   def __eq__(self, other):
@@ -1012,7 +1024,7 @@ class LiteralClass(ParameterizedClass):
         return self.value == other.value
     return super().__eq__(other)
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash((super().__hash__(), self._instance))
 
   @property
@@ -1035,7 +1047,9 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
   do for Tuple, since we can't evaluate type parameters during initialization.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
+  def __init__(
+      self, base_cls, formal_type_parameters, ctx, template=None
+  ) -> None:
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
@@ -1052,15 +1066,15 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     self._instance_cache = {}
     self.slots = ()  # tuples don't have any writable attributes
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"TupleClass({self.formal_type_parameters})"
 
-  def compute_mro(self):
+  def compute_mro(self) -> tuple:
     # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it
     # back here so that isinstance(tuple) checks work.
     return (self,) + self.base_cls.mro
 
-  def get_formal_type_parameters(self):
+  def get_formal_type_parameters(self) -> dict[Any, _base.BaseValue]:
     return {
         abstract_utils.full_type_name(
             self, abstract_utils.T
@@ -1101,7 +1115,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
       index %= self.tuple_length  # fixes negative indices
       return self.formal_type_parameters[index].instantiate(node)
 
-  def register_instance(self, instance):
+  def register_instance(self, instance) -> None:
     # A TupleClass can never have more than one registered instance because the
     # only direct instances of TupleClass are Tuple objects, which create their
     # own class upon instantiation. We store the instance in order to track
@@ -1109,7 +1123,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     assert not self._instance
     self._instance = instance
 
-  def getitem_slot(self, node, index_var):
+  def getitem_slot(self, node: _T0, index_var) -> tuple[Any, Any]:
     """Implementation of tuple.__getitem__."""
     try:
       index = self.ctx.convert.value_to_constant(
@@ -1155,7 +1169,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super().get_special_attribute(node, name, valself)
 
-  def add_slot(self, node, other_var):
+  def add_slot(self, node: _T0, other_var) -> tuple[Any, Any]:
     """Implementation of tuple.__add__."""
     try:
       other = abstract_utils.get_atomic_value(other_var)

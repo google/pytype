@@ -1,10 +1,12 @@
 """Abstract types used internally by pytype."""
 
 import collections
+from typing import TypeVar
 
 import immutabledict
-
 from pytype.rewrite.abstract import base
+
+_TSplat = TypeVar("_TSplat", bound="Splat")
 
 
 # Type aliases
@@ -25,7 +27,7 @@ class FunctionArgTuple(base.BaseValue):
     self.constant = constant
     self.indefinite = indefinite
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     indef = "+" if self.indefinite else ""
     return f"FunctionArgTuple({indef}{self.constant!r})"
 
@@ -55,7 +57,7 @@ class FunctionArgDict(base.BaseValue):
     if not all(isinstance(k, str) for k in constant):
       raise ValueError("Passing a non-string key to a function arg dict")
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     indef = "+" if self.indefinite else ""
     return f"FunctionArgDict({indef}{self.constant!r})"
 
@@ -87,7 +89,7 @@ class Splat(base.BaseValue):
     else:
       raise ValueError("Not a concrete iterable")
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"splat({self.iterable!r})"
 
   @property

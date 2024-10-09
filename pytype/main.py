@@ -19,13 +19,13 @@ from pytype import utils
 from pytype.imports import typeshed
 
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class _ProfileContext:
   """A context manager for optionally profiling code."""
 
-  def __init__(self, output_path):
+  def __init__(self, output_path) -> None:
     """Initialize.
 
     Args:
@@ -35,17 +35,17 @@ class _ProfileContext:
     self._output_path = output_path
     self._profile = cProfile.Profile() if self._output_path else None
 
-  def __enter__(self):
+  def __enter__(self) -> None:
     if self._profile:
       self._profile.enable()
 
-  def __exit__(self, exc_type, exc_value, traceback):  # pylint: disable=redefined-outer-name
+  def __exit__(self, exc_type, exc_value, traceback) -> None:  # pylint: disable=redefined-outer-name
     if self._profile:
       self._profile.disable()
       self._profile.dump_stats(self._output_path)
 
 
-def _generate_builtins_pickle(options):
+def _generate_builtins_pickle(options) -> None:
   """Create a pickled file with the standard library (typeshed + builtins)."""
   loader = load_pytd.create_loader(options)
   t = typeshed.Typeshed()
@@ -57,7 +57,7 @@ def _generate_builtins_pickle(options):
   loader.save_to_pickle(options.generate_builtins)
 
 
-def _expand_args(argv):
+def _expand_args(argv) -> list:
   """Returns argv with flagfiles expanded.
 
   A flagfile is an argument starting with "@". The remainder of the argument is
@@ -82,7 +82,7 @@ def _expand_args(argv):
   return expanded_args
 
 
-def _fix_spaces(argv):
+def _fix_spaces(argv) -> list:
   """Returns argv with unescaped spaces in paths fixed.
 
   This is needed for the analyze_project tool, which uses ninja to run pytype

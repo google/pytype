@@ -15,22 +15,23 @@ Some guiding princples:
   library.
 """
 
+from typing import Any
 from pytype.types import base
 from pytype.types import classes
 from pytype.types import functions
 from pytype.types import instances
 
 
-BaseValue = base.BaseValue
-Variable = base.Variable
+BaseValue: type[base.BaseValue] = base.BaseValue
+Variable: Any = base.Variable
 
-Attribute = classes.Attribute
-Class = classes.Class
+Attribute: type[classes.Attribute] = classes.Attribute
+Class: type[classes.Class] = classes.Class
 
-Arg = functions.Arg
-Args = functions.Args
-Function = functions.Function
-Signature = functions.Signature
+Arg: type[functions.Arg] = functions.Arg
+Args: type[functions.Args] = functions.Args
+Function: type[functions.Function] = functions.Function
+Signature: type[functions.Signature] = functions.Signature
 
-Module = instances.Module
-PythonConstant = instances.PythonConstant
+Module: type[instances.Module] = instances.Module
+PythonConstant: type[instances.PythonConstant] = instances.PythonConstant

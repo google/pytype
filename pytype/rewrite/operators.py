@@ -9,7 +9,7 @@ from pytype.rewrite.flow import variables
 _Var = variables.Variable[abstract.BaseValue]
 _Binding = variables.Binding[abstract.BaseValue]
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 def call_binary(

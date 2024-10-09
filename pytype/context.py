@@ -21,7 +21,7 @@ from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class Context:
@@ -107,7 +107,7 @@ class Context:
     # cache doesn't persist between runs.
     self.function_cache = {}
 
-  def matcher(self, node):
+  def matcher(self, node) -> matcher.AbstractMatcher:
     return matcher.AbstractMatcher(node, self)
 
   @contextlib.contextmanager
@@ -153,7 +153,7 @@ class Context:
 
   def check_annotation_type_mismatch(
       self, node, name, typ, value, stack, allow_none, details=None
-  ):
+  ) -> None:
     """Checks for a mismatch between a variable's annotation and value.
 
     Args:

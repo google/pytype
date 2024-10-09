@@ -5,24 +5,30 @@
 # trigger them in inference.
 
 import logging
+from typing import Any, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.errors import error_types
 
-log = logging.getLogger(__name__)
+
+_T0 = TypeVar("_T0")
+_TAddMetaclass = TypeVar("_TAddMetaclass", bound="AddMetaclass")
+_TWithMetaclass = TypeVar("_TWithMetaclass", bound="WithMetaclass")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class AddMetaclassInstance(abstract.BaseValue):
   """AddMetaclass instance (constructed by AddMetaclass.call())."""
 
-  def __init__(self, meta, ctx, module):
+  def __init__(self, meta, ctx, module) -> None:
     super().__init__("AddMetaclassInstance", ctx)
     self.meta = meta
     self.module = module
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     del func, alias_map  # unused
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
@@ -46,10 +52,10 @@ class AddMetaclass(abstract.PyTDFunction):
   """Implements the add_metaclass decorator."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(cls: type[_TAddMetaclass], ctx, module) -> _TAddMetaclass:
     return super().make("add_metaclass", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     """Adds a metaclass."""
     del func, alias_map  # unused
     self.match_args(node, args)
@@ -64,7 +70,7 @@ class AddMetaclass(abstract.PyTDFunction):
 class WithMetaclassInstance(abstract.BaseValue, abstract.Class):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """Anonymous class created by with_metaclass."""
 
-  def __init__(self, ctx, cls, bases):
+  def __init__(self, ctx, cls, bases) -> None:
     super().__init__("WithMetaclassInstance", ctx)
     abstract.Class.init_mixin(self, cls)
     self.bases = bases
@@ -86,10 +92,10 @@ class WithMetaclass(abstract.PyTDFunction):
   """Implements with_metaclass."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(cls: type[_TWithMetaclass], ctx, module) -> _TWithMetaclass:
     return super().make("with_metaclass", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     """Creates an anonymous class to act as a metaclass."""
     del func, alias_map  # unused
     self.match_args(node, args)

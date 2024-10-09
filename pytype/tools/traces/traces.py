@@ -1,7 +1,9 @@
 """A library for accessing pytype's inferred local types."""
 
+from collections.abc import Generator
 import itertools
 import re
+from typing import Any, TypeVar
 
 from pytype import analyze
 from pytype import config
@@ -10,22 +12,23 @@ from pytype.ast import visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
-
 from pytype.tools.traces import source
 
-_ATTR_OPS = frozenset((
+_T_SymbolMatcher = TypeVar("_T_SymbolMatcher", bound="_SymbolMatcher")
+
+_ATTR_OPS: frozenset[str] = frozenset((
     "LOAD_ATTR",
     "LOAD_METHOD",
     "STORE_ATTR",
 ))
 
-_BINMOD_OPS = frozenset((
+_BINMOD_OPS: frozenset[str] = frozenset((
     "BINARY_MODULO",
     "BINARY_OP",
     "FORMAT_VALUE",
 ))
 
-_CALL_OPS = frozenset((
+_CALL_OPS: frozenset[str] = frozenset((
     "CALL",
     "CALL_FUNCTION",
     "CALL_FUNCTION_EX",
@@ -35,15 +38,15 @@ _CALL_OPS = frozenset((
     "CALL_METHOD",
 ))
 
-_LOAD_OPS = frozenset((
+_LOAD_OPS: frozenset[str] = frozenset((
     "LOAD_DEREF",
     "LOAD_FAST",
     "LOAD_GLOBAL",
     "LOAD_NAME",
 ))
 
-_LOAD_SUBSCR_METHODS = ("__getitem__", "__getslice__")
-_LOAD_SUBSCR_OPS = frozenset((
+_LOAD_SUBSCR_METHODS: tuple[str, str] = ("__getitem__", "__getslice__")
+_LOAD_SUBSCR_OPS: frozenset[str] = frozenset((
     "BINARY_SLICE",
     "BINARY_SUBSCR",
     "SLICE_0",
@@ -52,7 +55,7 @@ _LOAD_SUBSCR_OPS = frozenset((
     "SLICE_3",
 ))
 
-_STORE_OPS = frozenset((
+_STORE_OPS: frozenset[str] = frozenset((
     "STORE_DEREF",
     "STORE_FAST",
     "STORE_GLOBAL",
@@ -108,21 +111,21 @@ class _SymbolMatcher:
   """
 
   @classmethod
-  def from_one_match(cls, match):
+  def from_one_match(cls: type[_T_SymbolMatcher], match) -> _T_SymbolMatcher:
     return cls((match,))
 
   @classmethod
-  def from_tuple(cls, matches):
+  def from_tuple(cls: type[_T_SymbolMatcher], matches) -> _T_SymbolMatcher:
     return cls(matches)
 
   @classmethod
-  def from_regex(cls, regex):
+  def from_regex(cls: type[_T_SymbolMatcher], regex) -> _T_SymbolMatcher:
     return cls((re.compile(regex),))
 
-  def __init__(self, matches):
+  def __init__(self, matches) -> None:
     self._matches = matches
 
-  def match(self, symbol):
+  def match(self, symbol) -> bool:
     for match in self._matches:
       if isinstance(match, re.Pattern):
         if match.match(str(symbol)):
@@ -139,7 +142,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
     source: The source and trace information.
   """
 
-  def __init__(self, src_code, *args, **kwargs):
+  def __init__(self, src_code, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     self.source = src_code
     # Needed for x[i] = <multiline statement>
@@ -147,17 +150,17 @@ class MatchAstVisitor(visitor.BaseVisitor):
     # For tracking already matched traces
     self._matched = None
 
-  def enter_Assign(self, node):
+  def enter_Assign(self, node) -> None:
     if isinstance(node.targets[0], self._ast.Subscript):
       self._assign_subscr = node.targets[0].value
 
-  def leave_Assign(self, _):
+  def leave_Assign(self, _) -> None:
     self._assign_subscr = None
 
-  def enter_Module(self, _):
+  def enter_Module(self, _) -> None:
     self._matched = set()
 
-  def leave_Module(self, _):
+  def leave_Module(self, _) -> None:
     self._matched = None
 
   def match(self, node):
@@ -211,10 +214,10 @@ class MatchAstVisitor(visitor.BaseVisitor):
         for tr in self._get_traces(node.lineno, ["MAKE_FUNCTION"], symbol, 1)
     ]
 
-  def match_Import(self, node):
+  def match_Import(self, node) -> list:
     return list(self._match_import(node, is_from=False))
 
-  def match_ImportFrom(self, node):
+  def match_ImportFrom(self, node) -> list:
     return list(self._match_import(node, is_from=True))
 
   def match_Lambda(self, node):
@@ -231,15 +234,25 @@ class MatchAstVisitor(visitor.BaseVisitor):
       ops = _STORE_OPS
     else:
       return []
-    return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(lineno, ops, node.id, 1)]
+    return [
+        (self._get_match_location(node), tr)
+        for tr in self._get_traces(lineno, ops, node.id, 1)
+    ]
 
   def match_Subscript(self, node):
-    return [(self._get_match_location(node), tr) for tr in self._get_traces(
-        node.lineno, _LOAD_SUBSCR_OPS,
-        _SymbolMatcher.from_tuple(_LOAD_SUBSCR_METHODS), 1)]
+    return [
+        (self._get_match_location(node), tr)
+        for tr in self._get_traces(
+            node.lineno,
+            _LOAD_SUBSCR_OPS,
+            _SymbolMatcher.from_tuple(_LOAD_SUBSCR_METHODS),
+            1,
+        )
+    ]
 
-  def _get_traces(self, lineno, ops, symbol, maxmatch=-1, num_lines=1):
+  def _get_traces(
+      self, lineno, ops, symbol, maxmatch=-1, num_lines=1
+  ) -> Generator[Any, Any, None]:
     """Yields matching traces.
 
     Args:
@@ -290,10 +303,14 @@ class MatchAstVisitor(visitor.BaseVisitor):
       return node.__class__.__name__
 
   def _match_constant(self, node, value):
-    return [(self._get_match_location(node), tr)
-            for tr in self._get_traces(node.lineno, ["LOAD_CONST"], value, 1)]
+    return [
+        (self._get_match_location(node), tr)
+        for tr in self._get_traces(node.lineno, ["LOAD_CONST"], value, 1)
+    ]
 
-  def _match_import(self, node, is_from):
+  def _match_import(
+      self, node, is_from
+  ) -> Generator[tuple[Any, Any], Any, None]:
     for alias in node.names:
       name = alias.asname if alias.asname else alias.name
       op = "STORE_NAME" if alias.asname or is_from else "IMPORT_NAME"
@@ -303,11 +320,11 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
 class _LineNumberVisitor(visitor.BaseVisitor):
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     self.line = 0
 
-  def generic_visit(self, node):
+  def generic_visit(self, node) -> None:
     lineno = getattr(node, "lineno", 0)
     if lineno > self.line:
       self.line = lineno

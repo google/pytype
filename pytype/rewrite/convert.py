@@ -8,7 +8,7 @@ from pytype.rewrite.overlays import overlays
 
 class _Cache:
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.classes = {}
     self.funcs = {}
     self.types = {}

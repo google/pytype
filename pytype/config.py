@@ -9,7 +9,7 @@ import contextlib
 import logging
 import os
 import sys
-from typing import Literal
+from typing import Callable, Optional, Literal
 from typing import overload
 
 from pytype import datatypes
@@ -22,7 +22,7 @@ from pytype.pyc import compiler
 from pytype.typegraph import cfg_utils
 
 
-LOG_LEVELS = [
+LOG_LEVELS: list[int] = [
     logging.CRITICAL,
     logging.ERROR,
     logging.WARNING,
@@ -30,9 +30,11 @@ LOG_LEVELS = [
     logging.DEBUG,
 ]
 
-uses = utils.AnnotatingDecorator()  # model relationship between options
+uses: utils.AnnotatingDecorator = (
+    utils.AnnotatingDecorator()
+)  # model relationship between options
 
-_LIBRARY_ONLY_OPTIONS = {
+_LIBRARY_ONLY_OPTIONS: dict[str, Optional[Callable]] = {
     # a custom file opening function that will be used in place of builtins.open
     "open_function": open,
     # Imports map as a list of tuples.
@@ -57,7 +59,11 @@ class Options:
   ):
     ...
 
-  def __init__(self, argv_or_options, command_line=False):
+  def __init__(
+      self,
+      argv_or_options: argparse.Namespace,
+      command_line: Literal[False] = False,
+  ):
     """Parse and encapsulate the configuration options.
 
     Also sets up some basic logger configuration.
@@ -117,19 +123,19 @@ class Options:
       setattr(options, k, v)
     return cls(options)
 
-  def tweak(self, **kwargs):
+  def tweak(self, **kwargs) -> None:
     for k, v in kwargs.items():
       assert hasattr(self, k)  # Don't allow adding arbitrary junk
       setattr(self, k, v)
 
-  def set_feature_flags(self, flags):
+  def set_feature_flags(self, flags) -> None:
     updates = {f.dest: True for f in FEATURE_FLAGS if f.flag in flags}
     self.tweak(**updates)
 
   def as_dict(self):
     return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "\n".join([f"{k}: {v!r}" for k, v in sorted(self.as_dict().items())])
 
 
@@ -140,7 +146,7 @@ def make_parser():
   return o
 
 
-def base_parser():
+def base_parser() -> datatypes.ParserWrapper:
   """Use argparse to make a parser for configuration options."""
   parser = argparse.ArgumentParser(
       usage="%(prog)s [options] input",
@@ -149,7 +155,7 @@ def base_parser():
   return datatypes.ParserWrapper(parser)
 
 
-def add_all_pytype_options(o):
+def add_all_pytype_options(o) -> None:
   """Add all pytype options to the given parser."""
   # Input files
   o.add_argument("input", nargs="*", help="File to process")
@@ -169,11 +175,11 @@ def add_all_pytype_options(o):
 class _Arg:
   """Hold args for argparse.ArgumentParser.add_argument."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     self.args = args
     self.kwargs = kwargs
 
-  def add_to(self, parser):
+  def add_to(self, parser) -> None:
     parser.add_argument(*self.args, **self.kwargs)
 
   def get(self, k):
@@ -192,19 +198,19 @@ class _Arg:
     return self.kwargs["dest"]
 
 
-def _flag(opt, default, help_text):
+def _flag(opt, default, help_text) -> _Arg:
   dest = opt.lstrip("-").replace("-", "_")
   return _Arg(
       opt, dest=dest, default=default, help=help_text, action="store_true"
   )
 
 
-def add_options(o, arglist):
+def add_options(o, arglist) -> None:
   for arg in arglist:
     arg.add_to(o)
 
 
-MODES = [
+MODES: list[_Arg] = [
     _Arg(
         "-C",
         "--check",
@@ -225,7 +231,7 @@ MODES = [
 ]
 
 
-BASIC_OPTIONS = [
+BASIC_OPTIONS: list[_Arg] = [
     _Arg(
         "-d",
         "--disable",
@@ -261,7 +267,7 @@ BASIC_OPTIONS = [
 ]
 
 
-_OPT_IN_FEATURES = [
+_OPT_IN_FEATURES: list[_Arg] = [
     # Feature flags that are not experimental, but are too strict to default
     # to True and are therefore left as opt-in features for users to enable.
     _flag("--no-return-any", False, "Do not allow Any as a return type."),
@@ -274,7 +280,7 @@ _OPT_IN_FEATURES = [
 ]
 
 
-FEATURE_FLAGS = [
+FEATURE_FLAGS: list[_Arg] = [
     _flag(
         "--bind-decorated-methods",
         False,
@@ -298,7 +304,7 @@ FEATURE_FLAGS = [
 ] + _OPT_IN_FEATURES
 
 
-EXPERIMENTAL_FLAGS = [
+EXPERIMENTAL_FLAGS: list[_Arg] = [
     _flag(
         "--precise-return",
         False,
@@ -340,7 +346,7 @@ EXPERIMENTAL_FLAGS = [
 ]
 
 
-SUBTOOLS = [
+SUBTOOLS: list[_Arg] = [
     _Arg(
         "--generate-builtins",
         action="store",
@@ -358,7 +364,7 @@ SUBTOOLS = [
 ]
 
 
-PICKLE_OPTIONS = [
+PICKLE_OPTIONS: list[_Arg] = [
     _Arg(
         "--pickle-output",
         action="store_true",
@@ -404,7 +410,7 @@ PICKLE_OPTIONS = [
 ]
 
 
-INFRASTRUCTURE_OPTIONS = [
+INFRASTRUCTURE_OPTIONS: list[_Arg] = [
     _Arg(
         "--imports_info",
         type=str,
@@ -538,7 +544,7 @@ INFRASTRUCTURE_OPTIONS = [
 ]
 
 
-DEBUG_OPTIONS = [
+DEBUG_OPTIONS: list[_Arg] = [
     _Arg(
         "--check_preconditions",
         action="store_true",
@@ -686,7 +692,7 @@ DEBUG_OPTIONS = [
 ]
 
 
-ALL_OPTIONS = (
+ALL_OPTIONS: list[_Arg] = (
     MODES
     + BASIC_OPTIONS
     + SUBTOOLS
@@ -703,17 +709,17 @@ def args_map():
   return {x.get("dest"): x for x in ALL_OPTIONS}
 
 
-def add_modes(o):
+def add_modes(o) -> None:
   """Add operation modes to the given parser."""
   add_options(o, MODES)
 
 
-def add_basic_options(o):
+def add_basic_options(o) -> None:
   """Add basic options to the given parser."""
   add_options(o, BASIC_OPTIONS)
 
 
-def add_feature_flags(o):
+def add_feature_flags(o) -> None:
   """Add flags for experimental and temporarily gated features."""
 
   def flag(arg, temporary, experimental):
@@ -741,26 +747,26 @@ def add_feature_flags(o):
     flag(arg, False, True)
 
 
-def add_subtools(o):
+def add_subtools(o) -> None:
   """Add subtools to the given parser."""
   # TODO(rechen): These should be standalone tools.
   o = o.add_argument_group("subtools")
   add_options(o, SUBTOOLS)
 
 
-def add_pickle_options(o):
+def add_pickle_options(o) -> None:
   """Add options for using pickled pyi files to the given parser."""
   o = o.add_argument_group("pickle arguments")
   add_options(o, PICKLE_OPTIONS)
 
 
-def add_infrastructure_options(o):
+def add_infrastructure_options(o) -> None:
   """Add infrastructure options to the given parser."""
   o = o.add_argument_group("infrastructure arguments")
   add_options(o, INFRASTRUCTURE_OPTIONS)
 
 
-def add_debug_options(o):
+def add_debug_options(o) -> None:
   """Add debug options to the given parser."""
   o = o.add_argument_group("debug arguments")
   add_options(o, DEBUG_OPTIONS)
@@ -773,14 +779,16 @@ class PostprocessingError(Exception):
 class Postprocessor:
   """Postprocesses configuration options."""
 
-  def __init__(self, names, opt_map, input_options, output_options=None):
+  def __init__(
+      self, names, opt_map, input_options, output_options=None
+  ) -> None:
     self.names = names
     self.opt_map = opt_map
     self.input_options = input_options
     # If output not specified, process in-place.
     self.output_options = output_options or input_options
 
-  def process(self):
+  def process(self) -> None:
     """Postprocesses all options in self.input_options.
 
     This will iterate through all options in self.input_options and make them
@@ -847,7 +855,7 @@ class Postprocessor:
     else:
       return self.opt_map[opt]
 
-  def _check_exclusive(self, name, value, existing):
+  def _check_exclusive(self, name, value, existing) -> None:
     """Check for argument conflicts."""
     if existing in _LIBRARY_ONLY_OPTIONS:
       # Library-only options are often used as an alternate way of setting a
@@ -865,7 +873,7 @@ class Postprocessor:
       opt = self._display_opt(existing)
       self.error(f"Not allowed with {opt}", name)
 
-  def _check_required(self, name, value, existing):
+  def _check_required(self, name, value, existing) -> None:
     """Check for required args."""
     if value and not getattr(self.output_options, existing, None):
       opt = self._display_opt(existing)
@@ -928,7 +936,7 @@ class Postprocessor:
       self.error(f"invalid --verbosity: {verbosity}")
     self.output_options.verbosity = verbosity
 
-  def _store_pythonpath(self, pythonpath):
+  def _store_pythonpath(self, pythonpath) -> None:
     # Note that the below gives [""] for "", and ["x", ""] for "x:"
     # ("" is a valid entry to denote the current directory)
     self.output_options.pythonpath = pythonpath.split(os.pathsep)
@@ -957,7 +965,7 @@ class Postprocessor:
     except compiler.PythonNotFoundError:
       self.error("Need a valid python%d.%d executable in $PATH" % version)
 
-  def _store_disable(self, disable):
+  def _store_disable(self, disable) -> None:
     if disable:
       self.output_options.disable = disable.split(",")
     else:
@@ -1006,10 +1014,10 @@ class Postprocessor:
       self.error("Not allowed with --no-report-errors", "output-errors-csv")
     self.output_options.output_errors_csv = output_errors_csv
 
-  def _store_exec_log(self, exec_log):
+  def _store_exec_log(self, exec_log) -> None:
     self.output_options.exec_log = exec_log
 
-  def _store_color(self, color):
+  def _store_color(self, color) -> None:
     if color not in ("always", "auto", "never"):
       raise ValueError(
           f"--color flag allows only 'always', 'auto' or 'never', not {color!r}"
@@ -1035,7 +1043,7 @@ class Postprocessor:
       analyze_annotated = self.output_options.check
     self.output_options.analyze_annotated = analyze_annotated
 
-  def _parse_arguments(self, arguments):
+  def _parse_arguments(self, arguments) -> tuple | None:
     """Parse the input/output arguments."""
     if len(arguments) > 1:
       self.error("Can only process one file at a time.")
@@ -1053,14 +1061,14 @@ class Postprocessor:
           % (item, os.pathsep)
       )
 
-  def _store_pickle_metadata(self, pickle_metadata):
+  def _store_pickle_metadata(self, pickle_metadata) -> None:
     if pickle_metadata:
       self.output_options.pickle_metadata = pickle_metadata.split(",")
     else:
       self.output_options.pickle_metadata = []
 
 
-def _set_verbosity(verbosity, timestamp_logs, debug_logs):
+def _set_verbosity(verbosity, timestamp_logs, debug_logs) -> None:
   """Set the logging verbosity."""
   if verbosity >= 0:
     basic_logging_level = LOG_LEVELS[verbosity]

@@ -47,16 +47,16 @@ class AnnotateAstVisitor(traces.MatchAstVisitor):
   it is ast-module agnostic so that different AST implementations can be used.
   """
 
-  def visit_Name(self, node):
+  def visit_Name(self, node) -> None:
     self._maybe_annotate(node)
 
-  def visit_Attribute(self, node):
+  def visit_Attribute(self, node) -> None:
     self._maybe_annotate(node)
 
-  def visit_FunctionDef(self, node):
+  def visit_FunctionDef(self, node) -> None:
     self._maybe_annotate(node)
 
-  def _maybe_annotate(self, node):
+  def _maybe_annotate(self, node) -> None:
     """Annotates a node."""
     try:
       ops = self.match(node)
@@ -66,7 +66,7 @@ class AnnotateAstVisitor(traces.MatchAstVisitor):
     unused_loc, entry = next(iter(ops), (None, None))
     self._maybe_set_type(node, entry)
 
-  def _maybe_set_type(self, node, trace):
+  def _maybe_set_type(self, node, trace) -> None:
     """Sets type information on the node, if there is any to set."""
     if not trace:
       return

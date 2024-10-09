@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 import logging
-
+from typing import TypeVar
 from pytype import config
 from pytype.blocks import blocks
 from pytype.pyc import pyc
@@ -12,7 +12,9 @@ from pytype.rewrite import context
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.abstract import abstract
 
-log = logging.getLogger(__name__)
+_TVirtualMachine = TypeVar('_TVirtualMachine', bound='VirtualMachine')
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class VirtualMachine:

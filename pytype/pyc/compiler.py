@@ -22,10 +22,10 @@ from pytype.pyc import compile_bytecode
 # This would mean that when -V3.10 is passed to pytype, it will use the exe at
 # pytype/python3.10 to compile the code under analysis. Remember to add the new
 # file to the pytype_main_deps target!
-_CUSTOM_PYTHON_EXES = {}
+_CUSTOM_PYTHON_EXES: dict[None, None] = {}
 
 _COMPILE_SCRIPT = "pyc/compile_bytecode.py"
-_COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")
+_COMPILE_ERROR_RE: re.Pattern = re.compile(r"^(.*) \((.*), line (\d+)\)$")
 
 
 class PythonNotFoundError(Exception):
@@ -35,7 +35,7 @@ class PythonNotFoundError(Exception):
 class CompileError(Exception):
   """A compilation error."""
 
-  def __init__(self, msg):
+  def __init__(self, msg) -> None:
     super().__init__(msg)
     match = _COMPILE_ERROR_RE.match(msg)
     if match:
@@ -50,7 +50,7 @@ class CompileError(Exception):
 
 def compile_src_string_to_pyc_string(
     src, filename, python_version, python_exe: list[str], mode="exec"
-):
+) -> bytes:
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -182,7 +182,7 @@ def _get_python_exe_version(python_exe: list[str]):
   return _parse_exe_version_string(python_exe_version)
 
 
-def _parse_exe_version_string(version_str):
+def _parse_exe_version_string(version_str) -> tuple | None:
   """Parse the version string of a Python executable.
 
   Arguments:

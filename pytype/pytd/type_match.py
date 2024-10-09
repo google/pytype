@@ -11,7 +11,7 @@ signatures against new inference results.
 """
 
 import logging
-from typing import Optional, Union
+from typing import Any, TypeVar, Optional, Union
 
 from pytype import utils
 from pytype.pytd import booleq
@@ -21,7 +21,9 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import node
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 is_complete = escape.is_complete
@@ -32,7 +34,7 @@ _UnknownType = Union[pytd.ClassType, pytd.NamedType, pytd.Class, "StrictType"]
 
 
 # Might not be needed anymore once pytd has builtin support for ~unknown.
-def is_unknown(t):
+def is_unknown(t) -> bool:
   """Return True if this is an ~unknown."""
   if isinstance(t, (pytd.ClassType, pytd.NamedType, pytd.Class, StrictType)):
     return escape.is_unknown(t.name)
@@ -42,7 +44,7 @@ def is_unknown(t):
     return False
 
 
-def get_all_subclasses(asts):
+def get_all_subclasses(asts) -> dict:
   """Compute a class->subclasses mapping.
 
   Args:
@@ -80,14 +82,14 @@ class StrictType(node.Node):
 
   name: str
 
-  def __str__(self):
+  def __str__(self) -> str:
     return self.name
 
 
 class TypeMatch(pytd_utils.TypeMatcher):
   """Class for matching types against other types."""
 
-  def __init__(self, direct_subclasses=None, any_also_is_bottom=True):
+  def __init__(self, direct_subclasses=None, any_also_is_bottom=True) -> None:
     """Construct.
 
     Args:
@@ -178,7 +180,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     # not for matching of "known" types against each other.
     return StrictType(name)
 
-  def _get_parameters(self, t1, t2):
+  def _get_parameters(self, t1, t2) -> tuple[Any, Any]:
     if isinstance(t1, pytd.TupleType) and isinstance(t2, pytd.TupleType):
       # No change needed; the parameters will be compared element-wise.
       return t1.parameters, t2.parameters
@@ -269,7 +271,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     ]
     return booleq.And([base_match] + params)
 
-  def match_Generic_against_Unknown(self, t1, t2, subst):  # pylint: disable=invalid-name
+  def match_Generic_against_Unknown(self, t1, t2, subst) -> booleq.BooleanTerm:  # pylint: disable=invalid-name
     # Note: This flips p1 and p2 above.
     return self.match_Unknown_against_Generic(t2, t1, subst)  # pylint: disable=arguments-out-of-order
 
@@ -286,7 +288,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
         t = subst[t]
     return t
 
-  def unclass(self, t):
+  def unclass(self, t: _T0) -> pytd.NamedType | _T0:
     """Prevent further subclass or superclass expansion for this type."""
     if isinstance(t, pytd.ClassType):
       # When t.name and t.cls.name differ (e.g., int vs. builtins.int), the

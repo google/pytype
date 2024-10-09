@@ -25,4 +25,4 @@ class BaseValue:
 # variables or expressions to abstract values. Variables are an internal
 # implementation detail that no external code should depend on; we define a
 # Variable type alias here simply to use in type signatures.
-Variable = Any
+Variable: Any = Any

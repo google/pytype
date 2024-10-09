@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import traceback
+from typing import Any, Callable
 
 import libcst
 from pytype import __version__
@@ -28,7 +29,7 @@ from pytype.pytd import visitors
 from pytype.rewrite import analyze as rewrite_analyze
 
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # Webpage explaining the pytype error codes
@@ -52,7 +53,7 @@ def read_source_file(input_filename, open_function=open):
     raise utils.UsageError(f"Could not load input file {input_filename}") from e
 
 
-def _set_verbosity_from(posarg):
+def _set_verbosity_from(posarg) -> Callable[[Any], Any]:
   """Decorator to set the verbosity for a function that takes an options arg.
 
   Assumes that the function has an argument named `options` that is a
@@ -161,7 +162,9 @@ def _output_ast(
   return result
 
 
-def generate_pyi(src, options=None, loader=None):
+def generate_pyi(
+    src, options=None, loader=None
+) -> tuple[analyze.Analysis, str]:
   """Run the inferencer on a string of source code, producing output.
 
   Args:
@@ -248,7 +251,7 @@ def check_or_generate_pyi(options) -> AnalysisResult:
   return AnalysisResult(ctx, ast, result)
 
 
-def _write_pyi_output(options, contents, filename):
+def _write_pyi_output(options, contents, filename) -> None:
   assert filename
   if filename == "-":
     sys.stdout.write(contents)
@@ -348,7 +351,7 @@ def write_pickle(ast, options, loader=None):
   )
 
 
-def print_error_doc_url(errorlog):
+def print_error_doc_url(errorlog) -> None:
   names = {e.name for e in errorlog}
   if names:
     doclink = f"\nFor more details, see {ERROR_DOC_URL}"
@@ -388,12 +391,14 @@ def parse_pyi(options):
   return ast
 
 
-def get_pytype_version():
+def get_pytype_version() -> str:
   return __version__.__version__
 
 
 @contextlib.contextmanager
-def wrap_pytype_exceptions(exception_type, filename=""):
+def wrap_pytype_exceptions(
+    exception_type, filename=""
+):
   """Catch pytype errors and reraise them as a single exception type.
 
   NOTE: This will also wrap non-pytype errors thrown within the body of the

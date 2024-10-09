@@ -1,7 +1,7 @@
 """Abstract attribute handling."""
 
 import logging
-from typing import Optional
+from typing import Any, TypeVar, Optional
 
 from pytype import datatypes
 from pytype import utils
@@ -14,7 +14,9 @@ from pytype.overlays import overlay
 from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 _NodeAndMaybeVarType = tuple[cfg.CFGNode, Optional[cfg.Variable]]
 
@@ -178,23 +180,23 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       return node
     elif isinstance(obj, abstract.TypeParameterInstance):
       nodes = []
-      for v in obj.instance.get_instance_type_parameter(obj.name).data:
+      for v in obj.instance.get_instance_type_parameter(obj.name).data:  # pytype: disable=attribute-error
         nodes.append(self.set_attribute(node, v, name, value))
       return self.ctx.join_cfg_nodes(nodes) if nodes else node
     elif isinstance(obj, abstract.Union):
-      for option in obj.options:
+      for option in obj.options:  # pytype: disable=attribute-error
         node = self.set_attribute(node, option, name, value)
       return node
     else:
       raise NotImplementedError(obj.__class__.__name__)
 
-  def _check_writable(self, obj, name):
+  def _check_writable(self, obj, name) -> bool:
     """Verify that a given attribute is writable. Log an error if not."""
     if not obj.cls.mro:
       # "Any" etc.
       return True
     for baseclass in obj.cls.mro:
-      if baseclass.full_name == "builtins.object":
+      if baseclass.full_name == "builtins.object":  # pytype: disable=attribute-error
         # It's not possible to set an attribute on object itself.
         # (object has __setattr__, but that honors __slots__.)
         continue
@@ -202,7 +204,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           "__setattr__" in baseclass or name in baseclass
       ):
         return True  # This is a programmatic attribute.
-      if baseclass.slots is None or name in baseclass.slots:
+      if baseclass.slots is None or name in baseclass.slots:  # pytype: disable=attribute-error
         return True  # Found a slot declaration; this is an instance attribute
     self.ctx.errorlog.not_writable(self.ctx.vm.frames, obj, name)
     return False
@@ -300,7 +302,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       )
       return node, self.ctx.new_unsolvable(node)
 
-  def _get_attribute(self, node, obj, cls, name, valself):
+  def _get_attribute(self, node, obj, cls, name, valself) -> tuple[Any, Any]:
     """Get an attribute from an object or its class.
 
     The underlying method called by all of the (_)get_(x_)attribute methods.
@@ -414,7 +416,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
 
   def _lookup_from_mro_and_handle_descriptors(
       self, node, cls, name, valself, skip
-  ):
+  ) -> tuple[Any, Any]:
     attr = self._lookup_from_mro(node, cls, name, valself, skip)
     if not attr.bindings:
       return node, None
@@ -450,7 +452,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         return self.ctx.join_cfg_nodes(nodes), result
     return node, attr
 
-  def _computable(self, name):
+  def _computable(self, name) -> bool:
     return not (name.startswith("__") and name.endswith("__"))
 
   def _get_attribute_computed(
@@ -481,7 +483,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         )
     return node, None
 
-  def _lookup_variable_annotation(self, node, base, name, valself):
+  def _lookup_variable_annotation(
+      self, node, base, name, valself
+  ) -> tuple[Any, Any]:
     if not isinstance(base, abstract.Class):
       return None, None
     annots = abstract_utils.get_annotations_dict(base.members)
@@ -603,7 +607,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     else:
       return node, None
 
-  def _get_member(self, node, obj, name, valself):
+  def _get_member(self, node: _T0, obj, name, valself) -> tuple[_T0, Any]:
     """Get a member of an object."""
     if isinstance(obj, mixin.LazyMembers):
       if not valself:

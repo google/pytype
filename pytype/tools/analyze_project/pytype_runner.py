@@ -8,12 +8,17 @@ import logging
 import re
 import subprocess
 import sys
+from typing import TypeVar, Union
 
 from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
+from pytype.module_utils import Module
 from pytype.platform_utils import path_utils
 from pytype.tools.analyze_project import config
+
+_T0 = TypeVar('_T0')
+_T1 = TypeVar('_T1')
 
 # Generate a default pyi for builtin and system dependencies.
 DEFAULT_PYI = """
@@ -37,26 +42,31 @@ class Stage:
 FIRST_PASS_SUFFIX = '-1'
 
 
-def _get_executable(binary, module=None):
+def _get_executable(
+    binary: _T0, module: _T1 = None
+) -> list[Union[str, _T0, _T1]]:
   """Get the path to the executable with the given name."""
   if binary == 'pytype-single':
     custom_bin = path_utils.join('out', 'bin', 'pytype')
     if sys.argv[0] == custom_bin:
       # The Travis type-check step uses custom binaries in pytype/out/bin/.
-      return (([] if sys.platform != 'win32' else [sys.executable]) + [
+      return ([] if sys.platform != 'win32' else [sys.executable]) + [
           path_utils.join(
               path_utils.abspath(path_utils.dirname(custom_bin)),
-              'pytype-single')
-      ])
+              'pytype-single',
+          )
+      ]
   importable = importlib.util.find_spec(module or binary)
   if sys.executable is not None and importable:
     return [sys.executable, '-m', module or binary]
   else:
     return [binary]
-PYTYPE_SINGLE = _get_executable('pytype-single', 'pytype.main')
 
 
-def resolved_file_to_module(f):
+PYTYPE_SINGLE: list[str] = _get_executable('pytype-single', 'pytype.main')
+
+
+def resolved_file_to_module(f) -> Module:
   """Turn an importlab ResolvedFile into a pytype Module."""
   full_path = f.path
   target = f.short_path
@@ -69,7 +79,7 @@ def resolved_file_to_module(f):
       path=path, target=target, name=name, kind=f.__class__.__name__)
 
 
-def _get_filenames(node):
+def _get_filenames(node) -> tuple:
   if isinstance(node, str):
     return (node,)
   else:
@@ -77,7 +87,7 @@ def _get_filenames(node):
     return tuple(sorted(node.nodes))
 
 
-def deps_from_import_graph(import_graph):
+def deps_from_import_graph(import_graph) -> list[tuple[tuple, tuple]]:
   """Construct PytypeRunner args from an importlab.ImportGraph instance.
 
   Kept as a separate function so PytypeRunner can be tested independently of
@@ -126,7 +136,7 @@ def deps_from_import_graph(import_graph):
   return modules
 
 
-def _is_type_stub(f):
+def _is_type_stub(f) -> bool:
   _, ext = path_utils.splitext(f)
   return ext in ('.pyi', '.pytd')
 
@@ -146,7 +156,7 @@ def _module_to_output_path(mod):
     return mod.name[0] + mod.name[1:].replace('.', path_utils.sep)
 
 
-def escape_ninja_path(path: str):
+def escape_ninja_path(path: str) -> str:
   """Returns the path with special characters escaped.
 
   Escape new line, space, colon, and dollar sign, for ninja
@@ -161,7 +171,7 @@ def escape_ninja_path(path: str):
   return re.sub(r'(?P<char>[\n :$])', r'$\g<char>', path)
 
 
-def get_imports_map(deps, module_to_imports_map, module_to_output):
+def get_imports_map(deps, module_to_imports_map, module_to_output) -> dict:
   """Get a short path -> full path map for the given deps."""
   imports_map = {}
   for m in deps:
@@ -174,7 +184,7 @@ def get_imports_map(deps, module_to_imports_map, module_to_output):
 class PytypeRunner:
   """Runs pytype over an import graph."""
 
-  def __init__(self, conf, sorted_sources):
+  def __init__(self, conf, sorted_sources) -> None:
     self.filenames = set(conf.inputs)  # files to type-check
     # all source modules as a sequence of (module, direct_deps)
     self.sorted_sources = sorted_sources
@@ -184,11 +194,14 @@ class PytypeRunner:
     self.imports_dir = path_utils.join(conf.output, 'imports')
     self.ninja_file = path_utils.join(conf.output, 'build.ninja')
     self.custom_options = [
-        (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
+        (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)
+    ]
     self.keep_going = conf.keep_going
     self.jobs = conf.jobs
 
-  def set_custom_options(self, flags_with_values, binary_flags, report_errors):
+  def set_custom_options(
+      self, flags_with_values, binary_flags, report_errors
+  ) -> None:
     """Merge self.custom_options into flags_with_values and binary_flags."""
     for dest, value in self.custom_options:
       if not report_errors and dest in config.REPORT_ERRORS_ITEMS:
@@ -229,7 +242,7 @@ class PytypeRunner:
         ['$in']
     )
 
-  def make_imports_dir(self):
+  def make_imports_dir(self) -> bool:
     try:
       file_utils.makedirs(self.imports_dir)
     except OSError:
@@ -237,14 +250,14 @@ class PytypeRunner:
       return False
     return True
 
-  def write_default_pyi(self):
+  def write_default_pyi(self) -> str:
     """Write a default pyi file."""
     output = path_utils.join(self.imports_dir, 'default.pyi')
     with open(output, 'w') as f:
       f.write(DEFAULT_PYI)
     return output
 
-  def write_imports(self, module_name, imports_map, suffix):
+  def write_imports(self, module_name, imports_map, suffix) -> str:
     """Write a .imports file."""
     output = path_utils.join(self.imports_dir,
                              module_name + '.imports' + suffix)
@@ -253,7 +266,7 @@ class PytypeRunner:
         f.write('%s %s\n' % item)
     return output
 
-  def get_module_action(self, module):
+  def get_module_action(self, module) -> str:
     """Get the action for the given module.
 
     Args:
@@ -308,7 +321,7 @@ class PytypeRunner:
           if action != Action.GENERATE_DEFAULT:
             yield module, action, deps, Stage.SECOND_PASS
 
-  def write_ninja_preamble(self):
+  def write_ninja_preamble(self) -> None:
     """Write out the pytype-single commands that the build will call."""
     with open(self.ninja_file, 'w') as f:
       for action, report_errors in ((Action.INFER, False),
@@ -323,7 +336,7 @@ class PytypeRunner:
                 action=action, command=command)
         )
 
-  def write_build_statement(self, module, action, deps, imports, suffix):
+  def write_build_statement(self, module, action, deps, imports, suffix) -> str:
     """Write a build statement for the given module.
 
     Args:
@@ -356,7 +369,7 @@ class PytypeRunner:
                   module=module.name))
     return output
 
-  def setup_build(self):
+  def setup_build(self) -> set[str]:
     """Write out the full build.ninja file.
 
     Returns:
@@ -395,7 +408,7 @@ class PytypeRunner:
           module, action, deps, imports, suffix)
     return files
 
-  def build(self):
+  def build(self) -> int:
     """Execute the build.ninja file."""
     # -k N     keep going until N jobs fail (0 means infinity)
     # -C DIR   change to DIR before doing anything else

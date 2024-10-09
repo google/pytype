@@ -1,10 +1,12 @@
 """Abstract representation of functions defined in the module under analysis."""
 
 import collections
+from collections.abc import Generator
 import contextlib
 import hashlib
 import itertools
 import logging
+from typing import Any, TypeVar
 
 from pytype.abstract import _classes
 from pytype.abstract import _function_base
@@ -17,13 +19,17 @@ from pytype.abstract import function
 from pytype.errors import error_types
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd.pytd import ParameterKind
 from pytype.typegraph import cfg_utils
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+_T2 = TypeVar("_T2")
+
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
-def _matches_generator_helper(type_obj, allowed_types):
+def _matches_generator_helper(type_obj, allowed_types) -> bool:
   """Check if type_obj matches a Generator/AsyncGenerator type."""
   if isinstance(type_obj, _typing.Union):
     return all(
@@ -50,7 +56,7 @@ def _matches_async_generator(type_obj):
   return _matches_generator_helper(type_obj, allowed_types)
 
 
-def _hash_all_dicts(*hash_args):
+def _hash_all_dicts(*hash_args) -> bytes:
   """Convenience method for hashing a sequence of dicts."""
   components = (
       abstract_utils.get_dict_fullhash_component(d, names=n)
@@ -61,7 +67,7 @@ def _hash_all_dicts(*hash_args):
   ).digest()
 
 
-def _check_classes(var, check):
+def _check_classes(var, check) -> bool:
   """Check whether the cls of each value in `var` is a class and passes `check`.
 
   Args:
@@ -198,7 +204,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       annotations,
       overloads,
       ctx,
-  ):
+  ) -> None:
     log.debug("Creating InterpreterFunction %r for %r", name, code.name)
     self.bound_class = _function_base.BoundInterpreterFunction
     self.doc = code.consts[0] if code.consts else None
@@ -244,14 +250,14 @@ class InterpreterFunction(_function_base.SignedFunction):
     self.cache_return = False
 
   @contextlib.contextmanager
-  def record_calls(self):
+  def record_calls(self) -> contextlib._GeneratorContextManager:
     """Turn on recording of function calls. Used by analyze.py."""
     old = self._store_call_records
     self._store_call_records = True
     yield
     self._store_call_records = old
 
-  def _check_signature(self):
+  def _check_signature(self) -> None:
     """Validate function signature."""
     for ann in self.signature.annotations.values():
       if isinstance(ann, _typing.FinalAnnotation):
@@ -308,7 +314,7 @@ class InterpreterFunction(_function_base.SignedFunction):
               f"{input_pytd}",
           )
 
-  def _build_signature(self, name, annotations):
+  def _build_signature(self, name, annotations) -> function.Signature:
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
@@ -335,7 +341,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         annotations,
     )
 
-  def _update_signature_scope_from_closure(self):
+  def _update_signature_scope_from_closure(self) -> None:
     # If this is a nested function in an instance method and the nested function
     # accesses 'self', then the first variable in the closure is 'self'. We use
     # 'self' to update the scopes of any type parameters in the nested method's
@@ -363,7 +369,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       return
     return super().match_args(node, args, alias_map, match_all_views)
 
-  def _inner_cls_check(self, last_frame):
+  def _inner_cls_check(self, last_frame) -> None:
     """Check if the function and its nested class use same type parameter."""
     # get all type parameters from function annotations
     all_type_parameters = []
@@ -403,7 +409,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     """Get the functions that describe this function's signature."""
     return self._active_overloads or [self]
 
-  def iter_signature_functions(self):
+  def iter_signature_functions(self) -> Generator[Any, Any, None]:
     """Loop through signatures, setting each as the primary one in turn."""
     if not self._all_overloads:
       yield self
@@ -417,7 +423,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         self._active_overloads = old_overloads
 
   @contextlib.contextmanager
-  def reset_overloads(self):
+  def reset_overloads(self) -> contextlib._GeneratorContextManager:
     if self._all_overloads == self._active_overloads:
       yield
       return
@@ -428,7 +434,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     finally:
       self._active_overloads = old_overloads
 
-  def _find_matching_sig(self, node, args, alias_map):
+  def _find_matching_sig(self, node, args, alias_map) -> tuple[Any, Any, Any]:
     error = None
     for f in self.signature_functions():
       try:
@@ -443,12 +449,12 @@ class InterpreterFunction(_function_base.SignedFunction):
         return f.signature, substs, callargs
     raise error  # pylint: disable=raising-bad-type
 
-  def _set_callself_maybe_missing_members(self):
+  def _set_callself_maybe_missing_members(self) -> None:
     if self.ctx.callself_stack:
       for b in self.ctx.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def _is_unannotated_contextmanager_exit(self, func, args):
+  def _is_unannotated_contextmanager_exit(self, func, args) -> bool:
     """Returns whether this is an unannotated contextmanager __exit__ method.
 
     If this is a bound method named __exit__ that has no type annotations and is
@@ -472,7 +478,9 @@ class InterpreterFunction(_function_base.SignedFunction):
         and not args.starstarargs
     )
 
-  def _fix_args_for_unannotated_contextmanager_exit(self, node, func, args):
+  def _fix_args_for_unannotated_contextmanager_exit(
+      self, node, func, args: _T2
+  ) -> function.Args | _T2:
     """Adjust argument types for a contextmanager's __exit__ method."""
     if not self._is_unannotated_contextmanager_exit(func.data, args):
       return args
@@ -541,7 +549,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         pspec_match, r_args, return_value, self.ctx
     )
 
-  def _handle_paramspec(self, sig, annotations, substs, callargs):
+  def _handle_paramspec(self, sig, annotations, substs, callargs) -> None:
     if not sig.has_return_annotation:
       return
     retval = sig.annotations["return"]
@@ -559,8 +567,14 @@ class InterpreterFunction(_function_base.SignedFunction):
           annotations[name] = param_annot
 
   def call(
-      self, node, func, args, alias_map=None, new_locals=False, frame_substs=()
-  ):
+      self,
+      node,
+      func,
+      args,
+      alias_map=None,
+      new_locals=False,
+      frame_substs=(),
+  ) -> tuple[Any, Any]:
     if self.is_overload:
       raise error_types.NotCallable(self)
     args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
@@ -755,7 +769,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     self.last_frame = frame
     return node_after_call, typeguard_return or ret
 
-  def get_call_combinations(self, node):
+  def get_call_combinations(self, node: _T0) -> list[tuple[_T0, Any, Any]]:
     """Get this function's call records."""
     all_combinations = []
     signature_data = set()
@@ -801,17 +815,19 @@ class InterpreterFunction(_function_base.SignedFunction):
       all_combinations.append((node, params, ret))
     return all_combinations
 
-  def get_positional_names(self):
+  def get_positional_names(self) -> list:
     return list(self.code.varnames[: self.code.argcount])
 
-  def get_nondefault_params(self):
+  def get_nondefault_params(self) -> Generator[tuple[Any, bool], Any, None]:
     for i in range(self.nonstararg_count):
       yield self.code.varnames[i], i >= self.code.argcount
 
-  def get_kwonly_names(self):
+  def get_kwonly_names(self) -> list:
     return list(self.code.varnames[self.code.argcount : self.nonstararg_count])
 
-  def get_parameters(self):
+  def get_parameters(
+      self,
+  ) -> Generator[tuple[Any, ParameterKind, bool], Any, None]:
     default_pos = self.code.argcount - len(self.defaults)
     i = 0
     for name in self.get_positional_names():
@@ -831,7 +847,9 @@ class InterpreterFunction(_function_base.SignedFunction):
   def has_kwargs(self):
     return self.code.has_varkeywords()
 
-  def property_get(self, callself, is_class=False):
+  def property_get(
+      self, callself, is_class=False
+  ) -> _function_base.BoundFunction | _function_base.Function:
     if self.name.endswith(".__init__") and self.signature.param_names:
       self_name = self.signature.param_names[0]
       # If `_has_self_annot` is True, then we've intentionally temporarily
@@ -854,7 +872,7 @@ class InterpreterFunction(_function_base.SignedFunction):
   def is_unannotated_coroutine(self):
     return self.is_coroutine() and not self.signature.has_return_annotation
 
-  def has_empty_body(self):
+  def has_empty_body(self) -> bool:
     # TODO(mdemello): Optimise this.
     ops = list(self.code.code_iter)
     if self.ctx.python_version >= (3, 12):
@@ -885,7 +903,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     return None
 
   @contextlib.contextmanager
-  def set_self_annot(self, annot_class):
+  def set_self_annot(self, annot_class) -> contextlib._GeneratorContextManager:
     if self.is_overload or not self._active_overloads:
       with super().set_self_annot(annot_class):
         yield

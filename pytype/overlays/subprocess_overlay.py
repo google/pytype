@@ -8,7 +8,7 @@ from pytype.overlays import overlay
 class SubprocessOverlay(overlay.Overlay):
   """A custom overlay for the 'subprocess' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "Popen": Popen,
     }
@@ -55,7 +55,7 @@ class PopenInit(abstract.PyTDFunction):
 class Popen(abstract.PyTDClass, mixin.HasSlots):
   """Custom implementation of subprocess.Popen."""
 
-  def __init__(self, ctx, module):
+  def __init__(self, ctx, module) -> None:
     pytd_cls = ctx.loader.lookup_pytd(module, "Popen")
     super().__init__("Popen", pytd_cls, ctx)
     mixin.HasSlots.init_mixin(self)

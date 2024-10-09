@@ -23,13 +23,15 @@ This is less uniform, and therefore not recommended to use other than for
 input/output.
 """
 
-from typing import Any
+from typing import TypeVar, Union, Any
 
 import attrs
 from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+
+_T0 = TypeVar('_T0')
 
 
 # Copied from typegraph/cfg.py
@@ -43,7 +45,7 @@ MAX_VAR_SIZE = 64
 class ConstantError(Exception):
   """Errors raised during constant folding."""
 
-  def __init__(self, message, op):
+  def __init__(self, message, op) -> None:
     super().__init__(message)
     self.lineno = op.line
     self.message = message
@@ -82,7 +84,7 @@ class _Constant:
   def tag(self):
     return self.typ[0]
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return repr(self.value)
 
 
@@ -109,17 +111,17 @@ class _Map:
 class _CollectionBuilder:
   """Build up a collection of constants."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.types = set()
     self.values = []
     self.elements = []
 
-  def add(self, constant):
+  def add(self, constant) -> None:
     self.types.add(constant.typ)
     self.elements.append(constant)
     self.values.append(constant.value)
 
-  def build(self):
+  def build(self) -> _Collection:
     return _Collection(
         types=frozenset(self.types),
         values=tuple(reversed(self.values)),
@@ -130,21 +132,21 @@ class _CollectionBuilder:
 class _MapBuilder:
   """Build up a map of constants."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.key_types = set()
     self.value_types = set()
     self.keys = []
     self.values = []
     self.elements = {}
 
-  def add(self, key, value):
+  def add(self, key, value) -> None:
     self.key_types.add(key.typ)
     self.value_types.add(value.typ)
     self.keys.append(key.value)
     self.values.append(value.value)
     self.elements[key.value] = value
 
-  def build(self):
+  def build(self) -> _Map:
     return _Map(
         key_types=frozenset(self.key_types),
         keys=tuple(reversed(self.keys)),
@@ -157,27 +159,27 @@ class _MapBuilder:
 class _Stack:
   """A simple opcode stack."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.stack = []
     self.consts = {}
 
   def __iter__(self):
     return self.stack.__iter__()
 
-  def push(self, val):
+  def push(self, val) -> None:
     self.stack.append(val)
 
   def pop(self):
     return self.stack.pop()
 
-  def _preserve_constant(self, c):
+  def _preserve_constant(self, c) -> None:
     if c and (
         not isinstance(c.op, opcodes.LOAD_CONST)
         or isinstance(c.op, opcodes.BUILD_STRING)
     ):
       self.consts[id(c.op)] = c
 
-  def clear(self):
+  def clear(self) -> None:
     # Preserve any constants in the stack before clearing it.
     for c in self.stack:
       self._preserve_constant(c)
@@ -236,7 +238,7 @@ class _Stack:
       self.push(None)
     return ret
 
-  def build(self, python_type, op):
+  def build(self, python_type, op) -> None:
     """Build a folded type."""
     collection = self.fold_args(op.arg, op)
     if collection:
@@ -253,10 +255,10 @@ class _Stack:
 class _FoldedOps:
   """Mapping from a folded opcode to the top level constant that replaces it."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.folds = {}
 
-  def add(self, op):
+  def add(self, op) -> None:
     self.folds[id(op)] = op.folded
 
   def resolve(self, op):
@@ -453,7 +455,7 @@ def to_literal(typ, always_tuple=False):
     return (tag, union(params))
 
 
-def from_literal(tup):
+def from_literal(tup: _T0) -> Union[tuple, _T0]:
   """Convert from simple literal form to the more uniform typestruct."""
 
   def expand(vals):

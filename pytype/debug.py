@@ -7,13 +7,18 @@ import io
 import logging
 import re
 import traceback
+from typing import Any, Callable, TypeVar
 
 from pytype import utils
 from pytype.typegraph import cfg_utils
 import tabulate
 
+_T1 = TypeVar("_T1")
 
-def _ascii_tree(out, node, p1, p2, seen, get_children, get_description=None):
+
+def _ascii_tree(
+    out, node, p1, p2, seen, get_children, get_description=None
+) -> None:
   """Draw a graph, starting at a given position.
 
   Args:
@@ -46,7 +51,7 @@ def _ascii_tree(out, node, p1, p2, seen, get_children, get_description=None):
       )
 
 
-def ascii_tree(node, get_children, get_description=None):
+def ascii_tree(node, get_children, get_description=None) -> str:
   """Draw a graph, starting at a given position.
 
   Args:
@@ -62,7 +67,7 @@ def ascii_tree(node, get_children, get_description=None):
   return out.getvalue()
 
 
-def prettyprint_binding(binding, indent_level=0):
+def prettyprint_binding(binding, indent_level=0) -> str:
   """Pretty print a binding with variable id and data."""
   indent = " " * indent_level
   if not binding:
@@ -70,7 +75,7 @@ def prettyprint_binding(binding, indent_level=0):
   return "%s<v%d : %r>" % (indent, binding.variable.id, binding.data)
 
 
-def prettyprint_binding_set(binding_set, indent_level=0, label=""):
+def prettyprint_binding_set(binding_set, indent_level=0, label="") -> str:
   """Pretty print a set of bindings, with optional label."""
   indent = " " * indent_level
   start = f"{indent}{label}: {{"
@@ -83,7 +88,7 @@ def prettyprint_binding_set(binding_set, indent_level=0, label=""):
   )
 
 
-def prettyprint_binding_nested(binding, indent_level=0):
+def prettyprint_binding_nested(binding, indent_level=0) -> str:
   """Pretty print a binding and its recursive contents."""
   indent = " " * indent_level
   if indent_level > 32:
@@ -107,7 +112,7 @@ def prettyprint_binding_nested(binding, indent_level=0):
   return s
 
 
-def prettyprint_cfg_node(node, decorate_after_node=0, full=False):
+def prettyprint_cfg_node(node, decorate_after_node=0, full=False) -> str:
   """A reasonably compact representation of all the bindings at a node.
 
   Args:
@@ -155,7 +160,7 @@ def prettyprint_cfg_tree(
   return ascii_tree(root, get_children=children, get_description=desc)
 
 
-def _pretty_variable(var):
+def _pretty_variable(var) -> str:
   """Return a pretty printed string for a Variable."""
   lines = []
   single_value = len(var.bindings) == 1
@@ -189,7 +194,7 @@ def _pretty_variable(var):
   return "\n".join(lines)
 
 
-def program_to_text(program):
+def program_to_text(program) -> str:
   """Generate a text (CFG nodes + assignments) version of a program.
 
   For debugging only.
@@ -226,7 +231,7 @@ def program_to_text(program):
   return s.getvalue()
 
 
-def root_cause(binding, node, seen=()):
+def root_cause(binding, node, seen=()) -> tuple[Any, Any]:
   """Tries to determine why a binding isn't possible at a node.
 
   This tries to find the innermost source that's still impossible. It only works
@@ -260,7 +265,7 @@ def root_cause(binding, node, seen=()):
   return None, None
 
 
-def stack_trace(indent_level=0, limit=100):
+def stack_trace(indent_level=0, limit=100) -> str:
   indent = " " * indent_level
   stack = [
       frame
@@ -272,7 +277,7 @@ def stack_trace(indent_level=0, limit=100):
   return "\n  ".join(tb)
 
 
-def _setup_tabulate():
+def _setup_tabulate() -> None:
   """Customise tabulate."""
   tabulate.PRESERVE_WHITESPACE = True
   tabulate.MIN_PADDING = 0
@@ -291,7 +296,7 @@ def _setup_tabulate():
   # pytype: enable=module-attr
 
 
-def show_ordered_code(code, extra_col=None):
+def show_ordered_code(code, extra_col=None) -> None:
   """Print out the block structure of an OrderedCode object as a table.
 
   Args:
@@ -350,12 +355,12 @@ def show_ordered_code(code, extra_col=None):
 
 
 # Tracing logger
-def tracer(name=None):
+def tracer(name=None) -> logging.Logger:
   name = f"trace.{name}" if name else "trace"
   return logging.getLogger(name)
 
 
-def set_trace_level(level):
+def set_trace_level(level) -> None:
   logging.getLogger("trace").setLevel(level)
 
 
@@ -370,7 +375,7 @@ def tracing(level=logging.DEBUG):
     log.setLevel(current_level)
 
 
-def trace(name, *trace_args):
+def trace(name, *trace_args) -> Callable[[Any], Any]:
   """Record args and return value for a function call.
 
   The trace is of the form
@@ -416,7 +421,7 @@ def trace(name, *trace_args):
   return decorator
 
 
-def show(x):
+def show(x) -> str:
   """Pretty print values for debugging."""
   typename = x.__class__.__name__
   if typename == "Variable":

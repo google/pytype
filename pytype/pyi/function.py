@@ -11,7 +11,7 @@ from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function
 from pytype.pytd.parse import parser_constants
 
-_ParseError = types.ParseError
+_ParseError: type[types.ParseError] = types.ParseError
 
 
 class Mutator(visitors.Visitor):
@@ -26,7 +26,7 @@ class Mutator(visitors.Visitor):
   This visitor applies the body "x = new_type" to the function signature.
   """
 
-  def __init__(self, name, new_type):
+  def __init__(self, name, new_type) -> None:
     super().__init__()
     self.name = name
     self.new_type = new_type
@@ -43,7 +43,7 @@ class Mutator(visitors.Visitor):
     else:
       return p
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Mutator<{self.name} -> {self.new_type}>"
 
   __str__ = __repr__
@@ -191,7 +191,7 @@ def _pytd_star_param(arg: astlib.arg) -> pytd.Parameter | None:
   unpack = parser_constants.EXTERNAL_NAME_PREFIX + "typing_extensions.Unpack"
   if (
       isinstance(arg.annotation, pytd.GenericType)
-      and arg.annotation.base_type.name == unpack
+      and arg.annotation.base_type.name == unpack  # pytype: disable=attribute-error
   ):
     arg.annotation = pytd.AnythingType()
   return pytd_function.pytd_star_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types

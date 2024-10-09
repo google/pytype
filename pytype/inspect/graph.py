@@ -6,7 +6,7 @@ import subprocess
 import networkx as nx
 
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 def obj_key(n):
@@ -14,29 +14,29 @@ def obj_key(n):
   return n.__class__.__name__ + str(nid)
 
 
-def obj_repr(n):
+def obj_repr(n) -> str:
   return repr(n.data)[:10]
 
 
 class TypeGraph:
   """Networkx graph builder."""
 
-  def __init__(self, program, ignored, only_cfg=False):
+  def __init__(self, program, ignored, only_cfg=False) -> None:
     self.graph = nx.MultiDiGraph()
     self._add_cfg(program, ignored)
     if not only_cfg:
       self._add_variables(program, ignored)
 
-  def add_node(self, obj, **kwargs):
+  def add_node(self, obj, **kwargs) -> None:
     self.graph.add_node(obj_key(obj), **kwargs)
 
-  def add_edge(self, obj1, obj2, **kwargs):
+  def add_edge(self, obj1, obj2, **kwargs) -> None:
     self.graph.add_edge(obj_key(obj1), obj_key(obj2), **kwargs)
 
   def to_dot(self):
     return nx.nx_pydot.to_pydot(self.graph).to_string()
 
-  def _add_cfg(self, program, ignored):
+  def _add_cfg(self, program, ignored) -> None:
     """Add program cfg nodes."""
 
     for node in program.cfg_nodes:
@@ -48,7 +48,7 @@ class TypeGraph:
       for other in node.outgoing:
         self.add_edge(node, other, penwidth=2.0)
 
-  def _add_variables(self, program, ignored):
+  def _add_variables(self, program, ignored) -> None:
     """A dd program variables and bindings."""
 
     def _is_constant(val):
@@ -86,7 +86,7 @@ class TypeGraph:
               self.add_edge(src, srcs, color="lightblue", weight=2)
 
 
-def write_svg_from_dot(svg_file, dot):
+def write_svg_from_dot(svg_file, dot) -> None:
   with subprocess.Popen(
       ["/usr/bin/dot", "-T", "svg", "-o", svg_file],
       stdin=subprocess.PIPE,

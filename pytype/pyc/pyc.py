@@ -2,20 +2,23 @@
 
 import abc
 import copy
+from typing import TypeVar
 
 from pycnite import pyc
 from pytype import utils
 from pytype.pyc import compiler
 
+_T0 = TypeVar("_T0")
+
 
 # Reexport since we have exposed this error publicly as pyc.CompileError
-CompileError = compiler.CompileError
+CompileError: type[compiler.CompileError] = compiler.CompileError
 
 
 # The abstract base class for a code visitor passed to pyc.visit.
 class CodeVisitor(abc.ABC):
 
-  def __init__(self):
+  def __init__(self) -> None:
     # This cache, used by pyc.visit below, is needed to avoid visiting the same
     # code object twice, since some visitors mutate the input object.
     # It maps CodeType object id to the result of visiting that object.
@@ -41,11 +44,11 @@ def parse_pyc_string(data):
 class AdjustFilename(CodeVisitor):
   """Visitor for changing co_filename in a code object."""
 
-  def __init__(self, filename):
+  def __init__(self, filename) -> None:
     super().__init__()
     self.filename = filename
 
-  def visit_code(self, code):
+  def visit_code(self, code: _T0) -> _T0:
     code.co_filename = self.filename
     return code
 

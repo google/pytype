@@ -5,7 +5,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.rewrite.abstract import abstract
 
-_IGNORED_CLASS_ATTRIBUTES = frozenset([
+_IGNORED_CLASS_ATTRIBUTES: frozenset[str] = frozenset([
     '__module__',
     '__qualname__',
 ])
@@ -48,7 +48,7 @@ class PytdConverter:
       if member_name in _IGNORED_CLASS_ATTRIBUTES:
         continue
       if isinstance(member_val, abstract.SimpleFunction):
-        member_val = member_val.bind_to(instance)
+        member_val = member_val.bind_to(instance)  # pytype: disable=attribute-error
       try:
         member_type = self.to_pytd_def(member_val)
       except NotImplementedError:
@@ -193,10 +193,10 @@ class PytdConverter:
     elif isinstance(val, abstract.BaseInstance):
       return pytd.NamedType(val.cls.name)
     elif isinstance(val, (abstract.BaseFunction, abstract.BoundFunction)):
-      if len(val.signatures) > 1:
+      if len(val.signatures) > 1:  # pytype: disable=attribute-error
         fixed_length_posargs_only = False
       else:
-        sig = val.signatures[0]
+        sig = val.signatures[0]  # pytype: disable=attribute-error
         fixed_length_posargs_only = (
             not sig.defaults
             and not sig.varargs_name
@@ -212,7 +212,7 @@ class PytdConverter:
         )
       else:
         ret = abstract.join_values(
-            self._ctx, [frame.get_return_value() for frame in val.analyze()]
+            self._ctx, [frame.get_return_value() for frame in val.analyze()]  # pytype: disable=attribute-error
         )
         return pytd.GenericType(
             base_type=pytd.NamedType('typing.Callable'),

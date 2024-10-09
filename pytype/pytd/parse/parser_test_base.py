@@ -18,12 +18,12 @@ class ParserTest(test_base.UnitTest):
   loader: load_pytd.Loader
 
   @classmethod
-  def setUpClass(cls):
+  def setUpClass(cls) -> None:
     super().setUpClass()
     cls.loader = load_pytd.Loader(
         config.Options.create(python_version=cls.python_version))
 
-  def setUp(self):
+  def setUp(self) -> None:
     super().setUp()
     self.options = parser.PyiOptions(python_version=self.python_version)
 
@@ -60,7 +60,7 @@ class ParserTest(test_base.UnitTest):
       src_or_tree.Visit(visitors.VerifyVisitor())
       return src_or_tree
 
-  def AssertSourceEquals(self, src_or_tree_1, src_or_tree_2):
+  def AssertSourceEquals(self, src_or_tree_1, src_or_tree_2) -> None:
     # Strip leading "\n"s for convenience
     ast1 = self.ToAST(src_or_tree_1)
     ast2 = self.ToAST(src_or_tree_2)

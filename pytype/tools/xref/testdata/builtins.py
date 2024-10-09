@@ -2,6 +2,6 @@
 
 a = "hello"
 #- @split ref vname("module.str.split", _, _, "pytd:builtins", _)
-b = a.split('.')
+b: list[str] = a.split('.')
 #- @reverse ref vname("module.list.reverse", _, _, "pytd:builtins", _)
-c = b.reverse()
+c: list[str] = b.reverse()

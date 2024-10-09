@@ -7,7 +7,7 @@ import abc
 import collections
 import dataclasses
 import logging
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -15,14 +15,17 @@ from pytype.abstract import class_mixin
 from pytype.overlays import overlay_utils
 from pytype.overlays import special_builtins
 
+_T0 = TypeVar("_T0")
+_TClassProperties = TypeVar("_TClassProperties", bound="ClassProperties")
 
-log = logging.getLogger(__name__)
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # type aliases for convenience
-Param = overlay_utils.Param
-Attribute = class_mixin.Attribute
-AttributeKinds = class_mixin.AttributeKinds
+Param: type[overlay_utils.Param] = overlay_utils.Param
+Attribute: type[class_mixin.Attribute] = class_mixin.Attribute
+AttributeKinds: type[class_mixin.AttributeKinds] = class_mixin.AttributeKinds
 
 
 # Probably should make this an enum.Enum at some point.
@@ -37,7 +40,7 @@ class Ordering:
   # the locals will be [(x, Instance(float)), (y, Instance(str))]. Note that
   # unannotated variables will be skipped, and the values of later annotations
   # take precedence over earlier ones.
-  FIRST_ANNOTATE = object()
+  FIRST_ANNOTATE: Any = object()
   # Order by each variable's last definition. So for
   #   class Foo:
   #     x = 0
@@ -45,7 +48,7 @@ class Ordering:
   #     x = 4.2
   # the locals will be [(y, Instance(str)), (x, Instance(float))]. Note that
   # variables without assignments will be skipped.
-  LAST_ASSIGN = object()
+  LAST_ASSIGN: Any = object()
 
 
 class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
@@ -59,7 +62,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
       "auto_attribs": False,
   }
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     # Decorator.call() is invoked first with args, then with the class to
     # decorate, so we need to first store the args and then associate them to
@@ -74,12 +77,12 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
   def decorate(self, node, cls):
     """Apply the decorator to cls."""
 
-  def get_initial_args(self):
+  def get_initial_args(self) -> dict[str, Any]:
     ret = self.DEFAULT_ARGS.copy()
     ret.update(self.partial_args)
     return ret
 
-  def update_kwargs(self, args):
+  def update_kwargs(self, args) -> None:
     """Update current_args with the Args passed to the decorator."""
     self._current_args = self.get_initial_args()
     for k, v in args.namedargs.items():
@@ -91,7 +94,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
               self.ctx.vm.frames, f"Non-constant argument to decorator: {k!r}"
           )
 
-  def set_current_args(self, kwargs):
+  def set_current_args(self, kwargs) -> None:
     """Set current_args when constructing a class directly."""
     self._current_args = self.get_initial_args()
     self._current_args.update(kwargs)
@@ -123,7 +126,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
         self.ctx, node, init_method_name, pos_params, 0, kwonly_params
     )
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     """Construct a decorator, and call it on the class."""
     args = args.simplify(node, self.ctx)
     self.match_args(node, args)
@@ -188,14 +191,14 @@ class FieldConstructor(abstract.PyTDFunction):
           self.ctx.vm.frames, f"Non-constant argument {name!r}"
       )
 
-  def get_positional_names(self):
+  def get_positional_names(self) -> list[None]:
     # TODO(mdemello): We currently assume all field constructors are called with
     # namedargs, which has worked in practice but is not required by the attrs
     # or dataclasses apis.
     return []
 
 
-def is_method(var):
+def is_method(var) -> bool:
   if var is None:
     return False
   return isinstance(
@@ -213,7 +216,7 @@ def is_dunder(name):
   return name.startswith("__") and name.endswith("__")
 
 
-def add_member(node, cls, name, typ):
+def add_member(node, cls, name, typ) -> None:
   if typ.formal:
     # If typ contains a type parameter, we mark it as empty so that instances
     # will use __annotations__ to fill in concrete type parameter values.
@@ -254,7 +257,9 @@ def is_relevant_class_local(
   return True
 
 
-def get_class_locals(cls_name: str, allow_methods: bool, ordering, ctx):
+def get_class_locals(
+    cls_name: str, allow_methods: bool, ordering, ctx
+) -> collections.OrderedDict:
   """Gets a dictionary of the class's local variables.
 
   Args:
@@ -342,7 +347,9 @@ class ClassProperties:
   bases: list[Any]
 
   @classmethod
-  def from_field_names(cls, name, field_names, ctx):
+  def from_field_names(
+      cls: type[_TClassProperties], name, field_names, ctx
+  ) -> _TClassProperties:
     """Make a ClassProperties from field names with no types."""
     fields = [Field(n, ctx.convert.unsolvable, None) for n in field_names]
     return cls(name, fields, [])

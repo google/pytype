@@ -1,5 +1,6 @@
 """Implementation of types from Python 2's collections library."""
 
+from collections.abc import Callable
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
 from pytype.overlays import typing_overlay
@@ -8,7 +9,7 @@ from pytype.overlays import typing_overlay
 class CollectionsOverlay(overlay.Overlay):
   """A custom overlay for the 'collections' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     """Initializes the CollectionsOverlay.
 
     This function loads the AST for the collections module, which is used to
@@ -24,7 +25,7 @@ class CollectionsOverlay(overlay.Overlay):
     super().__init__(ctx, "collections", member_map, ast)
 
 
-collections_overlay = {
+collections_overlay: dict[str, Callable] = {
     "namedtuple": named_tuple.CollectionsNamedTupleBuilder.make,
 }
 
@@ -32,7 +33,7 @@ collections_overlay = {
 class ABCOverlay(typing_overlay.Redirect):
   """A custom overlay for the 'collections.abc' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     # collections.abc.Set equates to typing.AbstractSet rather than typing.Set.
     # This is the only such mismatch.
     aliases = {"Set": "typing.AbstractSet"}

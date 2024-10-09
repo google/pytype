@@ -9,7 +9,7 @@ from pytype.pyi import types
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants
 
-_ParseError = types.ParseError
+_ParseError: type[types.ParseError] = types.ParseError
 
 
 @dataclasses.dataclass
@@ -21,21 +21,21 @@ class Import:
   new_name: str
   qualified_name: str = ""
 
-  def pytd_alias(self):
+  def pytd_alias(self) -> pytd.Alias:
     return pytd.Alias(self.new_name, self.pytd_node)
 
 
 class Module:
   """Module and package details."""
 
-  def __init__(self, filename, module_name):
+  def __init__(self, filename, module_name) -> None:
     self.filename = filename
     self.module_name = module_name
     is_package = file_utils.is_pyi_directory_init(filename)
     self.package_name = module_utils.get_package_name(module_name, is_package)
     self.parent_name = module_utils.get_package_name(self.package_name, False)
 
-  def _qualify_name_with_special_dir(self, orig_name):
+  def _qualify_name_with_special_dir(self, orig_name) -> str | None:
     """Handle the case of '.' and '..' as package names."""
     if "__PACKAGE__." in orig_name:
       # Generated from "from . import foo" - see parser.yy
@@ -73,7 +73,7 @@ class Module:
       return name
     return orig_name
 
-  def process_import(self, item):
+  def process_import(self, item) -> Import | None:
     """Process 'import a, b as c, ...'."""
     if isinstance(item, tuple):
       name, new_name = item
@@ -88,7 +88,7 @@ class Module:
     t = pytd.Module(name=as_name, module_name=module_name)
     return Import(pytd_node=t, name=name, new_name=new_name)
 
-  def process_from_import(self, from_package, item):
+  def process_from_import(self, from_package, item) -> Import:
     """Process 'from a.b.c import d, ...'."""
     if isinstance(item, tuple):
       name, new_name = item

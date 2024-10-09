@@ -14,11 +14,20 @@ from pytype.overlays import classgen
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+_T1 = TypeVar("_T1")
+_TAttrib = TypeVar("_TAttrib", bound="Attrib")
+_TAttribInstance = TypeVar("_TAttribInstance", bound="AttribInstance")
+_TAttrs = TypeVar("_TAttrs", bound="Attrs")
+_TAttrsNextGenDefine = TypeVar(
+    "_TAttrsNextGenDefine", bound="AttrsNextGenDefine"
+)
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # type aliases for convenience
-Param = overlay_utils.Param
-Attribute = classgen.Attribute
+Param: type[overlay_utils.Param] = overlay_utils.Param
+Attribute: type[classgen.Attribute] = classgen.Attribute
 
 _TBaseValue = TypeVar("_TBaseValue", bound=abstract.BaseValue)
 
@@ -36,7 +45,7 @@ class _AttrOverlayBase(overlay.Overlay):
 
   _MODULE_NAME: str
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         # Attr's next-gen APIs
         # See https://www.attrs.org/en/stable/api.html#next-gen
@@ -61,7 +70,7 @@ class AttrOverlay(_AttrOverlayBase):
 
   _MODULE_NAME = "attr"
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__(ctx)
     self._member_map.update({
         "attrs": Attrs.make,
@@ -88,7 +97,7 @@ class _NoChange:
 
 # A unique sentinel value to signal not to write anything, not even the
 # original value.
-_NO_CHANGE = _NoChange()
+_NO_CHANGE: _NoChange = _NoChange()
 
 
 class AttrsBase(classgen.Decorator):
@@ -108,7 +117,7 @@ class AttrsBase(classgen.Decorator):
     # writing even the same value might have a side effect (changing ordering).
     return _NO_CHANGE, _ordering_for_auto_attrib(auto_attribs)
 
-  def decorate(self, node, cls):
+  def decorate(self, node, cls) -> None:
     """Processes the attrib members of a class."""
     # Collect classvars to convert them to attrs.
     new_auto_attribs, ordering = self._handle_auto_attribs(
@@ -252,7 +261,7 @@ class AttrsBase(classgen.Decorator):
       # Fix up type parameters in methods added by the decorator.
       cls.update_method_type_params()
 
-  def to_metadata(self):
+  def to_metadata(self) -> dict[str, Any]:
     # For simplicity, we give all attrs decorators with the same behavior as
     # attr.s the same tag.
     args = self._current_args or self.DEFAULT_ARGS
@@ -268,11 +277,11 @@ class Attrs(AttrsBase):
   """Implements the @attr.s decorator."""
 
   @classmethod
-  def make(cls, ctx, module="attr"):
+  def make(cls: type[_TAttrs], ctx, module="attr") -> _TAttrs:
     return super().make("s", ctx, module)
 
   @classmethod
-  def make_dataclass(cls, ctx, module):
+  def make_dataclass(cls: type[_TAttrs], ctx, module) -> _TAttrs:
     ret = super().make("s", ctx, module)
     ret.partial_args["auto_attribs"] = True
     return ret
@@ -307,10 +316,14 @@ class AttrsNextGenDefine(AttrsBase):
   }
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(
+      cls: type[_TAttrsNextGenDefine], ctx, module
+  ) -> _TAttrsNextGenDefine:
     return super().make("define", ctx, module)
 
-  def _handle_auto_attribs(self, auto_attribs, local_ops, cls_name):
+  def _handle_auto_attribs(
+      self, auto_attribs, local_ops, cls_name
+  ) -> tuple[bool | _NoChange | None, Any]:
     if auto_attribs is not None:
       return super()._handle_auto_attribs(auto_attribs, local_ops, cls_name)
     is_annotated = {}
@@ -329,7 +342,9 @@ class AttrsNextGenDefine(AttrsBase):
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, ctx, typ, type_source, init, init_type, kw_only, default):
+  def __init__(
+      self, ctx, typ, type_source, init, init_type, kw_only, default
+  ) -> None:
     super().__init__("attrib", ctx)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
@@ -343,7 +358,7 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     self.set_native_slot("default", self.default_slot)
     self.set_native_slot("validator", self.validator_slot)
 
-  def default_slot(self, node, default):
+  def default_slot(self, node, default: _T1) -> tuple[Any, _T1]:
     # If the default is a method, call it and use its return type.
     fn = default.data[0]
     # TODO(mdemello): it is not clear what to use for self in fn_args; using
@@ -373,10 +388,10 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     # Return the original decorated method so we don't lose it.
     return node, default
 
-  def validator_slot(self, node, validator):
+  def validator_slot(self, node: _T0, validator: _T1) -> tuple[_T0, _T1]:
     return node, validator
 
-  def to_metadata(self):
+  def to_metadata(self) -> dict[str, Any]:
     type_source = self.type_source and self.type_source.name
     return {
         "tag": "attr.ib",
@@ -387,7 +402,9 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     }
 
   @classmethod
-  def from_metadata(cls, ctx, node, typ, metadata):
+  def from_metadata(
+      cls: type[_TAttribInstance], ctx, node, typ, metadata
+  ) -> _TAttribInstance:
     init = metadata["init"]
     kw_only = metadata["kw_only"]
     type_source = metadata["type_source"]
@@ -402,7 +419,7 @@ class Attrib(classgen.FieldConstructor):
   """Implements attr.ib/attrs.field."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(cls: type[_TAttrib], ctx, module) -> _TAttrib:
     return super().make("ib" if module == "attr" else "field", ctx, module)
 
   def _match_and_discard_args(self, node, funcb, args):
@@ -426,7 +443,7 @@ class Attrib(classgen.FieldConstructor):
         args = args.replace_namedarg("default", self.ctx.new_unsolvable(node))
     return args
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     """Returns a type corresponding to an attr."""
     args = args.simplify(node, self.ctx)
     args = self._match_and_discard_args(node, func, args)
@@ -507,7 +524,9 @@ class Attrib(classgen.FieldConstructor):
       raise error_types.WrongArgTypes(self.sig, args, self.ctx, bad_param)
     return valid_sigs[0]
 
-  def _call_converter_function(self, node, converter_var, args):
+  def _call_converter_function(
+      self, node, converter_var, args
+  ) -> tuple[Any, Any]:
     """Run converter and return the input and return types."""
     binding = converter_var.bindings[0]
     fn = binding.data
@@ -540,7 +559,7 @@ class Attrib(classgen.FieldConstructor):
     else:
       return None, None
 
-  def _get_default_var(self, node, args):
+  def _get_default_var(self, node, args) -> tuple[Any, Any]:
     if "default" in args.namedargs and "factory" in args.namedargs:
       # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
       raise error_types.DuplicateKeyword(self.sig, args, self.ctx, "default")
@@ -568,7 +587,7 @@ def _ordering_for_auto_attrib(auto_attrib):
   )
 
 
-def is_attrib(var):
+def is_attrib(var: _T0) -> bool | _T0:
   return var and isinstance(var.data[0], AttribInstance)
 
 

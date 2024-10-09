@@ -1,6 +1,7 @@
 """Custom implementations of builtin types."""
 
 import contextlib
+from typing import Any, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -9,11 +10,15 @@ from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.errors import error_types
 
+_T0 = TypeVar("_T0")
+_TBuiltinClass = TypeVar("_TBuiltinClass", bound="BuiltinClass")
+_TBuiltinFunction = TypeVar("_TBuiltinFunction", bound="BuiltinFunction")
+
 
 class TypeNew(abstract.PyTDFunction):
   """Implements type.__new__."""
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     if len(args.posargs) == 4:
       self.match_args(node, args)  # May raise FailedFunctionCall.
       cls, name_var, bases_var, class_dict_var = args.posargs
@@ -73,15 +78,19 @@ class BuiltinFunction(abstract.PyTDFunction):
   _NAME: str = None
 
   @classmethod
-  def make(cls, ctx):
+  def make(cls: type[_TBuiltinFunction], ctx) -> _TBuiltinFunction:
     assert cls._NAME
     return super().make(cls._NAME, ctx, "builtins")
 
   @classmethod
-  def make_alias(cls, name, ctx, module):
+  def make_alias(
+      cls: type[_TBuiltinFunction], name, ctx, module
+  ) -> _TBuiltinFunction:
     return super().make(name, ctx, module)
 
-  def get_underlying_method(self, node, receiver, method_name):
+  def get_underlying_method(
+      self, node, receiver, method_name
+  ) -> tuple[Any, Any]:
     """Get the bound method that a built-in function delegates to."""
     results = []
     for b in receiver.bindings:
@@ -109,7 +118,7 @@ class Abs(BuiltinFunction):
 
   _NAME = "abs"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     self.match_args(node, args)
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
@@ -124,7 +133,7 @@ class Next(BuiltinFunction):
 
   _NAME = "next"
 
-  def _get_args(self, args):
+  def _get_args(self, args) -> tuple[Any, Any]:
     arg = args.posargs[0]
     if len(args.posargs) > 1:
       default = args.posargs[1]
@@ -134,7 +143,7 @@ class Next(BuiltinFunction):
       default = self.ctx.program.NewVariable()
     return arg, default
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     self.match_args(node, args)
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, "__next__")
@@ -151,7 +160,7 @@ class Round(BuiltinFunction):
 
   _NAME = "round"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     self.match_args(node, args)
     node, fn = self.get_underlying_method(node, args.posargs[0], "__round__")
     if fn is None:
@@ -170,7 +179,7 @@ class ObjectPredicate(BuiltinFunction):
   def run(self, node, args, result):
     raise NotImplementedError(self.__class__.__name__)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     try:
       self.match_args(node, args)
       node = self.ctx.connect_new_cfg_node(node, f"CallPredicate:{self.name}")
@@ -193,7 +202,7 @@ class UnaryPredicate(ObjectPredicate):
   def _call_predicate(self, node, obj):
     raise NotImplementedError(self.__class__.__name__)
 
-  def run(self, node, args, result):
+  def run(self, node, args, result) -> None:
     for obj in args.posargs[0].bindings:
       node, pyval = self._call_predicate(node, obj)
       result.AddBinding(
@@ -212,7 +221,7 @@ class BinaryPredicate(ObjectPredicate):
   def _call_predicate(self, node, left, right):
     raise NotImplementedError(self.__class__.__name__)
 
-  def run(self, node, args, result):
+  def run(self, node, args, result) -> None:
     for right in abstract_utils.expand_type_parameter_instances(
         args.posargs[1].bindings
     ):
@@ -251,7 +260,7 @@ class HasAttr(BinaryPredicate):
   def _call_predicate(self, node, left, right):
     return self._has_attr(node, left.data, right.data)
 
-  def _has_attr(self, node, obj, attr):
+  def _has_attr(self, node, obj, attr) -> tuple[Any, bool | None]:
     """Check if the object has attribute attr.
 
     Args:
@@ -279,10 +288,10 @@ class IsInstance(BinaryPredicate):
 
   _NAME = "isinstance"
 
-  def _call_predicate(self, node, left, right):
+  def _call_predicate(self, node: _T0, left, right) -> tuple[_T0, Any]:
     return node, self._is_instance(left.data, right.data)
 
-  def _is_instance(self, obj, class_spec):
+  def _is_instance(self, obj, class_spec) -> bool | None:
     """Check if the object matches a class specification.
 
     Args:
@@ -307,10 +316,10 @@ class IsSubclass(BinaryPredicate):
 
   _NAME = "issubclass"
 
-  def _call_predicate(self, node, left, right):
+  def _call_predicate(self, node: _T0, left, right) -> tuple[_T0, Any]:
     return node, self._is_subclass(left.data, right.data)
 
-  def _is_subclass(self, cls, class_spec):
+  def _is_subclass(self, cls, class_spec) -> bool | None:
     """Check if the given class is a subclass of a class specification.
 
     Args:
@@ -336,7 +345,7 @@ class IsCallable(UnaryPredicate):
   def _call_predicate(self, node, obj):
     return self._is_callable(node, obj)
 
-  def _is_callable(self, node, obj):
+  def _is_callable(self, node: _T0, obj) -> tuple[Any, bool | None]:
     """Check if the object is callable.
 
     Args:
@@ -373,17 +382,19 @@ class BuiltinClass(abstract.PyTDClass):
   _NAME: str = None
 
   @classmethod
-  def make(cls, ctx):
+  def make(cls: type[_TBuiltinClass], ctx) -> _TBuiltinClass:
     assert cls._NAME
     return cls(cls._NAME, ctx, "builtins")
 
   @classmethod
-  def make_alias(cls, name, ctx, module):
+  def make_alias(
+      cls: type[_TBuiltinClass], name, ctx, module
+  ) -> _TBuiltinClass:
     # Although this method has the same signature as __init__, it makes alias
     # creation more readable and consistent with BuiltinFunction.
     return cls(name, ctx, module)
 
-  def __init__(self, name, ctx, module):
+  def __init__(self, name, ctx, module) -> None:
     super().__init__(name, ctx.loader.lookup_pytd(module, name), ctx)
     self.module = module
 
@@ -391,7 +402,7 @@ class BuiltinClass(abstract.PyTDClass):
 class SuperInstance(abstract.BaseValue):
   """The result of a super() call, i.e., a lookup proxy."""
 
-  def __init__(self, cls, obj, ctx):
+  def __init__(self, cls, obj, ctx) -> None:
     super().__init__("super", ctx)
     self.cls = self.ctx.convert.super_type
     self.super_cls = cls
@@ -426,7 +437,7 @@ class SuperInstance(abstract.BaseValue):
     else:
       return super().get_special_attribute(node, name, valself)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     self.ctx.errorlog.not_callable(self.ctx.vm.frames, self)
     return node, self.ctx.new_unsolvable(node)
 
@@ -435,10 +446,12 @@ class Super(BuiltinClass):
   """The super() function. Calling it will create a SuperInstance."""
 
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature.from_param_names("super", ("cls", "self"))
+  _SIGNATURE: function.Signature = function.Signature.from_param_names(
+      "super", ("cls", "self")
+  )
   _NAME = "super"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     result = self.ctx.program.NewVariable()
     num_args = len(args.posargs)
     if num_args == 0:
@@ -502,7 +515,7 @@ class Object(BuiltinClass):
 
   _NAME = "object"
 
-  def is_object_new(self, func):
+  def is_object_new(self, func) -> bool:
     """Whether the given function is object.__new__.
 
     Args:
@@ -564,7 +577,7 @@ class RevealType(BuiltinFunction):
 
   _NAME = "reveal_type"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     for a in args.posargs:
       self.ctx.errorlog.reveal_type(self.ctx.vm.frames, node, a)
     return node, self.ctx.convert.build_none(node)
@@ -574,12 +587,12 @@ class AssertType(BuiltinFunction):
   """For debugging. assert_type(x, t) asserts that the type of "x" is "t"."""
 
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature.from_param_names(
+  _SIGNATURE: function.Signature = function.Signature.from_param_names(
       "assert_type", ("variable", "type")
   )
   _NAME = "assert_type"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     if len(args.posargs) == 2:
       var, typ = args.posargs
     else:
@@ -613,14 +626,14 @@ class AssertType(BuiltinFunction):
 class Property(BuiltinClass):
   """Property decorator."""
 
-  _KEYS = ["fget", "fset", "fdel", "doc"]
+  _KEYS: list[str] = ["fget", "fset", "fdel", "doc"]
   _NAME = "property"
 
-  def signature(self):
+  def signature(self) -> function.Signature:
     # Minimal signature, only used for constructing exceptions.
     return function.Signature.from_param_names(self.name, tuple(self._KEYS))
 
-  def _get_args(self, args):
+  def _get_args(self, args) -> dict:
     ret = dict(zip(self._KEYS, args.posargs))
     for k, v in args.namedargs.items():
       if k not in self._KEYS:
@@ -630,14 +643,14 @@ class Property(BuiltinClass):
       ret[k] = v
     return ret
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     property_args = self._get_args(args)
     return node, PropertyInstance(
         self.ctx, self.name, self, **property_args
     ).to_variable(node)
 
 
-def _is_fn_abstract(func_var):
+def _is_fn_abstract(func_var) -> bool:
   if func_var is None:
     return False
   return any(getattr(d, "is_abstract", False) for d in func_var.data)
@@ -646,7 +659,9 @@ def _is_fn_abstract(func_var):
 class PropertyInstance(abstract.Function, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
-  def __init__(self, ctx, name, cls, fget=None, fset=None, fdel=None, doc=None):
+  def __init__(
+      self, ctx, name, cls, fget=None, fset=None, fdel=None, doc=None
+  ) -> None:
     super().__init__("property", ctx)
     mixin.HasSlots.init_mixin(self)
     self.name = name  # Reports the correct decorator in error messages.
@@ -672,7 +687,7 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     self.is_method = True
     self.bound_class = abstract.BoundFunction
 
-  def fget_slot(self, node, obj, objtype):
+  def fget_slot(self, node, obj, objtype) -> tuple[Any, Any]:
     obj_val = abstract_utils.get_atomic_value(
         obj, default=self.ctx.convert.unsolvable
     )
@@ -695,38 +710,38 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
           self.ctx, node, self.fget, function.Args((obj,))
       )
 
-  def fset_slot(self, node, obj, value):
+  def fset_slot(self, node, obj, value) -> tuple[Any, Any]:
     return function.call_function(
         self.ctx, node, self.fset, function.Args((obj, value))
     )
 
-  def fdelete_slot(self, node, obj):
+  def fdelete_slot(self, node, obj) -> tuple[Any, Any]:
     return function.call_function(
         self.ctx, node, self.fdel, function.Args((obj,))
     )
 
-  def getter_slot(self, node, fget):
+  def getter_slot(self, node: _T0, fget) -> tuple[_T0, Any]:
     prop = PropertyInstance(
         self.ctx, self.name, self.cls, fget, self.fset, self.fdel, self.doc
     )
     result = self.ctx.program.NewVariable([prop], fget.bindings, node)
     return node, result
 
-  def setter_slot(self, node, fset):
+  def setter_slot(self, node: _T0, fset) -> tuple[_T0, Any]:
     prop = PropertyInstance(
         self.ctx, self.name, self.cls, self.fget, fset, self.fdel, self.doc
     )
     result = self.ctx.program.NewVariable([prop], fset.bindings, node)
     return node, result
 
-  def deleter_slot(self, node, fdel):
+  def deleter_slot(self, node: _T0, fdel) -> tuple[_T0, Any]:
     prop = PropertyInstance(
         self.ctx, self.name, self.cls, self.fget, self.fset, fdel, self.doc
     )
     result = self.ctx.program.NewVariable([prop], fdel.bindings, node)
     return node, result
 
-  def update_signature_scope(self, cls):
+  def update_signature_scope(self, cls) -> None:
     for fvar in (self.fget, self.fset, self.fdel):
       if fvar:
         for f in fvar.data:
@@ -734,7 +749,7 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
             f.update_signature_scope(cls)
 
 
-def _check_method_decorator_arg(fn_var, name, ctx):
+def _check_method_decorator_arg(fn_var, name, ctx) -> bool:
   """Check that @classmethod or @staticmethod are applied to a function."""
   for d in fn_var.data:
     try:
@@ -750,7 +765,7 @@ def _check_method_decorator_arg(fn_var, name, ctx):
 class StaticMethodInstance(abstract.Function, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
-  def __init__(self, ctx, cls, func):
+  def __init__(self, ctx, cls, func) -> None:
     super().__init__("staticmethod", ctx)
     mixin.HasSlots.init_mixin(self)
     self.func = func
@@ -760,7 +775,7 @@ class StaticMethodInstance(abstract.Function, mixin.HasSlots):
     self.is_method = True
     self.bound_class = abstract.BoundFunction
 
-  def func_slot(self, node, obj, objtype):
+  def func_slot(self, node: _T0, obj, objtype) -> tuple[_T0, Any]:
     return node, self.func
 
 
@@ -768,10 +783,12 @@ class StaticMethod(BuiltinClass):
   """Static method decorator."""
 
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
+  _SIGNATURE: function.Signature = function.Signature.from_param_names(
+      "staticmethod", ("func",)
+  )
   _NAME = "staticmethod"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     if len(args.posargs) != 1:
       raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
@@ -787,7 +804,7 @@ class ClassMethodCallable(abstract.BoundFunction):
 class ClassMethodInstance(abstract.Function, mixin.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
-  def __init__(self, ctx, cls, func):
+  def __init__(self, ctx, cls, func) -> None:
     super().__init__("classmethod", ctx)
     mixin.HasSlots.init_mixin(self)
     self.cls = cls
@@ -797,11 +814,11 @@ class ClassMethodInstance(abstract.Function, mixin.HasSlots):
     self.is_method = True
     self.bound_class = ClassMethodCallable
 
-  def func_slot(self, node, obj, objtype):
+  def func_slot(self, node: _T0, obj, objtype) -> tuple[_T0, Any]:
     results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]
     return node, self.ctx.program.NewVariable(results, [], node)
 
-  def update_signature_scope(self, cls):
+  def update_signature_scope(self, cls) -> None:
     for f in self.func.data:
       if isinstance(f, abstract.Function):
         f.update_signature_scope(cls)
@@ -811,10 +828,12 @@ class ClassMethod(BuiltinClass):
   """Class method decorator."""
 
   # Minimal signature, only used for constructing exceptions.
-  _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
+  _SIGNATURE: function.Signature = function.Signature.from_param_names(
+      "classmethod", ("func",)
+  )
   _NAME = "classmethod"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     if len(args.posargs) != 1:
       raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
@@ -853,7 +872,7 @@ class Type(BuiltinClass, mixin.HasSlots):
 
   _NAME = "type"
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     mixin.HasSlots.init_mixin(self)
     slot = self.ctx.convert.convert_pytd_function(

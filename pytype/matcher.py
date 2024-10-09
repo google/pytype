@@ -1,11 +1,10 @@
 """Matching logic for abstract values."""
 
 import collections
-from collections.abc import Iterable
 import contextlib
 import dataclasses
 import logging
-from typing import Any, cast
+from typing import Callable, Generator, Optional, TypeVar, Any, cast
 
 from pytype import datatypes
 from pytype import utils
@@ -23,8 +22,11 @@ from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 from pytype.types import types
 
+_T3 = TypeVar("_T3")
+_TGoodMatch = TypeVar("_TGoodMatch", bound="GoodMatch")
 
-log = logging.getLogger(__name__)
+
+log: logging.Logger = logging.getLogger(__name__)
 
 _SubstType = datatypes.AliasingDict[str, cfg.Variable]
 _ViewType = datatypes.AccessTrackingDict[cfg.Variable, cfg.Binding]
@@ -42,7 +44,7 @@ def _is_callback_protocol(typ):
   )
 
 
-def _compute_superset_info(subst_key1, subst_key2):
+def _compute_superset_info(subst_key1, subst_key2) -> tuple[bool, bool]:
   """Compute whether subst_key1 is a superset of subst_key2 and vice versa."""
   # Since repeatedly iterating over subst keys is slow, we do both computations
   # in one loop.
@@ -76,7 +78,7 @@ class GoodMatch:
   subst: _SubstType
 
   @classmethod
-  def default(cls):
+  def default(cls: type[_TGoodMatch]) -> _TGoodMatch:
     return cls(datatypes.AccessTrackingDict(), datatypes.HashableDict())
 
 
@@ -109,14 +111,14 @@ class MatchResult:
 class _UniqueMatches:
   """A collection of matches that discards duplicates."""
 
-  def __init__(self, node, keep_all_views):
+  def __init__(self, node, keep_all_views) -> None:
     self._node = node
     self._keep_all_views = keep_all_views
     self._data: dict[
         _ViewKeyType, list[tuple[_SubstKeyType, _ViewType, _SubstType]]
     ] = collections.defaultdict(list)
 
-  def insert(self, view, subst):
+  def insert(self, view, subst) -> None:
     """Insert a subst with associated data."""
     if self._keep_all_views:
       view_key = tuple(
@@ -154,7 +156,7 @@ class _UniqueMatches:
     else:
       self._data[view_key].append(data_item)
 
-  def unique(self) -> Iterable[tuple[_ViewType, _SubstType]]:
+  def unique(self):
     for values in self._data.values():
       for _, view, subst in values:
         yield (view, subst)
@@ -163,11 +165,11 @@ class _UniqueMatches:
 class _TypeParams:
   """Collection of TypeParameter objects encountered during matching."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.seen = set()
     self._mutually_exclusive = collections.defaultdict(set)
 
-  def add_mutually_exclusive_groups(self, groups):
+  def add_mutually_exclusive_groups(self, groups) -> None:
     """Adds groups of mutually exclusive type parameters.
 
     For example, [{"T1", "T2"}, {"T3", "T4"}] would mean that the following
@@ -182,7 +184,7 @@ class _TypeParams:
       for name in group:
         self._mutually_exclusive[name].update(mutually_exclusive)
 
-  def has_mutually_exclusive(self, name, subst):
+  def has_mutually_exclusive(self, name, subst) -> bool:
     """Whether 'subst' has a param that is mutually exclusive with 'name'."""
     return bool(self._mutually_exclusive[name].intersection(subst))
 
@@ -190,7 +192,7 @@ class _TypeParams:
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
-  def __init__(self, node, ctx):
+  def __init__(self, node, ctx) -> None:
     super().__init__(ctx)
     self._node = node
     self._protocol_cache = set()
@@ -213,13 +215,15 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
     self._reset_errors()
 
-  def _reset_errors(self):
+  def _reset_errors(self) -> None:
     self._protocol_error = None
     self._noniterable_str_error = None
     self._typed_dict_error = None
 
   @contextlib.contextmanager
-  def _track_partially_matched_protocols(self):
+  def _track_partially_matched_protocols(
+      self,
+  ):
     """Context manager for handling the protocol cache.
 
     Some protocols have methods that return instances of the protocol, e.g.
@@ -234,7 +238,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     yield
     self._protocol_cache = old_protocol_cache
 
-  def _error_details(self):
+  def _error_details(self) -> error_types.MatcherErrorDetails:
     """Package up additional error details."""
     return error_types.MatcherErrorDetails(
         protocol=self._protocol_error,
@@ -353,7 +357,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if subst is None:
         if self._node.CanHaveCombination(list(view.values())):
           bad_matches.append(
-              BadMatch(
+              BadMatch(  # pytype: disable=wrong-arg-types
                   view=view,
                   expected=self._get_bad_type(name, other_type),
                   actual=var,
@@ -428,7 +432,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     """Match a variable against a type."""
     self._reset_errors()
     if var.bindings:
-      return self._match_value_against_type(view[var], other_type, subst, view)
+      return self._match_value_against_type(view[var], other_type, subst, view)  # pytype: disable=wrong-arg-types
     else:  # Empty set of values. The "nothing" type.
       if isinstance(other_type, abstract.TupleClass):
         other_type = other_type.get_formal_type_parameter(abstract_utils.T)
@@ -978,7 +982,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     new_subst = {p.full_name: value.to_variable(self._node) for p in params}
     return self._merge_substs(subst, [new_subst])
 
-  def _get_param_matcher(self, callable_type):
+  def _get_param_matcher(self, callable_type) -> Callable[[Any, Any, Any], Any]:
     """Helper for matching the parameters of a callable.
 
     Args:
@@ -1171,7 +1175,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _match_subst_against_subst(
       self, old_subst, new_subst, type_param_map, has_self
-  ):
+  ) -> Optional[datatypes.AliasingDict]:
     subst = datatypes.AliasingDict(aliases=old_subst.aliases)
     for t in new_subst:
       if t not in old_subst or not old_subst[t].bindings:
@@ -1405,7 +1409,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _match_instance_param_against_class_param(
       self, instance_param, class_param, subst, view
-  ):
+  ) -> tuple[Any, Any]:
     if instance_param.bindings and instance_param not in view:
       binding = instance_param.bindings[0]
       view = view.copy()
@@ -1444,8 +1448,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return subst
 
   def _match_fiddle_instance_against_bare_type(
-      self, left, instance, other_type, subst, view
-  ):
+      self, left, instance, other_type, subst: _T3, view
+  ) -> Optional[_T3]:
     """Match a fiddle instance against an unsubscripted buildable pytd type."""
     assert isinstance(instance, fiddle_overlay.Buildable)
     assert isinstance(other_type, abstract.PyTDClass)
@@ -1654,7 +1658,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       )
     return subst
 
-  def _get_attribute_names(self, left):
+  def _get_attribute_names(self, left) -> set[str]:
     """Get the attributes implemented (or implicit) on a type."""
     left_attributes = set()
     if isinstance(left, abstract.Module):
@@ -1775,7 +1779,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     else:
       return attribute, False
 
-  def _is_native_callable(self, val):
+  def _is_native_callable(self, val) -> bool:
     return isinstance(val, abstract.NativeFunction) and isinstance(
         val.func.__self__, abstract.CallableClass
     )
@@ -1784,7 +1788,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self, attr: abstract.BaseValue, unbind: bool
   ) -> abstract.BaseValue:
     if self._is_native_callable(attr):
-      sig = function.Signature.from_callable(attr.func.__self__)
+      sig = function.Signature.from_callable(attr.func.__self__)  # pytype: disable=attribute-error
       if unbind:
         sig = sig.prepend_parameter("self", self.ctx.convert.unsolvable)
       return abstract.SimpleFunction(sig, self.ctx)
@@ -1814,7 +1818,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       return abstract.ParameterizedClass(cls, parameters, self.ctx)
     return cls
 
-  def _get_attribute_types(self, other_type, attribute):
+  def _get_attribute_types(
+      self, other_type, attribute
+  ) -> Generator[Any, Any, None]:
     if not abstract_utils.is_callable(attribute):
       typ = self._get_type(attribute)
       if typ:
@@ -1939,7 +1945,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return None
     return self._merge_substs(subst, new_substs)
 
-  def _discard_ambiguous_values(self, values):
+  def _discard_ambiguous_values(self, values) -> list:
     # TODO(rechen): For type parameter instances, we should extract the concrete
     # value from v.instance so that we can check it, rather than ignoring the
     # value altogether.
@@ -1959,7 +1965,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           concrete_values.append(v)
     return concrete_values
 
-  def _satisfies_single_type(self, values):
+  def _satisfies_single_type(self, values) -> bool:
     """Enforce that the variable contains only one concrete type."""
     class_names = {v.cls.full_name for v in values}
     for compat_name, name in self._compatible_builtins:
@@ -1968,7 +1974,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     # We require all occurrences to be of the same type, no subtyping allowed.
     return len(class_names) <= 1
 
-  def _satisfies_common_superclass(self, values):
+  def _satisfies_common_superclass(self, values) -> bool:
     """Enforce that the variable's values share a superclass below object."""
     common_classes = None
     object_in_values = False
@@ -1996,7 +2002,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return False
     return True
 
-  def _satisfies_noniterable_str(self, left, other_type):
+  def _satisfies_noniterable_str(self, left, other_type) -> bool:
     """Enforce a str to NOT be matched against a conflicting iterable type."""
     conflicting_iter_types = [
         "typing.Iterable",

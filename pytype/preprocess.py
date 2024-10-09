@@ -1,6 +1,9 @@
 """Preprocess source code before compilation."""
 
 import ast
+from typing import TypeVar
+
+_T0 = TypeVar("_T0")
 
 
 # pylint: disable=invalid-name
@@ -11,11 +14,11 @@ class CollectAnnotationLines(ast.NodeVisitor):
     self.annotation_lines = []
     self.in_function = False
 
-  def visit_AnnAssign(self, node):
+  def visit_AnnAssign(self, node) -> None:
     if self.in_function and node.value is None:
       self.annotation_lines.append(node.end_lineno - 1)  # change to 0-based
 
-  def visit_FunctionDef(self, node):
+  def visit_FunctionDef(self, node) -> None:
     self.in_function = True
     for n in node.body:
       self.visit(n)
@@ -25,7 +28,7 @@ class CollectAnnotationLines(ast.NodeVisitor):
 # pylint: enable=invalid-name
 
 
-def augment_annotations(src):
+def augment_annotations(src: _T0) -> _T0:
   """Add an assignment to bare variable annotations."""
   try:
     tree = ast.parse(src)

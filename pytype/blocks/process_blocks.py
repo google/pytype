@@ -1,15 +1,18 @@
 """Analyze code blocks and process opcodes."""
 
+from typing import TypeVar
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 
+_T0 = TypeVar("_T0")
+
 
 # Opcodes whose argument can be a block of code.
-CODE_LOADING_OPCODES = (opcodes.LOAD_CONST,)
+CODE_LOADING_OPCODES: tuple[type[opcodes.LOAD_CONST]] = (opcodes.LOAD_CONST,)
 
 
-def _is_function_def(fn_code):
+def _is_function_def(fn_code) -> bool:
   """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
   # Reject anything that is not a named function (e.g. <lambda>).
   first = fn_code.name[0]
@@ -28,7 +31,7 @@ def _is_function_def(fn_code):
 class CollectAnnotationTargetsVisitor(pyc.CodeVisitor):
   """Collect opcodes that might have annotations attached."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
     # visitor runs, and contains the last opcode for each line.
@@ -38,7 +41,7 @@ class CollectAnnotationTargetsVisitor(pyc.CodeVisitor):
     # contain function type comments.
     self.make_function_ops = {}
 
-  def visit_code(self, code):
+  def visit_code(self, code: _T0) -> _T0:
     """Find STORE_* and MAKE_FUNCTION opcodes for attaching annotations."""
     # Offset between function code and MAKE_FUNCTION
     # [LOAD_CONST <code>, LOAD_CONST <function name>, MAKE_FUNCTION]
@@ -93,11 +96,11 @@ class CollectAnnotationTargetsVisitor(pyc.CodeVisitor):
 class FunctionDefVisitor(pyc.CodeVisitor):
   """Add metadata to function definition opcodes."""
 
-  def __init__(self, param_annotations):
+  def __init__(self, param_annotations) -> None:
     super().__init__()
     self.annots = param_annotations
 
-  def visit_code(self, code):
+  def visit_code(self, code: _T0) -> _T0:
     for op in code.code_iter:
       if isinstance(op, opcodes.MAKE_FUNCTION):
         if op.line in self.annots:
@@ -145,7 +148,7 @@ def merge_annotations(code, annotations, param_annotations):
   return code
 
 
-def adjust_returns(code, block_returns):
+def adjust_returns(code, block_returns) -> None:
   """Adjust line numbers for return statements in with blocks."""
 
   rets = {k: iter(v) for k, v in block_returns}

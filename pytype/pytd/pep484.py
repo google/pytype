@@ -1,10 +1,13 @@
 """PEP484 compatibility code."""
 
+from typing import TypeVar
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
 
+_T0 = TypeVar("_T0")
 
-ALL_TYPING_NAMES = [
+
+ALL_TYPING_NAMES: list[str] = [
     "AbstractSet",
     "AnyStr",
     "AsyncGenerator",
@@ -49,7 +52,7 @@ ALL_TYPING_NAMES = [
 
 
 # Pairs of a type and a more generalized type.
-_COMPAT_ITEMS = [
+_COMPAT_ITEMS: list[tuple[str, str]] = [
     ("int", "float"),
     ("int", "complex"),
     ("float", "complex"),
@@ -57,10 +60,9 @@ _COMPAT_ITEMS = [
     ("memoryview", "bytes"),
 ]
 
-
 # The PEP 484 definition of built-in types.
 # E.g. "typing.List" is used to represent the "list" type.
-BUILTIN_TO_TYPING = {
+BUILTIN_TO_TYPING: dict[str, str] = {
     t.lower(): t
     for t in [
         "List",
@@ -72,10 +74,10 @@ BUILTIN_TO_TYPING = {
     ]
 }
 
-TYPING_TO_BUILTIN = {v: k for k, v in BUILTIN_TO_TYPING.items()}
+TYPING_TO_BUILTIN: dict[str, str] = {v: k for k, v in BUILTIN_TO_TYPING.items()}
 
 
-def get_compat_items(none_matches_bool=False):
+def get_compat_items(none_matches_bool=False) -> list[tuple[str, str]]:
   # pep484 allows None as an alias for NoneType in type annotations.
   extra = [("NoneType", "bool"), ("None", "bool")] if none_matches_bool else []
   return _COMPAT_ITEMS + extra
@@ -84,7 +86,7 @@ def get_compat_items(none_matches_bool=False):
 class ConvertTypingToNative(base_visitor.Visitor):
   """Visitor for converting PEP 484 types to native representation."""
 
-  def __init__(self, module):
+  def __init__(self, module) -> None:
     super().__init__()
     self.module = module
 
@@ -97,7 +99,7 @@ class ConvertTypingToNative(base_visitor.Visitor):
   def _IsTyping(self, module):
     return module == "typing" or (module is None and self.module == "typing")
 
-  def _Convert(self, t):
+  def _Convert(self, t: _T0) -> pytd.AnythingType | pytd.NamedType | _T0:
     module, name = self._GetModuleAndName(t)
     if not module and name == "None":
       # PEP 484 allows "None" as an abbreviation of "NoneType".
@@ -120,7 +122,9 @@ class ConvertTypingToNative(base_visitor.Visitor):
   def VisitNamedType(self, t):
     return self._Convert(t)
 
-  def VisitGenericType(self, t):
+  def VisitGenericType(
+      self, t: _T0
+  ) -> pytd.IntersectionType | pytd.UnionType | _T0:
     module, name = self._GetModuleAndName(t)
     if self._IsTyping(module):
       if name == "Intersection":

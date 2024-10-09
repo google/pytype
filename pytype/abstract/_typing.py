@@ -4,6 +4,7 @@ from collections.abc import Mapping
 import dataclasses
 import logging
 import typing
+from typing import TypeVar
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -14,7 +15,12 @@ from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.pytd import pytd_utils
 
-log = logging.getLogger(__name__)
+
+_T0 = TypeVar("_T0")
+_TUnion = TypeVar("_TUnion", bound="Union")
+_T_TypeVariable = TypeVar("_T_TypeVariable", bound="_TypeVariable")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 def _get_container_type_key(container):
@@ -32,14 +38,14 @@ class AnnotationClass(_instance_base.SimpleValue, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
 
-  def getitem_slot(self, node, slice_var):
+  def getitem_slot(self, node: _T0, slice_var) -> tuple[_T0, typing.Any]:
     """Custom __getitem__ implementation."""
     slice_content = abstract_utils.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(slice_content)
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
 
-  def _build_inner(self, slice_content):
+  def _build_inner(self, slice_content) -> tuple[list, set[int]]:
     """Build the list of parameters.
 
     Args:
@@ -69,7 +75,7 @@ class AnnotationClass(_instance_base.SimpleValue, mixin.HasSlots):
   def _build_value(self, node, inner, ellipses):
     raise NotImplementedError(self.__class__.__name__)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"AnnotationClass({self.name})"
 
   def _get_class(self):
@@ -79,11 +85,11 @@ class AnnotationClass(_instance_base.SimpleValue, mixin.HasSlots):
 class AnnotationContainer(AnnotationClass):
   """Implementation of X[...] for annotations."""
 
-  def __init__(self, name, ctx, base_cls):
+  def __init__(self, name, ctx, base_cls) -> None:
     super().__init__(name, ctx)
     self.base_cls = base_cls
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"AnnotationContainer({self.name})"
 
   def _sub_annotation(
@@ -374,14 +380,16 @@ class AnnotationContainer(AnnotationClass):
       self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, e.annot, e.error)
       return self.ctx.convert.unsolvable
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self, node, func, args, alias_map=None
+  ) -> tuple[typing.Any, typing.Any]:
     return self._call_helper(node, self.base_cls, func, args)
 
 
 class _TypeVariableInstance(_base.BaseValue):
   """An instance of a type parameter."""
 
-  def __init__(self, param, instance, ctx):
+  def __init__(self, param, instance, ctx) -> None:
     super().__init__(param.name, ctx)
     self.cls = self.param = param
     self.instance = instance
@@ -391,7 +399,9 @@ class _TypeVariableInstance(_base.BaseValue):
   def full_name(self):
     return f"{self.scope}.{self.name}" if self.scope else self.name
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self, node: _T0, func, args, alias_map=None
+  ) -> tuple[typing.Any, typing.Any]:
     var = self.instance.get_instance_type_parameter(self.name)
     if var.bindings:
       return function.call_function(self.ctx, node, var, args)
@@ -403,10 +413,10 @@ class _TypeVariableInstance(_base.BaseValue):
       return self.param == other.param and self.instance == other.instance
     return NotImplemented
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash((self.param, self.instance))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"{self.__class__.__name__}({self.name!r})"
 
 
@@ -434,7 +444,7 @@ class _TypeVariable(_base.BaseValue):
       covariant=False,
       contravariant=False,
       scope=None,
-  ):
+  ) -> None:
     super().__init__(name, ctx)
     # TODO(b/217789659): PEP-612 does not mention constraints, but ParamSpecs
     # ignore all the extra parameters anyway..
@@ -453,7 +463,7 @@ class _TypeVariable(_base.BaseValue):
   def full_name(self):
     return f"{self.scope}.{self.name}" if self.scope else self.name
 
-  def is_generic(self):
+  def is_generic(self) -> bool:
     return not self.constraints and not self.bound
 
   def copy(self):
@@ -484,10 +494,10 @@ class _TypeVariable(_base.BaseValue):
       )
     return NotImplemented
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash((
         self.name,
         self.constraints,
@@ -496,7 +506,7 @@ class _TypeVariable(_base.BaseValue):
         self.contravariant,
     ))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "{!s}({!r}, constraints={!r}, bound={!r}, module={!r})".format(
         self.__class__.__name__,
         self.name,
@@ -522,7 +532,7 @@ class _TypeVariable(_base.BaseValue):
       var.AddBinding(self.ctx.convert.unsolvable, [], node)
     return var
 
-  def update_official_name(self, name):
+  def update_official_name(self, name) -> None:
     if self.name != name:
       message = (
           f"TypeVar({self.name!r}) must be stored as {self.name!r}, "
@@ -530,26 +540,28 @@ class _TypeVariable(_base.BaseValue):
       )
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, message)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self, node: _T0, func, args, alias_map=None
+  ) -> tuple[_T0, typing.Any]:
     return node, self.instantiate(node)
 
 
 class TypeParameter(_TypeVariable):
   """Parameter of a type (typing.TypeVar)."""
 
-  _INSTANCE_CLASS = TypeParameterInstance
+  _INSTANCE_CLASS: type[TypeParameterInstance] = TypeParameterInstance
 
 
 class ParamSpec(_TypeVariable):
   """Parameter of a callable type (typing.ParamSpec)."""
 
-  _INSTANCE_CLASS = ParamSpecInstance
+  _INSTANCE_CLASS: type[ParamSpecInstance] = ParamSpecInstance
 
 
 class ParamSpecArgs(_base.BaseValue):
   """ParamSpec.args."""
 
-  def __init__(self, paramspec, ctx):
+  def __init__(self, paramspec, ctx) -> None:
     super().__init__(f"{paramspec.name}.args", ctx)
     self.paramspec = paramspec
 
@@ -560,7 +572,7 @@ class ParamSpecArgs(_base.BaseValue):
 class ParamSpecKwargs(_base.BaseValue):
   """ParamSpec.kwargs."""
 
-  def __init__(self, paramspec, ctx):
+  def __init__(self, paramspec, ctx) -> None:
     super().__init__(f"{paramspec.name}.kwargs", ctx)
     self.paramspec = paramspec
 
@@ -571,7 +583,7 @@ class ParamSpecKwargs(_base.BaseValue):
 class Concatenate(_base.BaseValue):
   """Concatenation of args and ParamSpec."""
 
-  def __init__(self, params, ctx):
+  def __init__(self, params, ctx) -> None:
     super().__init__("Concatenate", ctx)
     self.args = params[:-1]
     self.paramspec = params[-1]
@@ -591,7 +603,7 @@ class Concatenate(_base.BaseValue):
     # Satisfies the same interface as abstract.CallableClass
     return self.args
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     args = ", ".join(list(map(repr, self.args)) + [self.paramspec.name])
     return f"Concatenate[{args}]"
 
@@ -605,7 +617,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     options: Iterable of instances of BaseValue.
   """
 
-  def __init__(self, options, ctx):
+  def __init__(self, options, ctx) -> None:
     super().__init__("Union", ctx)
     assert options
     self.options = list(options)
@@ -616,7 +628,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if self._printing:  # recursion detected
       printed_contents = "..."
     else:
@@ -625,15 +637,15 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
       self._printing = False
     return f"{self.name}[{printed_contents}]"
 
-  def __eq__(self, other):
+  def __eq__(self, other) -> bool:
     if isinstance(other, type(self)):
       return self.options == other.options
     return NotImplemented
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     # Use the names of the parameter values to approximate a hash, to avoid
     # infinite recursion on recursive type annotations.
     return hash(tuple(o.full_name for o in self.options))
@@ -648,7 +660,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     else:
       return classes.pop()
 
-  def getitem_slot(self, node, slice_var):
+  def getitem_slot(self, node: _T0, slice_var) -> tuple[_T0, typing.Any]:
     """Custom __getitem__ implementation."""
     slice_content = abstract_utils.maybe_extract_tuple(slice_var)
     params = self.ctx.annotation_utils.get_type_parameters(self)
@@ -692,23 +704,25 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
       var.PasteVariable(instance, node)
     return var
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self, node, func, args, alias_map=None
+  ) -> tuple[typing.Any, typing.Any]:
     var = self.ctx.program.NewVariable(self.options, [], node)
     return function.call_function(self.ctx, node, var, args)
 
-  def get_formal_type_parameter(self, t):
+  def get_formal_type_parameter(self: _TUnion, t) -> _TUnion:
     new_options = [
         option.get_formal_type_parameter(t) for option in self.options
     ]
     return Union(new_options, self.ctx)
 
-  def get_inner_types(self):
+  def get_inner_types(self) -> enumerate:
     return enumerate(self.options)
 
-  def update_inner_type(self, key, typ):
+  def update_inner_type(self, key, typ) -> None:
     self.options[key] = typ
 
-  def replace(self, inner_types):
+  def replace(self: _TUnion, inner_types) -> _TUnion:
     return self.__class__((v for _, v in sorted(inner_types)), self.ctx)
 
 
@@ -726,7 +740,7 @@ class LateAnnotation:
   Use `x.is_late_annotation()` to check whether x is a late annotation.
   """
 
-  _RESOLVING = object()
+  _RESOLVING: typing.Any = object()
 
   def __init__(self, expr, stack, ctx, *, typing_imports=None):
     self.expr = expr
@@ -784,7 +798,7 @@ class LateAnnotation:
       )
     return self.expr
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "LateAnnotation({!r}, resolved={!r})".format(
         self.expr, self._type if self.resolved else None
     )
@@ -792,10 +806,10 @@ class LateAnnotation:
   # __hash__ and __eq__ need to be explicitly defined for Python to use them in
   # set/dict comparisons.
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash(self._type) if self.resolved else hash(self.expr)
 
-  def __eq__(self, other):
+  def __eq__(self, other) -> bool:
     return hash(self) == hash(other)
 
   def __getattribute__(self, name):
@@ -814,7 +828,7 @@ class LateAnnotation:
   def __contains__(self, name):
     return self.resolved and name in self._type
 
-  def resolve(self, node, f_globals, f_locals):
+  def resolve(self, node, f_globals, f_locals) -> None:
     """Resolve the late annotation."""
     if self.resolved:
       return
@@ -851,7 +865,7 @@ class LateAnnotation:
     self.resolved = True
     log.info("Resolved late annotation %r to %r", self.expr, self._type)
 
-  def set_type(self, typ):
+  def set_type(self, typ) -> None:
     # Used by annotation_utils.sub_one_annotation to substitute values into
     # recursive aliases.
     assert not self.resolved
@@ -882,10 +896,10 @@ class LateAnnotation:
       return container.get_special_attribute(node, name, valself)
     return self._type.get_special_attribute(node, name, valself)
 
-  def is_late_annotation(self):
+  def is_late_annotation(self) -> bool:
     return True
 
-  def is_recursive(self):
+  def is_recursive(self) -> bool:
     """Check whether this is a recursive type."""
     if not self.resolved:
       return False
@@ -909,7 +923,7 @@ class FinalAnnotation(_base.BaseValue):
     super().__init__("FinalAnnotation", ctx)
     self.annotation = annotation
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Final[{self.annotation}]"
 
   def instantiate(self, node, container=None):

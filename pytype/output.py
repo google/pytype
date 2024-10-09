@@ -5,7 +5,7 @@ import contextlib
 import enum
 import logging
 import re
-from typing import cast
+from typing import Any, Generator, cast
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -24,7 +24,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # A variable with more bindings than this is treated as a large literal constant
@@ -96,12 +96,12 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       return var.data
 
-  def _is_tuple(self, v, instance):
+  def _is_tuple(self, v, instance) -> bool:
     return isinstance(v, abstract.TupleClass) or isinstance(
         instance, abstract.Tuple
     )
 
-  def _make_decorator(self, name, alias):
+  def _make_decorator(self, name, alias) -> pytd.Alias:
     # If decorators are output as aliases to NamedTypes, they will be converted
     # to Functions and fail a verification step if those functions have type
     # parameters. Since we just want the function name, and since we have a
@@ -447,7 +447,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def signature_to_callable(self, sig):
+  def signature_to_callable(self, sig) -> abstract.ParameterizedClass:
     """Converts a function.Signature object into a callable object.
 
     Args:
@@ -557,7 +557,9 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def _ordered_attrs_to_instance_types(self, node, attr_metadata, annots):
+  def _ordered_attrs_to_instance_types(
+      self, node, attr_metadata, annots
+  ) -> Generator[tuple[Any, Any], Any, None]:
     """Get instance types for ordered attrs in the metadata."""
     attrs = attr_metadata.get("attr_order", [])
     if not annots or not attrs:
@@ -579,7 +581,9 @@ class Converter(utils.ContextWeakrefMixin):
       typ = typ and typ.to_pytd_type_of_instance(node)
       yield a.name, typ
 
-  def annotations_to_instance_types(self, node, annots):
+  def annotations_to_instance_types(
+      self, node, annots
+  ) -> Generator[tuple[Any, Any], Any, None]:
     """Get instance types for annotations not present in the members map."""
     if annots:
       for name, local in annots.annotated_locals.items():
@@ -605,7 +609,7 @@ class Converter(utils.ContextWeakrefMixin):
 
   def _function_call_combination_to_signature(
       self, func, call_combination, num_combinations
-  ):
+  ) -> pytd.Signature:
     node_after, combination, return_value = call_combination
     params = []
     for i, (name, kind, optional) in enumerate(func.get_parameters()):
@@ -662,7 +666,7 @@ class Converter(utils.ContextWeakrefMixin):
         template=(),
     )
 
-  def _function_to_def(self, node, v, function_name):
+  def _function_to_def(self, node, v, function_name) -> pytd.Function:
     """Convert an InterpreterFunction to a PyTD definition."""
     signatures = []
     for func in v.signature_functions():
@@ -683,7 +687,7 @@ class Converter(utils.ContextWeakrefMixin):
         decorators=decorators,
     )
 
-  def _simple_func_to_def(self, node, v, name):
+  def _simple_func_to_def(self, node, v, name) -> pytd.Function:
     """Convert a SimpleFunction to a PyTD definition."""
     sig = v.signature
 
@@ -738,7 +742,9 @@ class Converter(utils.ContextWeakrefMixin):
     )
     return pytd.Function(name, (pytd_sig,), pytd.MethodKind.METHOD)
 
-  def _function_to_return_types(self, node, fvar, allowed_type_params=()):
+  def _function_to_return_types(
+      self, node, fvar, allowed_type_params=()
+  ) -> list:
     """Convert a function variable to a list of PyTD return types."""
     options = fvar.FilteredData(self.ctx.exitpoint, strict=False)
     if not all(isinstance(o, abstract.Function) for o in options):
@@ -774,7 +780,7 @@ class Converter(utils.ContextWeakrefMixin):
         isinstance(value, abstract.Instance) and value.cls.full_name == cls_name
     )
 
-  def _class_to_def(self, node, v, class_name):
+  def _class_to_def(self, node, v, class_name) -> pytd.Class:
     """Convert an InterpreterClass to a PyTD definition."""
     self._scopes.append(class_name)
     methods = {}
@@ -1113,7 +1119,7 @@ class Converter(utils.ContextWeakrefMixin):
     self._scopes.pop()
     return cls
 
-  def _type_variable_to_def(self, node, v, name):
+  def _type_variable_to_def(self, node, v, name) -> pytd.TypeParameter:
     constraints = tuple(c.to_pytd_type_of_instance(node) for c in v.constraints)
     bound = v.bound and v.bound.to_pytd_type_of_instance(node)
     if isinstance(v, abstract.TypeParameter):
@@ -1123,7 +1129,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       assert False, f"Unexpected type variable type: {type(v)}"
 
-  def _typed_dict_to_def(self, node, v, name):
+  def _typed_dict_to_def(self, node, v, name) -> pytd.Class:
     keywords = []
     if not v.props.total:
       keywords.append(("total", pytd.Literal(False)))

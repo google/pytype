@@ -14,14 +14,14 @@ class VariableAnnotation:
 class VariableAnnotations:
   """Store variable annotations and typecomments for a program."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.variable_annotations: dict[int, VariableAnnotation] = {}
     self.type_comments: dict[int, str] = {}
 
-  def add_annotation(self, line: int, name: str, annotation: str):
+  def add_annotation(self, line: int, name: str, annotation: str) -> None:
     self.variable_annotations[line] = VariableAnnotation(name, annotation)
 
-  def add_type_comment(self, line: int, annotation: str):
+  def add_type_comment(self, line: int, annotation: str) -> None:
     self.type_comments[line] = annotation
 
   @property

@@ -7,13 +7,16 @@ import logging
 import os
 import sys
 import textwrap
-from typing import Any
+from typing import Any, TypeVar, Union
 
 from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import utils
 from pytype.platform_utils import path_utils
 from pytype.tools import config
+
+
+_T0 = TypeVar('_T0')
 
 _TOML = '.toml'
 
@@ -48,7 +51,7 @@ class Item:
 
 # Generates both the default config and the sample config file. These items
 # don't have ArgInfo populated, as it is needed only for pytype-single args.
-ITEMS = {
+ITEMS: dict[str, Item] = {
     'exclude': Item(
         '', '**/*_test.py **/test_*.py', None,
         'Space-separated list of files or directories to exclude.'),
@@ -76,7 +79,7 @@ ITEMS = {
 }
 
 
-REPORT_ERRORS_ITEMS = {
+REPORT_ERRORS_ITEMS: dict[str, Item] = {
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
         'Space-separated list of error names to ignore.'),
@@ -86,7 +89,7 @@ REPORT_ERRORS_ITEMS = {
 
 
 # The missing fields will be filled in by generate_sample_config_or_die.
-def _pytype_single_items():
+def _pytype_single_items() -> dict[str, Item]:
   """Args to pass through to pytype_single."""
   out = {}
   flags = pytype_config.FEATURE_FLAGS + pytype_config.EXPERIMENTAL_FLAGS
@@ -99,10 +102,10 @@ def _pytype_single_items():
   return out
 
 
-_PYTYPE_SINGLE_ITEMS = _pytype_single_items()
+_PYTYPE_SINGLE_ITEMS: dict[str, Item] = _pytype_single_items()
 
 
-def get_pytype_single_item(name):
+def get_pytype_single_item(name) -> Item:
   # We want to avoid exposing this hard-coded list as much as possible so that
   # parser.pytype_single_args, which is guaranteed to match the actual args, is
   # used instead.
@@ -113,19 +116,19 @@ def string_to_bool(s):
   return s == 'True' if s in ('True', 'False') else s
 
 
-def concat_disabled_rules(s):
+def concat_disabled_rules(s) -> str:
   return ','.join(t for t in s.split() if t)
 
 
-def get_platform(p):
+def get_platform(p: _T0) -> Union[str, _T0]:
   return p or sys.platform
 
 
-def get_python_version(v):
+def get_python_version(v: _T0) -> Union[str, _T0]:
   return v or utils.format_version(sys.version_info[:2])
 
 
-def parse_jobs(s):
+def parse_jobs(s) -> int:
   """Parse the --jobs option."""
   if s == 'auto':
     try:
@@ -137,7 +140,7 @@ def parse_jobs(s):
     return int(s)
 
 
-def make_converters(cwd=None):
+def make_converters(cwd=None) -> dict[str, Callable[[Any], Any]]:
   """For items that need coaxing into their internal representations."""
   return {
       'disable': concat_disabled_rules,
@@ -152,14 +155,14 @@ def make_converters(cwd=None):
   }
 
 
-def _toml_format(v):
+def _toml_format(v) -> str:
   try:
     return str(int(v))
   except ValueError:
     return str(v).lower() if v in ('True', 'False') else repr(v)
 
 
-def _make_path_formatter(ext):
+def _make_path_formatter(ext) -> Callable[[Any], Any]:
   """Formatter for a string of paths."""
   def format_path(p):
     paths = p.split()
@@ -170,7 +173,7 @@ def _make_path_formatter(ext):
   return format_path
 
 
-def make_formatters(ext):
+def make_formatters(ext) -> dict[str, Any]:
   return {
       'disable': _make_path_formatter(ext),
       'exclude': _make_path_formatter(ext),
@@ -208,7 +211,7 @@ def Config(*extra_variables):  # pylint: disable=invalid-name
 class FileConfig(argparse.Namespace):
   """Configuration variables from a file."""
 
-  def read_from_file(self, filepath):
+  def read_from_file(self, filepath: _T0) -> _T0 | None:
     """Read config from the pytype section of a configuration file."""
 
     _, ext = os.path.splitext(filepath)
@@ -227,7 +230,7 @@ class FileConfig(argparse.Namespace):
     return filepath
 
 
-def generate_sample_config_or_die(filename, pytype_single_args):
+def generate_sample_config_or_die(filename, pytype_single_args) -> None:
   """Write out a sample config file."""
 
   if path_utils.exists(filename):
@@ -271,7 +274,7 @@ def generate_sample_config_or_die(filename, pytype_single_args):
     sys.exit(1)
 
 
-def read_config_file_or_die(filepath):
+def read_config_file_or_die(filepath) -> FileConfig:
   """Read config from filepath or from setup.cfg."""
 
   ret = FileConfig()

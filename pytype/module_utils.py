@@ -30,7 +30,7 @@ class Module:
     return path_utils.join(self.path, self.target)
 
 
-def infer_module(filename, pythonpath):
+def infer_module(filename, pythonpath) -> Module:
   """Convert a filename to a module relative to pythonpath.
 
   This method tries to deduce the module name from the pythonpath and the
@@ -83,11 +83,11 @@ def path_to_module_name(filename):
   return module_name
 
 
-def strip_init_suffix(parts: Sequence[str]):
+def strip_init_suffix(parts: Sequence[str]) -> Sequence[str]:
   return parts[:-1] if parts and parts[-1] == "__init__" else parts
 
 
-def get_absolute_name(prefix, relative_name):
+def get_absolute_name(prefix, relative_name) -> str | None:
   """Joins a dotted-name prefix and a relative name.
 
   Args:
@@ -148,7 +148,7 @@ def get_relative_name(prefix: str, absolute_name: str) -> str:
   return name
 
 
-def get_package_name(module_name, is_package=False):
+def get_package_name(module_name, is_package=False) -> str:
   """Figure out a package name for a module."""
   if module_name is None:
     return ""
@@ -158,7 +158,7 @@ def get_package_name(module_name, is_package=False):
   return ".".join(parts)
 
 
-def get_all_prefixes(module_name):
+def get_all_prefixes(module_name) -> list:
   """Return all the prefixes of a module name.
 
   e.g. x.y.z => x, x.y, x.y.z

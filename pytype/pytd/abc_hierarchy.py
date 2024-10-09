@@ -1,10 +1,12 @@
 """Hierarchy of abstract base classes, from _collections_abc.py."""
 
+import collections
+
 from pytype import utils
 
 
 # class -> list of superclasses
-SUPERCLASSES = {
+SUPERCLASSES: dict[str, list[str]] = {
     # "mixins" (don't derive from object):
     "Hashable": [],
     "Iterable": [],
@@ -74,7 +76,7 @@ SUPERCLASSES = {
 }
 
 
-def GetSuperClasses():
+def GetSuperClasses() -> dict[str, list[str]]:
   """Get a Python type hierarchy mapping.
 
   This generates a dictionary that can be used to look up the bases of
@@ -88,7 +90,7 @@ def GetSuperClasses():
   return SUPERCLASSES.copy()
 
 
-def GetSubClasses():
+def GetSubClasses() -> collections.defaultdict:
   """Get a reverse Python type hierarchy mapping.
 
   This generates a dictionary that can be used to look up the (known)

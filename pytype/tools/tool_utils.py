@@ -6,7 +6,7 @@ import sys
 from pytype import file_utils
 
 
-def setup_logging_or_die(verbosity):
+def setup_logging_or_die(verbosity) -> None:
   """Set the logging level or die."""
   if verbosity == 0:
     level = logging.ERROR
@@ -20,7 +20,7 @@ def setup_logging_or_die(verbosity):
   logging.basicConfig(level=level, format='%(levelname)s %(message)s')
 
 
-def makedirs_or_die(path, message):
+def makedirs_or_die(path, message) -> None:
   try:
     file_utils.makedirs(path)
   except OSError:

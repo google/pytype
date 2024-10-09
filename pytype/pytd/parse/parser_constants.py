@@ -3,7 +3,7 @@
 import re
 
 # PyTD keywords
-RESERVED = [
+RESERVED: list[str] = [
     'async',
     'class',
     'def',
@@ -23,7 +23,7 @@ RESERVED = [
     'TypeVar',
     ]
 
-RESERVED_PYTHON = [
+RESERVED_PYTHON: list[str] = [
     # Python keywords that aren't used by PyTD:
     'and',
     'assert',
@@ -52,11 +52,11 @@ RESERVED_PYTHON = [
 # parser.t_NAME's regex allows a few extra characters in the name.
 # A less-pedantic RE is r'[-~]'.
 # See visitors._EscapedName and parser.PyLexer.t_NAME
-BACKTICK_NAME = re.compile(r'[-]|^~')
+BACKTICK_NAME: re.Pattern[str] = re.compile(r'[-]|^~')
 
 # Marks external NamedTypes so that they do not get prefixed by the current
 # module name.
 EXTERNAL_NAME_PREFIX = '$external$'
 
 # Regex for string literals.
-STRING_RE = re.compile("^([bu]?)(('[^']*')|(\"[^\"]*\"))$")
+STRING_RE: re.Pattern[str] = re.compile("^([bu]?)(('[^']*')|(\"[^\"]*\"))$")

@@ -1,5 +1,6 @@
 """Base class for visitors."""
 
+from collections.abc import Generator
 import re
 from typing import Any
 
@@ -9,7 +10,7 @@ from pytype.typegraph import cfg_utils
 
 # A convenient value for unchecked_node_classnames if a visitor wants to
 # use unchecked nodes everywhere.
-ALL_NODE_NAMES = type(
+ALL_NODE_NAMES: Any = type(
     "contains_everything", (), {"__contains__": lambda *args: True}
 )()
 
@@ -17,7 +18,7 @@ ALL_NODE_NAMES = type(
 class _NodeClassInfo:
   """Representation of a node class in the graph."""
 
-  def __init__(self, cls):
+  def __init__(self, cls) -> None:
     self.cls = cls  # The class object.
     self.name = cls.__name__
     # The set of NodeClassInfo objects that may appear below this particular
@@ -25,7 +26,7 @@ class _NodeClassInfo:
     self.outgoing = set()
 
 
-def _FindNodeClasses():
+def _FindNodeClasses() -> Generator[_NodeClassInfo, Any, None]:
   """Yields _NodeClassInfo objects for each node found in pytd."""
   for name in dir(pytd):
     value = getattr(pytd, name)
@@ -38,11 +39,11 @@ def _FindNodeClasses():
       yield _NodeClassInfo(value)
 
 
-_IGNORED_TYPES = frozenset([str, bool, int, type(None), Any])
-_ancestor_map = None  # Memoized ancestors map.
+_IGNORED_TYPES: frozenset = frozenset([str, bool, int, type(None), Any])
+_ancestor_map: Any = None  # Memoized ancestors map.
 
 
-def _GetChildTypes(node_classes, cls: Any):
+def _GetChildTypes(node_classes, cls: Any) -> set:
   """Get all the types that can be in a node's subtree."""
 
   types = set()
@@ -132,11 +133,13 @@ class Visitor:
   old_node: Any
 
   visits_all_node_types = False
-  unchecked_node_names = set()
+  unchecked_node_names: set = set()
 
-  _visitor_functions_cache = {}
+  _visitor_functions_cache: dict[
+      Any, tuple[dict[str, Any], dict[str, Any], dict[str, Any], Any]
+  ] = {}
 
-  def __init__(self):
+  def __init__(self) -> None:
     cls = self.__class__
 
     # The set of method names for each visitor implementation is assumed to
@@ -217,5 +220,5 @@ class Visitor:
         self, node, *args, **kwargs
     )
 
-  def Leave(self, node, *args, **kwargs):
+  def Leave(self, node, *args, **kwargs) -> None:
     self.leave_functions[node.__class__.__name__](self, node, *args, **kwargs)

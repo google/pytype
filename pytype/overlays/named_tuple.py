@@ -1,7 +1,7 @@
 """Implementation of named tuples."""
 
 import dataclasses
-from typing import Any
+from typing import TypeVar, Any
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -17,9 +17,20 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
+_T0 = TypeVar("_T0")
+_TCollectionsNamedTupleBuilder = TypeVar(
+    "_TCollectionsNamedTupleBuilder", bound="CollectionsNamedTupleBuilder"
+)
+_TNamedTupleFuncBuilder = TypeVar(
+    "_TNamedTupleFuncBuilder", bound="NamedTupleFuncBuilder"
+)
+_TNamedTupleProperties = TypeVar(
+    "_TNamedTupleProperties", bound="NamedTupleProperties"
+)
+
 
 # type alias
-Param = overlay_utils.Param
+Param: type[overlay_utils.Param] = overlay_utils.Param
 
 
 # This module has classes and methods which benefit from extended docstrings,
@@ -49,12 +60,14 @@ class NamedTupleProperties:
   bases: list[Any]
 
   @classmethod
-  def from_field_names(cls, name, field_names, ctx):
+  def from_field_names(
+      cls: type[_TNamedTupleProperties], name, field_names, ctx
+  ) -> _TNamedTupleProperties:
     """Make a NamedTupleProperties from field names with no types."""
     fields = [Field(n, ctx.convert.unsolvable, None) for n in field_names]
     return cls(name, fields, [])
 
-  def validate_and_rename_fields(self, rename):
+  def validate_and_rename_fields(self, rename) -> None:
     """Validate and rename self.fields.
 
     namedtuple field names have some requirements:
@@ -108,7 +121,7 @@ class _ArgsError(Exception):
 class _FieldMatchError(Exception):
   """Errors when postprocessing field args, to be converted to WrongArgTypes."""
 
-  def __init__(self, param):
+  def __init__(self, param) -> None:
     super().__init__()
     self.param = param
 
@@ -143,7 +156,7 @@ class _NamedTupleBuilderBase(abstract.PyTDFunction):
     """
     raise NotImplementedError()
 
-  def process_args(self, node, raw_args):
+  def process_args(self, node, raw_args) -> tuple[Any, Any]:
     """Convert namedtuple call args into a NamedTupleProperties.
 
     Returns both the NamedTupleProperties and an _Args struct in case the caller
@@ -189,10 +202,12 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
   """Factory for creating collections.namedtuple classes."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(
+      cls: type[_TCollectionsNamedTupleBuilder], ctx, module
+  ) -> _TCollectionsNamedTupleBuilder:
     return super().make("namedtuple", ctx, module)
 
-  def extract_args(self, node, callargs):
+  def extract_args(self, node, callargs) -> _Args:
     """Extracts the typename, field_names and rename arguments.
 
     collections.namedtuple takes a 'verbose' argument too but we don't care
@@ -233,7 +248,7 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
         name=name, field_names=field_names, defaults=defaults, rename=rename
     )
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[Any, Any]:
     """Creates a namedtuple class definition."""
     # If we can't extract the arguments, we take the easy way out and return Any
     try:
@@ -251,7 +266,7 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
   _fields_param: error_types.BadType
 
   @classmethod
-  def make(cls, ctx):
+  def make(cls: type[_TNamedTupleFuncBuilder], ctx) -> _TNamedTupleFuncBuilder:
     # typing.pytd contains a NamedTuple class def and a _NamedTuple func def.
     self = super().make("NamedTuple", ctx, "typing", pyval_name="_NamedTuple")
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
@@ -264,13 +279,13 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
     self._fields_param = error_types.BadType(name="fields", typ=fields_type)
     return self
 
-  def _is_str_instance(self, val):
+  def _is_str_instance(self, val) -> bool:
     return isinstance(val, abstract.Instance) and val.full_name in (
         "builtins.str",
         "builtins.unicode",
     )
 
-  def extract_args(self, node, callargs):
+  def extract_args(self, node, callargs) -> _Args:
     """Extracts the typename and fields arguments.
 
     fields is postprocessed into field_names and field_types.
@@ -314,7 +329,7 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
 
     return _Args(name=cls_name, field_names=names, field_types=types)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[Any, Any]:
     try:
       args, props = self.process_args(node, args)
     except _ArgsError:
@@ -335,7 +350,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
   """Factory for creating typing.NamedTuples by subclassing NamedTuple."""
 
   # attributes prohibited to set in NamedTuple class syntax
-  _prohibited = (
+  _prohibited: tuple[str, str, str, str, str, str, str, str, str, str, str] = (
       "__new__",
       "__init__",
       "__slots__",
@@ -349,7 +364,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       "_source",
   )
 
-  def __init__(self, ctx, module="typing"):
+  def __init__(self, ctx, module="typing") -> None:
     pyval = ctx.loader.lookup_pytd(module, "NamedTuple")
     super().__init__("NamedTuple", pyval, ctx)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
@@ -384,7 +399,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       )
     return self.namedtuple.call(node, None, args, alias_map)
 
-  def make_class(self, node, bases, f_locals):
+  def make_class(self, node: _T0, bases, f_locals) -> tuple[Any, Any]:
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
     # Since we don't support defining NamedTuple subclasses in a nested scope
     # anyway, we can just return unsolvable here to prevent a crash, and let the
@@ -556,11 +571,11 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 class _DictBuilder:
   """Construct dict abstract classes for namedtuple members."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     self.ctx = ctx
     self.dict_cls = ctx.convert.lookup_value("builtins", "dict")
 
-  def make(self, typ):
+  def make(self, typ) -> abstract.ParameterizedClass:
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
     # collections.pyi doesn't conform to that standard.
     return abstract.ParameterizedClass(
@@ -571,7 +586,7 @@ class _DictBuilder:
 class NamedTupleClass(abstract.InterpreterClass):
   """Named tuple classes."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     # Store the original properties, to output to pyi files.
     self.props = None
@@ -593,7 +608,7 @@ class NamedTupleClass(abstract.InterpreterClass):
     return inst
 
 
-def _build_namedtuple(props, node, ctx):
+def _build_namedtuple(props, node, ctx) -> tuple[Any, Any]:
   """Build an InterpreterClass representing the namedtuple."""
 
   # TODO(mdemello): Fix this to support late types.
