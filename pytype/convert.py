@@ -163,11 +163,13 @@ class Converter(utils.ContextWeakrefMixin):
     elif t is IteratorType:
       return "builtins", "object"
     elif t is CoroutineType:
-      return "builtins", "coroutine"
+      return "typing", "Coroutine"
     elif t is AwaitableType:
       return "typing", "Awaitable"
     elif t is AsyncGeneratorType:
-      return "builtins", "asyncgenerator"
+      return "typing", "AsyncGenerator"
+    elif t is types.GeneratorType:
+      return "typing", "Generator"
     else:
       return "builtins", t.__name__
 

@@ -64,7 +64,7 @@ class GeneratorTest(test_base.BaseTest):
           for x in __any_object__:
             return x
         def __iter__(self):
-          return generator()
+          return (i for i in range(5))
     """)
     self.assertTypesMatchPytd(
         ty,
@@ -72,7 +72,7 @@ class GeneratorTest(test_base.BaseTest):
       from typing import Any, Generator
       class Foo:
         def bar(self) -> Any: ...
-        def __iter__(self) -> Generator[nothing, nothing, nothing]: ...
+        def __iter__(self) -> Generator[int, Any, None]: ...
     """,
     )
 

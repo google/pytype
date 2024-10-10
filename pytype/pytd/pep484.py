@@ -58,17 +58,6 @@ _COMPAT_ITEMS = [
 ]
 
 
-# These lowercase names are used inside pytype as if they're builtins, but they
-# are actually not real at all. In fact, pytype accepts literally writing
-# `generator[int,...]` in type annotations even though there's no such type.
-# TODO(b/372205529): Remove this implementation detail.
-PYTYPE_SPECIFIC_FAKE_BUILTINS = {
-    "generator": "Generator",
-    "coroutine": "Coroutine",
-    "asyncgenerator": "AsyncGenerator",
-}
-
-
 # The PEP 484 definition of built-in types.
 # E.g. "typing.List" is used to represent the "list" type.
 BUILTIN_TO_TYPING = {
@@ -81,7 +70,7 @@ BUILTIN_TO_TYPING = {
         "FrozenSet",
         "Type",
     ]
-} | PYTYPE_SPECIFIC_FAKE_BUILTINS
+}
 
 TYPING_TO_BUILTIN = {v: k for k, v in BUILTIN_TO_TYPING.items()}
 
