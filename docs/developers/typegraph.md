@@ -80,19 +80,19 @@ that a Variable is connected to represent the possible values for that Variable.
 
 Building up the CFG in this way allows pytype to perform type checking. When
 pytype reaches Node 5 (`z = x.upper() + str(y)`), it queries the CFG to find
-what `x` may be. Depending on the value of `some_val`, `x` could an `int` or a
-`str`. Since `int` doesn't have a method called `upper`, pytype reports an
-`attribute-error`, even though `str` _does_ have an `upper` method.
+what `x` may be. Depending on the value of `some_val`, `x` could be an `int` or
+a `str`. Since `int` doesn't have a method called `upper`, pytype reports an
+`attribute-error`, even though `str` *does* have an `upper` method.
 
-However, pytype is limited in what it knows. Looking at the example again, we
-know that `y` won't be defined if `some_val` is `False`, which would make
-`str(y)` fail. But pytype can't know for sure if `some_val` will evaluate to
-`True` or `False`. Since there's a path through the CFG where `y` is defined
-(`y = 6` if `some_val == True`), pytype won't report an error for `str(y)`. If
-we change the condition to `if False`, so that pytype knows unambiguously that
-only the code under `else:` will be executed, then pytype will report a
-`name-error` on `str(y)` because there is no path through the CFG where `y` is
-defined.
+However, pytype sometimes chooses a more lenient approach. Looking at the
+example again, we know that `y` won't be defined if `some_val` is `False`, which
+would make `str(y)` fail. But pytype can't know for sure if `some_val` will
+evaluate to `True` or `False`. With `--strict-undefined-checks` turned off,
+pytype won't report an error for `str(y)`, since there's a path through the CFG
+where `y` is defined (`y = 6` if `some_val == True`). If we change the condition
+to `if False`, so that pytype knows unambiguously that only the code under
+`else:` will be executed, then pytype will report a `name-error` on `str(y)`
+because there is no path through the CFG where `y` is defined.
 
 [wiki-cfg]: https://en.wikipedia.org/wiki/Control-flow_graph
 
@@ -103,10 +103,6 @@ graph of the paths of execution through a program, pytype knows which objects
 are in scope and the types of those objects at any point in the program. The
 source code for the CFG lives in the `typegraph/` directory. It's written in C++
 for performance reasons.
-
-(Note: there is also a Python implementation, `cfg.py` and `cfg_utils.py`, which
-is no longer used and is not guaranteed to match the semantics of the C++
-implementation.)
 
 ### Typegraph
 
@@ -150,8 +146,8 @@ The condition of the if-statement is `some_val`, or more explicitly `some_val ==
 True`. Pytype understands that the path `1 -> 2 -> 3 -> 5` can only be taken
 when `some_val` evaluates to `True`, while `1 -> 4 -> 5` is taken when
 `some_val` evaluates to False. This is accomplished by adding the condition to
-the list of goals in a query. (Queries and goals are discussed in the [Solver]
-section.)
+the list of goals in a query. (Queries and goals are discussed in the
+[Solver](#the-solver-algorithm) section.)
 
 CFGNodes may be associated with **Variables** by one or more **Bindings**. A
 simple case, `x = 5`, was explained above. In more complex cases, such as `y =
