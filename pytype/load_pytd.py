@@ -737,6 +737,11 @@ class Loader:
               self._modules[k].ast
           )
         mod_ast = self._resolve_external_types(mod_ast)
+        # Circular imports can leave type params (e.g. ParamSpecArgs)
+        # unresolved. External type parameters are added to the AST in
+        # visitors.AdjustTypeParameters, after resolving local types. But those
+        # are needed to resolve e.g. `_P.args` references.
+        mod_ast = self._resolver.resolve_local_types(mod_ast)
         self._resolver.verify(mod_ast)
     return mod_ast
 

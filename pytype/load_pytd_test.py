@@ -280,6 +280,43 @@ class ImportPathsTest(_LoaderTest):
           )
       )
 
+  def test_circular_dependency_with_type_param(self):
+    with test_utils.Tempdir() as d:
+      d.create_file(
+          "bar.pyi",
+          """
+          from typing import Callable, ParamSpec
+
+          from foo import Foo
+
+          _P = ParamSpec("_P")
+
+          class Bar:
+            foo: Foo | None
+          def bar(obj: Callable[_P, None], /, *args: _P.args, **kwargs: _P.kwargs) -> Bar: ...
+          """,
+      )
+      d.create_file(
+          "foo.pyi",
+          """
+          from bar import bar as _bar
+
+          class Foo: ...
+          bar = _bar
+          """,
+      )
+      loader = load_pytd.Loader(
+          config.Options.create(
+              module_name="base",
+              python_version=self.python_version,
+              pythonpath=d.path,
+          )
+      )
+      bar = loader.import_name("bar")
+      foo = loader.import_name("foo")
+      self.assertTrue(bar.Lookup("bar.bar"))
+      self.assertTrue(foo.Lookup("foo.bar"))
+
   def test_cache(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def get_bar() -> bar.Bar: ...")
