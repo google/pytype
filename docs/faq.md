@@ -165,9 +165,47 @@ the analysis:
 
 *   Split up the file. Anecdotally, pytype gets noticeable slower once a file
     grows past ~1500 lines.
-*   Annotate the return types of functions to speed up inference.
+
+*   Annotate parameter and return types of functions to speed up inference.
+
 *   Simplify function inputs (e.g., by reducing the number of types in unions)
     to speed up checking.
+
+*   Split complex variable initializations (i.e. with multiple if-else branches)
+    into separate functions. Tracking multiple variable values across multiple
+    conditional branches can quickly get unwieldy.
+
+    <!-- bad -->
+    ```python
+    def foo(config: Config):
+      if config.bar:
+        a = config.bar.a()
+      else:
+        a = config.default()
+      if config.baz:
+        a = config.baz(a)
+      # ... similar branching for `b` and `c` ...
+      do_foo(a, b, c)
+    ```
+
+    <!-- good -->
+    ```python
+    def _get_a(config: Config) -> A:
+      if config.bar:
+        a = config.bar.a()
+      else:
+        a = config.default()
+      if config.baz:
+        a = config.baz(a)
+      return a
+
+    def foo(config: Config):
+      a = _get_a(config)
+      b = _get_b(config)
+      c = _get_c(config)
+      do_foo(a, b, c)
+    ```
+
 *   Add type annotations to large concrete data structures (e.g., a module-level
     dict of a hundred constants). pytype tracks individual values for some
     builtin data structures, which can quickly get unwieldy. Adding a type
