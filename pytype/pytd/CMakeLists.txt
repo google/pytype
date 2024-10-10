@@ -191,7 +191,6 @@ py_library(
     ._pytd
     .pytd_utils
     .visitors
-    pytype.utils
     pytype.pyi.parser
 )
 
@@ -240,7 +239,6 @@ py_library(
     .printer
     .pytd_utils
     .pytd_visitors
-    pytype.utils
     pytype.pytd.parse.parse
 )
 

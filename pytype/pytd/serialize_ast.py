@@ -7,7 +7,6 @@ disk, which is faster to digest than a pyi file.
 
 
 import msgspec
-from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -43,7 +42,7 @@ class UndoModuleAliasesVisitor(visitors.Visitor):
   def EnterTypeDeclUnit(self, node):
     for alias in node.aliases:
       if isinstance(alias.type, pytd.Module):
-        name = utils.strip_prefix(alias.name, f"{node.name}.")
+        name = alias.name.removeprefix(f"{node.name}.")
         self._module_aliases[name] = alias.type.module_name
 
   def VisitLateType(self, node):
