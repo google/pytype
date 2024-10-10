@@ -8,13 +8,6 @@ import unittest
 class UtilsTest(unittest.TestCase):
   """Test generic utilities."""
 
-  def test_numeric_sort_key(self):
-    k = utils.numeric_sort_key
-    self.assertLess(k("1aaa"), k("12aa"))
-    self.assertLess(k("12aa"), k("123a"))
-    self.assertLess(k("a1aa"), k("a12a"))
-    self.assertLess(k("a12a"), k("a123"))
-
   def test_pretty_dnf(self):
     dnf = [["a", "b"], "c", ["d", "e", "f"]]
     self.assertEqual(utils.pretty_dnf(dnf), "(a & b) | c | (d & e & f)")

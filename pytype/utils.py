@@ -2,9 +2,7 @@
 
 import collections
 import contextlib
-import itertools
 import keyword
-import re
 import threading
 import traceback
 import weakref
@@ -79,13 +77,6 @@ def validate_version(python_version):
     raise UsageError("Python versions > 3.12 are not yet supported.")
 
 
-def strip_prefix(string, prefix):
-  """Strip off prefix if it exists."""
-  if string.startswith(prefix):
-    return string[len(prefix) :]
-  return string
-
-
 def maybe_truncate(s, length=30):
   """Truncate long strings (and append '...'), but leave short strings alone."""
   s = str(s)
@@ -129,14 +120,6 @@ def pretty_dnf(dnf):
     return "false"
   else:
     return " | ".join(pretty_conjunction(c) for c in dnf)
-
-
-def numeric_sort_key(s):
-  return tuple((int(e) if e.isdigit() else e) for e in re.split(r"(\d+)", s))
-
-
-def concat_tuples(tuples):
-  return tuple(itertools.chain.from_iterable(tuples))
 
 
 def native_str(s: str | bytes, errors: str = "strict") -> str:
