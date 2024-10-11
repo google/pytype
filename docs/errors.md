@@ -550,9 +550,30 @@ class A(Generic[T]):
 ## invalid-super-call
 
 A call to super without any arguments (Python 3) is being made from an invalid
-context. A super call without any arguments should be made from a method or a
-function defined within a class. Also, the caller should have at least one
-positional argument.
+context:
+
+<!-- bad -->
+```python
+super().foo()
+```
+
+<!-- bad -->
+```python
+class A(B):
+  def f():
+    super().foo()
+```
+
+A super call without any arguments should be made from a method or a function
+defined within a class, and the caller should have at least one positional
+argument:
+
+<!-- good -->
+```python
+class A(B):
+  def f(self):
+    super().foo()
+```
 
 ## invalid-typevar
 
