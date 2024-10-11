@@ -160,7 +160,7 @@ class StdlibTestsFeatures(test_base.BaseTest, test_utils.TestCollectionsMixin):
 
   def test_collections_generator(self):
     self._testCollectionsObject(
-        "Generator", "i for i in range(42)", "42", r"generator.*int"
+        "Generator", "i for i in range(42)", "42", r"Generator.*int"
     )
 
   def test_collections_reversible(self):

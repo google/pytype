@@ -41,12 +41,12 @@ def _matches_generator_helper(type_obj, allowed_types):
 
 
 def _matches_generator(type_obj):
-  allowed_types = ("generator", "Iterable", "Iterator")
+  allowed_types = ("Generator", "Iterable", "Iterator")
   return _matches_generator_helper(type_obj, allowed_types)
 
 
 def _matches_async_generator(type_obj):
-  allowed_types = ("asyncgenerator", "AsyncIterable", "AsyncIterator")
+  allowed_types = ("AsyncGenerator", "AsyncIterable", "AsyncIterator")
   return _matches_generator_helper(type_obj, allowed_types)
 
 
