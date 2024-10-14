@@ -1,9 +1,10 @@
 """Utilities for working with the CFG."""
 
 import collections
-from collections.abc import Iterable, Sequence
+from collections.abc import Generator, Iterable, Sequence
 import itertools
 from typing import Protocol, TypeVar
+from pytype.typegraph import cfg
 
 
 # Limit on how many argument combinations we allow before aborting.
@@ -18,7 +19,9 @@ from typing import Protocol, TypeVar
 DEEP_VARIABLE_LIMIT = 1024
 
 
-def variable_product(variables):
+def variable_product(
+    variables: list[cfg.Variable],
+) -> Iterable[tuple[cfg.Variable, ...]]:
   """Take the Cartesian product of a number of Variables.
 
   Args:
@@ -31,7 +34,10 @@ def variable_product(variables):
   return itertools.product(*(v.bindings for v in variables))
 
 
-def _variable_product_items(variableitems, complexity_limit):
+def _variable_product_items(
+    variableitems: Iterable[tuple[str, cfg.Variable]],
+    complexity_limit: "ComplexityLimit",
+) -> Generator[list[tuple[str, cfg.Binding]], None, None]:
   """Take the Cartesian product of a list of (key, value) tuples.
 
   See variable_product_dict below.
@@ -63,17 +69,17 @@ class TooComplexError(Exception):
 class ComplexityLimit:
   """A class that raises TooComplexError if we hit a limit."""
 
-  def __init__(self, limit):
+  def __init__(self, limit: int) -> None:
     self.limit = limit
     self.count = 0
 
-  def inc(self, add=1):
+  def inc(self, add: int = 1) -> None:
     self.count += add
     if self.count >= self.limit:
       raise TooComplexError()
 
 
-def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
+def deep_variable_product(variables, limit: int = DEEP_VARIABLE_LIMIT):
   """Take the deep Cartesian product of a list of Variables.
 
   For example:
@@ -104,7 +110,9 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
   )
 
 
-def _deep_values_list_product(values_list, seen, complexity_limit):
+def _deep_values_list_product(
+    values_list: Sequence[cfg.Binding], seen, complexity_limit: ComplexityLimit
+) -> Sequence[tuple[cfg.Binding, ...]]:
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
@@ -126,7 +134,10 @@ def _deep_values_list_product(values_list, seen, complexity_limit):
   return result
 
 
-def variable_product_dict(variabledict, limit=DEEP_VARIABLE_LIMIT):
+def variable_product_dict(
+    variabledict: dict[str, cfg.Variable],
+    limit: int = DEEP_VARIABLE_LIMIT,
+):
   """Take the Cartesian product of variables in the values of a dict.
 
   This Cartesian product is taken using the dict keys as the indices into the
@@ -153,7 +164,9 @@ def variable_product_dict(variabledict, limit=DEEP_VARIABLE_LIMIT):
   ]
 
 
-def merge_variables(program, node, variables):
+def merge_variables(
+    program: cfg.Program, node: cfg.CFGNode, variables: Sequence[cfg.Variable]
+) -> cfg.Variable:
   """Create a combined Variable for a list of variables.
 
   The purpose of this function is to create a final result variable for
@@ -179,7 +192,9 @@ def merge_variables(program, node, variables):
     return v
 
 
-def merge_bindings(program, node, bindings):
+def merge_bindings(
+    program: cfg.Program, node: cfg.CFGNode, bindings: Sequence[cfg.Binding]
+) -> cfg.Variable:
   """Create a combined Variable for a list of bindings.
 
   Args:
@@ -196,7 +211,9 @@ def merge_bindings(program, node, bindings):
   return v
 
 
-def walk_binding(binding, keep_binding=lambda _: True):
+def walk_binding(
+    binding: cfg.Binding, keep_binding=lambda _: True
+) -> Generator[cfg.Origin, None, None]:
   """Helper function to walk a binding's origins.
 
   Args:
@@ -332,7 +349,16 @@ def order_nodes(nodes: Sequence[_OrderableNode]) -> list[_OrderableNode]:
   return order
 
 
-def topological_sort(nodes):
+class SuccessorNode(Protocol):
+  incoming: "Iterable[SuccessorNode]"
+
+
+_SuccessorNode = TypeVar("_SuccessorNode", bound=SuccessorNode)
+
+
+def topological_sort(
+    nodes: Iterable[_SuccessorNode],
+) -> Generator[_SuccessorNode, None, None]:
   """Sort a list of nodes topologically.
 
   This will order the nodes so that any node that appears in the "incoming"
