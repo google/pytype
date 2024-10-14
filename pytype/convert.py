@@ -653,7 +653,7 @@ class Converter(utils.ContextWeakrefMixin):
     )
     members = {}
     for val in data:
-      name = utils.strip_prefix(val.name, f"{ast.name}.")
+      name = val.name.removeprefix(f"{ast.name}.")
       members[name] = val
     return abstract.Module(self.ctx, ast.name, members, ast)
 

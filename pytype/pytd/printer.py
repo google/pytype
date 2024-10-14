@@ -99,7 +99,7 @@ class _Imports:
 
   def get_alias(self, name: str):
     if name.startswith("typing."):
-      return self._typing.members.get(utils.strip_prefix(name, "typing."))
+      return self._typing.members.get(name.removeprefix("typing."))
     return self._reverse_alias_map.get(name)
 
   def to_import_statements(self):
@@ -246,7 +246,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def _StripUnitPrefix(self, name):
     if self._unit:
-      return utils.strip_prefix(name, f"{self._unit.name}.")
+      return name.removeprefix(f"{self._unit.name}.")
     else:
       return name
 
