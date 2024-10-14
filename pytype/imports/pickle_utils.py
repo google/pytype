@@ -35,6 +35,8 @@ from typing import TypeVar, Union
 import msgspec
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
+from pytype.pytd.serialize_ast import SerializableAst
+
 
 Path = Union[str, os.PathLike[str]]
 
@@ -48,14 +50,18 @@ class LoadPickleError(Exception):
     super().__init__(msg)
 
 
-Encoder = msgspec.msgpack.Encoder(order="deterministic")
-AstDecoder = msgspec.msgpack.Decoder(type=serialize_ast.SerializableAst)
-BuiltinsDecoder = msgspec.msgpack.Decoder(type=serialize_ast.ModuleBundle)
+Encoder: "Encoder" = msgspec.msgpack.Encoder(order="deterministic")
+AstDecoder: msgspec.msgpack.Decoder[SerializableAst] = msgspec.msgpack.Decoder(
+    type=serialize_ast.SerializableAst
+)
+BuiltinsDecoder: msgspec.msgpack.Decoder[
+    tuple[tuple[str, msgspec.Raw], ...]
+] = msgspec.msgpack.Decoder(type=serialize_ast.ModuleBundle)
 
 _DecT = TypeVar(
     "_DecT", serialize_ast.SerializableAst, serialize_ast.ModuleBundle
 )
-_Dec = msgspec.msgpack.Decoder
+_Dec: type[msgspec.msgpack.Decoder] = msgspec.msgpack.Decoder
 _Serializable = Union[serialize_ast.SerializableAst, serialize_ast.ModuleBundle]
 
 

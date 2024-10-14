@@ -2,7 +2,7 @@
 
 import itertools
 import logging
-from typing import AbstractSet
+from typing import Any, Union, AbstractSet
 
 from pytype.pytd import booleq
 from pytype.pytd import escape
@@ -13,7 +13,7 @@ from pytype.pytd import transforms
 from pytype.pytd import type_match
 from pytype.pytd import visitors
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 # How deep to nest type parameters
 # TODO(b/159041279): Currently, the solver only generates variables for depth 1.
@@ -31,12 +31,14 @@ class FlawedQuery(Exception):  # pylint: disable=g-bad-exception-name
 class TypeSolver:
   """Class for solving ~unknowns in type inference results."""
 
-  def __init__(self, ast, builtins, protocols):
+  def __init__(self, ast, builtins, protocols) -> None:
     self.ast = ast
     self.builtins = builtins
     self.protocols = protocols
 
-  def match_unknown_against_protocol(self, matcher, solver, unknown, complete):
+  def match_unknown_against_protocol(
+      self, matcher, solver, unknown, complete
+  ) -> None:
     """Given an ~unknown, match it against a class.
 
     Args:
@@ -67,7 +69,9 @@ class TypeSolver:
         solver.register_variable(param.name)
     solver.implies(booleq.Eq(unknown.name, complete.name), implication)
 
-  def match_partial_against_complete(self, matcher, solver, partial, complete):
+  def match_partial_against_complete(
+      self, matcher, solver, partial, complete
+  ) -> None:
     """Match a partial class (call record) against a complete class.
 
     Args:
@@ -93,7 +97,7 @@ class TypeSolver:
       raise FlawedQuery(f"{partial.name} can never be {complete.name}")
     solver.always_true(formula)
 
-  def match_call_record(self, matcher, solver, call_record, complete):
+  def match_call_record(self, matcher, solver, call_record, complete) -> None:
     """Match the record of a method call against the formal signature."""
     assert is_partial(call_record)
     assert is_complete(complete)
@@ -118,7 +122,7 @@ class TypeSolver:
       )
     solver.always_true(formula)
 
-  def solve(self):
+  def solve(self) -> dict:
     """Solve the equations generated from the pytd.
 
     Returns:
@@ -210,7 +214,7 @@ class TypeSolver:
     return merged_solution
 
 
-def solve(ast, builtins_pytd, protocols_pytd):
+def solve(ast, builtins_pytd, protocols_pytd) -> tuple[Any, Any]:
   """Solve the unknowns in a pytd AST using the standard Python builtins.
 
   Args:
@@ -231,7 +235,7 @@ def solve(ast, builtins_pytd, protocols_pytd):
   )
 
 
-def extract_local(ast):
+def extract_local(ast) -> pytd.TypeDeclUnit:
   """Extract all classes that are not unknowns of call records of builtins."""
   return pytd.TypeDeclUnit(
       name=ast.name,
@@ -243,7 +247,9 @@ def extract_local(ast):
   )
 
 
-def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
+def convert_string_type(
+    string_type, unknown, mapping, global_lookup, depth=0
+) -> Union[pytd.ClassType, pytd.GenericType, pytd.NamedType]:
   """Convert a string representing a type back to a pytd type."""
   try:
     # Check whether this is a type declared in a pytd.

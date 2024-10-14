@@ -5,7 +5,9 @@ of PyTypeObject structures, and also other constants, like compare operator
 mappings.
 """
 
+from collections.abc import Callable
 import dataclasses
+from typing import Any
 
 TYPEOBJECT_PREFIX = "tp_"
 NUMBER_PREFIX = "nb_"
@@ -397,11 +399,13 @@ CMP_IS_NOT = 9
 CMP_EXC_MATCH = 10
 
 
-CMP_ALWAYS_SUPPORTED = frozenset({CMP_EQ, CMP_NE, CMP_IS, CMP_IS_NOT})
+CMP_ALWAYS_SUPPORTED: frozenset[int] = frozenset(
+    {CMP_EQ, CMP_NE, CMP_IS, CMP_IS_NOT}
+)
 
 
 EQ, NE, LT, LE, GT, GE = "==", "!=", "<", "<=", ">", ">="
-COMPARES = {
+COMPARES: dict[str, Callable[[Any, Any], Any]] = {
     EQ: lambda x, y: x == y,
     NE: lambda x, y: x != y,
     LT: lambda x, y: x < y,
@@ -411,12 +415,12 @@ COMPARES = {
 }
 
 
-SYMBOL_MAPPING = {
+SYMBOL_MAPPING: dict[str, str] = {
     slot.python_name: slot.symbol for slot in SLOTS if slot.symbol
 }
 
 
-def _ReverseNameMapping():
+def _ReverseNameMapping() -> dict[str, str]:
   """__add__ -> __radd__, __mul__ -> __rmul__ etc."""
   c_name_to_reverse = {
       slot.c_name: slot.python_name for slot in SLOTS if slot.index == 1
@@ -428,4 +432,4 @@ def _ReverseNameMapping():
   }
 
 
-REVERSE_NAME_MAPPING = _ReverseNameMapping()
+REVERSE_NAME_MAPPING: dict[str, str] = _ReverseNameMapping()

@@ -1,11 +1,13 @@
 """Opcode definitions."""
 
-from typing import cast
+from typing import Any, TypeVar, cast
 
 import attrs
 from pycnite import bytecode
 import pycnite.types
 from typing_extensions import override
+
+_TOpcode = TypeVar("_TOpcode", bound="Opcode")
 
 
 # We define all-uppercase classes, to match their opcode names:
@@ -58,7 +60,7 @@ class Opcode:
   )
   _FLAGS = 0
 
-  def __init__(self, index, line, endline=None, col=None, endcol=None):
+  def __init__(self, index, line, endline=None, col=None, endcol=None) -> None:
     self.index = index
     self.line = line
     self.endline = endline
@@ -75,7 +77,7 @@ class Opcode:
     self.push_exc_block = False
     self.pop_exc_block = False
 
-  def at_line(self, line):
+  def at_line(self: _TOpcode, line) -> _TOpcode:
     """Return a new opcode similar to this one but with a different line."""
     # Ignore the optional slots (prev, next, block_target).
     op = Opcode(self.index, line)
@@ -83,7 +85,7 @@ class Opcode:
     op.code = self.code
     return op
 
-  def basic_str(self):
+  def basic_str(self) -> str:
     """Helper function for the various __str__ formats."""
     folded = "<<<<" if self.folded else ""
     return "%d: %d: %s %s" % (
@@ -99,7 +101,7 @@ class Opcode:
     else:
       return self.basic_str()
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return self.__class__.__name__
 
   @property
@@ -109,63 +111,63 @@ class Opcode:
   @classmethod
   def for_python_version(
       cls, version: tuple[int, int]  # pylint: disable=unused-argument
-  ):
+  ) -> type[_TOpcode]:
     return cls
 
   @classmethod
-  def has_const(cls):
+  def has_const(cls) -> bool:
     return bool(cls._FLAGS & HAS_CONST)
 
   @classmethod
-  def has_name(cls):
+  def has_name(cls) -> bool:
     return bool(cls._FLAGS & HAS_NAME)
 
   @classmethod
-  def has_jrel(cls):
+  def has_jrel(cls) -> bool:
     return bool(cls._FLAGS & HAS_JREL)
 
   @classmethod
-  def has_jabs(cls):
+  def has_jabs(cls) -> bool:
     return bool(cls._FLAGS & HAS_JABS)
 
   @classmethod
-  def has_known_jump(cls):
+  def has_known_jump(cls) -> bool:
     return bool(cls._FLAGS & (HAS_JREL | HAS_JABS))
 
   @classmethod
-  def has_junknown(cls):
+  def has_junknown(cls) -> bool:
     return bool(cls._FLAGS & HAS_JUNKNOWN)
 
   @classmethod
-  def has_jump(cls):
+  def has_jump(cls) -> bool:
     return bool(cls._FLAGS & (HAS_JREL | HAS_JABS | HAS_JUNKNOWN))
 
   @classmethod
-  def has_local(cls):
+  def has_local(cls) -> bool:
     return bool(cls._FLAGS & HAS_LOCAL)
 
   @classmethod
-  def has_free(cls):
+  def has_free(cls) -> bool:
     return bool(cls._FLAGS & HAS_FREE)
 
   @classmethod
-  def has_nargs(cls):
+  def has_nargs(cls) -> bool:
     return bool(cls._FLAGS & HAS_NARGS)
 
   @classmethod
-  def has_argument(cls):
+  def has_argument(cls) -> bool:
     return bool(cls._FLAGS & HAS_ARGUMENT)
 
   @classmethod
-  def no_next(cls):
+  def no_next(cls) -> bool:
     return bool(cls._FLAGS & NO_NEXT)
 
   @classmethod
-  def carry_on_to_next(cls):
+  def carry_on_to_next(cls) -> bool:
     return not cls._FLAGS & NO_NEXT
 
   @classmethod
-  def store_jump(cls):
+  def store_jump(cls) -> bool:
     return bool(cls._FLAGS & STORE_JUMP)
 
   @classmethod
@@ -173,11 +175,11 @@ class Opcode:
     return cls.has_jump() and not cls.store_jump()
 
   @classmethod
-  def pushes_block(cls):
+  def pushes_block(cls) -> bool:
     return bool(cls._FLAGS & PUSHES_BLOCK)
 
   @classmethod
-  def pops_block(cls):
+  def pops_block(cls) -> bool:
     return bool(cls._FLAGS & POPS_BLOCK)
 
 
@@ -192,12 +194,12 @@ class OpcodeWithArg(Opcode):
 
   __slots__ = ("arg", "argval")
 
-  def __init__(self, index, line, endline, col, endcol, arg, argval):
+  def __init__(self, index, line, endline, col, endcol, arg, argval) -> None:
     super().__init__(index, line, endline, col, endcol)
     self.arg = arg
     self.argval = argval
 
-  def __str__(self):
+  def __str__(self) -> str:
     out = f"{self.basic_str()} {self.argval}"
     if self.annotation:
       return f"{out}  # type: {self.annotation}"
@@ -1145,7 +1147,7 @@ class LOAD_FROM_DICT_OR_DEREF(OpcodeWithArg):
 
 def _make_opcodes(
     ops: list[pycnite.types.Opcode], python_version: tuple[int, int]
-):
+) -> dict[int, Any]:
   """Convert pycnite opcodes to pytype opcodes."""
   g = globals()
   offset_to_op = {}
@@ -1159,7 +1161,7 @@ def _make_opcodes(
   return offset_to_op
 
 
-def _add_exception_block(offset_to_op, e):
+def _add_exception_block(offset_to_op, e) -> None:
   """Adds opcodes marking an exception block."""
   start_op = offset_to_op[e.start]
   setup_op = SETUP_EXCEPT_311(
@@ -1182,7 +1184,7 @@ def _add_exception_block(offset_to_op, e):
   offset_to_op[end + 0.5] = pop_op
 
 
-def _get_exception_bitmask(offset_to_op, exception_ranges):
+def _get_exception_bitmask(offset_to_op, exception_ranges) -> int:
   """Get a bitmask for whether an offset is in an exception range."""
   in_exception = 0
   pos = 1
@@ -1200,7 +1202,9 @@ def _get_exception_bitmask(offset_to_op, exception_ranges):
 
 
 # Opcodes that come up as exception targets but don't need a block.
-_IGNORED_EXCEPTION_TARGETS = (
+_IGNORED_EXCEPTION_TARGETS: tuple[
+    type[END_ASYNC_FOR], type[CLEANUP_THROW], type[SWAP]
+] = (
     # In 3.11+ `async for` loops end normally by thowing a StopAsyncIteration
     # exception, which jumps to an END_ASYNC_FOR opcode via the exception table.
     END_ASYNC_FOR,
@@ -1216,7 +1220,7 @@ _IGNORED_EXCEPTION_TARGETS = (
 
 def _add_setup_except(
     offset_to_op: dict[float, Opcode], exc_table: pycnite.types.ExceptionTable
-):
+) -> None:
   """Handle the exception table in 3.11+."""
   # In python 3.11, exception handling is no longer bytecode-based - see
   # https://github.com/python/cpython/blob/3.11/Objects/exception_handling_notes.txt
@@ -1269,7 +1273,7 @@ def _add_setup_except(
 
 def _get_opcode_following_cleanup_throw_jump_pairs(
     op_items: list[tuple[int, Opcode]], start_i: int
-):
+) -> Opcode | None:
   for i in range(start_i, len(op_items), 2):
     if (
         isinstance(op_items[i][1], CLEANUP_THROW)
@@ -1283,7 +1287,7 @@ def _get_opcode_following_cleanup_throw_jump_pairs(
 
 def _should_elide_opcode(
     op_items: list[tuple[int, Opcode]], i: int, python_version: tuple[int, int]
-):
+) -> bool:
   """Returns `True` if the opcode on index `i` should be elided.
 
   Opcodes should be elided if they don't contribute to type checking and cause
@@ -1333,7 +1337,9 @@ def _should_elide_opcode(
   return False
 
 
-def _make_opcode_list(offset_to_op, python_version: tuple[int, int]):
+def _make_opcode_list(
+    offset_to_op, python_version: tuple[int, int]
+) -> tuple[list, dict[Any, int]]:
   """Convert opcodes to a list and fill in opcode.index, next and prev."""
   ops = []
   offset_to_index = {}
@@ -1359,7 +1365,7 @@ def _make_opcode_list(offset_to_op, python_version: tuple[int, int]):
   return ops, offset_to_index
 
 
-def _add_jump_targets(ops, offset_to_index):
+def _add_jump_targets(ops, offset_to_index) -> None:
   """Map the target of jump instructions to the opcode they jump to."""
   for op in ops:
     op = cast(OpcodeWithArg, op)

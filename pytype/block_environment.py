@@ -13,16 +13,16 @@ BlockLocals = dict[blocks.Block, LocalsDict]
 class Environment:
   """A store of local variables per blockgraph node."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.block_locals: BlockLocals = {}
     # Blocks whose outgoing edges cannot be traversed. This can happen if, for
     # example, a block unconditionally raises an exception.
     self._dead_ends: set[blocks.Block] = set()
 
-  def mark_dead_end(self, block):
+  def mark_dead_end(self, block) -> None:
     self._dead_ends.add(block)
 
-  def add_block(self, frame, block):
+  def add_block(self, frame, block) -> None:
     """Add a new block and initialize its locals."""
 
     local = {}
@@ -59,8 +59,8 @@ class Environment:
           var |= set(incoming_locals[k])
         local[k] = list(var)
 
-  def store_local(self, block, name, var):
+  def store_local(self, block, name, var) -> None:
     self.block_locals[block][name] = [var]
 
-  def get_local(self, block, name):
+  def get_local(self, block, name) -> list[cfg.Variable] | None:
     return self.block_locals[block].get(name)

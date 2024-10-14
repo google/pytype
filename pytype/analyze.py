@@ -12,7 +12,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 # How deep to follow call chains:
 INIT_MAXIMUM_DEPTH = 4  # during module loading
@@ -118,7 +118,7 @@ def infer_types(
   return Analysis(ctx, ast, deps_pytd)
 
 
-def _maybe_output_debug(options, program):
+def _maybe_output_debug(options, program) -> None:
   """Maybe emit debugging output."""
   if options.output_debug:
     text = debug.program_to_text(program)

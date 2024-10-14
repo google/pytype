@@ -7,7 +7,7 @@ import os
 from pytype import imports_map
 from pytype.platform_utils import path_utils
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # Type aliases.
@@ -18,7 +18,7 @@ _ItemType = tuple[str, str]
 class ImportsMapBuilder:
   """Build an imports map from (short_path, path) pairs."""
 
-  def __init__(self, options):
+  def __init__(self, options) -> None:
     self.options = options
 
   def _read_from_file(self, path) -> list[_ItemType]:

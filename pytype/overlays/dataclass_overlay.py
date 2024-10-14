@@ -4,7 +4,9 @@
 # - Raise an error if we see a duplicate annotation, even though python allows
 #     it, since there is no good reason to do that.
 
+from collections import OrderedDict
 import logging
+from typing import Any, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -13,13 +15,18 @@ from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+_TDataclass = TypeVar("_TDataclass", bound="Dataclass")
+_TFieldFunction = TypeVar("_TFieldFunction", bound="FieldFunction")
+_TReplace = TypeVar("_TReplace", bound="Replace")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class DataclassOverlay(overlay.Overlay):
   """A custom overlay for the 'dataclasses' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "dataclass": Dataclass.make,
         "field": FieldFunction.make,
@@ -33,7 +40,7 @@ class Dataclass(classgen.Decorator):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, ctx, module="dataclasses"):
+  def make(cls: type[_TDataclass], ctx, module="dataclasses") -> _TDataclass:
     return super().make("dataclass", ctx, module)
 
   @classmethod
@@ -64,7 +71,7 @@ class Dataclass(classgen.Decorator):
       classgen.add_member(node, cls, name, initvar)
     return initvar
 
-  def get_class_locals(self, node, cls):
+  def get_class_locals(self, node, cls) -> OrderedDict:
     del node
     return classgen.get_class_locals(
         cls.name,
@@ -73,7 +80,7 @@ class Dataclass(classgen.Decorator):
         ctx=self.ctx,
     )
 
-  def decorate(self, node, cls):
+  def decorate(self, node, cls) -> None:
     """Processes class members."""
 
     # Collect classvars to convert them to attrs. @dataclass collects vars with
@@ -193,7 +200,7 @@ class Dataclass(classgen.Decorator):
 class FieldInstance(abstract.SimpleValue):
   """Return value of a field() call."""
 
-  def __init__(self, ctx, init, default, kw_only):
+  def __init__(self, ctx, init, default, kw_only) -> None:
     super().__init__("field", ctx)
     self.init = init
     self.default = default
@@ -205,10 +212,10 @@ class FieldFunction(classgen.FieldConstructor):
   """Implements dataclasses.field."""
 
   @classmethod
-  def make(cls, ctx, module):
+  def make(cls: type[_TFieldFunction], ctx, module) -> _TFieldFunction:
     return super().make("field", ctx, module)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     """Returns a type corresponding to a field."""
     args = args.simplify(node, self.ctx)
     self.match_args(node, args)
@@ -218,7 +225,7 @@ class FieldFunction(classgen.FieldConstructor):
     typ = FieldInstance(self.ctx, init, default_var, kw_only).to_variable(node)
     return node, typ
 
-  def _get_default_var(self, node, args):
+  def _get_default_var(self, node, args) -> tuple[Any, Any]:
     if "default" in args.namedargs and "default_factory" in args.namedargs:
       # The pyi signatures should prevent this; check left in for safety.
       raise error_types.DuplicateKeyword(
@@ -237,7 +244,7 @@ class FieldFunction(classgen.FieldConstructor):
     return node, default_var
 
 
-def is_field(var):
+def is_field(var: _T0) -> bool | _T0:
   return var and isinstance(var.data[0], FieldInstance)
 
 
@@ -255,7 +262,7 @@ class Replace(abstract.PyTDFunction):
   """Implements dataclasses.replace."""
 
   @classmethod
-  def make(cls, ctx, module="dataclasses"):
+  def make(cls: type[_TReplace], ctx, module="dataclasses") -> _TReplace:
     return super().make("replace", ctx, module)
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):

@@ -3,9 +3,12 @@
 import argparse
 import contextlib
 import itertools
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import immutabledict
+
+_TParserWrapper = TypeVar("_TParserWrapper", bound="ParserWrapper")
+
 
 _K = TypeVar("_K")
 _V = TypeVar("_V")
@@ -48,14 +51,14 @@ class UnionFind:
     latest_id: the maximal allocated id.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.name2id = {}
     self.parent = []
     self.rank = []
     self.id2name = []
     self.latest_id = 0
 
-  def merge_from(self, uf):
+  def merge_from(self, uf) -> None:
     """Merge a UnionFind into the current one."""
     for i, name in enumerate(uf.id2name):
       self.merge(name, uf.id2name[uf.parent[i]])
@@ -72,7 +75,7 @@ class UnionFind:
     self._merge(key1, key2)
     return self.find_by_name(name1)
 
-  def _get_or_add_id(self, name):
+  def _get_or_add_id(self, name) -> int:
     if name not in self.name2id:
       self.name2id[name] = self.latest_id
       self.parent.append(self.latest_id)
@@ -91,7 +94,7 @@ class UnionFind:
       self.parent[key] = res
     return res
 
-  def _merge(self, k1, k2):
+  def _merge(self, k1, k2) -> None:
     """Merge two components."""
     assert self.latest_id > k1 and self.latest_id > k2
     s1 = self._find(k1)
@@ -105,7 +108,7 @@ class UnionFind:
         self.parent[s1] = s2
         self.rank[s2] += 1
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     comps = []
     used = set()
     for x in self.id2name:
@@ -122,7 +125,7 @@ class UnionFind:
 class AccessTrackingDict(dict[_K, _V]):
   """A dict that tracks access of its original items."""
 
-  def __init__(self, d=()):
+  def __init__(self, d=()) -> None:
     super().__init__(d)
     self.accessed_subset = {}
 
@@ -132,18 +135,18 @@ class AccessTrackingDict(dict[_K, _V]):
       self.accessed_subset[k] = v
     return v
 
-  def __setitem__(self, k, v):
+  def __setitem__(self, k, v) -> None:
     if k in self:
       _ = self[k]
     # If the key is new, we don't track it.
     return super().__setitem__(k, v)
 
-  def __delitem__(self, k):
+  def __delitem__(self, k) -> None:
     if k in self:
       _ = self[k]
     return super().__delitem__(k)
 
-  def update(self, *args, **kwargs):
+  def update(self, *args, **kwargs) -> None:
     super().update(*args, **kwargs)
     for d in args:
       if isinstance(d, AccessTrackingDict):
@@ -180,7 +183,7 @@ class MonitorDict(dict[_K, _V]):
 
 class AliasingDictConflictError(Exception):
 
-  def __init__(self, existing_name):
+  def __init__(self, existing_name) -> None:
     super().__init__()
     self.existing_name = existing_name
 
@@ -214,25 +217,25 @@ class AliasingDict(dict[_K, _V]):
   def aliases(self):
     return self._aliases
 
-  def copy(self, *args, aliases=None, **kwargs):
+  def copy(self, *args, aliases=None, **kwargs) -> "AliasingDict":
     return self.__class__(self, *args, aliases=aliases, **kwargs)
 
   def same_name(self, name1, name2):
     return self.aliases.find_by_name(name1) == self.aliases.find_by_name(name2)
 
-  def __contains__(self, name):
+  def __contains__(self, name) -> bool:
     return super().__contains__(self.aliases.find_by_name(name))
 
-  def __setitem__(self, name, var):
+  def __setitem__(self, name, var) -> None:
     super().__setitem__(self.aliases.find_by_name(name), var)
 
   def __getitem__(self, name):
     return super().__getitem__(self.aliases.find_by_name(name))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"{super().__repr__()!r}, _alias={repr(self.aliases)!r}"
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash(frozenset(self.items()))
 
   def get(self, name, default=None):
@@ -282,7 +285,7 @@ class AliasingDict(dict[_K, _V]):
   def viewvalues(self):
     raise NotImplementedError()
 
-  def merge_from(self, lam_dict, op):
+  def merge_from(self, lam_dict, op) -> None:
     """Merge the other `AliasingDict` into current class.
 
     Args:
@@ -305,7 +308,7 @@ class AliasingDict(dict[_K, _V]):
       ):
         self.add_alias(cur_name, parent_name, op)
 
-  def _merge(self, name1, name2, op):
+  def _merge(self, name1, name2, op) -> None:
     name1 = self.aliases.find_by_name(name1)
     name2 = self.aliases.find_by_name(name2)
     assert name1 != name2
@@ -314,14 +317,14 @@ class AliasingDict(dict[_K, _V]):
     root = self.aliases.merge(name1, name2)
     self._copy_item(name1, root)
 
-  def _copy_item(self, src, tgt):
+  def _copy_item(self, src, tgt) -> None:
     """Assign the dict `src` value to `tgt`."""
     if src == tgt:
       return
     self[tgt] = dict.__getitem__(self, src)
     dict.__delitem__(self, src)
 
-  def add_alias(self, alias, name, op=None):
+  def add_alias(self, alias, name, op=None) -> None:
     """Alias 'alias' to 'name'.
 
     After aliasing, we will think `alias` and `name`, they represent the same
@@ -355,7 +358,7 @@ class HashableDict(AliasingDict[_K, _V]):
   have been overwritten to throw an exception.
   """
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     self._hash = hash(frozenset(self.items()))
 
@@ -380,7 +383,7 @@ class HashableDict(AliasingDict[_K, _V]):
   def __delitem__(self, y):
     raise TypeError()
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return self._hash
 
 
@@ -391,13 +394,13 @@ class AliasingMonitorDict(AliasingDict[_K, _V], MonitorDict[_K, _V]):
 class Box:
   """A mutable shared value."""
 
-  def __init__(self, value=None):
+  def __init__(self, value=None) -> None:
     self._value = value
 
   def __get__(self, unused_obj, unused_objname):
     return self._value
 
-  def __set__(self, unused_obj, value):
+  def __set__(self, unused_obj, value) -> None:
     self._value = value
 
 
@@ -405,9 +408,9 @@ class ParserWrapper:
   """Wrapper that adds arguments to a parser while recording them."""
 
   # This needs to be a classvar so that it is shared by subgroups
-  _only = Box(None)
+  _only: Any = Box(None)
 
-  def __init__(self, parser, actions=None):
+  def __init__(self, parser, actions=None) -> None:
     self.parser = parser
     self.actions = {} if actions is None else actions
 
@@ -421,7 +424,7 @@ class ParserWrapper:
     finally:
       self._only = only
 
-  def add_argument(self, *args, **kwargs):
+  def add_argument(self, *args, **kwargs) -> None:
     if self._only and not any(arg in self._only for arg in args):
       return
     try:
@@ -432,7 +435,9 @@ class ParserWrapper:
     else:
       self.actions[action.dest] = action
 
-  def add_argument_group(self, *args, **kwargs):
+  def add_argument_group(
+      self: _TParserWrapper, *args, **kwargs
+  ) -> _TParserWrapper:
     group = self.parser.add_argument_group(*args, **kwargs)
     wrapped_group = self.__class__(group, actions=self.actions)
     return wrapped_group

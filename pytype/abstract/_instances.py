@@ -1,8 +1,9 @@
 """Specialized instance representations."""
 
+from collections.abc import Generator as _Generator
 import contextlib
 import logging
-from typing import Union
+from typing import Any, TypeVar, Union
 
 from pytype.abstract import _base
 from pytype.abstract import _instance_base
@@ -15,7 +16,9 @@ from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 from pytype.types import types
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 _make = abstract_utils._make  # pylint: disable=protected-access
 
 
@@ -46,7 +49,7 @@ class LazyConcreteDict(
 ):
   """Dictionary with lazy values."""
 
-  def __init__(self, name, member_map, ctx):
+  def __init__(self, name, member_map, ctx) -> None:
     super().__init__(name, ctx)
     mixin.PythonConstant.init_mixin(self, self.members)
     mixin.LazyMembers.init_mixin(self, member_map)
@@ -54,25 +57,25 @@ class LazyConcreteDict(
   def _convert_member(self, name, member, subst=None):
     return self.ctx.convert.constant_to_var(member)
 
-  def is_empty(self):
+  def is_empty(self) -> bool:
     return not bool(self._member_map)
 
 
 class ConcreteValue(_instance_base.Instance, mixin.PythonConstant):
   """Abstract value with a concrete fallback."""
 
-  def __init__(self, pyval, cls, ctx):
+  def __init__(self, pyval, cls, ctx) -> None:
     super().__init__(cls, ctx)
     mixin.PythonConstant.init_mixin(self, pyval)
 
-  def get_fullhash(self, seen=None):
+  def get_fullhash(self, seen=None) -> int:
     return hash((type(self), id(self.pyval)))
 
 
 class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
   """Represents an (imported) module."""
 
-  def __init__(self, ctx, name, member_map, ast):
+  def __init__(self, ctx, name, member_map, ast) -> None:
     super().__init__(ctx.convert.module_type, ctx)
     self.name = name
     self.ast = ast
@@ -109,7 +112,7 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
   def full_name(self):
     return self.ast.name
 
-  def has_getattr(self):
+  def has_getattr(self) -> bool:
     """Does this module have a module-level __getattr__?
 
     We allow __getattr__ on the module level to specify that this module doesn't
@@ -148,12 +151,12 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
       log.warning("Couldn't find attribute / module %r", full_name)
       return None
 
-  def items(self):
+  def items(self) -> list[tuple[Any, Any]]:
     for name in self._member_map:
       self.load_lazy_attribute(name)
     return list(self.members.items())
 
-  def get_fullhash(self, seen=None):
+  def get_fullhash(self, seen=None) -> int:
     """Hash the set of member names."""
     return hash((type(self), self.full_name) + tuple(sorted(self._member_map)))
 
@@ -161,7 +164,7 @@ class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
 class Coroutine(_instance_base.Instance):
   """A representation of instances of coroutine."""
 
-  def __init__(self, ctx, ret_var, node):
+  def __init__(self, ctx, ret_var, node) -> None:
     super().__init__(ctx.convert.coroutine_type, ctx)
     self.merge_instance_type_parameter(
         node, abstract_utils.T, self.ctx.new_unsolvable(node)
@@ -177,26 +180,26 @@ class Coroutine(_instance_base.Instance):
 class Iterator(_instance_base.Instance, mixin.HasSlots):
   """A representation of instances of iterators."""
 
-  def __init__(self, ctx, return_var):
+  def __init__(self, ctx, return_var) -> None:
     super().__init__(ctx.convert.iterator_type, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__next__", self.next_slot)
     self._return_var = return_var
 
-  def next_slot(self, node):
+  def next_slot(self, node: _T0) -> tuple[_T0, Any]:
     return node, self._return_var
 
 
 class BaseGenerator(_instance_base.Instance):
   """A base class of instances of generators and async generators."""
 
-  def __init__(self, generator_type, frame, ctx, is_return_allowed):
+  def __init__(self, generator_type, frame, ctx, is_return_allowed) -> None:
     super().__init__(generator_type, ctx)
     self.frame = frame
     self.runs = 0
     self.is_return_allowed = is_return_allowed  # if return statement is allowed
 
-  def run_generator(self, node):
+  def run_generator(self, node) -> tuple[Any, Any]:
     """Run the generator."""
     if self.runs == 0:  # Optimization: We only run it once.
       node, _ = self.ctx.vm.resume_frame(node, self.frame)
@@ -238,7 +241,7 @@ class BaseGenerator(_instance_base.Instance):
 class AsyncGenerator(BaseGenerator):
   """A representation of instances of async generators."""
 
-  def __init__(self, async_generator_frame, ctx):
+  def __init__(self, async_generator_frame, ctx) -> None:
     super().__init__(
         ctx.convert.async_generator_type, async_generator_frame, ctx, False
     )
@@ -247,7 +250,7 @@ class AsyncGenerator(BaseGenerator):
 class Generator(BaseGenerator):
   """A representation of instances of generators."""
 
-  def __init__(self, generator_frame, ctx):
+  def __init__(self, generator_frame, ctx) -> None:
     super().__init__(ctx.convert.generator_type, generator_frame, ctx, True)
 
   def get_special_attribute(self, node, name, valself):
@@ -264,14 +267,14 @@ class Generator(BaseGenerator):
     else:
       return super().get_special_attribute(node, name, valself)
 
-  def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
+  def __iter__(self, node: _T0) -> tuple[_T0, Any]:  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
     return node, self.to_variable(node)
 
 
 class Tuple(_instance_base.Instance, mixin.PythonConstant):
   """Representation of Python 'tuple' objects."""
 
-  def __init__(self, content, ctx):
+  def __init__(self, content, ctx) -> None:
     combined_content = ctx.convert.build_content(content)
     class_params = {
         name: ctx.convert.merge_classes(instance_param.data)
@@ -287,7 +290,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     # set this to true when creating a function arg tuple
     self.is_unpacked_function_args = False
 
-  def str_of_constant(self, printer):
+  def str_of_constant(self, printer) -> str:
     content = ", ".join(
         " or ".join(_var_map(printer, val)) for val in self.pyval
     )
@@ -295,12 +298,12 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
       content += ","
     return f"({content})"
 
-  def _unique_parameters(self):
+  def _unique_parameters(self) -> list:
     parameters = super()._unique_parameters()
     parameters.extend(self.pyval)
     return parameters
 
-  def _is_recursive(self):
+  def _is_recursive(self) -> bool:
     """True if the tuple contains itself."""
     return any(any(x is self for x in e.data) for e in self.pyval)
 
@@ -335,7 +338,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
 class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # pytype: disable=signature-mismatch
   """Representation of Python 'list' objects."""
 
-  def __init__(self, content, ctx):
+  def __init__(self, content, ctx) -> None:
     super().__init__(ctx.convert.list_type, ctx)
     self._instance_cache = {}
     combined_content = ctx.convert.build_content(content)
@@ -345,12 +348,12 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     self.set_native_slot("__getitem__", self.getitem_slot)
     self.set_native_slot("__getslice__", self.getslice_slot)
 
-  def str_of_constant(self, printer):
+  def str_of_constant(self, printer) -> str:
     return "[%s]" % ", ".join(
         " or ".join(_var_map(printer, val)) for val in self.pyval
     )
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if self.is_concrete:
       return mixin.PythonConstant.__repr__(self)
     else:
@@ -361,11 +364,11 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
       return _get_concrete_sequence_fullhash(self, seen)
     return super().get_fullhash(seen)
 
-  def merge_instance_type_parameter(self, node, name, value):
+  def merge_instance_type_parameter(self, node, name, value) -> None:
     self.is_concrete = False
     super().merge_instance_type_parameter(node, name, value)
 
-  def getitem_slot(self, node, index_var):
+  def getitem_slot(self, node, index_var) -> tuple[Any, Any]:
     """Implements __getitem__ for List.
 
     Arguments:
@@ -419,7 +422,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     else:
       raise abstract_utils.ConversionError()
 
-  def getslice_slot(self, node, start_var, end_var):
+  def getslice_slot(self, node, start_var, end_var) -> tuple[Any, Any]:
     """Implements __getslice__ for List.
 
     Arguments:
@@ -460,7 +463,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
   of what got stored.
   """
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__(ctx.convert.dict_type, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__contains__", self.contains_slot)
@@ -473,7 +476,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     # For example: f_locals["__annotations__"]
     mixin.PythonDict.init_mixin(self, {})
 
-  def str_of_constant(self, printer):
+  def str_of_constant(self, printer) -> str:
     # self.pyval is only populated for string keys.
     if not self.is_concrete:
       return "{...: ...}"
@@ -483,7 +486,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     ]
     return "{" + ", ".join(pairs) + "}"
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if not hasattr(self, "is_concrete"):
       return "Dict (not fully initialized)"
     elif self.is_concrete:
@@ -504,7 +507,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
         + abstract_utils.get_dict_fullhash_component(self.pyval, seen=seen)
     )
 
-  def getitem_slot(self, node, name_var):
+  def getitem_slot(self, node, name_var) -> tuple[Any, Any]:
     """Implements the __getitem__ slot."""
     results = []
     unresolved = False
@@ -528,11 +531,11 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       results.append(ret)
     return node, self.ctx.join_variables(node, results)
 
-  def merge_instance_type_params(self, node, name_var, value_var):
+  def merge_instance_type_params(self, node, name_var, value_var) -> None:
     self.merge_instance_type_parameter(node, abstract_utils.K, name_var)
     self.merge_instance_type_parameter(node, abstract_utils.V, value_var)
 
-  def set_str_item(self, node, name, value_var):
+  def set_str_item(self, node: _T0, name, value_var) -> _T0:
     name_var = self.ctx.convert.build_nonatomic_string(node)
     self.merge_instance_type_params(node, name_var, value_var)
     if name in self.pyval:
@@ -558,7 +561,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       else:
         self.pyval[name] = value_var
 
-  def setitem_slot(self, node, name_var, value_var):
+  def setitem_slot(self, node, name_var, value_var) -> tuple[Any, Any]:
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
     return self.call_pytd(
@@ -568,7 +571,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
         abstract_utils.abstractify_variable(value_var, self.ctx),
     )
 
-  def setdefault_slot(self, node, name_var, value_var=None):
+  def setdefault_slot(self, node, name_var, value_var=None) -> tuple[Any, Any]:
     if value_var is None:
       value_var = self.ctx.convert.build_none(node)
     # We don't have a good way of modelling the exact setdefault behavior -
@@ -578,7 +581,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     self.setitem(node, name_var, value_var)
     return self.call_pytd(node, "setdefault", name_var, value_var)
 
-  def contains_slot(self, node, key_var):
+  def contains_slot(self, node: _T0, key_var) -> tuple[_T0, Any]:
     if self.is_concrete:
       try:
         str_key = abstract_utils.get_atomic_python_constant(key_var, str)
@@ -590,7 +593,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       value = None
     return node, self.ctx.convert.build_bool(node, value)
 
-  def pop_slot(self, node, key_var, default_var=None):
+  def pop_slot(self, node, key_var, default_var=None) -> tuple[Any, Any]:
     try:
       str_key = abstract_utils.get_atomic_python_constant(key_var, str)
     except abstract_utils.ConversionError:
@@ -608,21 +611,23 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       except KeyError as e:
         raise error_types.DictKeyMissing(str_key) from e
 
-  def _set_params_to_any(self, node):
+  def _set_params_to_any(self, node) -> None:
     self.is_concrete = False
     unsolvable = self.ctx.new_unsolvable(node)
     for p in (abstract_utils.K, abstract_utils.V):
       self.merge_instance_type_parameter(node, p, unsolvable)
 
   @contextlib.contextmanager
-  def _set_params_to_any_on_failure(self, node):
+  def _set_params_to_any_on_failure(
+      self, node
+  ):
     try:
       yield
     except error_types.FailedFunctionCall:
       self._set_params_to_any(node)
       raise
 
-  def update_slot(self, node, *args, **kwargs):
+  def update_slot(self, node, *args, **kwargs) -> tuple[Any, Any]:
     if len(args) == 1 and len(args[0].data) == 1:
       with self._set_params_to_any_on_failure(node):
         for f in self._super["update"].data:
@@ -663,7 +668,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
 class AnnotationsDict(Dict):
   """__annotations__ dict."""
 
-  def __init__(self, annotated_locals, ctx):
+  def __init__(self, annotated_locals, ctx) -> None:
     self.annotated_locals = annotated_locals
     super().__init__(ctx)
 
@@ -672,13 +677,13 @@ class AnnotationsDict(Dict):
       return None
     return self.annotated_locals[name].get_type(node, name)
 
-  def get_annotations(self, node):
+  def get_annotations(self, node) -> _Generator[tuple[Any, Any], Any, None]:
     for name, local in self.annotated_locals.items():
       typ = local.get_type(node, name)
       if typ:
         yield name, typ
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return repr(self.annotated_locals)
 
 
@@ -688,7 +693,7 @@ class AnnotationsDict(Dict):
 class Splat(_base.BaseValue):
   """Representation of unpacked iterables."""
 
-  def __init__(self, ctx, iterable):
+  def __init__(self, ctx, iterable) -> None:
     super().__init__("splat", ctx)
     # When building a tuple for a function call, we preserve splats as elements
     # in a concrete tuple (e.g. f(x, *ys, z) gets called with the concrete tuple
@@ -700,14 +705,14 @@ class Splat(_base.BaseValue):
     self.cls = ctx.convert.unsolvable
     self.iterable = iterable
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"splat({self.iterable.data!r})"
 
 
 class SequenceLength(_base.BaseValue, mixin.HasSlots):
   """Sequence length for match statements."""
 
-  def __init__(self, sequence, ctx):
+  def __init__(self, sequence, ctx) -> None:
     super().__init__("SequenceLength", ctx)
     length = 0
     splat = False
@@ -721,14 +726,14 @@ class SequenceLength(_base.BaseValue, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__sub__", self.sub_slot)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     splat = "+" if self.splat else ""
     return f"SequenceLength[{self.length}{splat}]"
 
   def instantiate(self, node, container=None):
     return self.to_variable(node)
 
-  def sub_slot(self, node, other_var):
+  def sub_slot(self, node: _T0, other_var) -> tuple[_T0, Any]:
     # We should not get a ConversionError here; this is code generated by the
     # compiler from a literal sequence in a concrete match statement
     val = abstract_utils.get_atomic_python_constant(other_var, int)

@@ -5,13 +5,13 @@ from pytype.abstract import abstract_utils
 from pytype.pytd import slots
 
 # Equality classes.
-NUMERIC = frozenset(
+NUMERIC: frozenset[str] = frozenset(
     {"builtins.bool", "builtins.int", "builtins.float", "builtins.complex"}
 )
-STRING = frozenset({"builtins.str", "builtins.unicode"})
+STRING: frozenset[str] = frozenset({"builtins.str", "builtins.unicode"})
 
 # Fully qualified names of types that are parameterized containers.
-_CONTAINER_NAMES = frozenset(
+_CONTAINER_NAMES: frozenset[str] = frozenset(
     {"builtins.list", "builtins.set", "builtins.frozenset"}
 )
 
@@ -20,7 +20,7 @@ class CmpTypeError(Exception):
   """Comparing incompatible primitive constants."""
 
 
-def _incompatible(left_name, right_name):
+def _incompatible(left_name, right_name) -> bool:
   """Incompatible primitive types can never be equal."""
   if left_name == right_name:
     return False
@@ -30,13 +30,13 @@ def _incompatible(left_name, right_name):
   return True
 
 
-def _is_primitive_constant(ctx, value):
+def _is_primitive_constant(ctx, value) -> bool:
   if isinstance(value, abstract.PythonConstant):
     return value.pyval.__class__ in ctx.convert.primitive_classes
   return False
 
 
-def _is_primitive(ctx, value):
+def _is_primitive(ctx, value) -> bool:
   if _is_primitive_constant(ctx, value):
     return True
   elif isinstance(value, abstract.Instance):
@@ -44,7 +44,7 @@ def _is_primitive(ctx, value):
   return False
 
 
-def _is_equality_cmp(op):
+def _is_equality_cmp(op) -> bool:
   return op in (slots.EQ, slots.NE)
 
 
@@ -183,7 +183,7 @@ def _compare_dict(op, left, right):
   return None
 
 
-def _compare_class(op, left, right):
+def _compare_class(op, left, right) -> None:
   del right  # unused
   # Classes without a custom metaclass are not orderable.
   if left.cls.full_name != "builtins.type":

@@ -1,12 +1,17 @@
 """Abstract representations of builtin containers."""
 
 import logging
+from typing import TypeVar
 
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import internal
 from pytype.rewrite.abstract import utils
 
-log = logging.getLogger(__name__)
+_TDict = TypeVar('_TDict', bound='Dict')
+_TList = TypeVar('_TList', bound='List')
+_TSet = TypeVar('_TSet', bound='Set')
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # Type aliases
 _Var = base.AbstractVariableType
@@ -19,7 +24,7 @@ class List(base.PythonConstant[list[_Var]]):
     assert isinstance(constant, list), constant
     super().__init__(ctx, constant)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'List({self.constant!r})'
 
   def append(self, var: _Var) -> 'List':
@@ -41,7 +46,7 @@ class Dict(base.PythonConstant[dict[_Var, _Var]]):
     assert isinstance(constant, dict), constant
     super().__init__(ctx, constant)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'Dict({self.constant!r})'
 
   @classmethod
@@ -63,7 +68,7 @@ class Dict(base.PythonConstant[dict[_Var, _Var]]):
 
   def to_function_arg_dict(self) -> internal.FunctionArgDict:
     new_const = {
-        utils.get_atomic_constant(k, str): v
+        utils.get_atomic_constant(k, str): v  # pytype: disable=wrong-arg-types
         for k, v in self.constant.items()
     }
     return internal.FunctionArgDict(self._ctx, new_const)
@@ -76,7 +81,7 @@ class Set(base.PythonConstant[set[_Var]]):
     assert isinstance(constant, set), constant
     super().__init__(ctx, constant)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'Set({self.constant!r})'
 
   def add(self, val: _Var) -> 'Set':
@@ -90,5 +95,5 @@ class Tuple(base.PythonConstant[tuple[_Var, ...]]):
     assert isinstance(constant, tuple), constant
     super().__init__(ctx, constant)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'Tuple({self.constant!r})'

@@ -4,12 +4,15 @@ Unless forced to by a circular dependency, don't import BaseValue directly from
 this module; use the alias in abstract.py instead.
 """
 
-from typing import Any
+from typing import TypeVar, Any
 
 from pytype import utils
 from pytype.abstract import abstract_utils
 from pytype.pytd import mro
 from pytype.types import types
+
+_T0 = TypeVar("_T0")
+_TBaseValue = TypeVar("_TBaseValue", bound="BaseValue")
 
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _make = abstract_utils._make  # pylint: disable=protected-access
@@ -29,7 +32,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
   formal = False  # is this type non-instantiable?
 
-  def __init__(self, name, ctx):
+  def __init__(self, name, ctx) -> None:
     """Basic initializer for all BaseValues."""
     super().__init__(ctx)
     # This default cls value is used by things like Unsolvable that inherit
@@ -94,15 +97,15 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
   def __repr__(self):
     return self.name
 
-  def compute_mro(self):
+  def compute_mro(self) -> tuple:
     # default for objects with no MRO
     return ()
 
-  def default_mro(self):
+  def default_mro(self) -> tuple[types.BaseValue, Any]:
     # default for objects with unknown MRO
     return (self, self.ctx.convert.object_type)
 
-  def get_default_fullhash(self):
+  def get_default_fullhash(self) -> int:
     return id(self)
 
   def get_fullhash(self, seen=None):
@@ -143,7 +146,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     del t
     return self.ctx.convert.unsolvable
 
-  def property_get(self, callself, is_class=False):
+  def property_get(self: _TBaseValue, callself, is_class=False) -> _TBaseValue:
     """Bind this value to the given self or cls.
 
     This function is similar to __get__ except at the abstract level. This does
@@ -181,7 +184,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
         return self.cls.to_variable(self.ctx.root_node)
     return None
 
-  def get_own_new(self, node, value):
+  def get_own_new(self, node: _T0, value) -> tuple[_T0, None]:
     """Get this value's __new__ method, if it isn't object.__new__."""
     del value  # Unused, only classes have methods.
     return node, None
@@ -214,7 +217,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """Returns the minimum number of arguments needed for a call."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def register_instance(self, instance):  # pylint: disable=unused-arg
+  def register_instance(self, instance) -> None:  # pylint: disable=unused-arg
     """Treating self as a class definition, register an instance of it.
 
     This is used for keeping merging call records on instances when generating
@@ -240,7 +243,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """Get a PyTD definition for this object."""
     return self.ctx.pytd_convert.value_to_pytd_def(node, self, name)
 
-  def get_default_type_key(self):
+  def get_default_type_key(self) -> type[types.BaseValue]:
     """Gets a default type key. See get_type_key."""
     return type(self)
 
@@ -304,15 +307,15 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     (binding,) = self.to_variable(node).bindings
     return binding
 
-  def has_varargs(self):
+  def has_varargs(self) -> bool:
     """Return True if this is a function and has a *args parameter."""
     return False
 
-  def has_kwargs(self):
+  def has_kwargs(self) -> bool:
     """Return True if this is a function and has a **kwargs parameter."""
     return False
 
-  def _unique_parameters(self):
+  def _unique_parameters(self) -> list[None]:
     """Get unique parameter subtypes as variables.
 
     This will retrieve 'children' of this value that contribute to the
@@ -339,7 +342,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
     return [_get_values(parameter) for parameter in self._unique_parameters()]
 
-  def init_subclass(self, node, cls):
+  def init_subclass(self, node: _T0, cls) -> _T0:
     """Allow metaprogramming via __init_subclass__.
 
     We do not analyse __init_subclass__ methods in the code, but overlays that
@@ -363,13 +366,13 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     del cls
     return node
 
-  def update_official_name(self, _):
+  def update_official_name(self, _) -> None:
     """Update the official name."""
 
-  def is_late_annotation(self):
+  def is_late_annotation(self) -> bool:
     return False
 
-  def should_set_self_annot(self):
+  def should_set_self_annot(self) -> bool:
     # To do argument matching for custom generic classes, the 'self' annotation
     # needs to be replaced with a generic type.
 

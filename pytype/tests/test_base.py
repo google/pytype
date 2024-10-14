@@ -4,6 +4,7 @@ import contextlib
 import logging
 import sys
 import textwrap
+from typing import Any
 
 # from absl import flags
 from pytype import analyze
@@ -21,10 +22,12 @@ from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.rewrite import analyze as rewrite_analyze
 from pytype.tests import test_utils
+from pytype.tests.test_utils import ErrorMatcher
 
 import unittest
 
-log = logging.getLogger(__name__)
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # Make this false if you need to run the debugger inside a test.
@@ -52,7 +55,7 @@ def _MatchLoaderConfig(options, loader):
   return options == loader.options
 
 
-def _Format(code):
+def _Format(code) -> str:
   # Removes the leading newline introduced by writing, e.g.,
   # self.Check("""
   #   code
@@ -65,7 +68,7 @@ def _Format(code):
 class UnitTest(unittest.TestCase):
   """Base class for tests that specify a target Python version."""
 
-  python_version = sys.version_info[:2]
+  python_version: tuple[int, int] = sys.version_info[:2]
 
 
 class BaseTest(unittest.TestCase):
@@ -75,13 +78,13 @@ class BaseTest(unittest.TestCase):
   python_version: tuple[int, int] = sys.version_info[:2]
 
   @classmethod
-  def setUpClass(cls):
+  def setUpClass(cls) -> None:
     super().setUpClass()
     # We use class-wide loader to avoid creating a new loader for every test
     # method if not required.
     cls._loader = None
 
-  def setUp(self):
+  def setUp(self) -> None:
     super().setUp()
     self.options = config.Options.create(
         python_version=self.python_version,
@@ -109,13 +112,13 @@ class BaseTest(unittest.TestCase):
   def analyze_lib(self):
     return rewrite_analyze if self.options.use_rewrite else analyze
 
-  def ConfigureOptions(self, **kwargs):
+  def ConfigureOptions(self, **kwargs) -> None:
     assert (
         "python_version" not in kwargs
     ), "Individual tests cannot set the python_version of the config options."
     self.options.tweak(**kwargs)
 
-  def _GetPythonpathArgs(self, pythonpath, imports_map):
+  def _GetPythonpathArgs(self, pythonpath, imports_map) -> dict[str, Any]:
     """Gets values for --pythonpath and --imports_map."""
     if pythonpath:
       pythonpath_arg = pythonpath
@@ -139,7 +142,7 @@ class BaseTest(unittest.TestCase):
       quick=False,
       imports_map=None,
       **kwargs,
-  ):
+  ) -> None:
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(
         skip_repeat_calls=skip_repeat_calls,
@@ -160,12 +163,12 @@ class BaseTest(unittest.TestCase):
       errorlog.print_to_stderr()
       self.fail(f"Checker found {len(errorlog)} errors:\n{errorlog}")
 
-  def assertNoCrash(self, method, code, **kwargs):
+  def assertNoCrash(self, method, code, **kwargs) -> None:
     method(code, report_errors=False, **kwargs)
 
   def _SetUpErrorHandling(
       self, code, pythonpath, analyze_annotated, quick, imports_map
-  ):
+  ) -> dict[str, Any]:
     code = _Format(code)
     self.ConfigureOptions(
         analyze_annotated=analyze_annotated,
@@ -183,7 +186,7 @@ class BaseTest(unittest.TestCase):
       quick=False,
       imports_map=None,
       **kwargs,
-  ):
+  ) -> tuple[Any, ErrorMatcher]:
     """Runs inference on code expected to have type errors."""
     kwargs.update(
         self._SetUpErrorHandling(
@@ -217,7 +220,7 @@ class BaseTest(unittest.TestCase):
       quick=False,
       imports_map=None,
       **kwargs,
-  ):
+  ) -> ErrorMatcher:
     """Check and match errors."""
     kwargs.update(
         self._SetUpErrorHandling(
@@ -252,24 +255,24 @@ class BaseTest(unittest.TestCase):
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
-  def assertErrorRegexes(self, matcher, expected_errors):
+  def assertErrorRegexes(self, matcher, expected_errors) -> None:
     matcher.assert_error_regexes(expected_errors)
 
-  def assertErrorSequences(self, matcher, expected_errors):
+  def assertErrorSequences(self, matcher, expected_errors) -> None:
     matcher.assert_error_sequences(expected_errors)
 
-  def assertDiagnosticRegexes(self, matcher, expected_errors):
+  def assertDiagnosticRegexes(self, matcher, expected_errors) -> None:
     matcher.assert_diagnostic_regexes(expected_errors)
 
-  def assertDiagnosticMessages(self, matcher, expected_errors):
+  def assertDiagnosticMessages(self, matcher, expected_errors) -> None:
     matcher.assert_diagnostic_messages(expected_errors)
 
-  def _PickleAst(self, ast, module_name):
+  def _PickleAst(self, ast, module_name) -> bytes:
     assert module_name
     ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
     return pickle_utils.Serialize(ast)
 
-  def _PickleSource(self, src, module_name):
+  def _PickleSource(self, src, module_name) -> bytes:
     ast = serialize_ast.SourceToExportableAst(
         module_name, textwrap.dedent(src), self.loader
     )
@@ -318,7 +321,7 @@ class BaseTest(unittest.TestCase):
       imports_map=None,
       quick=False,
       **kwargs,
-  ):
+  ) -> tuple[Any, Any]:
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -360,7 +363,7 @@ class BaseTest(unittest.TestCase):
       self.fail(f"Inferencer found {len(errorlog)} errors:\n{errorlog}")
     return unit, ret.ast_deps
 
-  def assertTypesMatchPytd(self, ty, pytd_src):
+  def assertTypesMatchPytd(self, ty, pytd_src) -> None:
     """Parses pytd_src and compares with ty."""
     pytd_tree = parser.parse_string(
         textwrap.dedent(pytd_src),
@@ -435,12 +438,12 @@ class BaseTest(unittest.TestCase):
       )
 
 
-def _PrintErrorDebug(descr, value):
+def _PrintErrorDebug(descr, value) -> None:
   log.error("=============== %s ===========", descr)
   _LogLines(log.error, value)
   log.error("=========== end %s ===========", descr)
 
 
-def _LogLines(log_cmd, lines):
+def _LogLines(log_cmd, lines) -> None:
   for l in lines.split("\n"):
     log_cmd("%s", l)

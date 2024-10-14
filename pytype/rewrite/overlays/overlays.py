@@ -35,7 +35,7 @@ def register_class_transform(
   return register
 
 
-def initialize():
+def initialize() -> None:
   # Imports overlay implementations so that ther @register_* decorators execute
   # and populate the overlay registry.
   # pylint: disable=g-import-not-at-top,unused-import

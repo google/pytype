@@ -2,9 +2,10 @@
 
 import abc
 import collections
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Generator, Sequence
 import os
 import re
+from typing import Any
 
 from pytype import module_utils
 from pytype import pytype_source_utils
@@ -15,7 +16,7 @@ from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 
 
-def _get_module_names_in_path(lister, path, python_version):
+def _get_module_names_in_path(lister, path, python_version) -> set:
   """Get module names for all .pyi files in the given path."""
   names = set()
   try:
@@ -66,7 +67,7 @@ class TypeshedStore(metaclass=abc.ABCMeta):
 class TypeshedFs(TypeshedStore):
   """Filesystem-based typeshed store."""
 
-  def __init__(self, *, missing_file=None, open_function=open):
+  def __init__(self, *, missing_file=None, open_function=open) -> None:
     self._root = self.get_root()
     self._open_function = open_function
     self._missing_file = missing_file
@@ -83,7 +84,7 @@ class TypeshedFs(TypeshedStore):
     with self._open_function(filename) as f:
       return relpath, f.read()
 
-  def _readlines(self, unix_relpath):
+  def _readlines(self, unix_relpath) -> list[str]:
     relpath = path_utils.join(*unix_relpath.split("/"))
     _, data = self.load_file(relpath)
     return data.splitlines()
@@ -108,16 +109,16 @@ class InternalTypeshedFs(TypeshedFs):
   def get_root(self):
     return pytype_source_utils.get_full_path("typeshed")
 
-  def _list_files(self, relpath):
+  def _list_files(self, relpath) -> Generator[Any, Any, None]:
     """Lists files recursively in a basedir relative to typeshed root."""
     return pytype_source_utils.list_pytype_files(
         path_utils.join("typeshed", relpath)
     )
 
-  def list_files(self, relpath):
+  def list_files(self, relpath) -> list:
     return list(self._list_files(relpath))
 
-  def file_exists(self, relpath):
+  def file_exists(self, relpath) -> bool:
     try:
       # For a non-par pytype installation, load_text_file will either succeed,
       # raise FileNotFoundError, or raise IsADirectoryError.
@@ -145,7 +146,7 @@ class InternalTypeshedFs(TypeshedFs):
 class ExternalTypeshedFs(TypeshedFs):
   """Typeshed installation pointed to by TYPESHED_HOME."""
 
-  def get_root(self):
+  def get_root(self) -> str:
     home = os.getenv("TYPESHED_HOME")
     if not home or not path_utils.isdir(home):
       raise OSError(
@@ -154,14 +155,14 @@ class ExternalTypeshedFs(TypeshedFs):
       )
     return home
 
-  def _list_files(self, relpath):
+  def _list_files(self, relpath) -> Generator[str, Any, None]:
     """Lists files recursively in a basedir relative to typeshed root."""
     return pytype_source_utils.list_files(self.filepath(relpath))
 
-  def list_files(self, relpath):
+  def list_files(self, relpath) -> list:
     return list(self._list_files(relpath))
 
-  def file_exists(self, relpath):
+  def file_exists(self, relpath) -> bool:
     return path_utils.exists(self.filepath(relpath))
 
 
@@ -180,7 +181,7 @@ class Typeshed:
   # For testing, this file must contain the entry 'stdlib/pytypecanary'.
   MISSING_FILE = None
 
-  def __init__(self, missing_modules: Collection[str] = ()):
+  def __init__(self, missing_modules: Collection[str] = ()) -> None:
     """Initializer.
 
     Args:
@@ -197,11 +198,13 @@ class Typeshed:
     self._stdlib_versions = self._load_stdlib_versions()
     self._third_party_packages = self._load_third_party_packages()
 
-  def _load_missing(self):
+  def _load_missing(self) -> frozenset:
     lines = self._store.load_missing()
     return frozenset(line.strip() for line in lines if line)
 
-  def _load_stdlib_versions(self):
+  def _load_stdlib_versions(
+      self,
+  ) -> dict[Any, tuple[tuple[int, int], tuple[int, int] | None]]:
     """Loads the contents of typeshed/stdlib/VERSIONS.
 
     VERSIONS lists the stdlib modules with the Python version in which they were
@@ -231,7 +234,7 @@ class Typeshed:
       versions[module] = minimum, maximum
     return versions
 
-  def _load_third_party_packages(self):
+  def _load_third_party_packages(self) -> collections.defaultdict:
     """Loads package and Python version information for typeshed/stubs/.
 
     stubs/ contains type information for third-party packages. Each top-level
@@ -265,7 +268,7 @@ class Typeshed:
     """Set of known-missing typeshed modules, as strings of paths."""
     return self._missing
 
-  def get_module_file(self, namespace, module, version):
+  def get_module_file(self, namespace, module, version) -> tuple[str, str]:
     """Get the contents of a typeshed .pyi file.
 
     Arguments:
@@ -353,7 +356,7 @@ class Typeshed:
         for d in (f"stubs{os.path.sep}builtins", f"stubs{os.path.sep}stdlib")
     ]
 
-  def _list_modules(self, path, python_version):
+  def _list_modules(self, path, python_version) -> Generator[Any, Any, None]:
     """Lists modules for _get_module_names_in_path."""
     for filename in self._store.list_files(path):
       if filename in ("VERSIONS", "METADATA.toml"):
@@ -369,7 +372,7 @@ class Typeshed:
           continue
       yield filename
 
-  def _get_missing_modules(self):
+  def _get_missing_modules(self) -> set[str]:
     """Gets module names from the `missing` list."""
     module_names = set()
     for f in self.missing:
@@ -383,7 +386,7 @@ class Typeshed:
       module_names.add(filename.replace(os.path.sep, "."))
     return module_names
 
-  def get_all_module_names(self, python_version):
+  def get_all_module_names(self, python_version) -> set:
     """Get the names of all modules in typeshed or bundled with pytype."""
     module_names = set()
     for abspath in self.get_typeshed_paths():
@@ -403,7 +406,7 @@ class Typeshed:
     assert "ctypes" in module_names  # sanity check
     return module_names
 
-  def read_blacklist(self):
+  def read_blacklist(self) -> Generator[str, Any, None]:
     """Read the typeshed blacklist."""
     lines = self._store.load_pytype_blocklist()
     for line in lines:
@@ -413,7 +416,7 @@ class Typeshed:
       if line:
         yield line
 
-  def blacklisted_modules(self):
+  def blacklisted_modules(self) -> Generator[Any, Any, None]:
     """Return the blacklist, as a list of module names. E.g. ["x", "y.z"]."""
     for path in self.read_blacklist():
       # E.g. ["stdlib", "html", "parser.pyi"]
@@ -427,7 +430,7 @@ class Typeshed:
         yield mod
 
 
-def _get_typeshed(missing_modules):
+def _get_typeshed(missing_modules) -> Typeshed:
   """Get a Typeshed instance."""
   try:
     return Typeshed(missing_modules)
@@ -441,12 +444,14 @@ def _get_typeshed(missing_modules):
 class TypeshedLoader(base.BuiltinLoader):
   """Load modules from typeshed."""
 
-  def __init__(self, options, missing_modules):
+  def __init__(self, options, missing_modules) -> None:
     self.options = options
     self.typeshed = _get_typeshed(missing_modules)
     # TODO(mdemello): Inject options.open_function into self.typeshed
 
-  def load_module(self, namespace, module_name):
+  def load_module(
+      self, namespace, module_name
+  ):
     """Load and parse a *.pyi from typeshed.
 
     Args:

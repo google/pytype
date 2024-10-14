@@ -1,7 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
 from collections.abc import Iterator
-from typing import Any, cast
+from typing import Any, cast, TypeVar
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
@@ -9,7 +9,15 @@ from pytype.pyc import opcodes
 from pytype.typegraph import cfg_utils
 from typing_extensions import Self
 
-STORE_OPCODES = (
+_SelfBlock = TypeVar("_SelfBlock", bound="Block")
+
+STORE_OPCODES: tuple[
+    type[opcodes.STORE_NAME],
+    type[opcodes.STORE_FAST],
+    type[opcodes.STORE_ATTR],
+    type[opcodes.STORE_DEREF],
+    type[opcodes.STORE_GLOBAL],
+] = (
     opcodes.STORE_NAME,
     opcodes.STORE_FAST,
     opcodes.STORE_ATTR,
@@ -17,7 +25,13 @@ STORE_OPCODES = (
     opcodes.STORE_GLOBAL,
 )
 
-_NOOP_OPCODES = (opcodes.NOP, opcodes.PRECALL, opcodes.RESUME)
+_NOOP_OPCODES: tuple[
+    type[opcodes.NOP], type[opcodes.PRECALL], type[opcodes.RESUME]
+] = (
+    opcodes.NOP,
+    opcodes.PRECALL,
+    opcodes.RESUME,
+)
 
 
 class _Locals311:
@@ -28,7 +42,7 @@ class _Locals311:
   CO_FAST_CELL = 0x40
   CO_FAST_FREE = 0x80
 
-  def __init__(self, code: pycnite.types.CodeType311):
+  def __init__(self, code: pycnite.types.CodeType311) -> None:
     table = list(zip(code.co_localsplusnames, code.co_localspluskinds))
     filter_names = lambda k: tuple(name for name, kind in table if kind & k)
     self.co_varnames = filter_names(self.CO_FAST_LOCAL)
@@ -67,16 +81,16 @@ class Block:
     self.outgoing.add(target)
     target.incoming.add(self)
 
-  def __str__(self):
+  def __str__(self) -> str:
     return "<Block %d>" % self.id
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "<Block %d: %r>" % (self.id, self.code)
 
   def __getitem__(self, index_or_slice):
     return self.code.__getitem__(index_or_slice)
 
-  def __iter__(self):
+  def __iter__(self) -> Iterator[opcodes.Opcode]:
     return self.code.__iter__()
 
 
@@ -164,7 +178,7 @@ class OrderedCode:
     for insn in bytecode:
       insn.code = self
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"OrderedCode({self.qualname}, version={self.python_version})"
 
   @property
@@ -178,40 +192,40 @@ class OrderedCode:
   def code_iter(self) -> Iterator[opcodes.Opcode]:
     return (op for block in self.order for op in block)  # pylint: disable=g-complex-comprehension
 
-  def get_first_opcode(self, skip_noop=False):
+  def get_first_opcode(self, skip_noop=False) -> opcodes.Opcode:
     for op in self.code_iter:
       if not skip_noop or not isinstance(op, _NOOP_OPCODES):
         return op
     assert False, "OrderedCode should have at least one opcode"
 
-  def has_opcode(self, op_type):
+  def has_opcode(self, op_type) -> bool:
     return any(isinstance(op, op_type) for op in self.code_iter)
 
-  def has_iterable_coroutine(self):
+  def has_iterable_coroutine(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_ITERABLE_COROUTINE)
 
-  def set_iterable_coroutine(self):
+  def set_iterable_coroutine(self) -> None:
     self._co_flags |= pyc_marshal.Flags.CO_ITERABLE_COROUTINE
 
-  def has_coroutine(self):
+  def has_coroutine(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_COROUTINE)
 
-  def has_generator(self):
+  def has_generator(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_GENERATOR)
 
-  def has_async_generator(self):
+  def has_async_generator(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_ASYNC_GENERATOR)
 
-  def has_varargs(self):
+  def has_varargs(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_VARARGS)
 
-  def has_varkeywords(self):
+  def has_varkeywords(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_VARKEYWORDS)
 
-  def has_newlocals(self):
+  def has_newlocals(self) -> bool:
     return bool(self._co_flags & pyc_marshal.Flags.CO_NEWLOCALS)
 
-  def get_arg_count(self):
+  def get_arg_count(self) -> int:
     """Total number of arg names including '*args' and '**kwargs'."""
     count = self.argcount + self.kwonlyargcount
     if self.has_varargs():
@@ -228,13 +242,13 @@ class OrderedCode:
 class BlockGraph:
   """CFG made up of ordered code blocks."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.graph: dict[opcodes.Opcode, OrderedCode] = {}
 
-  def add(self, ordered_code: OrderedCode):
+  def add(self, ordered_code: OrderedCode) -> None:
     self.graph[ordered_code.get_first_opcode()] = ordered_code
 
-  def pretty_print(self):
+  def pretty_print(self) -> str:
     return str(self.graph)
 
 

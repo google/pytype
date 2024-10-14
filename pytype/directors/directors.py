@@ -4,26 +4,27 @@ import bisect
 import collections
 import logging
 import sys
-
+from typing import Any
 
 from pytype import config
 from pytype.directors import annotations
-
 from pytype.directors import parser
+
+
 # pylint: enable=g-import-not-at-top
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
-SkipFileError = parser.SkipFileError
+SkipFileError: type[parser.SkipFileError] = parser.SkipFileError
 parse_src = parser.parse_src
 
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
-_ALLOWED_FEATURES = frozenset(x.flag for x in config.FEATURE_FLAGS)
+_ALLOWED_FEATURES: frozenset = frozenset(x.flag for x in config.FEATURE_FLAGS)
 
-_PRAGMAS = frozenset({"cache-return"})
+_PRAGMAS: frozenset[str] = frozenset({"cache-return"})
 
-_FUNCTION_CALL_ERRORS = frozenset((
+_FUNCTION_CALL_ERRORS: frozenset[str] = frozenset((
     # A function call may implicitly access a magic method attribute.
     "attribute-error",
     "duplicate-keyword",
@@ -37,7 +38,7 @@ _FUNCTION_CALL_ERRORS = frozenset((
     "unsupported-operands",
 ))
 
-_ALL_ADJUSTABLE_ERRORS = _FUNCTION_CALL_ERRORS.union((
+_ALL_ADJUSTABLE_ERRORS: frozenset[str] = _FUNCTION_CALL_ERRORS.union((
     "annotation-type-mismatch",
     "bad-return-type",
     "bad-yield-annotation",
@@ -60,7 +61,7 @@ class _LineSet:
   their own line apply until countered by the opposing directive.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     # Map of line->bool for specific lines, takes precedence over _transitions.
     self._lines = {}
     # A sorted list of the lines at which the range state changes
@@ -75,11 +76,11 @@ class _LineSet:
   def lines(self):
     return self._lines
 
-  def set_line(self, line, membership):
+  def set_line(self, line, membership) -> None:
     """Set whether a given line is a member of the set."""
     self._lines[line] = membership
 
-  def start_range(self, line, membership):
+  def start_range(self, line, membership) -> None:
     """Start a range of lines that are either included/excluded from the set.
 
     Args:
@@ -108,7 +109,7 @@ class _LineSet:
       # Normal case - add a transition at this line.
       self._transitions.append(line)
 
-  def __contains__(self, line):
+  def __contains__(self, line) -> bool:
     """Return if a line is a member of the set."""
     # First check for an entry in _lines.
     specific = self._lines.get(line)
@@ -129,18 +130,18 @@ class _LineSet:
 class _BlockRanges:
   """A collection of possibly nested start..end ranges from AST nodes."""
 
-  def __init__(self, start_to_end_mapping):
+  def __init__(self, start_to_end_mapping) -> None:
     self._starts = sorted(start_to_end_mapping)
     self._start_to_end = start_to_end_mapping
     self._end_to_start = {v: k for k, v in start_to_end_mapping.items()}
 
-  def has_start(self, line):
+  def has_start(self, line) -> bool:
     return line in self._start_to_end
 
-  def has_end(self, line):
+  def has_end(self, line) -> bool:
     return line in self._end_to_start
 
-  def find_outermost(self, line):
+  def find_outermost(self, line) -> tuple[Any, Any]:
     """Find the outermost interval containing line."""
     i = bisect.bisect_left(self._starts, line)
     num_intervals = len(self._starts)
@@ -161,7 +162,7 @@ class _BlockRanges:
         return start, end
     return None, None
 
-  def adjust_end(self, old_end, new_end):
+  def adjust_end(self, old_end, new_end) -> None:
     start = self._end_to_start[old_end]
     self._start_to_end[start] = new_end
     del self._end_to_start[old_end]
@@ -171,7 +172,7 @@ class _BlockRanges:
 class Director:
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src_tree, errorlog, filename, disable):
+  def __init__(self, src_tree, errorlog, filename, disable) -> None:
     """Create a Director for a source file.
 
     Args:
@@ -237,10 +238,10 @@ class Director:
   def decorated_functions(self):
     return self._decorated_functions
 
-  def has_pragma(self, pragma, line):
+  def has_pragma(self, pragma, line) -> bool:
     return pragma in self._pragmas and line in self._pragmas[pragma]
 
-  def _parse_src_tree(self, src_tree):
+  def _parse_src_tree(self, src_tree) -> None:
     """Parse a source file, extracting directives from comments."""
     visitor = parser.visit_src_tree(src_tree)
     # TODO(rechen): This check can be removed once parser_libcst is gone.
@@ -353,7 +354,7 @@ class Director:
       else:
         raise _DirectiveError(f"Unknown pytype directive: '{command}'")
 
-  def _process_features(self, features: set[str]):
+  def _process_features(self, features: set[str]) -> None:
     invalid = features - _ALLOWED_FEATURES
     if invalid:
       raise _DirectiveError(f"Unknown pytype features: {','.join(invalid)}")
@@ -427,7 +428,7 @@ class Director:
       return line
     return line_range.start_line
 
-  def filter_error(self, error):
+  def filter_error(self, error) -> bool:
     """Return whether the error should be logged.
 
     This method is suitable for use as an error filter.

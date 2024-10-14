@@ -1,7 +1,7 @@
 """Implementation of types from the fiddle library."""
 
 import re
-from typing import Any
+from typing import Any, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -12,9 +12,12 @@ from pytype.overlays import overlay
 from pytype.pytd import pytd
 
 
+_TBuildableType = TypeVar("_TBuildableType", bound="BuildableType")
+
+
 # Type aliases so we aren't importing stuff purely for annotations
-Node = Any
-Variable = Any
+Node: Any = Any
+Variable: Any = Any
 
 
 # Cache instances, so that we don't generate two different classes when
@@ -24,7 +27,7 @@ Variable = Any
 _INSTANCE_CACHE: dict[tuple[Node, abstract.Class, str], abstract.Instance] = {}
 
 
-_CLASS_ALIASES = {
+_CLASS_ALIASES: dict[str, str] = {
     "Config": "Config",
     "PaxConfig": "Config",
     "Partial": "Partial",
@@ -35,7 +38,7 @@ _CLASS_ALIASES = {
 class FiddleOverlay(overlay.Overlay):
   """A custom overlay for the 'fiddle' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     """Initializes the FiddleOverlay.
 
     This function loads the AST for the fiddle module, which is used to
@@ -60,7 +63,7 @@ class FiddleOverlay(overlay.Overlay):
 class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
   """Factory for creating fiddle.Config classes."""
 
-  def __init__(self, name, ctx, module):
+  def __init__(self, name, ctx, module) -> None:
     pytd_cls = ctx.loader.lookup_pytd(module, name)
     # fiddle.Config/Partial loads as a LateType, convert to pytd.Class
     if isinstance(pytd_cls, pytd.Constant):
@@ -72,10 +75,10 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     self.fiddle_type_name = _CLASS_ALIASES[name]
     self.module = module
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"FiddleBuildableBuilder[{self.name}]"
 
-  def _match_pytd_init(self, node, init_var, args):
+  def _match_pytd_init(self, node, init_var, args) -> None:
     init = init_var.data[0]
     old_pytd_sigs = []
     for signature in init.signatures:
@@ -90,7 +93,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
       for signature, old_pytd_sig in zip(init.signatures, old_pytd_sigs):
         signature.pytd_sig = old_pytd_sig
 
-  def _match_interpreter_init(self, node, init_var, args):
+  def _match_interpreter_init(self, node, init_var, args) -> None:
     # Buildables support partial initialization, so give every parameter a
     # default when matching __init__.
     init = init_var.data[0]
@@ -109,7 +112,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
         else:
           del init.signature.defaults[k]
 
-  def _make_init_args(self, node, underlying, args, kwargs):
+  def _make_init_args(self, node, underlying, args, kwargs) -> function.Args:
     """Unwrap Config instances for arg matching."""
 
     def unwrap(arg_var):
@@ -137,7 +140,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     new_kwargs = {k: unwrap(arg) for k, arg in kwargs.items()}
     return function.Args(posargs=new_args, namedargs=new_kwargs)
 
-  def _check_init_args(self, node, underlying, args, kwargs):
+  def _check_init_args(self, node, underlying, args, kwargs) -> None:
     # Configs can be initialized either with no args, e.g. Config(Class) or with
     # initial values, e.g. Config(Class, x=10, y=20). We need to check here that
     # the extra args match the underlying __init__ signature.
@@ -183,7 +186,9 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 class BuildableType(abstract.ParameterizedClass):
   """Base generic class for fiddle.Config and fiddle.Partial."""
 
-  def __init__(self, base_cls, underlying, ctx, template=None, module="fiddle"):
+  def __init__(
+      self, base_cls, underlying, ctx, template=None, module="fiddle"
+  ) -> None:
     if isinstance(underlying, abstract.FUNCTION_TYPES):
       # We don't support functions for now, but falling back to Any here gets us
       # as much of the functionality as possible.
@@ -196,15 +201,22 @@ class BuildableType(abstract.ParameterizedClass):
       # Classes and TypeVars
       formal_type_parameters = {abstract_utils.T: underlying}
 
-    super().__init__(base_cls, formal_type_parameters, ctx, template)  # pytype: disable=wrong-arg-types
+    super().__init__(
+        base_cls, formal_type_parameters, ctx, template
+    )  # pytype: disable=wrong-arg-types
     self.fiddle_type_name = base_cls.fiddle_type_name
     self.underlying = underlying
     self.module = module
 
   @classmethod
   def make(
-      cls, fiddle_type_name, underlying, ctx, template=None, module="fiddle"
-  ):
+      cls: type[_TBuildableType],
+      fiddle_type_name,
+      underlying,
+      ctx,
+      template=None,
+      module="fiddle",
+  ) -> _TBuildableType:
     base_cls = BuildableBuilder(fiddle_type_name, ctx, module)
     return cls(base_cls, underlying, ctx, template, module)
 
@@ -226,14 +238,14 @@ class BuildableType(abstract.ParameterizedClass):
     )
     return ret.to_variable(node)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"{self.fiddle_type_name}Type[{self.underlying}]"
 
 
 class Buildable(abstract.Instance, mixin.HasSlots):
   """Base class for Config and Partial instances."""
 
-  def __init__(self, fiddle_type_name, cls, ctx, container=None):
+  def __init__(self, fiddle_type_name, cls, ctx, container=None) -> None:
     super().__init__(cls, ctx, container)
     self.fiddle_type_name = fiddle_type_name
     self.underlying = None
@@ -252,18 +264,18 @@ class Buildable(abstract.Instance, mixin.HasSlots):
 class Config(Buildable):
   """An instantiation of a fiddle.Config with a particular template."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__("Config", *args, **kwargs)
 
 
 class Partial(Buildable):
   """An instantiation of a fiddle.Partial with a particular template."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__("Partial", *args, **kwargs)
 
 
-def _convert_type(typ, subst, ctx):
+def _convert_type(typ, subst, ctx) -> abstract.Union:
   """Helper function for recursive type conversion of fields."""
   if isinstance(typ, abstract.TypeParameter) and typ.name in subst:
     # TODO(mdemello): Handle typevars in unions.

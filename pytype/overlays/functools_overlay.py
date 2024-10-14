@@ -9,7 +9,7 @@ _MODULE_NAME = "functools"
 class FunctoolsOverlay(overlay.Overlay):
   """An overlay for the functools std lib module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "cached_property": overlay.add_name(
             "cached_property", special_builtins.Property.make_alias

@@ -1,6 +1,6 @@
 """Apply decorators to classes and functions."""
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Callable
 
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
@@ -11,7 +11,7 @@ from pytype.pytd.codegen import function
 class ValidateDecoratedClassVisitor(base_visitor.Visitor):
   """Apply class decorators."""
 
-  def EnterClass(self, cls):
+  def EnterClass(self, cls) -> None:
     validate_class(cls)
 
 
@@ -179,7 +179,7 @@ def validate_class(cls: pytd.Class) -> None:
 # change to hide that implementation detail. We also add an implicit
 # "auto_attribs=True" to @attr.s decorators in pyi files.
 
-_DECORATORS = {
+_DECORATORS: dict[str, Callable[[pytd.Class], pytd.Class]] = {
     "dataclasses.dataclass": decorate_dataclass,
     "attr.s": decorate_attrs,
     "attr.attrs": decorate_attrs,
@@ -188,7 +188,7 @@ _DECORATORS = {
 }
 
 
-_VALIDATORS = {
+_VALIDATORS: dict[str, Callable[[pytd.Class], None]] = {
     "dataclasses.dataclass": check_class,
     "attr.s": check_class,
     "attr.attrs": check_class,

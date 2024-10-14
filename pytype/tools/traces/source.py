@@ -2,9 +2,12 @@
 
 import collections
 import dataclasses
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, TypeVar
 
 from pytype.pytd import pytd
+
+_T1 = TypeVar("_T1")
+_TAbstractTrace = TypeVar("_TAbstractTrace", bound="AbstractTrace")
 
 
 class Location(NamedTuple):
@@ -19,13 +22,13 @@ class AbstractTrace:
   symbol: Any
   types: tuple[pytd.Node, ...]
 
-  def __new__(cls, op, symbol, types):
+  def __new__(cls: type[_TAbstractTrace], op, symbol, types) -> _TAbstractTrace:
     del op, symbol, types  # unused
     if cls is AbstractTrace:
       raise TypeError("cannot instantiate AbstractTrace")
     return super().__new__(cls)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"{self.op} : {self.symbol} <- {self.types}"
 
 
@@ -39,7 +42,7 @@ class Code:
       only if an options object containing the filename was provided.
   """
 
-  def __init__(self, src, raw_traces, trace_factory, filename):
+  def __init__(self, src, raw_traces, trace_factory, filename) -> None:
     """Initializer.
 
     Args:
@@ -56,7 +59,7 @@ class Code:
     self._offsets = []
     self._init_byte_offsets()
 
-  def _init_byte_offsets(self):
+  def _init_byte_offsets(self) -> None:
     offset = 0
     for line in self._lines:
       self._offsets.append(offset)
@@ -72,11 +75,11 @@ class Code:
     """Gets the text at a line number."""
     return self._lines[n - 1]
 
-  def get_closest_line_range(self, start, end):
+  def get_closest_line_range(self, start, end) -> range:
     """Gets all valid line numbers in the [start, end) line range."""
     return range(start, min(end, len(self._lines) + 1))
 
-  def find_first_text(self, start, end, text):
+  def find_first_text(self, start, end, text) -> Location | None:
     """Gets first location, if any, the string appears at in the line range."""
 
     for l in self.get_closest_line_range(start, end):
@@ -90,7 +93,7 @@ class Code:
         return Location(l, col)
     return None
 
-  def next_non_comment_line(self, line):
+  def next_non_comment_line(self, line) -> int | None:
     """Gets the next non-comment line, if any, after the given line."""
     for l in range(line + 1, len(self._lines) + 1):
       if self.line(l).lstrip().startswith("#"):
@@ -98,7 +101,7 @@ class Code:
       return l
     return None
 
-  def display_traces(self):
+  def display_traces(self) -> None:
     """Prints the source file with traces for debugging."""
     for line in sorted(self.traces):
       print("%d %s" % (line, self.line(line)))
@@ -106,7 +109,9 @@ class Code:
         print(f"  {trace}")
       print("-------------------")
 
-  def get_attr_location(self, name, location):
+  def get_attr_location(
+      self, name, location: _T1
+  ) -> tuple[Location | _T1, int]:
     """Returns the location and span of the attribute in an attribute access.
 
     Args:
@@ -158,7 +163,7 @@ class Code:
       return None
 
 
-def _collect_traces(raw_traces, trace_factory):
+def _collect_traces(raw_traces, trace_factory) -> collections.defaultdict:
   """Postprocesses pytype's opcode traces."""
   out = collections.defaultdict(list)
   for op, symbol, data in raw_traces:

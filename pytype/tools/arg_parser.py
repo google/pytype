@@ -9,7 +9,7 @@ from pytype import config as pytype_config
 
 # Type alias
 _ArgDict = dict[str, Any]
-Namespace = argparse.Namespace
+Namespace: type[argparse.Namespace] = argparse.Namespace
 
 
 @dataclasses.dataclass
@@ -32,7 +32,9 @@ class ParsedArgs:
 class Parser:
   """Parser that integrates tool and pytype-single args."""
 
-  def __init__(self, parser, *, pytype_single_args=None, overrides=None):
+  def __init__(
+      self, parser, *, pytype_single_args=None, overrides=None
+  ) -> None:
     """Initialize a parser.
 
     Args:
@@ -88,14 +90,14 @@ class Parser:
     pytype_opts = pytype_config.Options(pytype_args)
     return ParsedArgs(tool_args, pytype_opts)
 
-  def process(self, tool_args, pytype_args):
+  def process(self, tool_args, pytype_args) -> None:
     """Process raw pytype args before passing to config.Options."""
     # Override in subclasses
 
-  def error(self, msg):
+  def error(self, msg) -> None:
     self._parser.error(msg)
 
-  def _ensure_valid_pytype_args(self, pytype_args: argparse.Namespace):
+  def _ensure_valid_pytype_args(self, pytype_args: argparse.Namespace) -> None:
     """Final adjustment of raw pytype args before constructing Options."""
     # If we do not have an input file add a dummy one here; tools often need to
     # construct a config.Options without having an input file.

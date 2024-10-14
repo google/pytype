@@ -11,10 +11,10 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.pytd import pytd
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 # This should be context.Context, which can't be imported due to a circular dep.
-_ContextType = Any
+_ContextType: Any = Any
 _SignatureMapType = Mapping[str, function.Signature]
 
 
@@ -53,7 +53,7 @@ def _get_varargs_annotation_type(param_type):
 
 def _check_positional_parameter_annotations(
     method_signature, base_signature, is_subtype
-):
+) -> SignatureError | None:
   """Checks type annotations for positional parameters of the overriding method.
 
   Args:
@@ -213,7 +213,7 @@ def _check_positional_parameters(
 
 def _check_keyword_only_parameters(
     method_signature, base_signature, is_subtype
-):
+) -> SignatureError | None:
   """Checks that the keyword-only parameters of the overriding method match.
 
   Args:
@@ -308,7 +308,9 @@ def _check_keyword_only_parameters(
   return None
 
 
-def _check_default_values(method_signature, base_signature):
+def _check_default_values(
+    method_signature, base_signature
+) -> SignatureError | None:
   """Checks that default parameter values of the overriding method match.
 
   Args:
@@ -363,7 +365,9 @@ def _check_default_values(method_signature, base_signature):
   return None
 
 
-def _check_return_types(method_signature, base_signature, is_subtype):
+def _check_return_types(
+    method_signature, base_signature, is_subtype
+) -> SignatureError | None:
   """Checks that the return types match."""
   try:
     base_return_type = base_signature.annotations["return"]
@@ -389,7 +393,7 @@ def _check_return_types(method_signature, base_signature, is_subtype):
 
 def _check_signature_compatible(
     method_signature, base_signature, stack, matcher, ctx
-):
+) -> None:
   """Checks if the signatures match for the overridden and overriding methods.
 
   Adds the first error found to the context's error log.
@@ -523,7 +527,7 @@ def _get_parameterized_class_signature_map(
   return method_signature_map
 
 
-def check_overriding_members(cls, bases, members, matcher, ctx):
+def check_overriding_members(cls, bases, members, matcher, ctx) -> None:
   """Check that the method signatures of the new class match base classes."""
 
   # Maps method names to methods.

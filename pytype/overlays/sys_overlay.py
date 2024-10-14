@@ -7,7 +7,7 @@ from pytype.overlays import overlay
 class SysOverlay(overlay.Overlay):
   """A custom overlay for the 'sys' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "platform": overlay.drop_module(build_platform),
         "version_info": overlay.drop_module(build_version_info),
@@ -18,7 +18,13 @@ class SysOverlay(overlay.Overlay):
 
 class VersionInfo(abstract.Tuple):
 
-  ATTRIBUTES = ("major", "minor", "micro", "releaselevel", "serial")
+  ATTRIBUTES: tuple[str, str, str, str, str] = (
+      "major",
+      "minor",
+      "micro",
+      "releaselevel",
+      "serial",
+  )
 
   def get_special_attribute(self, node, name, valself):
     try:
@@ -32,7 +38,7 @@ def build_platform(ctx):
   return ctx.convert.constant_to_value(ctx.options.platform)
 
 
-def build_version_info(ctx):
+def build_version_info(ctx) -> VersionInfo:
   """Build sys.version_info."""
   version = []
   # major, minor

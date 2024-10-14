@@ -19,12 +19,14 @@ from __future__ import annotations
 from collections.abc import Generator
 import enum
 import itertools
-from typing import Any, Union
+from typing import Any, TypeVar, Union
 
 from pytype.pytd.parse import node
 
+_TMethodFlag = TypeVar('_TMethodFlag', bound='MethodFlag')
+
 # Alias node.Node for convenience.
-Node = node.Node
+Node: type[Node] = node.Node
 
 
 class Type(Node):
@@ -53,7 +55,7 @@ class TypeDeclUnit(Node, eq=False):
   # in equality or hash operations.
   _name2item: dict[str, Any] = {}
 
-  def _InitCache(self):
+  def _InitCache(self) -> None:
     # TODO(b/159053187): Put constants, functions, classes and aliases into a
     # combined dict.
     for x in (self.constants, self.functions, self.classes, self.aliases):
@@ -86,7 +88,7 @@ class TypeDeclUnit(Node, eq=False):
       self._InitCache()
     return self._name2item.get(name)
 
-  def __contains__(self, name):
+  def __contains__(self, name) -> bool:
     return bool(self.Get(name))
 
   def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
@@ -102,7 +104,7 @@ class TypeDeclUnit(Node, eq=False):
 
   # The hash/eq/ne values are used for caching and speed things up quite a bit.
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return id(self)
 
 
@@ -165,7 +167,7 @@ class Class(Node):
   # in equality or hash operations.
   _name2item: dict[str, Any] = {}
 
-  def _InitCache(self):
+  def _InitCache(self) -> None:
     # TODO(b/159053187): Put constants, functions, classes and aliases into a
     # combined dict.
     for x in (self.methods, self.constants, self.classes):
@@ -197,7 +199,7 @@ class Class(Node):
       self._InitCache()
     return self._name2item.get(name)
 
-  def __contains__(self, name):
+  def __contains__(self, name) -> bool:
     return bool(self.Get(name))
 
   def __hash__(self):
@@ -228,10 +230,10 @@ class Class(Node):
 
 
 class MethodKind(enum.Enum):
-  METHOD = 'method'
-  STATICMETHOD = 'staticmethod'
-  CLASSMETHOD = 'classmethod'
-  PROPERTY = 'property'
+  METHOD: Literal['method'] = 'method'
+  STATICMETHOD: Literal['staticmethod'] = 'staticmethod'
+  CLASSMETHOD: Literal['classmethod'] = 'classmethod'
+  PROPERTY: Literal['property'] = 'property'
 
 
 class MethodFlag(enum.Flag):
@@ -241,7 +243,7 @@ class MethodFlag(enum.Flag):
   FINAL = enum.auto()
 
   @classmethod
-  def abstract_flag(cls, is_abstract):  # pylint: disable=invalid-name
+  def abstract_flag(cls: type[_TMethodFlag], is_abstract) -> _TMethodFlag:  # pylint: disable=invalid-name
     # Useful when creating functions directly (other flags aren't needed there).
     return cls.ABSTRACT if is_abstract else cls.NONE
 
@@ -309,9 +311,9 @@ class Signature(Node):
 
 
 class ParameterKind(enum.Enum):
-  REGULAR = 'regular'
-  POSONLY = 'posonly'
-  KWONLY = 'kwonly'
+  REGULAR: Literal['regular'] = 'regular'
+  POSONLY: Literal['posonly'] = 'posonly'
+  KWONLY: Literal['kwonly'] = 'kwonly'
 
 
 class Parameter(Node):
@@ -384,7 +386,7 @@ class TypeParameter(Type):
 class ParamSpec(TypeParameter):
   """ParamSpec is a specific case of TypeParameter."""
 
-  def Get(self, attr):
+  def Get(self, attr) -> ParamSpecArgs | ParamSpecKwargs | None:
     if attr == 'args':
       return ParamSpecArgs(self.name)
     elif attr == 'kwargs':
@@ -455,7 +457,7 @@ class NamedType(Type):
 
   name: str
 
-  def __str__(self):
+  def __str__(self) -> str:
     return self.name
 
 
@@ -481,19 +483,19 @@ class ClassType(Type, frozen=False, eq=False):
     # this, we claim that `name` is the only child.
     yield 'name', self.name
 
-  def __eq__(self, other):
+  def __eq__(self, other) -> bool:
     return self.__class__ == other.__class__ and self.name == other.name
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash((self.__class__.__name__, self.name))
 
-  def __str__(self):
+  def __str__(self) -> str:
     return str(self.cls.name) if self.cls else self.name
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return '{type}{cls}({name})'.format(
         type=type(self).__name__,
         name=self.name,
@@ -507,14 +509,14 @@ class LateType(Type):
   name: str
   recursive: bool = False
 
-  def __str__(self):
+  def __str__(self) -> str:
     return self.name
 
 
 class AnythingType(Type):
   """A type we know nothing about yet (? in pytd)."""
 
-  def __bool__(self):
+  def __bool__(self) -> bool:
     return True
 
 
@@ -525,7 +527,7 @@ class NothingType(Type):
   For representing empty lists, and functions that never return.
   """
 
-  def __bool__(self):
+  def __bool__(self) -> bool:
     return True
 
 
@@ -551,10 +553,10 @@ class _SetOfTypes(Type, frozen=False, eq=False):
   #       parentheses gives the same result.
   type_list: tuple[TypeU, ...] = ()
 
-  def __post_init__(self):
+  def __post_init__(self) -> None:
     self.type_list = _FlattenTypes(self.type_list)
 
-  def __eq__(self, other):
+  def __eq__(self, other) -> bool:
     if self is other:
       return True
     if isinstance(other, type(self)):
@@ -562,10 +564,10 @@ class _SetOfTypes(Type, frozen=False, eq=False):
       return frozenset(self.type_list) == frozenset(other.type_list)
     return NotImplemented
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash(self.type_list)
 
 
@@ -651,7 +653,10 @@ class Annotated(Type):
 
 
 # Types that can be a base type of GenericType:
-GENERIC_BASE_TYPE = (NamedType, ClassType)
+GENERIC_BASE_TYPE: tuple[type[NamedType], type[ClassType]] = (
+    NamedType,
+    ClassType,
+)
 
 
 # msgspec will not deserialize subclasses. That is, for a class like:
@@ -716,7 +721,7 @@ def IsContainer(t: Class) -> bool:
 
 # Singleton objects that will be automatically converted to their types.
 # The unqualified form is there so local name resolution can special-case it.
-SINGLETON_TYPES = frozenset({'Ellipsis', 'builtins.Ellipsis'})
+SINGLETON_TYPES: frozenset[str] = frozenset({'Ellipsis', 'builtins.Ellipsis'})
 
 
 def ToType(

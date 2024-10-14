@@ -11,6 +11,7 @@
 # frozen anyway we needn't bother about that for now.
 
 
+from typing import TypeVar
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
@@ -19,11 +20,13 @@ from pytype.overlays import dataclass_overlay
 from pytype.overlays import overlay
 from pytype.pytd import pytd
 
+_T0 = TypeVar("_T0")
+
 
 class DataclassOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.struct' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "dataclass": Dataclass.make,
     }
@@ -34,7 +37,7 @@ class DataclassOverlay(overlay.Overlay):
 class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
-  def decorate(self, node, cls):
+  def decorate(self, node, cls) -> None:
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
       return
@@ -51,7 +54,7 @@ class Dataclass(dataclass_overlay.Dataclass):
 class LinenOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.linen' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "Module": Module,
     }
@@ -62,7 +65,7 @@ class LinenOverlay(overlay.Overlay):
 class LinenModuleOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.linen.module' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "Module": Module,
     }
@@ -73,7 +76,7 @@ class LinenModuleOverlay(overlay.Overlay):
 class ModuleDataclass(dataclass_overlay.Dataclass):
   """Dataclass with automatic 'name' and 'parent' members."""
 
-  def _add_implicit_field(self, node, cls_locals, key, typ):
+  def _add_implicit_field(self, node, cls_locals, key, typ) -> None:
     if key in cls_locals:
       self.ctx.errorlog.invalid_annotation(
           self.ctx.vm.frames,
@@ -100,7 +103,7 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
     self._add_implicit_field(node, cls_locals, "parent", parent_type)
     return cls_locals
 
-  def decorate(self, node, cls):
+  def decorate(self, node, cls) -> None:
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
       return
@@ -110,13 +113,13 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
 class Module(abstract.PyTDClass):
   """Construct a dataclass for any class inheriting from Module."""
 
-  IMPLICIT_FIELDS = ("name", "parent")
+  IMPLICIT_FIELDS: tuple[str, str] = ("name", "parent")
 
   # 'Module' can also be imported through an alias in flax.linen, but we always
   # want to use its full, unaliased name.
   _MODULE = "flax.linen.module"
 
-  def __init__(self, ctx, module):
+  def __init__(self, ctx, module) -> None:
     del module  # unused
     pytd_cls = ctx.loader.lookup_pytd(self._MODULE, "Module")
     # flax.linen.Module loads as a LateType, we need to convert it and then get
@@ -125,7 +128,7 @@ class Module(abstract.PyTDClass):
       pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
     super().__init__("Module", pytd_cls, ctx)
 
-  def init_subclass(self, node, cls):
+  def init_subclass(self, node: _T0, cls) -> _T0:
     # Subclasses of Module call self.setup() when creating instances.
     cls.additional_init_methods.append("setup")
     dc = ModuleDataclass.make(self.ctx)
@@ -136,7 +139,7 @@ class Module(abstract.PyTDClass):
 
   def to_pytd_type_of_instance(
       self, node=None, instance=None, seen=None, view=None
-  ):
+  ) -> pytd.NamedType:
     """Get the type an instance of us would have."""
     # The class is imported as flax.linen.Module but aliases
     # flax.linen.module.Module internally
@@ -148,5 +151,5 @@ class Module(abstract.PyTDClass):
     # overlay because we might want to overlay other things from flax.linen.
     return f"{self._MODULE}.{self.name}"
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Overlay({self.full_name})"

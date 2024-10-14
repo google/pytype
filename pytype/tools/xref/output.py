@@ -2,6 +2,7 @@
 
 import dataclasses
 import json
+from typing import Any, Generator
 
 
 def unpack(obj):
@@ -19,13 +20,13 @@ def unpack(obj):
     return obj
 
 
-def json_kythe_graph(kythe_graph):
+def json_kythe_graph(kythe_graph) -> Generator[str, Any, None]:
   """Generate kythe entries."""
 
   for x in kythe_graph.entries:
     yield json.dumps(dataclasses.asdict(x))
 
 
-def output_kythe_graph(kythe_graph):
+def output_kythe_graph(kythe_graph) -> None:
   for x in json_kythe_graph(kythe_graph):
     print(x)

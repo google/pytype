@@ -2,21 +2,24 @@
 
 import ast
 import collections
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 import dataclasses
 import io
 import logging
 import re
 import tokenize
+from typing import Any, TypeVar
 
 from pytype.ast import visitor
 
-log = logging.getLogger(__name__)
+_TLineRange = TypeVar("_TLineRange", bound="LineRange")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # Also supports mypy-style ignore[code, ...] syntax, treated as regular ignores.
-IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
+IGNORE_RE: re.Pattern = re.compile(r"^ignore(\[.+\])?$")
 
-_DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
+_DIRECTIVE_RE: re.Pattern = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 
 
 class SkipFileError(Exception):
@@ -29,7 +32,7 @@ class LineRange:
   end_line: int
 
   @classmethod
-  def from_node(cls, node):
+  def from_node(cls: type[_TLineRange], node) -> _TLineRange:
     return cls(node.lineno, node.end_lineno)
 
   def __contains__(self, line):
@@ -80,34 +83,34 @@ class _SourceTree:
 class _BlockReturns:
   """Tracks return statements in with/try blocks."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self._block_ranges = []
     self._returns = []
     self._block_returns = {}
     self._final = False
 
-  def add_block(self, node):
+  def add_block(self, node) -> None:
     line_range = LineRange.from_node(node)
     self._block_ranges.append(line_range)
 
-  def add_return(self, node):
+  def add_return(self, node) -> None:
     self._returns.append(node.lineno)
 
-  def finalize(self):
+  def finalize(self) -> None:
     for br in self._block_ranges:
       self._block_returns[br.start_line] = sorted(
           r for r in self._returns if r in br
       )
     self._final = True
 
-  def all_returns(self):
+  def all_returns(self) -> set:
     return set(self._returns)
 
   def __iter__(self):
     assert self._final
     return iter(self._block_returns.items())
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"""
       Blocks: {self._block_ranges}
       Returns: {self._returns}
@@ -134,10 +137,10 @@ class _Match:
 class _Matches:
   """Tracks branches of match statements."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.matches = []
 
-  def add_match(self, start, end, cases):
+  def add_match(self, start, end, cases) -> None:
     self.matches.append(_Match(start, end, cases))
 
 
@@ -161,7 +164,7 @@ class _ParseVisitor(visitor.BaseVisitor):
       appears, if any.
   """
 
-  def __init__(self, raw_structured_comments):
+  def __init__(self, raw_structured_comments) -> None:
     super().__init__(ast)
     self._raw_structured_comments = raw_structured_comments
     # We initialize structured_comment_groups with single-line groups for all
@@ -227,7 +230,7 @@ class _ParseVisitor(visitor.BaseVisitor):
       self.structured_comment_groups.move_to_end(k)
     return new_group
 
-  def _process_structured_comments(self, line_range, cls=LineRange):
+  def _process_structured_comments(self, line_range, cls=LineRange) -> None:
 
     def should_add(comment, group):
       # Don't add the comment more than once.
@@ -259,19 +262,19 @@ class _ParseVisitor(visitor.BaseVisitor):
       if cls is not LineRange:
         group.extend(c for c in structured_comments if should_add(c, group))
 
-  def leave_Module(self, node):
+  def leave_Module(self, node) -> None:
     self.block_returns.finalize()
 
-  def visit_Call(self, node):
+  def visit_Call(self, node) -> None:
     self._process_structured_comments(LineRange.from_node(node), cls=Call)
 
-  def visit_Compare(self, node):
+  def visit_Compare(self, node) -> None:
     self._process_structured_comments(LineRange.from_node(node), cls=Call)
 
-  def visit_Subscript(self, node):
+  def visit_Subscript(self, node) -> None:
     self._process_structured_comments(LineRange.from_node(node), cls=Call)
 
-  def visit_AnnAssign(self, node):
+  def visit_AnnAssign(self, node) -> None:
     if not node.value:
       # vm.py preprocesses the source code so that all annotations in function
       # bodies have values. So the only annotations without values are module-
@@ -288,40 +291,40 @@ class _ParseVisitor(visitor.BaseVisitor):
     )
     self._process_structured_comments(LineRange.from_node(node))
 
-  def _visit_try(self, node):
+  def _visit_try(self, node) -> None:
     for handler in node.handlers:
       if handler.type:
         self._process_structured_comments(LineRange.from_node(handler.type))
 
-  def visit_Try(self, node):
+  def visit_Try(self, node) -> None:
     self._visit_try(node)
 
-  def visit_TryStar(self, node):
+  def visit_TryStar(self, node) -> None:
     self._visit_try(node)
 
-  def _visit_with(self, node):
+  def _visit_with(self, node) -> None:
     item = node.items[-1]
     end_lineno = (item.optional_vars or item.context_expr).end_lineno
     if self.block_depth == 1:
       self.block_returns.add_block(node)
     self._process_structured_comments(LineRange(node.lineno, end_lineno))
 
-  def enter_With(self, node):
+  def enter_With(self, node) -> None:
     self.block_depth += 1
 
-  def leave_With(self, node):
+  def leave_With(self, node) -> None:
     self.block_depth -= 1
 
-  def enter_AsyncWith(self, node):
+  def enter_AsyncWith(self, node) -> None:
     self.block_depth += 1
 
-  def leave_AsyncWith(self, node):
+  def leave_AsyncWith(self, node) -> None:
     self.block_depth -= 1
 
-  def visit_With(self, node):
+  def visit_With(self, node) -> None:
     self._visit_with(node)
 
-  def visit_AsyncWith(self, node):
+  def visit_AsyncWith(self, node) -> None:
     self._visit_with(node)
 
   def _is_underscore(self, node):
@@ -333,7 +336,7 @@ class _ParseVisitor(visitor.BaseVisitor):
     else:
       return self._is_underscore(node.pattern)
 
-  def visit_Match(self, node):
+  def visit_Match(self, node) -> None:
     start = node.lineno
     end = node.end_lineno
     cases = []
@@ -353,7 +356,7 @@ class _ParseVisitor(visitor.BaseVisitor):
       cases.append(match_case)
     self.matches.add_match(start, end, cases)
 
-  def generic_visit(self, node):
+  def generic_visit(self, node) -> None:
     if not isinstance(node, ast.stmt):
       return
     if hasattr(node, "body"):
@@ -372,11 +375,11 @@ class _ParseVisitor(visitor.BaseVisitor):
     else:
       self._process_structured_comments(LineRange.from_node(node))
 
-  def visit_Return(self, node):
+  def visit_Return(self, node) -> None:
     self.block_returns.add_return(node)
     self._process_structured_comments(LineRange.from_node(node))
 
-  def _visit_decorators(self, node):
+  def _visit_decorators(self, node) -> None:
     if not node.decorator_list:
       return
     for dec in node.decorator_list:
@@ -384,15 +387,15 @@ class _ParseVisitor(visitor.BaseVisitor):
       dec_base = dec.func if isinstance(dec, ast.Call) else dec
       self.decorators[node.lineno].append((dec.lineno, ast.unparse(dec_base)))
 
-  def _visit_def(self, node):
+  def _visit_def(self, node) -> None:
     self._visit_decorators(node)
     if not self.defs_start or node.lineno < self.defs_start:
       self.defs_start = node.lineno
 
-  def visit_ClassDef(self, node):
+  def visit_ClassDef(self, node) -> None:
     self._visit_def(node)
 
-  def _visit_function_def(self, node):
+  def _visit_function_def(self, node) -> None:
     # A function signature's line range should start at the beginning of the
     # signature and end at the final colon. Since we can't get the lineno of
     # the final colon from the ast, we do our best to approximate it.
@@ -438,14 +441,14 @@ class _ParseVisitor(visitor.BaseVisitor):
         _ParamAnnotations(node.lineno, node.end_lineno, node.name, annots)
     )
 
-  def visit_FunctionDef(self, node):
+  def visit_FunctionDef(self, node) -> None:
     self._visit_function_def(node)
 
-  def visit_AsyncFunctionDef(self, node):
+  def visit_AsyncFunctionDef(self, node) -> None:
     self._visit_function_def(node)
 
 
-def _process_comments(src):
+def _process_comments(src) -> collections.defaultdict[int, Any]:
   structured_comments = collections.defaultdict(list)
   f = io.StringIO(src)
   for token in tokenize.generate_tokens(f.readline):
@@ -457,7 +460,9 @@ def _process_comments(src):
   return structured_comments
 
 
-def _process_comment(line, lineno, col):
+def _process_comment(
+    line, lineno, col
+) -> Generator[_StructuredComment, Any, None]:
   """Process a single comment."""
   matches = list(_DIRECTIVE_RE.finditer(line[col:]))
   if not matches:
@@ -477,14 +482,14 @@ def _process_comment(line, lineno, col):
     yield _StructuredComment(lineno, tool, data, open_ended)
 
 
-def parse_src(src: str, python_version: tuple[int, int]):
+def parse_src(src: str, python_version: tuple[int, int]) -> _SourceTree:
   """Parses a string of source code into an ast."""
   return _SourceTree(
       ast.parse(src, feature_version=python_version[1]), _process_comments(src)
   )  # pylint: disable=unexpected-keyword-arg
 
 
-def visit_src_tree(src_tree):
+def visit_src_tree(src_tree) -> _ParseVisitor:
   parse_visitor = _ParseVisitor(src_tree.structured_comments)
   parse_visitor.visit(src_tree.ast)
   return parse_visitor

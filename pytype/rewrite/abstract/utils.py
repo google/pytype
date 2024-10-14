@@ -1,9 +1,10 @@
 """Utilities for working with abstract values."""
 
 from collections.abc import Sequence
-from typing import Any, TypeVar, get_origin, overload
+from typing import Any, get_origin, overload, TypeVar
 
 from pytype.rewrite.abstract import base
+from pytype.rewrite.flow import variables
 
 
 _Var = base.AbstractVariableType
@@ -20,18 +21,22 @@ def get_atomic_constant(var: _Var, typ: None = ...) -> Any:
   ...
 
 
-def get_atomic_constant(var, typ=None):
+def get_atomic_constant(
+    var: variables.Variable[base.BaseValue], typ: None = None
+):
   value = var.get_atomic_value(base.PythonConstant)
   constant = value.constant
   if typ and not isinstance(constant, (runtime_type := get_origin(typ) or typ)):
     raise ValueError(
         f'Wrong constant type for {var.display_name()}: expected '
-        f'{runtime_type.__name__}, got {constant.__class__.__name__}')
+        f'{runtime_type.__name__}, got {constant.__class__.__name__}'
+    )
   return constant
 
 
 def join_values(
-    ctx: base.ContextType, values: Sequence[base.BaseValue]) -> base.BaseValue:
+    ctx: base.ContextType, values: Sequence[base.BaseValue]
+) -> base.BaseValue:
   if len(values) > 1:
     return base.Union(ctx, values)
   elif values:

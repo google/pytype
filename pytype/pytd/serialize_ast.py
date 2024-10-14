@@ -6,12 +6,15 @@ disk, which is faster to digest than a pyi file.
 """
 
 
+from typing import TypeVar
 import msgspec
 from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+
+_TSerializableAst = TypeVar("_TSerializableAst", bound="SerializableAst")
 
 
 class UnrestorableDependencyError(Exception):
@@ -21,11 +24,11 @@ class UnrestorableDependencyError(Exception):
 class FindClassTypesVisitor(visitors.Visitor):
   """Visitor to find class and function types."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self.class_type_nodes = []
 
-  def EnterClassType(self, n):
+  def EnterClassType(self, n) -> None:
     self.class_type_nodes.append(n)
 
 
@@ -36,11 +39,11 @@ class UndoModuleAliasesVisitor(visitors.Visitor):
   names of modules, not whatever they've been aliased to in the current module.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._module_aliases = {}
 
-  def EnterTypeDeclUnit(self, node):
+  def EnterTypeDeclUnit(self, node) -> None:
     for alias in node.aliases:
       if isinstance(alias.type, pytd.Module):
         name = utils.strip_prefix(alias.name, f"{node.name}.")
@@ -66,10 +69,10 @@ class ClearLookupCache(visitors.Visitor):
   (https://github.com/jcrist/msgspec/issues/199)
   """
 
-  def LeaveClass(self, node):
+  def LeaveClass(self, node) -> None:
     node._name2item.clear()  # pylint: disable=protected-access
 
-  def LeaveTypeDeclUnit(self, node):
+  def LeaveTypeDeclUnit(self, node) -> None:
     node._name2item.clear()  # pylint: disable=protected-access
 
 
@@ -101,7 +104,7 @@ class SerializableAst(msgspec.Struct):
   metadata: list[str]
   class_type_nodes: list[pytd.ClassType] | None = None
 
-  def __post_init__(self):
+  def __post_init__(self) -> None:
     # TODO(tsudol): I do not believe we actually use self.class_type_nodes for
     # anything besides filling in pointers. That is, it's ALWAYS the list of ALL
     # ClassType nodes in the AST. So the attribute doesn't need to exist.
@@ -117,7 +120,7 @@ class SerializableAst(msgspec.Struct):
     else:
       self.class_type_nodes = indexer.class_type_nodes
 
-  def Replace(self, **kwargs):
+  def Replace(self: _TSerializableAst, **kwargs) -> _TSerializableAst:
     return msgspec.structs.replace(self, **kwargs)
 
 

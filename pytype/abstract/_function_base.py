@@ -1,9 +1,11 @@
 """Base abstract representations of functions."""
 
+from collections.abc import Callable, Generator
 import contextlib
 import inspect
 import itertools
 import logging
+from typing import Any
 
 from pytype.abstract import _base
 from pytype.abstract import _classes
@@ -16,7 +18,7 @@ from pytype.abstract import function
 from pytype.errors import error_types
 from pytype.types import types
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
@@ -30,7 +32,7 @@ class Function(_instance_base.SimpleValue, types.Function):
 
   bound_class: type["BoundFunction"]
 
-  def __init__(self, name, ctx):
+  def __init__(self, name, ctx) -> None:
     super().__init__(name, ctx)
     self.cls = _classes.FunctionPyTDClass(self, ctx)
     self.is_attribute_of_class = False
@@ -43,7 +45,9 @@ class Function(_instance_base.SimpleValue, types.Function):
         self.ctx.root_node, name
     )
 
-  def property_get(self, callself, is_class=False):
+  def property_get(
+      self, callself, is_class=False
+  ) -> "BoundFunction|Function":
     if self.name == "__new__" or not callself or is_class:
       return self
     self.is_attribute_of_class = True
@@ -122,7 +126,7 @@ class Function(_instance_base.SimpleValue, types.Function):
   def set_function_defaults(self, node, defaults_var):
     raise NotImplementedError(self.__class__.__name__)
 
-  def update_signature_scope(self, cls):
+  def update_signature_scope(self, cls) -> None:
     return
 
 
@@ -135,7 +139,7 @@ class NativeFunction(Function):
     ctx: context.Context instance.
   """
 
-  def __init__(self, name, func, ctx):
+  def __init__(self, name, func, ctx) -> None:
     super().__init__(name, ctx)
     self.func = func
     self.bound_class = lambda callself, underlying: self
@@ -203,7 +207,7 @@ class NativeFunction(Function):
       raise error_types.DuplicateKeyword(sig, args, self.ctx, "self")
     return self.func(node, *posargs, **namedargs)
 
-  def get_positional_names(self):
+  def get_positional_names(self) -> list:
     code = self.func.func_code
     return list(code.varnames[: code.argcount])
 
@@ -214,7 +218,7 @@ class NativeFunction(Function):
 class BoundFunction(_base.BaseValue):
   """An function type which has had an argument bound into it."""
 
-  def __init__(self, callself, underlying):
+  def __init__(self, callself, underlying) -> None:
     super().__init__(underlying.name, underlying.ctx)
     self.cls = _classes.FunctionPyTDClass(self, self.ctx)
     self._callself = callself
@@ -262,7 +266,7 @@ class BoundFunction(_base.BaseValue):
   def callself(self):
     return self._callself
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     if self.name.endswith(".__init__"):
       self.ctx.callself_stack.append(self._callself)
     # The "self" parameter is automatically added to the list of arguments, but
@@ -360,7 +364,7 @@ class BoundInterpreterFunction(BoundFunction):
   """The method flavor of InterpreterFunction."""
 
   @contextlib.contextmanager
-  def record_calls(self):
+  def record_calls(self) -> contextlib._GeneratorContextManager:
     with self.underlying.record_calls():
       yield
 
@@ -383,7 +387,7 @@ class BoundInterpreterFunction(BoundFunction):
   def defaults(self):
     return self.underlying.defaults
 
-  def iter_signature_functions(self):
+  def iter_signature_functions(self) -> Generator[Any, Any, None]:
     for f in self.underlying.iter_signature_functions():
       yield self.underlying.bound_class(self._callself, f)
 
@@ -398,7 +402,7 @@ class BoundPyTDFunction(BoundFunction):
 class ClassMethod(_base.BaseValue):
   """Implements @classmethod methods in pyi."""
 
-  def __init__(self, name, method, callself, ctx):
+  def __init__(self, name, method, callself, ctx) -> None:
     super().__init__(name, ctx)
     self.cls = self.ctx.convert.function_type
     self.method = method
@@ -412,14 +416,14 @@ class ClassMethod(_base.BaseValue):
         node, func, args.replace(posargs=(self._callcls,) + args.posargs)
     )
 
-  def to_bound_function(self):
+  def to_bound_function(self) -> BoundPyTDFunction:
     return BoundPyTDFunction(self._callcls, self.method)
 
 
 class StaticMethod(_base.BaseValue):
   """Implements @staticmethod methods in pyi."""
 
-  def __init__(self, name, method, _, ctx):
+  def __init__(self, name, method, _, ctx) -> None:
     super().__init__(name, ctx)
     self.cls = self.ctx.convert.function_type
     self.method = method
@@ -436,7 +440,7 @@ class Property(_base.BaseValue):
   resolved as a function, not as a constant.
   """
 
-  def __init__(self, name, method, callself, ctx):
+  def __init__(self, name, method, callself, ctx) -> None:
     super().__init__(name, ctx)
     self.cls = self.ctx.convert.function_type
     self.method = method
@@ -455,7 +459,7 @@ class SignedFunction(Function):
   Subclasses should define call(self, node, f, args) and set self.bound_class.
   """
 
-  def __init__(self, signature, ctx):
+  def __init__(self, signature, ctx) -> None:
     # We should only instantiate subclasses of SignedFunction
     assert self.__class__ != SignedFunction
     super().__init__(signature.name, ctx)
@@ -495,7 +499,7 @@ class SignedFunction(Function):
           return param
     return None
 
-  def argcount(self, _):
+  def argcount(self, _) -> int:
     return len(self.signature.param_names)
 
   def get_nondefault_params(self):
@@ -505,7 +509,7 @@ class SignedFunction(Function):
         if n not in self.signature.defaults
     )
 
-  def match_and_map_args(self, node, args, alias_map):
+  def match_and_map_args(self, node, args, alias_map) -> tuple[Any, Any]:
     """Calls match_args() and _map_args()."""
     return self.match_args(node, args, alias_map), self._map_args(node, args)
 
@@ -635,10 +639,10 @@ class SignedFunction(Function):
       )
     return [m.subst for m in matches]
 
-  def get_first_opcode(self):
+  def get_first_opcode(self) -> None:
     return None
 
-  def set_function_defaults(self, node, defaults_var):
+  def set_function_defaults(self, node, defaults_var) -> None:
     """Attempts to set default arguments of a function.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
@@ -659,7 +663,7 @@ class SignedFunction(Function):
     defaults = dict(zip(self.signature.param_names[-len(defaults) :], defaults))
     self.signature.defaults = defaults
 
-  def _mutations_generator(self, node, first_arg, substs):
+  def _mutations_generator(self, node, first_arg, substs) -> Callable[[], Any]:
     def generator():
       """Yields mutations."""
       if (
@@ -697,7 +701,7 @@ class SignedFunction(Function):
     # extra time.
     return generator
 
-  def update_signature_scope(self, cls):
+  def update_signature_scope(self, cls) -> None:
     self.signature.excluded_types.update([t.name for t in cls.template])
     self.signature.add_scope(cls)
 
@@ -709,7 +713,7 @@ class SimpleFunction(SignedFunction):
   record calls or try to infer types.
   """
 
-  def __init__(self, signature, ctx):
+  def __init__(self, signature, ctx) -> None:
     super().__init__(signature, ctx)
     self.bound_class = BoundFunction
 
@@ -783,7 +787,7 @@ class SimpleFunction(SignedFunction):
 
     return self.signature.has_return_annotation or self.full_name == "__init__"
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     args = args.simplify(node, self.ctx)
     callargs = self._map_args(node, args)
     substs = []

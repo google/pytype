@@ -96,7 +96,7 @@ class SerializedProgram:
 class TypegraphEncoder(json.JSONEncoder):
   """Implements the JSONEncoder behavior for typegraph objects."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     self._bindings: dict[int, cfg.Binding] = {}
 
@@ -214,7 +214,18 @@ class TypegraphEncoder(json.JSONEncoder):
       return super().default(o)
 
 
-_TYP_MAP = {
+_TYP_MAP: dict[
+    str,
+    type[
+        SerializedBinding
+        | SerializedCFGNode
+        | SerializedOrigin
+        | SerializedProgram
+        | SerializedQuery
+        | SerializedQueryStep
+        | SerializedVariable
+    ],
+] = {
     "Program": SerializedProgram,
     "CFGNode": SerializedCFGNode,
     "Variable": SerializedVariable,
@@ -225,7 +236,17 @@ _TYP_MAP = {
 }
 
 
-def _decode(obj):
+def _decode(
+    obj,
+) -> (
+    SerializedBinding
+    | SerializedCFGNode
+    | SerializedOrigin
+    | SerializedProgram
+    | SerializedQuery
+    | SerializedQueryStep
+    | SerializedVariable
+):
   typ = obj.pop("_type")
   return _TYP_MAP[typ](**obj)
 

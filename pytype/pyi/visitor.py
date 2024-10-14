@@ -1,11 +1,14 @@
 """Base visitor for ast parse trees."""
 
 import ast as astlib
+from typing import TypeVar
 
 from pytype.ast import visitor as ast_visitor
 from pytype.pyi import types
 
-_ParseError = types.ParseError
+_T0 = TypeVar('_T0')
+
+_ParseError: type[types.ParseError] = types.ParseError
 
 
 class BaseVisitor(ast_visitor.BaseVisitor):
@@ -16,7 +19,9 @@ class BaseVisitor(ast_visitor.BaseVisitor):
   - Has an optional Definitions member
   """
 
-  def __init__(self, *, filename=None, src_code=None, visit_decorators=False):
+  def __init__(
+      self, *, filename=None, src_code=None, visit_decorators=False
+  ) -> None:
     super().__init__(astlib, visit_decorators=visit_decorators)
     self.filename = filename  # used for error messages
     self.src_code = src_code  # used for error messages
@@ -33,11 +38,11 @@ class BaseVisitor(ast_visitor.BaseVisitor):
     except Exception as e:  # pylint: disable=broad-except
       raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
-  def leave(self, node):
+  def leave(self, node) -> None:
     try:
       return super().leave(node)
     except Exception as e:  # pylint: disable=broad-except
       raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
-  def generic_visit(self, node):
+  def generic_visit(self, node: _T0) -> _T0:
     return node

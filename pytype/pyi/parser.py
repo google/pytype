@@ -8,6 +8,7 @@ import keyword
 import re
 import sys
 import tokenize
+from types import EllipsisType
 from typing import Any, cast
 
 from pytype.ast import debug
@@ -24,8 +25,9 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
 
+
 # reexport as parser.ParseError
-ParseError = types.ParseError
+ParseError: type[types.ParseError] = types.ParseError
 
 # ------------------------------------------------------
 # imports
@@ -41,7 +43,7 @@ def _import_from_module(module: str | None, level: int) -> str:
   return prefix + module
 
 
-def _keyword_to_parseable_name(kw):
+def _keyword_to_parseable_name(kw) -> str:
   return f"__KW_{kw}__"
 
 
@@ -102,14 +104,14 @@ def _attribute_to_name(node: astlib.Attribute) -> astlib.Name:
   elif isinstance(val, astlib.Attribute):
     prefix = _attribute_to_name(val).id
   elif isinstance(val, (pytd.NamedType, pytd.Module)):
-    prefix = val.name
+    prefix = val.name  # pytype: disable=attribute-error
   else:
     msg = f"Unexpected attribute access on {val!r} [{type(val)}]"
     raise ParseError(msg)
   return astlib.Name(f"{prefix}.{node.attr}")
 
 
-def _read_str_list(name, value):
+def _read_str_list(name, value) -> tuple:
   if not (
       isinstance(value, (list, tuple))
       and all(types.Pyval.is_str(x) for x in value)
@@ -121,10 +123,10 @@ def _read_str_list(name, value):
 class _ConvertConstantsVisitor(visitor.BaseVisitor):
   """Converts ast module constants to our own representation."""
 
-  def __init__(self, filename):
+  def __init__(self, filename) -> None:
     super().__init__(filename=filename, visit_decorators=True)
 
-  def visit_Constant(self, node):
+  def visit_Constant(self, node) -> EllipsisType | types.Pyval:
     if node.value is Ellipsis:
       return definitions.Definitions.ELLIPSIS
     return types.Pyval.from_const(node)
@@ -135,7 +137,7 @@ class _ConvertConstantsVisitor(visitor.BaseVisitor):
         return node.operand.negated()
     raise ParseError(f"Unexpected unary operator: {node.op}")
 
-  def visit_Assign(self, node):
+  def visit_Assign(self, node) -> None:
     if node.type_comment:
       # Convert the type comment from a raw string to a string constant.
       node.type_comment = types.Pyval(
@@ -146,12 +148,12 @@ class _ConvertConstantsVisitor(visitor.BaseVisitor):
 class _AnnotationVisitor(visitor.BaseVisitor):
   """Converts ast type annotations to pytd."""
 
-  def __init__(self, filename, defs):
+  def __init__(self, filename, defs) -> None:
     super().__init__(filename=filename)
     self.defs = defs
     self.subscripted = []  # Keep track of the name being subscripted.
 
-  def show(self, node):
+  def show(self, node) -> None:
     print(debug.dump(node, astlib, include_attributes=False))
 
   def _convert_late_annotation(self, annotation):
@@ -168,7 +170,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
       e.clear_position()
       raise e
 
-  def _in_literal(self):
+  def _in_literal(self) -> bool:
     if not self.subscripted:
       return False
     last = self.subscripted[-1]
@@ -187,16 +189,16 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     else:
       raise ParseError(f"Unexpected literal: {node.value!r}")
 
-  def visit_Tuple(self, node):
+  def visit_Tuple(self, node) -> tuple:
     return tuple(node.elts)
 
-  def visit_List(self, node):
+  def visit_List(self, node) -> list:
     return list(node.elts)
 
   def visit_Name(self, node):
     return self.defs.new_type(node.id)
 
-  def _convert_getattr(self, node):
+  def _convert_getattr(self, node) -> pytd.NamedType | None:
     # The protobuf pyi generator outputs getattr(X, 'attr') when 'attr' is a
     # Python keyword.
     if node.func.name != "getattr" or len(node.args) != 2:
@@ -217,16 +219,16 @@ class _AnnotationVisitor(visitor.BaseVisitor):
   def _get_subscript_params(self, node):
     return node.slice
 
-  def _set_subscript_params(self, node, new_val):
+  def _set_subscript_params(self, node, new_val) -> None:
     node.slice = new_val
 
-  def _convert_typing_annotated_args(self, node):
+  def _convert_typing_annotated_args(self, node) -> None:
     typ, *args = self._get_subscript_params(node).elts
     typ = self.visit(typ)
     params = (_MetadataVisitor().visit(x) for x in args)
     self._set_subscript_params(node, (typ,) + tuple(params))
 
-  def enter_Subscript(self, node):
+  def enter_Subscript(self, node) -> None:
     if isinstance(node.value, astlib.Attribute):
       value = _attribute_to_name(node.value)
     else:
@@ -254,7 +256,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
       params = (params,)
     return self.defs.new_type(node.value, params)
 
-  def leave_Subscript(self, node):
+  def leave_Subscript(self, node) -> None:
     self.subscripted.pop()
 
   def visit_Attribute(self, node):
@@ -279,7 +281,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
 class _MetadataVisitor(visitor.BaseVisitor):
   """Converts typing.Annotated metadata."""
 
-  def visit_Call(self, node):
+  def visit_Call(self, node) -> tuple[Any, tuple, Any]:
     posargs = tuple(evaluator.literal_eval(x) for x in node.args)
     kwargs = {x.arg: evaluator.literal_eval(x.value) for x in node.keywords}
     if isinstance(node.func, astlib.Attribute):
@@ -310,20 +312,20 @@ def _flatten_splices(body: list[Any]) -> list[Any]:
 class Splice:
   """Splice a list into a node body."""
 
-  def __init__(self, body):
+  def __init__(self, body) -> None:
     self.body = _flatten_splices(body)
 
-  def __str__(self):
+  def __str__(self) -> str:
     return "Splice(\n" + ",\n  ".join([str(x) for x in self.body]) + "\n)"
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return str(self)
 
 
 class _GeneratePytdVisitor(visitor.BaseVisitor):
   """Converts an ast tree to a pytd tree."""
 
-  _NOOP_NODES = {
+  _NOOP_NODES: set[type] = {
       # Expression contexts are ignored.
       astlib.Load,
       astlib.Store,
@@ -337,14 +339,19 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       types.Pyval,
   }
 
-  _ANNOT_NODES = (
+  _ANNOT_NODES: tuple[
+      type[astlib.Attribute],
+      type[astlib.BinOp],
+      type[astlib.Name],
+      type[astlib.Subscript],
+  ] = (
       astlib.Attribute,
       astlib.BinOp,
       astlib.Name,
       astlib.Subscript,
   )
 
-  def __init__(self, src, filename, module_name, options):
+  def __init__(self, src, filename, module_name, options) -> None:
     super().__init__(filename=filename, src_code=src, visit_decorators=True)
     defs = definitions.Definitions(modules.Module(filename, module_name))
     self.defs = defs
@@ -355,7 +362,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.annotation_visitor = _AnnotationVisitor(filename=filename, defs=defs)
     self.class_stack = []
 
-  def show(self, node):
+  def show(self, node) -> None:
     print(debug.dump(node, astlib, include_attributes=True))
 
   def generic_visit(self, node):
@@ -364,11 +371,11 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       return node
     raise NotImplementedError(f"Unsupported node type: {node_type.__name__}")
 
-  def visit_Module(self, node):
+  def visit_Module(self, node) -> pytd.TypeDeclUnit:
     node.body = _flatten_splices(node.body)
     return self.defs.build_type_decl_unit(node.body)
 
-  def visit_Pass(self, node):
+  def visit_Pass(self, node) -> EllipsisType:
     return self.defs.ELLIPSIS
 
   def visit_Expr(self, node):
@@ -383,7 +390,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     else:
       raise ParseError(f"Unexpected expression: {node.value}")
 
-  def _extract_function_properties(self, node):
+  def _extract_function_properties(
+      self, node
+  ) -> tuple[list, function.SigProperties]:
     decorators = []
     abstract = coroutine = final = overload = False
     for d in node.decorator_list:
@@ -412,7 +421,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         is_async=isinstance(node, astlib.AsyncFunctionDef),
     )
 
-  def visit_FunctionDef(self, node):
+  def visit_FunctionDef(self, node) -> function.NameAndSig:
     node.decorator_list, props = self._extract_function_properties(node)
     node.body = _flatten_splices(node.body)
     return function.NameAndSig.from_function(node, props)
@@ -423,7 +432,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def visit_AnnAssign(self, node):
     return self._ann_assign(node.target, node.annotation, node.value)
 
-  def _ann_assign(self, name, typ, val):
+  def _ann_assign(self, name, typ, val) -> pytd.Alias | pytd.Constant:
     is_alias = False
     if name == "__match_args__" and isinstance(val, tuple):
       typ = pytd.NamedType("tuple")
@@ -485,7 +494,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       self.defs.add_alias_or_constant(ret)
     return ret
 
-  def visit_AugAssign(self, node):
+  def visit_AugAssign(self, node) -> Splice:
     if node.target == "__all__":
       # Ignore other assignments
       self.defs.all += _read_str_list(node.target, node.value)
@@ -525,7 +534,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       self.defs.add_alias_or_constant(ret)
     return ret
 
-  def visit_Assign(self, node):
+  def visit_Assign(self, node) -> Splice:
     out = []
     value = node.value
     for target in node.targets:
@@ -540,7 +549,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         out.append(self._bare_assign(target, node.type_comment, value))
     return Splice(out)
 
-  def visit_ClassDef(self, node):
+  def visit_ClassDef(self, node) -> pytd.Class:
     full_class_name = ".".join(self.class_stack)
     self.defs.type_map[full_class_name] = pytd.NamedType(full_class_name)
     defs = _flatten_splices(node.body)
@@ -548,7 +557,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         full_class_name, node.bases, node.keywords, node.decorator_list, defs
     )
 
-  def enter_If(self, node):
+  def enter_If(self, node) -> None:
     # Evaluate the test and preemptively remove the invalid branch so we don't
     # waste time traversing it.
     node.test = conditions.evaluate(node.test, self.options)
@@ -560,7 +569,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     else:
       node.body = []
 
-  def visit_If(self, node):
+  def visit_If(self, node) -> Splice:
     if not isinstance(node.test, bool):
       raise ParseError("Unexpected if statement " + debug.dump(node, astlib))
 
@@ -569,13 +578,13 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     else:
       return Splice(node.orelse)
 
-  def visit_Import(self, node):
+  def visit_Import(self, node) -> Splice:
     if self.level > 0:
       raise ParseError("Import statements need to be at module level")
     self.defs.add_import(None, node.names)
     return Splice([])
 
-  def visit_ImportFrom(self, node):
+  def visit_ImportFrom(self, node) -> Splice:
     if self.level > 0:
       raise ParseError("Import statements need to be at module level")
     module = _import_from_module(node.module, node.level)
@@ -590,16 +599,16 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def visit_Name(self, node):
     return _parseable_name_to_real_name(node.id)
 
-  def visit_Attribute(self, node):
+  def visit_Attribute(self, node) -> str:
     return f"{node.value}.{node.attr}"
 
-  def visit_Tuple(self, node):
+  def visit_Tuple(self, node) -> tuple:
     return tuple(node.elts)
 
-  def visit_List(self, node):
+  def visit_List(self, node) -> list:
     return list(node.elts)
 
-  def visit_Dict(self, node):
+  def visit_Dict(self, node) -> dict:
     return dict(zip(node.keys, node.values))
 
   def visit_Call(self, node):
@@ -647,14 +656,14 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     #     List = _Alias()
     return node.func
 
-  def visit_Raise(self, node):
+  def visit_Raise(self, node) -> types.Raise:
     return types.Raise(node.exc)
 
   # We convert type comments and annotations in enter() because we want to
   # convert an entire type at once rather than bottom-up.  enter() and leave()
   # are also used to track nesting level.
 
-  def _convert_value(self, node):
+  def _convert_value(self, node) -> None:
     if isinstance(node.value, self._ANNOT_NODES):
       node.value = self.annotation_visitor.visit(node.value)
     elif isinstance(node.value, (astlib.Tuple, astlib.List)):
@@ -666,21 +675,21 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       ]
       node.value = type(node.value)(elts)
 
-  def enter_Assign(self, node):
+  def enter_Assign(self, node) -> None:
     if node.type_comment:
       node.type_comment = self.annotation_visitor.visit(node.type_comment)
     self._convert_value(node)
 
-  def enter_AnnAssign(self, node):
+  def enter_AnnAssign(self, node) -> None:
     if node.annotation:
       node.annotation = self.annotation_visitor.visit(node.annotation)
     self._convert_value(node)
 
-  def enter_arg(self, node):
+  def enter_arg(self, node) -> None:
     if node.annotation:
       node.annotation = self.annotation_visitor.visit(node.annotation)
 
-  def _convert_list(self, lst, start=0):
+  def _convert_list(self, lst, start=0) -> None:
     lst[start:] = [self.annotation_visitor.visit(x) for x in lst[start:]]
 
   def _convert_newtype_args(self, node: astlib.Call):
@@ -717,11 +726,11 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     elif self.defs.matches_type(func, "typing.NewType"):
       return self._convert_newtype_args(node)
 
-  def enter_Raise(self, node):
+  def enter_Raise(self, node) -> None:
     exc = node.exc.func if isinstance(node.exc, astlib.Call) else node.exc
     node.exc = self.annotation_visitor.visit(exc)
 
-  def _convert_decorators(self, node):
+  def _convert_decorators(self, node) -> None:
     decorators = []
     for d in node.decorator_list:
       base = d.func if isinstance(d, astlib.Call) else d
@@ -734,24 +743,24 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       decorators.append(pytd.Alias(name.id, typ))
     node.decorator_list = decorators
 
-  def enter_FunctionDef(self, node):
+  def enter_FunctionDef(self, node) -> None:
     self._convert_decorators(node)
     if node.returns:
       node.returns = self.annotation_visitor.visit(node.returns)
     self.level += 1
     self.in_function = True
 
-  def leave_FunctionDef(self, node):
+  def leave_FunctionDef(self, node) -> None:
     self.level -= 1
     self.in_function = False
 
-  def enter_AsyncFunctionDef(self, node):
+  def enter_AsyncFunctionDef(self, node) -> None:
     self.enter_FunctionDef(node)
 
-  def leave_AsyncFunctionDef(self, node):
+  def leave_AsyncFunctionDef(self, node) -> None:
     self.leave_FunctionDef(node)
 
-  def enter_ClassDef(self, node):
+  def enter_ClassDef(self, node) -> None:
     self._convert_decorators(node)
     node.bases = [
         self.annotation_visitor.visit(base)
@@ -765,7 +774,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.level += 1
     self.class_stack.append(_parseable_name_to_real_name(node.name))
 
-  def leave_ClassDef(self, node):
+  def leave_ClassDef(self, node) -> None:
     self.level -= 1
     self.class_stack.pop()
 
@@ -836,7 +845,7 @@ def _fix_src(src: str) -> str:
   return "\n".join(lines)
 
 
-def _parse(src: str, feature_version: int, filename: str = ""):
+def _parse(src: str, feature_version: int, filename: str = "") -> astlib.Module:
   """Call the ast parser with the appropriate feature version."""
   kwargs = {"feature_version": feature_version, "type_comments": True}
   try:
@@ -865,7 +874,7 @@ def _feature_version(python_version: tuple[int, ...]) -> int:
 
 
 # Options that will be copied from pytype.config.Options.
-_TOPLEVEL_PYI_OPTIONS = (
+_TOPLEVEL_PYI_OPTIONS: tuple[str, str, str] = (
     "platform",
     "python_version",
     "strict_primitive_comparisons",

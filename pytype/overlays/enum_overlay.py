@@ -25,6 +25,7 @@ into a proper enum.
 import collections
 import contextlib
 import logging
+from typing import Any, TypeVar
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -39,11 +40,14 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
-log = logging.getLogger(__name__)
+
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # These members have been added in Python 3.11 and are not yet supported.
-_unsupported = (
+_unsupported: tuple[str, str, str, str, str, str, str, str, str] = (
     "ReprEnum",
     "EnumCheck",
     "FlagBoundary",
@@ -59,7 +63,7 @@ _unsupported = (
 class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "Enum": overlay.add_name("Enum", EnumBuilder),
         "EnumMeta": EnumMeta,
@@ -78,7 +82,7 @@ class EnumOverlay(overlay.Overlay):
 class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
-  def __init__(self, name, ctx, module):
+  def __init__(self, name, ctx, module) -> None:
     super().__init__(name, ctx.loader.lookup_pytd(module, name), ctx)
 
   def make_class(self, node, props):
@@ -205,7 +209,7 @@ class EnumBuilder(abstract.PyTDClass):
 class EnumInstance(abstract.InterpreterClass):
   """A wrapper for classes that subclass enum.Enum."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
     # These are set by EnumMetaInit.setup_interpreterclass.
     self.member_type = None
@@ -246,7 +250,7 @@ class EnumInstance(abstract.InterpreterClass):
           instance.members[attr_name] = attr_type.instantiate(node)
     return instance.to_variable(node)
 
-  def is_empty_enum(self):
+  def is_empty_enum(self) -> bool:
     for member in self.members.values():
       for b in member.data:
         if b.cls == self:
@@ -272,7 +276,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
   # comparing the members' names. However, this causes issues when enums are
   # used in an if statement; see the bug for examples.
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     sig = function.Signature(
         name="__eq__",
         param_names=("self", "other"),
@@ -287,7 +291,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
     )
     super().__init__(sig, ctx)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     _, argmap = self.match_and_map_args(node, args, alias_map)
     this_var = argmap["self"]
     other_var = argmap["other"]
@@ -308,7 +312,7 @@ class EnumMeta(abstract.PyTDClass):
   enum behavior: EnumMetaInit for modifying enum classes, for example.
   """
 
-  def __init__(self, ctx, module):
+  def __init__(self, ctx, module) -> None:
     pytd_cls = ctx.loader.lookup_pytd(module, "EnumMeta")
     super().__init__("EnumMeta", pytd_cls, ctx)
     init = EnumMetaInit(ctx)
@@ -326,7 +330,7 @@ class EnumMetaInit(abstract.SimpleFunction):
   handling and set up the Enum classes correctly.
   """
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     sig = function.Signature(
         name="__init__",
         param_names=("cls", "name", "bases", "namespace"),
@@ -521,7 +525,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         and data.cls.full_name == "enum.auto"
     )
 
-  def _call_generate_next_value(self, node, cls, name):
+  def _call_generate_next_value(self, node, cls, name) -> tuple[Any, Any]:
     node, method = self.ctx.attribute_handler.get_attribute(
         node, cls, "_generate_next_value_", cls.to_binding(node)
     )
@@ -563,7 +567,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       args = self.ctx.convert.build_tuple(node, [args])
     return args
 
-  def _mark_dynamic_enum(self, cls):
+  def _mark_dynamic_enum(self, cls) -> None:
     # Checks if the enum should be marked as having dynamic attributes.
     # Of course, if it's already marked dynamic, don't accidentally unmark it.
     if cls.maybe_missing_members:
@@ -711,7 +715,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         cls.members["_generate_next_value_"] = new_gnv
     return node
 
-  def _setup_pytdclass(self, node, cls):
+  def _setup_pytdclass(self, node: _T0, cls) -> _T0:
     # Only constants need to be transformed. We assume that enums in type
     # stubs are fully realized, i.e. there are no auto() calls and the members
     # already have values of the base type.
@@ -783,7 +787,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       cls.members["__new__"] = self._make_new(node, member_type, cls)
     return node
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     # Use super.call to check args and get a return value.
     node, ret = super().call(node, func, args, alias_map)
     argmap = self._map_args(node, args)
@@ -817,7 +821,7 @@ class EnumMetaInit(abstract.SimpleFunction):
 class EnumMetaGetItem(abstract.SimpleFunction):
   """Implements the functionality of __getitem__ for enums."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     sig = function.Signature(
         name="__getitem__",
         param_names=("cls", "name"),
@@ -840,7 +844,7 @@ class EnumMetaGetItem(abstract.SimpleFunction):
         enum.load_lazy_attribute(name)
         return enum.members[name]
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node: _T0, func, args, alias_map=None) -> tuple[_T0, Any]:
     _, argmap = self.match_and_map_args(node, args, alias_map)
     cls_var = argmap["cls"]
     name_var = argmap["name"]

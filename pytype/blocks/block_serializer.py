@@ -43,7 +43,7 @@ class SerializedCode:
 class BlockGraphEncoder(json.JSONEncoder):
   """Implements the JSONEncoder behavior for ordered bytecode blocks."""
 
-  def __init__(self, *args, **kwargs):
+  def __init__(self, *args, **kwargs) -> None:
     super().__init__(*args, **kwargs)
 
   def _encode_code(self, code: SerializedCode) -> dict[str, Any]:
@@ -70,7 +70,7 @@ class BlockGraphEncoder(json.JSONEncoder):
       return super().default(o)
 
 
-def encode_merged_graph(block_graph):
+def encode_merged_graph(block_graph) -> str:
   out = []
   for k, v in block_graph.graph.items():
     for b in v.order:

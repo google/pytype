@@ -2,13 +2,15 @@
 
 import logging
 import sys
+from typing import Any
 
 from pytype.imports import typeshed
+from pytype.imports.typeshed import Typeshed
 from pytype.platform_utils import path_utils
 from pytype.tools import runner
 
 
-def check_pytype_or_die():
+def check_pytype_or_die() -> None:
   if not runner.can_run("pytype", "-h"):
     logging.critical(
         "Cannot run pytype. Check that it is installed and in your path"
@@ -16,7 +18,7 @@ def check_pytype_or_die():
     sys.exit(1)
 
 
-def check_python_version(exe: list[str], required):
+def check_python_version(exe: list[str], required) -> tuple[bool, Any]:
   """Check if exe is a python executable with the required version."""
   try:
     # python --version outputs to stderr for earlier versions
@@ -52,7 +54,7 @@ def check_python_exe_or_die(required) -> list[str]:
   sys.exit(1)
 
 
-def initialize_typeshed_or_die():
+def initialize_typeshed_or_die() -> Typeshed:
   """Initialize a Typeshed object or die.
 
   Returns:
@@ -65,7 +67,7 @@ def initialize_typeshed_or_die():
     sys.exit(1)
 
 
-def compute_pythonpath(filenames):
+def compute_pythonpath(filenames) -> list:
   """Compute a list of dependency paths."""
   paths = set()
   for f in filenames:

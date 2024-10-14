@@ -1,6 +1,6 @@
 """Test utilities."""
 
-from collections.abc import Sequence
+from collections.abc import Sequence, Callable
 import re
 import sys
 import textwrap
@@ -17,7 +17,7 @@ import unittest
 
 class ContextfulTestBase(unittest.TestCase):
 
-  def setUp(self):
+  def setUp(self) -> None:
     super().setUp()
     self.ctx = context.Context(src='')
 
@@ -52,23 +52,23 @@ class FakeOrderedCode(i4t.ProductionType[blocks.OrderedCode]):
 
 # pylint: disable=invalid-name
 # Use camel-case to match the unittest.skip* methods.
-def skipIfPy(*versions, reason):
+def skipIfPy(*versions, reason) -> Callable[[Callable], Callable]:
   return unittest.skipIf(sys.version_info[:2] in versions, reason)
 
 
-def skipUnlessPy(*versions, reason):
+def skipUnlessPy(*versions, reason) -> Callable[[Callable], Callable]:
   return unittest.skipUnless(sys.version_info[:2] in versions, reason)
 
 
-def skipBeforePy(version, reason):
+def skipBeforePy(version, reason) -> Callable[[Callable], Callable]:
   return unittest.skipIf(sys.version_info[:2] < version, reason)
 
 
-def skipFromPy(version, reason):
+def skipFromPy(version, reason) -> Callable[[Callable], Callable]:
   return unittest.skipUnless(sys.version_info[:2] < version, reason)
 
 
-def skipOnWin32(reason):
+def skipOnWin32(reason) -> Callable[[Callable], Callable]:
   return unittest.skipIf(sys.platform == 'win32', reason)
 
 

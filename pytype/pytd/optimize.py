@@ -8,6 +8,7 @@ redundancies.
 
 import collections
 import logging
+from typing import Any, TypeVar
 
 from pytype import utils
 from pytype.pytd import abc_hierarchy
@@ -17,20 +18,22 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import pytd_visitors
 from pytype.pytd import visitors
 
-log = logging.getLogger(__name__)
+_T0 = TypeVar("_T0")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class RenameUnknowns(visitors.Visitor):
   """Give unknowns that map to the same set of concrete types the same name."""
 
-  def __init__(self, mapping):
+  def __init__(self, mapping) -> None:
     super().__init__()
     self.name_to_cls = {name: hash(cls) for name, cls in mapping.items()}
     self.cls_to_canonical_name = {
         cls: name for name, cls in self.name_to_cls.items()
     }
 
-  def VisitClassType(self, node):
+  def VisitClassType(self, node: _T0) -> pytd.ClassType | _T0:
     if escape.is_unknown(node.name):
       return pytd.ClassType(
           self.cls_to_canonical_name[self.name_to_cls[node.name]], None
@@ -50,14 +53,14 @@ class NormalizeGenericSelfTypes(visitors.Visitor):
       def f(self: Foo): ...
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self.class_stack = []
 
-  def EnterClass(self, node):
+  def EnterClass(self, node) -> None:
     self.class_stack.append(node.name)
 
-  def LeaveClass(self, node):
+  def LeaveClass(self, node) -> None:
     self.class_stack.pop()
 
   def VisitFunction(self, node):
@@ -125,11 +128,11 @@ class _ReturnsAndExceptions:
     exceptions: Exceptions seen so far.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.return_types = []
     self.exceptions = []
 
-  def Update(self, signature):
+  def Update(self, signature) -> None:
     """Add the return types / exceptions of a signature to this instance."""
 
     if signature.return_type not in self.return_types:
@@ -156,7 +159,7 @@ class CombineReturnsAndExceptions(visitors.Visitor):
       raise OverflowError()
   """
 
-  def _GroupByArguments(self, signatures):
+  def _GroupByArguments(self, signatures) -> dict[Any, _ReturnsAndExceptions]:
     """Groups signatures by arguments.
 
     Arguments:
@@ -214,7 +217,9 @@ class CombineContainers(visitors.Visitor):
   .
   """
 
-  _CONTAINER_NAMES = {
+  _CONTAINER_NAMES: dict[
+      type[pytd.CallableType | pytd.TupleType], tuple[str, ...]
+  ] = {
       pytd.TupleType: ("builtins.tuple", "typing.Tuple"),
       pytd.CallableType: ("typing.Callable",),
   }
@@ -225,7 +230,7 @@ class CombineContainers(visitors.Visitor):
     else:
       return t.base_type
 
-  def _should_merge(self, pytd_type, union):
+  def _should_merge(self, pytd_type, union) -> bool:
     """Determine whether pytd_type values in the union should be merged.
 
     If the union contains the homogeneous flavor of pytd_type (e.g.,
@@ -323,14 +328,14 @@ class CombineContainers(visitors.Visitor):
 class SuperClassHierarchy:
   """Utility class for optimizations working with superclasses."""
 
-  def __init__(self, superclasses):
+  def __init__(self, superclasses) -> None:
     self._superclasses = superclasses
     self._subclasses = utils.invert_dict(self._superclasses)
 
   def GetSuperClasses(self):
     return self._superclasses
 
-  def _CollectSuperclasses(self, type_name, collect):
+  def _CollectSuperclasses(self, type_name, collect) -> None:
     """Recursively collect super classes for a type.
 
     Arguments:
@@ -342,7 +347,7 @@ class SuperClassHierarchy:
     for superclass in self._superclasses.get(type_name, []):
       self._CollectSuperclasses(superclass, collect)
 
-  def ExpandSuperClasses(self, t):
+  def ExpandSuperClasses(self, t) -> set[None]:
     """Generate a list of all (known) superclasses for a type.
 
     Arguments:
@@ -356,7 +361,7 @@ class SuperClassHierarchy:
     self._CollectSuperclasses(t, superclasses)
     return superclasses
 
-  def ExpandSubClasses(self, t):
+  def ExpandSubClasses(self, t: _T0) -> set[_T0]:
     """Generate a set of all (known) subclasses for a type.
 
     Arguments:
@@ -375,11 +380,11 @@ class SuperClassHierarchy:
         queue.extend(self._subclasses[item])
     return seen
 
-  def HasSubClassInSet(self, cls, known):
+  def HasSubClassInSet(self, cls, known) -> bool:
     """Queries whether a subclass of a type is present in a given set."""
     return any(sub in known for sub in self._subclasses[cls])
 
-  def HasSuperClassInSet(self, cls, known):
+  def HasSuperClassInSet(self, cls, known) -> bool:
     """Queries whether a superclass of a type is present in a given set."""
     return any(sub in known for sub in self._superclasses[cls])
 
@@ -397,7 +402,7 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
    A union B = A, if B is a subset of A.)
   """
 
-  def __init__(self, hierarchy):
+  def __init__(self, hierarchy) -> None:
     super().__init__()
     self.hierarchy = hierarchy
 
@@ -422,7 +427,7 @@ class FindCommonSuperClasses(visitors.Visitor):
     def f(x: Sequence, y: Set) -> Real
   """
 
-  def __init__(self, hierarchy):
+  def __init__(self, hierarchy) -> None:
     super().__init__()
     self.hierarchy = hierarchy
 
@@ -475,7 +480,7 @@ class CollapseLongUnions(visitors.Visitor):
       more types than this, it is shortened.
   """
 
-  def __init__(self, max_length: int = 7):
+  def __init__(self, max_length: int = 7) -> None:
     super().__init__()
     self.generic_type = pytd.AnythingType()
     self.max_length = max_length
@@ -494,12 +499,12 @@ class CollapseLongUnions(visitors.Visitor):
 class AdjustGenericType(visitors.Visitor):
   """Changes the generic type from "object" to "Any"."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self.old_generic_type = pytd.ClassType("builtins.object")
     self.new_generic_type = pytd.AnythingType()
 
-  def VisitClassType(self, t):
+  def VisitClassType(self, t: _T0) -> pytd.AnythingType | _T0:
     if t == self.old_generic_type:
       return self.new_generic_type
     else:
@@ -579,7 +584,7 @@ class PullInMethodClasses(visitors.Visitor):
   .
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._module = None
     self._total_count = collections.defaultdict(int)
@@ -641,7 +646,7 @@ class PullInMethodClasses(visitors.Visitor):
       return False
     return self._processed_count[cls.name] == self._total_count[cls.name]
 
-  def EnterTypeDeclUnit(self, module):
+  def EnterTypeDeclUnit(self, module) -> None:
     # Since modules are hierarchical, we enter TypeDeclUnits multiple times-
     # but we only want to record the top-level one.
     if not self._module:
@@ -652,11 +657,11 @@ class PullInMethodClasses(visitors.Visitor):
         classes=tuple(c for c in unit.classes if not self._CanDelete(c))
     )
 
-  def VisitClassType(self, t):
+  def VisitClassType(self, t: _T0) -> _T0:
     self._total_count[t.name] += 1
     return t
 
-  def VisitNamedType(self, t):
+  def VisitNamedType(self, t: _T0) -> _T0:
     self._total_count[t.name] += 1
     return t
 
@@ -733,32 +738,32 @@ class SimplifyContainers(visitors.Visitor):
 class TypeParameterScope(visitors.Visitor):
   """Common superclass for optimizations that track type parameters."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self.type_params_stack = [{}]
 
-  def EnterClass(self, cls):
+  def EnterClass(self, cls) -> None:
     new = self.type_params_stack[-1].copy()
     new.update({t.type_param: cls for t in cls.template})
     self.type_params_stack.append(new)
 
-  def EnterSignature(self, sig):
+  def EnterSignature(self, sig) -> None:
     new = self.type_params_stack[-1].copy()
     new.update({t.type_param: sig for t in sig.template})
     self.type_params_stack.append(new)
 
-  def IsClassTypeParameter(self, type_param):
+  def IsClassTypeParameter(self, type_param) -> bool:
     class_or_sig = self.type_params_stack[-1].get(type_param)
     return isinstance(class_or_sig, pytd.Class)
 
-  def IsFunctionTypeParameter(self, type_param):
+  def IsFunctionTypeParameter(self, type_param) -> bool:
     class_or_sig = self.type_params_stack[-1].get(type_param)
     return isinstance(class_or_sig, pytd.Signature)
 
-  def LeaveClass(self, _):
+  def LeaveClass(self, _) -> None:
     self.type_params_stack.pop()
 
-  def LeaveSignature(self, _):
+  def LeaveSignature(self, _) -> None:
     self.type_params_stack.pop()
 
 
@@ -786,36 +791,36 @@ class MergeTypeParameters(TypeParameterScope):
   mutations to the outermost level (in this example, T' = Union[T, T2])
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self.type_param_union = None
 
-  def _AppendNew(self, l1, l2):
+  def _AppendNew(self, l1, l2) -> None:
     """Appends all items to l1 that are not in l2."""
     # l1 and l2 are small (2-3 elements), so just use two loops.
     for e2 in l2:
       if not any(e1 is e2 for e1 in l1):
         l1.append(e2)
 
-  def EnterSignature(self, sig):
+  def EnterSignature(self, sig) -> None:
     # Necessary because TypeParameterScope also defines this function
     super().EnterSignature(sig)
     assert self.type_param_union is None
     self.type_param_union = collections.defaultdict(list)
 
-  def LeaveSignature(self, node):
+  def LeaveSignature(self, node) -> None:
     # Necessary because TypeParameterScope also defines this function
     super().LeaveSignature(node)
     self.type_param_union = None
 
-  def VisitUnionType(self, u):
+  def VisitUnionType(self, u: _T0) -> _T0:
     type_params = [t for t in u.type_list if isinstance(t, pytd.TypeParameter)]
     for t in type_params:
       if self.IsFunctionTypeParameter(t):
         self._AppendNew(self.type_param_union[t.name], type_params)
     return u
 
-  def _AllContaining(self, type_param, seen=None):
+  def _AllContaining(self, type_param: _T0, seen=None) -> list[_T0]:
     """Gets all type parameters that are in a union with the passed one."""
     seen = seen or set()
     result = [type_param]
@@ -826,7 +831,7 @@ class MergeTypeParameters(TypeParameterScope):
       self._AppendNew(result, self._AllContaining(other, seen) or [other])
     return result
 
-  def _ReplaceByOuterIfNecessary(self, item, substitutions):
+  def _ReplaceByOuterIfNecessary(self, item: _T0, substitutions) -> list[_T0]:
     """Potentially replace a function type param with a class type param.
 
     Args:

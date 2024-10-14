@@ -13,7 +13,7 @@ from pytype.rewrite import vm as vm_lib
 _INIT_MAXIMUM_DEPTH = 4  # during module loading
 _MAXIMUM_DEPTH = 3  # during analysis of function bodies
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass

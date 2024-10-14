@@ -1,10 +1,9 @@
 """Utilities for inline type annotations."""
 
 import collections
-from collections.abc import Sequence
 import dataclasses
 import itertools
-from typing import Any
+from typing import Generator, Sequence, TypeVar, Any
 
 from pytype import state
 from pytype import utils
@@ -15,6 +14,8 @@ from pytype.abstract import mixin
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
+
+_T0 = TypeVar("_T0")
 
 
 @dataclasses.dataclass
@@ -191,7 +192,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         for name, annot in annotations.items()
     }
 
-  def get_late_annotations(self, annot):
+  def get_late_annotations(self, annot: _T0) -> Generator[_T0, Any, None]:
     if annot.is_late_annotation() and not annot.resolved:
       yield annot
     elif isinstance(annot, mixin.NestedAnnotation):
@@ -323,7 +324,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     else:
       return {}
 
-  def convert_annotations_list(self, node, annotations_list):
+  def convert_annotations_list(
+      self, node, annotations_list
+  ) -> dict[Any, abstract.BaseValue]:
     """Convert a (name, raw_annot) list to a {name: annotation} dict."""
     annotations = {}
     for name, t in annotations_list:
@@ -337,7 +340,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         annotations[name] = annot
     return annotations
 
-  def convert_class_annotations(self, node, raw_annotations):
+  def convert_class_annotations(self, node, raw_annotations) -> dict:
     """Convert a name -> raw_annot dict to annotations."""
     annotations = {}
     raw_items = raw_annotations.items()
@@ -350,7 +353,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       annotations[name] = annot or self.ctx.convert.unsolvable
     return annotations
 
-  def init_annotation(self, node, name, annot, container=None, extra_key=None):
+  def init_annotation(
+      self, node: _T0, name, annot, container=None, extra_key=None
+  ) -> tuple[_T0, Any]:
     value = self.ctx.vm.init_class(
         node, annot, container=container, extra_key=extra_key
     )
@@ -404,7 +409,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       return typ, self.ctx.new_unsolvable(node)
     return self._sub_and_instantiate(node, name, typ, substs)
 
-  def _sub_and_instantiate(self, node, name, typ, substs):
+  def _sub_and_instantiate(self, node, name, typ, substs) -> tuple[Any, Any]:
     if isinstance(typ, abstract.FinalAnnotation):
       t, value = self._sub_and_instantiate(node, name, typ.annotation, substs)
       return abstract.FinalAnnotation(t, self.ctx), value
@@ -426,7 +431,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     _, value = self.init_annotation(node, name, type_for_value)
     return substituted_type, value
 
-  def apply_annotation(self, node, op, name, value):
+  def apply_annotation(self, node, op, name, value) -> AnnotatedValue:
     """If there is an annotation for the op, return its value."""
     assert op is self.ctx.vm.frame.current_opcode
     if op.code.filename != self.ctx.vm.filename:
@@ -506,7 +511,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         return self.ctx.convert.unsolvable
     return typ
 
-  def _log_illegal_params(self, illegal_params, stack, typ, name):
+  def _log_illegal_params(self, illegal_params, stack, typ, name) -> None:
     out_of_scope_params = utils.unique_list(illegal_params)
     details = "TypeVar(s) %s not in scope" % ", ".join(
         repr(p) for p in out_of_scope_params
@@ -525,7 +530,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       details += f"\nNote: For all string types, use {str_type}."
     self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
 
-  def eval_multi_arg_annotation(self, node, func, annot, stack):
+  def eval_multi_arg_annotation(self, node, func, annot, stack) -> None:
     """Evaluate annotation for multiple arguments (from a type comment)."""
     args, errorlog = self._eval_expr_as_tuple(node, annot, stack)
     if errorlog:
@@ -571,7 +576,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
   ) -> abstract.BaseValue | None:
     """Change annotation / record errors where required."""
     if isinstance(annotation, abstract.AnnotationContainer):
-      annotation = annotation.base_cls
+      annotation = annotation.base_cls  # pytype: disable=attribute-error
 
     if isinstance(annotation, typing_overlay.Union):
       self.ctx.errorlog.invalid_annotation(
@@ -672,7 +677,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       )
       return None
 
-  def _eval_expr_as_tuple(self, node, expr, stack):
+  def _eval_expr_as_tuple(
+      self, node, expr, stack
+  ) -> tuple[tuple, abstract_utils.EvaluationError | None]:
     """Evaluate an expression as a tuple."""
     if not expr:
       return (), None

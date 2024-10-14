@@ -1,18 +1,18 @@
 """Utilities for dealing with project configuration."""
 
 import abc
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 import configparser
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from pytype.platform_utils import path_utils
 import toml
 
-_CONFIG_FILENAMES = ('pyproject.toml', 'setup.cfg')
+_CONFIG_FILENAMES: tuple[str, str] = ('pyproject.toml', 'setup.cfg')
 _ConfigSectionT = TypeVar('_ConfigSectionT', bound='ConfigSection')
 
 
-def find_config_file(path):
+def find_config_file(path) -> str | None:
   """Finds the first instance of a config file in a prefix of path."""
 
   # Make sure path is a directory
@@ -50,7 +50,7 @@ class ConfigSection(abc.ABC):
 class TomlConfigSection(ConfigSection):
   """A section of a TOML config file."""
 
-  def __init__(self, content):
+  def __init__(self, content) -> None:
     self._content = content
 
   @classmethod
@@ -63,7 +63,7 @@ class TomlConfigSection(ConfigSection):
       return cls(content['tool'][section])
     return None
 
-  def items(self):
+  def items(self) -> Generator[tuple[Any, str], Any, None]:
     for k, v in self._content.items():
       yield (k, ' '.join(str(e) for e in v) if isinstance(v, list) else str(v))
 
@@ -71,7 +71,7 @@ class TomlConfigSection(ConfigSection):
 class IniConfigSection(ConfigSection):
   """A section of an INI config file."""
 
-  def __init__(self, parser, section):
+  def __init__(self, parser, section) -> None:
     self._parser = parser
     self._section = section
 

@@ -11,7 +11,7 @@ class NamedTuple:
   # This is called from the pyi parser, to convert a namedtuple constructed by a
   # functional constructor into a NamedTuple subclass.
 
-  def __init__(self, base_name, fields, generated_classes):
+  def __init__(self, base_name, fields, generated_classes) -> None:
     # Handle previously defined NamedTuples with the same name
     index = len(generated_classes[base_name])
     self.name = escape.pack_namedtuple_base_class(base_name, index)

@@ -6,6 +6,7 @@ import dataclasses
 import functools
 import logging
 import os
+from typing import Any, TypeVar
 
 from pytype import file_utils
 from pytype import module_utils
@@ -20,15 +21,26 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.pytd.pytd import TypeDeclUnit
 
-log = logging.getLogger(__name__)
+
+_ModuleNameType: type[str]
+_AliasNameType: type[str]
+_NameType: type[str]
+
+_T0 = TypeVar("_T0")
+_T1 = TypeVar("_T1")
+_TModule = TypeVar("_TModule", bound="Module")
+_TPickledPyiLoader = TypeVar("_TPickledPyiLoader", bound="PickledPyiLoader")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # Always load this module from typeshed, even if we have it in the imports map
-_ALWAYS_PREFER_TYPESHED = frozenset({"typing_extensions"})
+_ALWAYS_PREFER_TYPESHED: frozenset[str] = frozenset({"typing_extensions"})
 
 # Type alias
-_AST = pytd.TypeDeclUnit
-ModuleInfo = imports_base.ModuleInfo
+_AST: type[TypeDeclUnit] = pytd.TypeDeclUnit
+ModuleInfo: type[imports_base.ModuleInfo] = imports_base.ModuleInfo
 
 
 def create_loader(options, missing_modules=()):
@@ -101,7 +113,7 @@ class Module:
       metadata=None,
       pickle=None,
       has_unresolved_pointers=True,
-  ):
+  ) -> None:
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
@@ -111,14 +123,14 @@ class Module:
 
   # pylint: enable=redefined-outer-name
 
-  def needs_unpickling(self):
+  def needs_unpickling(self) -> bool:
     return bool(self.pickle)
 
   def is_package(self):
     return _is_package(self.filename)
 
   @classmethod
-  def resolved_internal_stub(cls, name, mod_ast):
+  def resolved_internal_stub(cls: type[_TModule], name, mod_ast) -> _TModule:
     return cls(
         name,
         imports_base.internal_stub_filename(name),
@@ -130,18 +142,18 @@ class Module:
 class BadDependencyError(Exception):
   """If we can't resolve a module referenced by the one we're trying to load."""
 
-  def __init__(self, module_error, src=None):
+  def __init__(self, module_error, src=None) -> None:
     referenced = f", referenced from {src!r}" if src else ""
     super().__init__(module_error + referenced)
 
-  def __str__(self):
+  def __str__(self) -> str:
     return str(self.args[0])
 
 
 class _ModuleMap:
   """A map of fully qualified module name -> Module."""
 
-  def __init__(self, options, modules):
+  def __init__(self, options, modules) -> None:
     self.options = options
     self._modules: dict[str, Module] = modules or self._base_modules()
     if self._modules["builtins"].needs_unpickling():
@@ -150,16 +162,16 @@ class _ModuleMap:
       self._unpickle_module(self._modules["typing"])
     self._concatenated = None
 
-  def __getitem__(self, key):
+  def __getitem__(self, key) -> Module:
     return self._modules[key]
 
-  def __setitem__(self, key, val):
+  def __setitem__(self, key, val) -> None:
     self._modules[key] = val
 
-  def __delitem__(self, key):
+  def __delitem__(self, key) -> None:
     del self._modules[key]
 
-  def __contains__(self, key):
+  def __contains__(self, key) -> bool:
     return key in self._modules
 
   def items(self):
@@ -199,7 +211,7 @@ class _ModuleMap:
         )
     return resolved_modules
 
-  def _base_modules(self):
+  def _base_modules(self) -> dict[str, Any]:
     bltins, typing = builtin_stubs.GetBuiltinsAndTyping(
         parser.PyiOptions.from_toplevel_options(self.options)
     )
@@ -208,7 +220,7 @@ class _ModuleMap:
         "typing": Module.resolved_internal_stub("typing", typing),
     }
 
-  def _unpickle_module(self, module):
+  def _unpickle_module(self, module) -> None:
     """Unpickle a pickled ast and its dependencies."""
     if not module.pickle:
       return
@@ -257,14 +269,14 @@ class _ModuleMap:
       self._concatenated = pytd_utils.Concat(*self.defined_asts(), name="<all>")
     return self._concatenated
 
-  def invalidate_concatenated(self):
+  def invalidate_concatenated(self) -> None:
     self._concatenated = None
 
 
 class _Resolver:
   """Resolve symbols in a pytd tree."""
 
-  def __init__(self, builtins_ast):
+  def __init__(self, builtins_ast) -> None:
     self.builtins_ast = builtins_ast
     self.allow_singletons = False
 
@@ -316,8 +328,8 @@ class _Resolver:
     raise BadDependencyError(key, name) from key_error
 
   def resolve_module_alias(
-      self, name, *, lookup_ast=None, lookup_ast_name=None
-  ):
+      self, name: _T0, *, lookup_ast=None, lookup_ast_name=None
+  ) -> _T0:
     """Check if a given name is an alias and resolve it if so."""
     # name is bare, but aliases are stored as "ast_name.alias".
     if lookup_ast is None:
@@ -329,11 +341,11 @@ class _Resolver:
       key = f"{ast_name}.{cur_name}"
       value = aliases.get(key)
       if isinstance(value, pytd.Module):
-        return value.module_name + name[len(cur_name) :]
+        return value.module_name + name[len(cur_name) :]  # pytype: disable=attribute-error
       cur_name, _, _ = cur_name.rpartition(".")
     return name
 
-  def verify(self, mod_ast, *, mod_name=None):
+  def verify(self, mod_ast, *, mod_name=None) -> None:
     try:
       mod_ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
     except ValueError as e:
@@ -414,7 +426,7 @@ class Loader:
     typing: The typing ast.
   """
 
-  def __init__(self, options, modules=None, missing_modules=()):
+  def __init__(self, options, modules=None, missing_modules=()) -> None:
     self.options = options
     self._modules = _ModuleMap(options, modules)
     self.builtins = self._modules["builtins"].ast
@@ -442,12 +454,12 @@ class Loader:
   def _pyi_options(self):
     return parser.PyiOptions.from_toplevel_options(self.options)
 
-  def get_default_ast(self):
+  def get_default_ast(self) -> TypeDeclUnit:
     return builtin_stubs.GetDefaultAst(
         parser.PyiOptions.from_toplevel_options(self.options)
     )
 
-  def save_to_pickle(self, filename):
+  def save_to_pickle(self, filename) -> None:
     """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
     # We assume that the Loader is in a consistent state here. In particular, we
     # assume that for every module in _modules, all the transitive dependencies
@@ -554,7 +566,7 @@ class Loader:
 
   def _load_ast_dependencies(
       self, dependencies, lookup_ast, lookup_ast_name=None
-  ):
+  ) -> None:
     """Fill in all ClassType.cls pointers and load reexported modules."""
     ast_name = lookup_ast_name or lookup_ast.name
     for dep_name in dependencies:
@@ -629,7 +641,7 @@ class Loader:
     )
     return mod_ast
 
-  def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None):
+  def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None) -> None:
     module_map = self._modules.get_module_map()
     module_map[""] = lookup_ast or mod_ast  # The module itself (local lookup)
     mod_ast.Visit(visitors.FillInLocalPointers(module_map))
@@ -653,7 +665,7 @@ class Loader:
     # NOTE: Modules of dependencies will be loaded into the cache
     return self.resolve_pytd(ast, ast)
 
-  def _resolve_classtype_pointers_for_all_modules(self):
+  def _resolve_classtype_pointers_for_all_modules(self) -> None:
     for module in self._modules.values():
       if module.has_unresolved_pointers:
         self._resolve_classtype_pointers(module.ast)
@@ -745,11 +757,11 @@ class Loader:
         self._resolver.verify(mod_ast)
     return mod_ast
 
-  def add_module_prefixes(self, module_name):
+  def add_module_prefixes(self, module_name) -> None:
     for prefix in module_utils.get_all_prefixes(module_name):
       self._prefixes.add(prefix)
 
-  def has_module_prefix(self, prefix):
+  def has_module_prefix(self, prefix) -> bool:
     return prefix in self._prefixes
 
   def _load_builtin(self, namespace, module_name):
@@ -835,7 +847,7 @@ class Loader:
   def concat_all(self):
     return self._modules.concat_all()
 
-  def get_resolved_modules(self):
+  def get_resolved_modules(self) -> dict[str, ResolvedModule]:
     """Gets a name -> ResolvedModule map of the loader's resolved modules."""
     return self._modules.get_resolved_modules()
 
@@ -855,7 +867,9 @@ class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""
 
   @classmethod
-  def load_from_pickle(cls, filename, options, missing_modules=()):
+  def load_from_pickle(
+      cls: type[_TPickledPyiLoader], filename, options, missing_modules=()
+  ) -> _TPickledPyiLoader:
     """Load a pytd module from a pickle file."""
     items = pickle_utils.LoadBuiltins(
         filename, compress=True, open_function=options.open_function

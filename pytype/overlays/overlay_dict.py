@@ -28,7 +28,7 @@ from pytype.overlays import typing_overlay
 
 # Collection of module overlays, used by the vm to fetch an overlay
 # instead of the module itself. Memoized in the vm itself.
-overlays = {
+overlays: dict[str, type] = {
     "abc": abc_overlay.ABCOverlay,
     "asyncio": asyncio_types_overlay.AsyncioOverlay,
     "attr": attr_overlay.AttrOverlay,

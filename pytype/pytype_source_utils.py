@@ -6,6 +6,7 @@
 
 import os
 import re
+from typing import Any, Generator
 
 from pytype.platform_utils import path_utils
 
@@ -14,7 +15,7 @@ class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
   pass
 
 
-def _pytype_source_dir():
+def _pytype_source_dir() -> str:
   """The base directory of the pytype source tree."""
   res = path_utils.dirname(__file__)
   if path_utils.basename(res) == "__pycache__":
@@ -76,7 +77,7 @@ def _load_data_file(filename, text):
     return fi.read()
 
 
-def list_files(basedir):
+def list_files(basedir) -> Generator[str, Any, None]:
   """List files in the directory rooted at |basedir|."""
   if not path_utils.isdir(basedir):
     raise NoSuchDirectory(basedir)
@@ -91,7 +92,7 @@ def list_files(basedir):
         yield filename
 
 
-def list_pytype_files(suffix):
+def list_pytype_files(suffix) -> Generator[Any, Any, None]:
   """Recursively get the contents of a directory in the pytype installation.
 
   This reports files in said directory as well as all subdirectories of it.

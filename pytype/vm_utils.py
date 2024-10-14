@@ -9,6 +9,7 @@ import itertools
 import logging
 import re
 import reprlib
+from typing import Any
 
 from pytype import overriding_checks
 from pytype import state as frame_state
@@ -27,20 +28,25 @@ from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.typegraph import cfg
 
-log = logging.getLogger(__name__)
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # Create a repr that won't overflow.
 _TRUNCATE = 120
 _TRUNCATE_STR = 72
-_repr_obj = reprlib.Repr()
+_repr_obj: reprlib.Repr = reprlib.Repr()
 _repr_obj.maxother = _TRUNCATE
 _repr_obj.maxstring = _TRUNCATE_STR
 repper = _repr_obj.repr
 
-_FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
+_FUNCTION_TYPE_COMMENT_RE: re.Pattern = re.compile(
+    r"^\((.*)\)\s*->\s*(\S.*?)\s*$"
+)
 
 # Classes supporting pattern matching without an explicit __match_args__
-_BUILTIN_MATCHERS = (
+_BUILTIN_MATCHERS: tuple[
+    str, str, str, str, str, str, str, str, str, str, str
+] = (
     "bool",
     "bytearray",
     "bytes",
@@ -69,14 +75,14 @@ class _Block:
   level: int
   op_index: int
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Block({self.type}: {self.op_index} level={self.level})"
 
 
 class FindIgnoredTypeComments(pyc.CodeVisitor):
   """A visitor that finds type comments that will be ignored."""
 
-  def __init__(self, type_comments):
+  def __init__(self, type_comments) -> None:
     super().__init__()
     self._type_comments = type_comments
     # Lines will be removed from this set during visiting. Any lines that remain
@@ -97,7 +103,7 @@ class FindIgnoredTypeComments(pyc.CodeVisitor):
           self._ignored_type_lines.discard(line)
     return code
 
-  def ignored_lines(self):
+  def ignored_lines(self) -> set:
     """Returns a set of lines that contain ignored type comments."""
     return self._ignored_type_lines
 
@@ -107,9 +113,9 @@ class FinallyStateTracker:
 
   # Used in vm.run_frame()
 
-  RETURN_STATES = ("return", "exception")
+  RETURN_STATES: tuple[str, str] = ("return", "exception")
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.stack = []
 
   def process(self, op, state, ctx) -> str | None:
@@ -132,7 +138,7 @@ class FinallyStateTracker:
         and state.why in self.RETURN_STATES
     )
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return repr(self.stack)
 
 
@@ -146,12 +152,12 @@ class _NameErrorDetails(abc.ABC):
 
 class _NameInInnerClassErrorDetails(_NameErrorDetails):
 
-  def __init__(self, attr, class_name):
+  def __init__(self, attr, class_name) -> None:
     super().__init__()
     self._attr = attr
     self._class_name = class_name
 
-  def to_error_message(self):
+  def to_error_message(self) -> str:
     return (
         f"Cannot reference {self._attr!r} from class {self._class_name!r} "
         "before the class is fully defined"
@@ -161,13 +167,13 @@ class _NameInInnerClassErrorDetails(_NameErrorDetails):
 class _NameInOuterClassErrorDetails(_NameErrorDetails):
   """Name error details for a name defined in an outer class."""
 
-  def __init__(self, attr, prefix, class_name):
+  def __init__(self, attr, prefix, class_name) -> None:
     super().__init__()
     self._attr = attr
     self._prefix = prefix
     self._class_name = class_name
 
-  def to_error_message(self):
+  def to_error_message(self) -> str:
     full_attr_name = f"{self._class_name}.{self._attr}"
     if self._prefix:
       full_class_name = f"{self._prefix}.{self._class_name}"
@@ -182,13 +188,13 @@ class _NameInOuterClassErrorDetails(_NameErrorDetails):
 class _NameInOuterFunctionErrorDetails(_NameErrorDetails):
   """Name error details for a name defined in an outer function."""
 
-  def __init__(self, attr, outer_scope, inner_scope):
+  def __init__(self, attr, outer_scope, inner_scope) -> None:
     super().__init__()
     self._attr = attr
     self._outer_scope = outer_scope
     self._inner_scope = inner_scope
 
-  def to_error_message(self):
+  def to_error_message(self) -> str:
     keyword = "global" if "global" in self._outer_scope else "nonlocal"
     return (
         f"Add `{keyword} {self._attr}` in {self._inner_scope} to reference "
@@ -372,7 +378,7 @@ def get_name_error_details(state, name: str, ctx) -> _NameErrorDetails | None:
   return None
 
 
-def log_opcode(op, state, frame, stack_size):
+def log_opcode(op, state, frame, stack_size) -> None:
   """Write a multi-line log message, including backtrace and stack."""
   if not log.isEnabledFor(logging.INFO):
     return
@@ -424,7 +430,7 @@ def _process_base_class(node, base, ctx):
   return base
 
 
-def _filter_out_metaclasses(bases, ctx):
+def _filter_out_metaclasses(bases, ctx) -> tuple[Any, list]:
   """Process the temporary classes created by six.with_metaclass.
 
   six.with_metaclass constructs an anonymous class holding a metaclass and a
@@ -454,7 +460,7 @@ def _filter_out_metaclasses(bases, ctx):
   return meta, non_meta
 
 
-def _expand_generic_protocols(node, bases, ctx):
+def _expand_generic_protocols(node, bases, ctx) -> list:
   """Expand Protocol[T, ...] to Protocol, Generic[T, ...]."""
   expanded_bases = []
   for base in bases:
@@ -484,7 +490,7 @@ def _expand_generic_protocols(node, bases, ctx):
   return expanded_bases
 
 
-def _check_final_members(cls, class_dict, ctx):
+def _check_final_members(cls, class_dict, ctx) -> None:
   """Check if the new class overrides a final attribute or method."""
   methods = set(class_dict)
   for base in cls.mro[1:]:
@@ -620,7 +626,7 @@ def make_class(node, props, ctx):
   return node, var
 
 
-def _check_defaults(node, method, ctx):
+def _check_defaults(node, method, ctx) -> None:
   """Check parameter defaults against annotations."""
   if not method.signature.has_param_annotations:
     return
@@ -631,9 +637,9 @@ def _check_defaults(node, method, ctx):
     raise AssertionError(
         "Unexpected argument matching error: %s" % e.__class__.__name__
     ) from e
-  for e, arg_name, value in errors:
+  for e, arg_name, value in errors:  # pytype: disable=attribute-error
     bad_param = e.bad_call.bad_param
-    expected_type = bad_param.typ
+    expected_type = bad_param.typ  # pytype: disable=wrong-arg-types
     if value == ctx.convert.ellipsis:
       # `...` should be a valid default parameter value for overloads.
       # Unfortunately, the is_overload attribute is not yet set when
@@ -697,7 +703,7 @@ def make_function(
   return var
 
 
-def update_excluded_types(node, ctx):
+def update_excluded_types(node, ctx) -> None:
   """Update the excluded_types attribute of functions in the current frame."""
   if not ctx.vm.frame.func:
     return
@@ -737,7 +743,7 @@ def _base(cls):
   return cls
 
 
-def _overrides(subcls, supercls, attr):
+def _overrides(subcls, supercls, attr) -> bool:
   """Check whether subcls_var overrides or newly defines the given attribute.
 
   Args:
@@ -766,7 +772,9 @@ def _overrides(subcls, supercls, attr):
   return False
 
 
-def _call_binop_on_bindings(node, name, xval, yval, ctx):
+def _call_binop_on_bindings(
+    node, name, xval, yval, ctx
+) -> tuple[Any, Any]:
   """Call a binary operator on two cfg.Binding objects."""
   rname = slots.REVERSE_NAME_MAPPING.get(name)
   if rname and isinstance(xval.data, abstract.AMBIGUOUS_OR_EMPTY):
@@ -853,7 +861,9 @@ def _maybe_union(node, x, y, ctx):
   return abstract.Union(opts, ctx).to_variable(node)
 
 
-def call_binary_operator(state, name, x, y, report_errors, ctx):
+def call_binary_operator(
+    state, name, x, y, report_errors, ctx
+) -> tuple[Any, Any]:
   """Map a binary operator to "magic methods" (__add__ etc.)."""
   results = []
   log.debug("Calling binary operator %s", name)
@@ -907,7 +917,7 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
   return state, result
 
 
-def call_inplace_operator(state, iname, x, y, ctx):
+def call_inplace_operator(state, iname, x, y, ctx) -> tuple[Any, Any]:
   """Try to call a method like __iadd__, possibly fall back to __add__."""
   state, attr = ctx.vm.load_attr_noerror(state, x, iname)
   if attr is None:
@@ -930,7 +940,7 @@ def call_inplace_operator(state, iname, x, y, ctx):
   return state, ret
 
 
-def check_for_deleted(state, name, var, ctx):
+def check_for_deleted(state, name, var, ctx) -> None:
   for x in var.Data(state.node):
     if isinstance(x, abstract.Deleted):
       # Referencing a deleted variable
@@ -1043,7 +1053,7 @@ def jump_if(state, op, ctx, *, jump_if_val, pop=PopBehavior.NONE):
     return state.forward_cfg_node("NoJump", normal.binding if normal else None)
 
 
-def process_function_type_comment(node, op, func, ctx):
+def process_function_type_comment(node, op, func, ctx) -> None:
   """Modifies annotations from a function type comment.
 
   Checks if a type comment is present for the function.  If so, the type
@@ -1295,7 +1305,7 @@ def copy_dict_without_keys(
   return ret.to_variable(node)
 
 
-def unpack_iterable(node, var, ctx):
+def unpack_iterable(node, var, ctx) -> list:
   """Unpack an iterable."""
   elements = []
   try:
@@ -1330,7 +1340,7 @@ def unpack_iterable(node, var, ctx):
   return elements
 
 
-def pop_and_unpack_list(state, count, ctx):
+def pop_and_unpack_list(state, count, ctx) -> tuple[Any, list]:
   """Pop count iterables off the stack and concatenate."""
   state, iterables = state.popn(count)
   elements = []
@@ -1339,7 +1349,7 @@ def pop_and_unpack_list(state, count, ctx):
   return state, elements
 
 
-def merge_indefinite_iterables(node, target, iterables_to_merge):
+def merge_indefinite_iterables(node, target, iterables_to_merge) -> None:
   for var in iterables_to_merge:
     if abstract_utils.is_var_splat(var):
       for val in abstract_utils.unwrap_splat(var).data:
@@ -1440,7 +1450,7 @@ def _binding_to_coroutine(state, b, bad_bindings, ret, top, ctx):
   return state
 
 
-def to_coroutine(state, obj, top, ctx):
+def to_coroutine(state, obj, top, ctx) -> tuple[Any, Any]:
   """Convert any awaitables and generators in obj to coroutines.
 
   Implements the GET_AWAITABLE opcode, which returns obj unchanged if it is a

@@ -2,14 +2,17 @@
 
 import ast as astlib
 import dataclasses
-from typing import Any
+from typing import Any, TypeVar
 
 from pytype.pytd import pytd
 
-_STRING_TYPES = ("str", "bytes", "unicode")
+_TParseError = TypeVar("_TParseError", bound="ParseError")
+_TPyval = TypeVar("_TPyval", bound="Pyval")
+
+_STRING_TYPES: tuple[str, str, str] = ("str", "bytes", "unicode")
 
 
-def node_position(node):
+def node_position(node) -> tuple[Any, Any]:
   # NOTE: ast.Module has no position info, and will be the `node` when
   # build_type_decl_unit() is called, so we cannot call `node.lineno`
   return getattr(node, "lineno", None), getattr(node, "col_offset", None)
@@ -18,7 +21,9 @@ def node_position(node):
 class ParseError(Exception):
   """Exceptions raised by the parser."""
 
-  def __init__(self, msg, line=None, filename=None, column=None, text=None):
+  def __init__(
+      self, msg, line=None, filename=None, column=None, text=None
+  ) -> None:
     super().__init__(msg)
     self._line = line
     self._filename = filename
@@ -34,7 +39,9 @@ class ParseError(Exception):
     else:
       return cls(repr(exc))
 
-  def at(self, node, filename=None, src_code=None):
+  def at(
+      self: _TParseError, node, filename=None, src_code=None
+  ) -> _TParseError:
     """Add position information from `node` if it doesn't already exist."""
     if not self._line:
       self._line, self._column = node_position(node)
@@ -47,14 +54,14 @@ class ParseError(Exception):
         pass
     return self
 
-  def clear_position(self):
+  def clear_position(self) -> None:
     self._line = None
 
   @property
   def line(self):
     return self._line
 
-  def __str__(self):
+  def __str__(self) -> str:
     lines = []
     if self._filename or self._line is not None:
       lines.append(f'  File: "{self._filename}", line {self._line}')
@@ -98,10 +105,10 @@ class Pyval(astlib.AST):
   def from_const(cls, node: astlib.Constant):
     return cls(type(node.value).__name__, node.value, *node_position(node))
 
-  def to_pytd(self):
+  def to_pytd(self) -> pytd.NamedType:
     return pytd.NamedType(self.type)
 
-  def repr_str(self):
+  def repr_str(self) -> str:
     """String representation with prefixes."""
     if self.type == "unicode":
       val = f"u{self.value!r}"
@@ -109,7 +116,7 @@ class Pyval(astlib.AST):
       val = repr(self.value)
     return val
 
-  def to_pytd_literal(self):
+  def to_pytd_literal(self) -> pytd.Literal | pytd.NamedType:
     """Make a pytd node from Literal[self.value]."""
     if self.type == "NoneType":
       return pytd.NamedType("NoneType")
@@ -121,17 +128,17 @@ class Pyval(astlib.AST):
       val = self.value
     return pytd.Literal(val)
 
-  def negated(self):
+  def negated(self: _TPyval) -> _TPyval:
     """Return a new constant with value -self.value."""
     if self.type in ("int", "float"):
       return Pyval(self.type, -self.value, self.lineno, self.col_offset)
     raise ParseError("Unary `-` can only apply to numeric literals.")
 
   @classmethod
-  def is_str(cls, value):
+  def is_str(cls, value) -> bool:
     return isinstance(value, cls) and value.type in _STRING_TYPES
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"LITERAL({self.repr_str()})"
 
 

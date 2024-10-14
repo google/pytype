@@ -1,7 +1,9 @@
 """Variables, bindings, and conditions."""
 
 import dataclasses
-from typing import ClassVar
+from typing import TypeVar, ClassVar
+
+_T = TypeVar('_T')
 
 _frozen_dataclass = dataclasses.dataclass(frozen=True)
 
@@ -14,19 +16,19 @@ class Condition:
 @_frozen_dataclass
 class _True(Condition):
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'TRUE'
 
 
 @_frozen_dataclass
 class _False(Condition):
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return 'FALSE'
 
 
-TRUE = _True()
-FALSE = _False()
+TRUE: _True = _True()
+FALSE: _False = _False()
 
 
 @_frozen_dataclass
@@ -35,7 +37,7 @@ class _Not(Condition):
 
   condition: Condition
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'not {self.condition}'
 
   @classmethod
@@ -77,7 +79,7 @@ class _Composite(Condition):
       return conditions.pop()
     return cls(frozenset(conditions))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     conditions = []
     for c in self.conditions:
       if isinstance(c, _Composite):

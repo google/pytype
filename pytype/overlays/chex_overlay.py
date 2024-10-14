@@ -7,6 +7,8 @@ differences between @dataclasses.dataclass and @chex.dataclass are:
 * Chex dataclasses have replace, from_tuple, and to_tuple methods.
 """
 
+from typing import Any
+
 from pytype.abstract import abstract
 from pytype.overlays import classgen
 from pytype.overlays import dataclass_overlay
@@ -17,7 +19,7 @@ from pytype.pytd import pytd
 
 class ChexOverlay(overlay.Overlay):
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "dataclass": Dataclass.make,
     }
@@ -28,17 +30,17 @@ class ChexOverlay(overlay.Overlay):
 class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
-  DEFAULT_ARGS = {
+  DEFAULT_ARGS: dict[str, Any] = {
       **dataclass_overlay.Dataclass.DEFAULT_ARGS,
       "mappable_dataclass": True,
   }
 
-  def _add_replace_method(self, node, cls):
+  def _add_replace_method(self, node, cls) -> None:
     cls.members["replace"] = classgen.make_replace_method(
         self.ctx, node, cls, kwargs_name="changes"
     )
 
-  def _add_from_tuple_method(self, node, cls):
+  def _add_from_tuple_method(self, node, cls) -> None:
     # from_tuple is discouraged anyway, so we provide only bare-bones types.
     cls.members["from_tuple"] = overlay_utils.make_method(
         ctx=self.ctx,
@@ -49,7 +51,7 @@ class Dataclass(dataclass_overlay.Dataclass):
         kind=pytd.MethodKind.STATICMETHOD,
     )
 
-  def _add_to_tuple_method(self, node, cls):
+  def _add_to_tuple_method(self, node, cls) -> None:
     # to_tuple is discouraged anyway, so we provide only bare-bones types.
     cls.members["to_tuple"] = overlay_utils.make_method(
         ctx=self.ctx,
@@ -58,7 +60,7 @@ class Dataclass(dataclass_overlay.Dataclass):
         return_type=self.ctx.convert.tuple_type,
     )
 
-  def _add_mapping_methods(self, node, cls):
+  def _add_mapping_methods(self, node, cls) -> None:
     if "__getitem__" not in cls.members:
       cls.members["__getitem__"] = overlay_utils.make_method(
           ctx=self.ctx,
@@ -82,7 +84,7 @@ class Dataclass(dataclass_overlay.Dataclass):
           return_type=self.ctx.convert.int_type,
       )
 
-  def decorate(self, node, cls):
+  def decorate(self, node, cls) -> None:
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
       return

@@ -1,8 +1,10 @@
 """A printer for human-readable output of error messages."""
 
 import collections
+from collections.abc import Generator
 import dataclasses
 import enum
+from typing import Any
 
 from pytype import matcher
 from pytype import pretty_printer_base
@@ -51,7 +53,7 @@ class BadCallPrinter:
     self.bad_call = bad_call
     self._pp = pp
 
-  def _iter_sig(self):
+  def _iter_sig(self) -> Generator[tuple[str, Any], Any, None]:
     """Iterate through a Signature object. Focus on a bad parameter."""
     sig = self.bad_call.sig
     for name in sig.posonly_params:
@@ -69,7 +71,7 @@ class BadCallPrinter:
     if sig.kwargs_name is not None:
       yield "**", sig.kwargs_name
 
-  def _iter_expected(self):
+  def _iter_expected(self) -> Generator[tuple[Any, Any, str], Any, None]:
     """Yield the prefix, name and type information for expected parameters."""
     bad_param = self.bad_call.bad_param
     sig = self.bad_call.sig
@@ -80,7 +82,7 @@ class BadCallPrinter:
         suffix = ": " + type_str + suffix
       yield prefix, name, suffix
 
-  def _iter_actual(self, literal):
+  def _iter_actual(self, literal) -> Generator[tuple[str, str, str], Any, None]:
     """Yield the prefix, name and type information for actual parameters."""
     # We want to display the passed_args in the order they're defined in the
     # signature, unless there are starargs or starstarargs.
@@ -106,7 +108,7 @@ class BadCallPrinter:
         suffix = ""
       yield "", name, suffix
 
-  def _print_args(self, arg_iter):
+  def _print_args(self, arg_iter) -> str:
     """Pretty-print a list of arguments. Focus on a bad parameter."""
     # (foo, bar, broken : type, ...)
     bad_param = self.bad_call.bad_param
@@ -125,7 +127,7 @@ class BadCallPrinter:
         printed_params.append(prefix + name)
     return ", ".join(printed_params)
 
-  def print_call_details(self):
+  def print_call_details(self) -> BadCall:
     bad_param = self.bad_call.bad_param
     expected = self._print_args(self._iter_expected())
     literal = "Literal[" in expected

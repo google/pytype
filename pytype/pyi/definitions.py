@@ -22,20 +22,24 @@ from pytype.pytd.parse import node as pytd_node
 from pytype.pytd.parse import parser_constants
 
 # Typing members that represent sets of types.
-_TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
+_TYPING_SETS: tuple[str, str, str] = (
+    "typing.Intersection",
+    "typing.Optional",
+    "typing.Union",
+)
 
-_ParseError = types.ParseError
+_ParseError: type[types.ParseError] = types.ParseError
 
 _NodeT = TypeVar("_NodeT", bound=pytd.Node)
 
 
 class _DuplicateDefsError(Exception):
 
-  def __init__(self, duplicates):
+  def __init__(self, duplicates) -> None:
     super().__init__()
     self._duplicates = duplicates
 
-  def to_parse_error(self, namespace):
+  def to_parse_error(self, namespace) -> types.ParseError:
     return _ParseError(
         f"Duplicate attribute name(s) in {namespace}: "
         + ", ".join(self._duplicates)
@@ -210,7 +214,7 @@ def _pytd_annotated(parameters: list[Any]) -> pytd.Type:
 class _InsertTypeParameters(visitors.Visitor):
   """Visitor for inserting TypeParameter instances."""
 
-  def __init__(self, type_params):
+  def __init__(self, type_params) -> None:
     super().__init__()
     self.type_params = {p.name: p for p in type_params}
 
@@ -224,14 +228,14 @@ class _InsertTypeParameters(visitors.Visitor):
 class _VerifyMutators(visitors.Visitor):
   """Visitor for verifying TypeParameters used in mutations are in scope."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     # A stack of type parameters introduced into the scope. The top of the stack
     # contains the currently accessible parameter set.
     self.type_params_in_scope = [set()]
     self.current_function = None
 
-  def _AddParams(self, params):
+  def _AddParams(self, params) -> None:
     top = self.type_params_in_scope[-1]
     self.type_params_in_scope.append(top | params)
 
@@ -239,16 +243,16 @@ class _VerifyMutators(visitors.Visitor):
     params = pytd_utils.GetTypeParameters(node)
     return {x.name for x in params}
 
-  def EnterClass(self, node):
+  def EnterClass(self, node) -> None:
     params = set()
     for cls in node.bases:
       params |= self._GetTypeParameters(cls)
     self._AddParams(params)
 
-  def LeaveClass(self, _):
+  def LeaveClass(self, _) -> None:
     self.type_params_in_scope.pop()
 
-  def EnterFunction(self, node):
+  def EnterFunction(self, node) -> None:
     self.current_function = node
     params = set()
     for sig in node.signatures:
@@ -260,11 +264,11 @@ class _VerifyMutators(visitors.Visitor):
         params |= self._GetTypeParameters(sig.starstarargs.type)
     self._AddParams(params)
 
-  def LeaveFunction(self, _):
+  def LeaveFunction(self, _) -> None:
     self.type_params_in_scope.pop()
     self.current_function = None
 
-  def EnterParameter(self, node):
+  def EnterParameter(self, node) -> None:
     if isinstance(node.mutated_type, pytd.GenericType):
       params = self._GetTypeParameters(node.mutated_type)
       extra = params - self.type_params_in_scope[-1]
@@ -279,17 +283,17 @@ class _VerifyMutators(visitors.Visitor):
 class _ContainsAnyType(visitors.Visitor):
   """Check if a pytd object contains a type of any of the given names."""
 
-  def __init__(self, type_names):
+  def __init__(self, type_names) -> None:
     super().__init__()
     self._type_names = set(type_names)
     self.found = False
 
-  def EnterNamedType(self, node):
+  def EnterNamedType(self, node) -> None:
     if node.name in self._type_names:
       self.found = True
 
 
-def _contains_any_type(ast, type_names):
+def _contains_any_type(ast, type_names) -> bool:
   """Convenience wrapper for _ContainsAnyType."""
   out = _ContainsAnyType(type_names)
   ast.Visit(out)
@@ -302,17 +306,17 @@ class _PropertyToConstant(visitors.Visitor):
   type_param_names: list[str]
   const_properties: list[list[pytd.Function]]
 
-  def EnterTypeDeclUnit(self, node):
+  def EnterTypeDeclUnit(self, node) -> None:
     self.type_param_names = [x.name for x in node.type_params]
     self.const_properties = []
 
-  def LeaveTypeDeclUnit(self, node):
+  def LeaveTypeDeclUnit(self, node) -> None:
     self.type_param_names = None
 
-  def EnterClass(self, node):
+  def EnterClass(self, node) -> None:
     self.const_properties.append([])
 
-  def LeaveClass(self, node):
+  def LeaveClass(self, node) -> None:
     self.const_properties.pop()
 
   def VisitClass(self, node):
@@ -326,7 +330,7 @@ class _PropertyToConstant(visitors.Visitor):
     methods = [x for x in node.methods if x not in self.const_properties[-1]]
     return node.Replace(constants=tuple(constants), methods=tuple(methods))
 
-  def EnterFunction(self, node):
+  def EnterFunction(self, node) -> None:
     if (
         self.const_properties
         and node.kind == pytd.MethodKind.PROPERTY
@@ -334,7 +338,7 @@ class _PropertyToConstant(visitors.Visitor):
     ):
       self.const_properties[-1].append(node)
 
-  def _is_parametrised(self, method):
+  def _is_parametrised(self, method) -> bool | None:
     for sig in method.signatures:
       # 'method' is definitely parametrised if its return type contains a type
       # parameter defined in the current TypeDeclUnit. It's also likely
@@ -351,9 +355,11 @@ class _PropertyToConstant(visitors.Visitor):
 class Definitions:
   """Collect definitions used to build a TypeDeclUnit."""
 
-  ELLIPSIS = types.Ellipsis()  # Object to signal ELLIPSIS as a parameter.
+  ELLIPSIS: Ellipsis = (
+      types.Ellipsis()
+  )  # Object to signal ELLIPSIS as a parameter.
 
-  def __init__(self, module_info):
+  def __init__(self, module_info) -> None:
     self.module_info = module_info
     self.type_map: dict[str, Any] = {}
     self.constants = []
@@ -364,7 +370,7 @@ class Definitions:
     self.generated_classes = collections.defaultdict(list)
     self.module_path_map = {}
 
-  def add_alias_or_constant(self, alias_or_constant):
+  def add_alias_or_constant(self, alias_or_constant) -> None:
     """Add an alias or constant.
 
     Args:
@@ -390,7 +396,9 @@ class Definitions:
     else:
       return None
 
-  def new_alias_or_constant(self, name, value):
+  def new_alias_or_constant(
+      self, name, value
+  ) -> pytd.Alias | pytd.Constant:
     """Build an alias or constant."""
     typ = self.new_type_from_value(value)
     if typ:
@@ -398,7 +406,7 @@ class Definitions:
     else:
       return pytd.Alias(name, value)
 
-  def new_new_type(self, name, typ):
+  def new_new_type(self, name, typ) -> pytd.NamedType:
     """Returns a type for a NewType."""
     args = [("self", pytd.AnythingType()), ("val", typ)]
     ret = pytd.NamedType("NoneType")
@@ -422,7 +430,7 @@ class Definitions:
     self.generated_classes[name].append(cls)
     return pytd.NamedType(cls_name)
 
-  def new_named_tuple(self, base_name, fields):
+  def new_named_tuple(self, base_name, fields) -> pytd.NamedType:
     """Return a type for a named tuple (implicitly generates a class).
 
     Args:
@@ -437,7 +445,7 @@ class Definitions:
     self.add_import("typing", ["NamedTuple"])
     return pytd.NamedType(nt.name)
 
-  def new_typed_dict(self, name, items, keywords):
+  def new_typed_dict(self, name, items, keywords) -> pytd.NamedType:
     """Returns a type for a TypedDict.
 
     This method is called only for TypedDict objects defined via the following
@@ -482,7 +490,7 @@ class Definitions:
     self.add_import("typing", ["TypedDict"])
     return pytd.NamedType(cls_name)
 
-  def add_type_variable(self, name, tvar):
+  def add_type_variable(self, name, tvar) -> None:
     """Add a type variable definition."""
     if tvar.kind == "TypeVar":
       pytd_type = pytd.TypeParameter
@@ -506,7 +514,7 @@ class Definitions:
         )
     )
 
-  def add_import(self, from_package, import_list):
+  def add_import(self, from_package, import_list) -> None:
     """Add an import.
 
     Args:
@@ -579,10 +587,10 @@ class Definitions:
       return False
     return self.matches_type(t.name, names)
 
-  def _is_empty_tuple(self, t):
+  def _is_empty_tuple(self, t) -> bool:
     return isinstance(t, pytd.TupleType) and not t.parameters
 
-  def _is_heterogeneous_tuple(self, t):
+  def _is_heterogeneous_tuple(self, t) -> bool:
     return isinstance(t, pytd.TupleType)
 
   def _is_builtin_or_typing_member(self, t):
@@ -593,7 +601,9 @@ class Definitions:
         module == "typing" and name in pep484.ALL_TYPING_NAMES
     )
 
-  def _check_for_illegal_parameters(self, base_type, parameters, is_callable):
+  def _check_for_illegal_parameters(
+      self, base_type, parameters, is_callable
+  ) -> None:
     if not self._is_builtin_or_typing_member(base_type):
       # TODO(b/217789659): We can only check builtin and typing names for now,
       # since `...` can fill in for a ParamSpec and `[]` can be used to
@@ -609,7 +619,7 @@ class Definitions:
     ):
       raise _ParseError("Unexpected list parameter")
 
-  def _remove_unsupported_features(self, parameters, is_callable):
+  def _remove_unsupported_features(self, parameters, is_callable) -> tuple:
     """Returns a copy of 'parameters' with unsupported features removed."""
     processed_parameters = []
     for p in parameters:
@@ -841,7 +851,7 @@ class Definitions:
         template=(),
     )
 
-  def _adjust_self_var(self, fully_qualified_class_name, methods):
+  def _adjust_self_var(self, fully_qualified_class_name, methods) -> list:
     """Replaces typing.Self with a TypeVar."""
     # TODO(b/224600845): Currently, this covers only Self used in a method
     # parameter or return annotation.
@@ -958,7 +968,7 @@ def finalize_ast(ast: pytd.TypeDeclUnit):
   return ast
 
 
-def _check_module_functions(functions):
+def _check_module_functions(functions) -> None:
   """Validate top-level module functions."""
   # module.__getattr__ should have a unique signature
   g = [f for f in functions if f.name == "__getattr__"]

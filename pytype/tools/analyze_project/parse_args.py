@@ -25,7 +25,7 @@ def convert_string(s):
 class Parser:
   """Parser with additional functions for config file processing."""
 
-  def __init__(self, parser, pytype_single_args):
+  def __init__(self, parser, pytype_single_args) -> None:
     """Initialize a parser.
 
     Args:
@@ -36,7 +36,7 @@ class Parser:
     self.pytype_single_args = pytype_single_args
     self._pytype_arg_map = pytype_config.args_map()
 
-  def create_initial_args(self, keys):
+  def create_initial_args(self, keys) -> argparse.Namespace:
     """Creates the initial set of args."""
     return argparse.Namespace(**{k: None for k in keys})
 
@@ -47,7 +47,7 @@ class Parser:
     conf.populate_from(defaults)
     return conf
 
-  def clean_args(self, args, keys):
+  def clean_args(self, args, keys) -> None:
     """Clean None values out of the arg namespace.
 
     This lets us check for a config file arg based on whether the None default
@@ -80,7 +80,7 @@ class Parser:
     self.postprocess(args)
     return args
 
-  def convert_strings(self, args: argparse.Namespace):
+  def convert_strings(self, args: argparse.Namespace) -> None:
     """Converts strings in an args namespace to values."""
     for k in self.pytype_single_args:
       if hasattr(args, k):
@@ -88,7 +88,7 @@ class Parser:
         assert isinstance(v, str)
         setattr(args, k, convert_string(v))
 
-  def postprocess(self, args: argparse.Namespace):
+  def postprocess(self, args: argparse.Namespace) -> None:
     """Postprocesses the subset of pytype_single_args that appear in args.
 
     Args:
@@ -98,11 +98,11 @@ class Parser:
     opt_map = {k: self._pytype_arg_map[k].long_opt for k in names}
     pytype_config.Postprocessor(names, opt_map, args).process()
 
-  def error(self, message):
+  def error(self, message) -> None:
     self._parser.error(message)
 
 
-def make_parser():
+def make_parser() -> Parser:
   """Make parser for command line args.
 
   Returns:
@@ -163,7 +163,7 @@ def make_parser():
 class _FlattenAction(argparse.Action):
   """Flattens a list of sets. Used by --exclude and inputs."""
 
-  def __call__(self, parser, namespace, values, option_string=None):
+  def __call__(self, parser, namespace, values, option_string=None) -> None:
     items = getattr(namespace, self.dest, None) or set()
     # We want to keep items as None if values is empty, since that means the
     # argument was not passed on the command line. Note that an empty values
@@ -175,7 +175,7 @@ class _FlattenAction(argparse.Action):
         items.update(v)
 
 
-def _add_file_argument(parser, types, args, custom_kwargs=None):
+def _add_file_argument(parser, types, args, custom_kwargs=None) -> None:
   """Add a file-configurable option to the parser.
 
   Args:

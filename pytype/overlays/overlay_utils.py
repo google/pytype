@@ -1,17 +1,26 @@
 """Utilities for writing overlays."""
 
+from typing import TypeVar
 from pytype.abstract import abstract
 from pytype.abstract import function
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
+_TParam = TypeVar("_TParam", bound="Param")
+
 
 # Various types accepted by the annotations dictionary.
 # Runtime type checking of annotations, since if we do have an unexpected type
 # being stored in annotations, we should catch that as soon as possible, and add
 # it to the list if valid.
-PARAM_TYPES = (
+PARAM_TYPES: tuple[
+    type[cfg.Variable],
+    type[abstract.Class],
+    type[abstract.TypeParameter],
+    type[abstract.Union],
+    type[abstract.Unsolvable],
+] = (
     cfg.Variable,
     abstract.Class,
     abstract.TypeParameter,
@@ -23,26 +32,26 @@ PARAM_TYPES = (
 class Param:
   """Internal representation of method parameters."""
 
-  def __init__(self, name, typ=None, default=None):
+  def __init__(self, name, typ=None, default=None) -> None:
     if typ:
       assert isinstance(typ, PARAM_TYPES), (typ, type(typ))
     self.name = name
     self.typ = typ
     self.default = default
 
-  def unsolvable(self, ctx, node):
+  def unsolvable(self: _TParam, ctx, node) -> _TParam:
     """Replace None values for typ and default with unsolvable."""
     self.typ = self.typ or ctx.convert.unsolvable
     self.default = self.default or ctx.new_unsolvable(node)
     return self
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Param({self.name}, {self.typ!r}, {self.default!r})"
 
 
 class TypingContainer(abstract.AnnotationContainer):
 
-  def __init__(self, name, ctx):
+  def __init__(self, name, ctx) -> None:
     if name in pep484.TYPING_TO_BUILTIN:
       module = "builtins"
       pytd_name = pep484.TYPING_TO_BUILTIN[name]
@@ -153,7 +162,7 @@ def make_method(
   return decorator.call(node, func=None, args=args)[1]
 
 
-def add_base_class(node, cls, base_cls):
+def add_base_class(node, cls, base_cls) -> None:
   """Inserts base_cls into the MRO of cls."""
   # The class's MRO is constructed from its bases at the moment the class is
   # created, so both need to be updated.

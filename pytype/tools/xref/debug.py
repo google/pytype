@@ -9,22 +9,22 @@ from pytype.ast import debug
 # We never care about protected access when writing debug code!
 
 
-def format_loc(location):
+def format_loc(location) -> str:
   # location is (line, column)
   fmt = "%d:%2d" % location
   return fmt.rjust(8)
 
 
-def format_def_with_location(defn, loc):
+def format_def_with_location(defn, loc) -> str:
   return f"{format_loc(loc)}  | {defn.typ.ljust(15)} {defn.format()}"
 
 
-def format_ref(ref):
+def format_ref(ref) -> str:
   return (f"{format_loc(ref.location)}  | {ref.typ.ljust(15)}  "
           f"{ref.scope}.{ref.name}")
 
 
-def format_call(call):
+def format_call(call) -> str:
   return f"{format_loc(call.location)}  | {'Call'.ljust(15)}  {call.func}"
 
 
@@ -32,7 +32,7 @@ def typename(node):
   return node.__class__.__name__
 
 
-def show_defs(index):
+def show_defs(index) -> None:
   """Show definitions."""
   for def_id in index.locs:
     defn = index.defs[def_id]
@@ -42,7 +42,7 @@ def show_defs(index):
         print(" "*28 + str(defn.doc))
 
 
-def show_refs(index):
+def show_refs(index) -> None:
   """Show references and associated definitions."""
   indent = "          :  "
   for ref, defn in index.links:
@@ -56,7 +56,7 @@ def show_refs(index):
     continue
 
 
-def show_calls(index):
+def show_calls(index) -> None:
   for call in index.calls:
     print(format_call(call))
 
@@ -75,7 +75,7 @@ def display_type(data):
   return name
 
 
-def show_types(index):
+def show_types(index) -> None:
   """Show inferred types."""
   out = []
   for def_id in index.locs:
@@ -105,7 +105,7 @@ def show_types(index):
       print(f"{format_loc(location)}  |  {name.ljust(35)}  {typ}")
 
 
-def show_index(index):
+def show_index(index) -> None:
   """Display output in human-readable format."""
 
   def separator():
@@ -119,14 +119,14 @@ def show_index(index):
   separator()
 
 
-def show_map(name, mapping):
+def show_map(name, mapping) -> None:
   print("%s: {" % name)
   for k, v in mapping.items():
     print("  ", k, v)
   print("}")
 
 
-def show_kythe_spans(kythe_graph, src):
+def show_kythe_spans(kythe_graph, src) -> None:
   """Show kythe spans."""
 
   for entry in kythe_graph.entries:

@@ -7,7 +7,7 @@ from typing import cast
 from pytype.pyi import types
 from pytype.pytd import pytd
 
-_ParseError = types.ParseError
+_ParseError: type[types.ParseError] = types.ParseError
 
 
 def get_bases(

@@ -4,7 +4,7 @@ import abc
 from collections.abc import Mapping, Sequence
 import dataclasses
 import logging
-from typing import Optional, Protocol
+from typing import Optional, Protocol, TypeVar
 
 from pytype import datatypes
 from pytype.pytd import mro as mro_lib
@@ -12,7 +12,10 @@ from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 from pytype.types import types
 
-log = logging.getLogger(__name__)
+
+_TSimpleClass = TypeVar('_TSimpleClass', bound='SimpleClass')
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class _HasMembers(Protocol):
@@ -25,7 +28,7 @@ class ClassCallReturn:
 
   instance: 'MutableInstance'
 
-  def get_return_value(self):
+  def get_return_value(self) -> 'MutableInstance':
     return self.instance
 
 
@@ -68,7 +71,7 @@ class SimpleClass(base.BaseValue):
     # instance methods called on an instance immediately after creation
     self.initializers = ['__init__']
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'SimpleClass({self.full_name})'
 
   @property
@@ -148,7 +151,7 @@ class SimpleClass(base.BaseValue):
     self._mro = mro = mro_lib.MROMerge(mro_bases)
     return mro
 
-  def set_type_parameters(self, params):
+  def set_type_parameters(self: _TSimpleClass, params) -> _TSimpleClass:
     # A dummy implementation to let type annotations with parameters not crash.
     del params  # not implemented yet
     # We eventually want to return a new class with the type parameters set
@@ -174,7 +177,7 @@ class InterpreterClass(SimpleClass):
     self.functions = functions
     self.classes = classes
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'InterpreterClass({self.name})'
 
   @property
@@ -213,7 +216,7 @@ class MutableInstance(BaseInstance):
   def __init__(self, ctx: base.ContextType, cls: SimpleClass):
     super().__init__(ctx, cls, {})
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'MutableInstance({self.cls.name})'
 
   @property
@@ -241,7 +244,7 @@ class FrozenInstance(BaseInstance):
     super().__init__(
         ctx, instance.cls, datatypes.immutabledict(instance.members))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'FrozenInstance({self.cls.name})'
 
   @property
@@ -264,7 +267,7 @@ class Module(BaseInstance, types.Module):
     super().__init__(ctx, cls, members={})
     self.name = name
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'Module({self.name})'
 
   @property

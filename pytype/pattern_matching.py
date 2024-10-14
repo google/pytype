@@ -3,13 +3,15 @@
 import collections
 import dataclasses
 import enum
-from typing import Optional, Union, cast
+from typing import Any, Generator, TypeVar, Optional, Union, cast
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.pyc import opcodes
 from pytype.pytd import slots
 from pytype.typegraph import cfg
+
+_T_MatchTypes = TypeVar("_T_MatchTypes", bound="_MatchTypes")
 
 
 # Type aliases
@@ -85,7 +87,7 @@ class _Option:
   def is_empty(self) -> bool:
     return not (self.values or self.indefinite)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     indef = "*" if self.indefinite else ""
     return f"<Option: {self.typ}: {self.values}{indef}>"
 
@@ -93,22 +95,22 @@ class _Option:
 class _OptionSet:
   """Holds a set of options."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     # Collection of options, stored as a dict rather than a set so we can find a
     # given option efficiently.
     self._options: dict[abstract.Class, _Option] = {}
 
-  def __iter__(self):
+  def __iter__(self) -> Generator[None, Any, None]:
     yield from self._options.values()
 
-  def __bool__(self):
+  def __bool__(self) -> bool:
     return not self.is_complete
 
   @property
   def is_complete(self) -> bool:
-    return all(x.is_empty for x in self)
+    return all(x.is_empty for x in self)  # pytype: disable=attribute-error
 
-  def add_instance(self, val):
+  def add_instance(self, val) -> None:
     """Add an instance to the match options."""
     cls = val.cls
     if cls not in self._options:
@@ -118,7 +120,7 @@ class _OptionSet:
     else:
       self.add_type(cls)
 
-  def add_type(self, cls):
+  def add_type(self, cls) -> None:
     """Add an class to the match options."""
     if cls not in self._options:
       self._options[cls] = _Option(cls)
@@ -169,7 +171,7 @@ class _OptionSet:
 class _OptionTracker:
   """Tracks a set of match options."""
 
-  def __init__(self, match_var, ctx):
+  def __init__(self, match_var, ctx) -> None:
     self.match_var: cfg.Variable = match_var
     self.ctx = ctx
     self.options: _OptionSet = _OptionSet()
@@ -197,8 +199,8 @@ class _OptionTracker:
     else:
       narrowed = []
       for opt in self.options:
-        if not opt.is_empty:
-          narrowed.append(opt.typ.instantiate(node))
+        if not opt.is_empty:  # pytype: disable=attribute-error
+          narrowed.append(opt.typ.instantiate(node))  # pytype: disable=attribute-error
       return self.ctx.join_variables(node, narrowed)
 
   def cover(self, line, var) -> list[_Value]:
@@ -241,7 +243,7 @@ class _OptionTracker:
     self.cases[line].add_type(cls)
     return self.options.cover_type(cls)
 
-  def invalidate(self):
+  def invalidate(self) -> None:
     self.is_valid = False
 
 
@@ -265,7 +267,7 @@ class _MatchTypes(enum.Enum):
 class _Matches:
   """Tracks branches of match statements."""
 
-  def __init__(self, ast_matches):
+  def __init__(self, ast_matches) -> None:
     self.start_to_end = {}  # match_line : match_end_line
     self.end_to_starts = collections.defaultdict(list)
     self.match_cases = {}  # opcode_line : match_line
@@ -276,7 +278,7 @@ class _Matches:
     for m in ast_matches.matches:
       self._add_match(m.start, m.end, m.cases)
 
-  def _add_match(self, start, end, cases):
+  def _add_match(self, start, end, cases) -> None:
     self.start_to_end[start] = end
     self.end_to_starts[end].append(start)
     self.unseen_cases[start] = {c.start for c in cases}
@@ -288,11 +290,11 @@ class _Matches:
       if c.as_name:
         self.as_names[c.end] = c.as_name
 
-  def register_case(self, match_line, case_line):
+  def register_case(self, match_line, case_line) -> None:
     assert self.match_cases[case_line] == match_line
     self.unseen_cases[match_line].discard(case_line)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"""
       Matches: {sorted(self.start_to_end.items())}
       Cases: {self.match_cases}
@@ -311,7 +313,7 @@ class IncompleteMatch:
 class BranchTracker:
   """Track exhaustiveness in pattern matches."""
 
-  def __init__(self, ast_matches, ctx):
+  def __init__(self, ast_matches, ctx) -> None:
     self.matches = _Matches(ast_matches)
     self._option_tracker: dict[int, dict[int, _OptionTracker]] = (
         collections.defaultdict(dict)
@@ -362,7 +364,7 @@ class BranchTracker:
     tracker = self._get_option_tracker(match_var, match_line)
     if tracker.cases[op.line]:
       # We have matched on one or more classes in this case.
-      types = [x.typ for x in tracker.cases[op.line]]
+      types = [x.typ for x in tracker.cases[op.line]]  # pytype: disable=attribute-error
       return self._make_instance_for_match(node, types)
     else:
       # We have not matched on a type, just bound the current match var to a
@@ -508,7 +510,7 @@ class BranchTracker:
         for tracker in trackers.values():
           if tracker.is_valid:
             for o in tracker.options:
-              if not o.is_empty and not o.indefinite:
-                ret.append(IncompleteMatch(start, o.values))
+              if not o.is_empty and not o.indefinite:  # pytype: disable=attribute-error
+                ret.append(IncompleteMatch(start, o.values))  # pytype: disable=attribute-error
     self._active_ends -= done
     return ret

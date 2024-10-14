@@ -1,12 +1,13 @@
 """Utilities for abstract.py."""
 
 import collections
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Collection, Generator, Iterable, Mapping, Sequence
 import dataclasses
 import logging
-from typing import Any
+from typing import Any, TypeVar
 
 from pytype import datatypes
+from pytype.datatypes import AccessTrackingDict
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd
@@ -14,16 +15,21 @@ from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
-log = logging.getLogger(__name__)
+
+_T0 = TypeVar("_T0")
+_T1 = TypeVar("_T1")
+_TLocal = TypeVar("_TLocal", bound="Local")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 # Type aliases
 _ArgsDictType = dict[str, cfg.Variable]
 
 # We can't import some modules here due to circular deps.
-_ContextType = Any  # context.Context
-_BaseValueType = Any  # abstract.BaseValue
-_ParameterizedClassType = Any  # abstract.ParameterizedClass
-_TypeParamType = Any  # abstract.TypeParameter
+_ContextType: type[Any] = Any  # context.Context
+_BaseValueType: type[Any] = Any  # abstract.BaseValue
+_ParameterizedClassType: type[Any] = Any  # abstract.ParameterizedClass
+_TypeParamType: type[Any] = Any  # abstract.TypeParameter
 
 # Type parameter names matching the ones in builtins.pytd and typing.pytd.
 T = "_T"
@@ -34,14 +40,14 @@ ARGS = "_ARGS"
 RET = "_RET"
 
 # TODO(rechen): Stop supporting all variants except _HAS_DYNAMIC_ATTRIBUTES.
-DYNAMIC_ATTRIBUTE_MARKERS = [
+DYNAMIC_ATTRIBUTE_MARKERS: list[str] = [
     "HAS_DYNAMIC_ATTRIBUTES",
     "_HAS_DYNAMIC_ATTRIBUTES",
     "has_dynamic_attributes",
 ]
 
 # Names defined on every module/class that should be ignored in most cases.
-TOP_LEVEL_IGNORE = frozenset({
+TOP_LEVEL_IGNORE: frozenset[str] = frozenset({
     "__builtins__",
     "__doc__",
     "__file__",
@@ -50,7 +56,7 @@ TOP_LEVEL_IGNORE = frozenset({
     "__name__",
     "__annotations__",
 })
-CLASS_LEVEL_IGNORE = frozenset({
+CLASS_LEVEL_IGNORE: frozenset[str] = frozenset({
     "__builtins__",
     "__class__",
     "__module__",
@@ -60,7 +66,7 @@ CLASS_LEVEL_IGNORE = frozenset({
     "__annotations__",
 })
 
-TYPE_GUARDS = {"typing.TypeGuard", "typing.TypeIs"}
+TYPE_GUARDS: set[str] = {"typing.TypeGuard", "typing.TypeIs"}
 
 
 # A dummy container object for use in instantiating type parameters.
@@ -75,7 +81,7 @@ class DummyContainer:
     self.container = container
 
 
-DUMMY_CONTAINER = DummyContainer(None)
+DUMMY_CONTAINER: DummyContainer = DummyContainer(None)
 
 
 class ConversionError(ValueError):
@@ -97,7 +103,7 @@ class EvaluationError(Exception):
 class GenericTypeError(Exception):
   """The error for user-defined generic types."""
 
-  def __init__(self, annot, error):
+  def __init__(self, annot, error) -> None:
     super().__init__(annot, error)
     self.annot = annot
     self.error = error
@@ -110,7 +116,7 @@ class ModuleLoadError(Exception):
 class AsInstance:
   """Wrapper, used for marking things that we want to convert to an instance."""
 
-  def __init__(self, cls):
+  def __init__(self, cls) -> None:
     self.cls = cls
 
 
@@ -149,7 +155,7 @@ class Local:
     self.ctx = ctx
 
   @classmethod
-  def merge(cls, node, op, local1, local2):
+  def merge(cls: type[_TLocal], node, op, local1, local2) -> _TLocal:
     """Merges two locals."""
     ctx = local1.ctx
     typ_values = set()
@@ -165,7 +171,7 @@ class Local:
       orig = local1.orig or local2.orig
     return cls(node, op, typ, orig, ctx)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
 
   @property
@@ -176,7 +182,7 @@ class Local:
   def last_update_op(self):
     return self._ops[-1]
 
-  def update(self, node, op, typ, orig, final=False):
+  def update(self, node, op, typ, orig, final=False) -> None:
     """Update this variable's annotation and/or value."""
     if op in self._ops:
       return
@@ -210,10 +216,10 @@ class Local:
 # Callers are expected to alias them like so:
 #   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
-_ISINSTANCE_CACHE = {}
+_ISINSTANCE_CACHE: dict[str, Any] = {}
 
 
-def _isinstance(obj, name_or_names):
+def _isinstance(obj, name_or_names) -> bool:
   """Do an isinstance() call for a class defined in pytype.abstract.
 
   Args:
@@ -273,7 +279,7 @@ def get_atomic_value(variable, constant_type=None, default=_None()):
   )
 
 
-def match_atomic_value(variable, typ=None):
+def match_atomic_value(variable, typ=None) -> bool:
   try:
     get_atomic_value(variable, typ)
   except ConversionError:
@@ -301,7 +307,7 @@ def get_atomic_python_constant(variable, constant_type=None):
   return atomic.ctx.convert.value_to_constant(atomic, constant_type)
 
 
-def match_atomic_python_constant(variable, typ=None):
+def match_atomic_python_constant(variable, typ=None) -> bool:
   try:
     get_atomic_python_constant(variable, typ)
   except ConversionError:
@@ -309,7 +315,9 @@ def match_atomic_python_constant(variable, typ=None):
   return True
 
 
-def get_views(variables, node):
+def get_views(
+    variables, node
+) -> Generator[AccessTrackingDict[None, None], Any, None]:
   """Get all possible views of the given variables at a particular node.
 
   For performance reasons, this method uses node.CanHaveCombination for
@@ -426,7 +434,7 @@ def get_mro_bases(bases):
     return mro_bases
 
 
-def _merge_type(t0, t1, name, cls):
+def _merge_type(t0: _T0, t1: _T1, name, cls) -> _T0 | _T1:
   """Merge two types.
 
   Rules: Type `Any` can match any type, we will return the other type if one
@@ -459,7 +467,7 @@ def _merge_type(t0, t1, name, cls):
 
 def parse_formal_type_parameters(
     base, prefix, formal_type_parameters, container=None
-):
+) -> None:
   """Parse type parameters from base class.
 
   Args:
@@ -562,7 +570,9 @@ def maybe_extract_tuple(t):
   return v.pyval
 
 
-def eval_expr(ctx, node, f_globals, f_locals, expr):
+def eval_expr(
+    ctx, node, f_globals, f_locals, expr
+) -> tuple[Any, EvaluationError | None]:
   """Evaluate an expression with the given node and globals."""
   # This is used to resolve type comments and late annotations.
   #
@@ -667,7 +677,7 @@ def is_indefinite_iterable(val: _BaseValueType) -> bool:
   return False
 
 
-def is_var_indefinite_iterable(var):
+def is_var_indefinite_iterable(var) -> bool:
   """True if all bindings of var are indefinite sequences."""
   return all(is_indefinite_iterable(x) for x in var.data)
 
@@ -689,7 +699,7 @@ def merged_type_parameter(node, var, param):
   return var.data[0].ctx.join_variables(node, params)
 
 
-def is_var_splat(var):
+def is_var_splat(var) -> bool:
   if var.data and _isinstance(var.data[0], "Splat"):
     # A splat should never have more than one binding, since we create and use
     # it immediately.
@@ -800,7 +810,7 @@ def combine_substs(
     return ()
 
 
-def flatten(value, classes):
+def flatten(value, classes) -> bool:
   """Flatten the contents of value into classes.
 
   If value is a Class, it is appended to classes.
@@ -844,7 +854,7 @@ def flatten(value, classes):
     return True
 
 
-def check_against_mro(ctx, target, class_spec):
+def check_against_mro(ctx, target, class_spec) -> bool | None:
   """Check if any of the classes are in the target's MRO.
 
   Args:

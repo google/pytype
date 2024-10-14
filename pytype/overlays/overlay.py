@@ -31,7 +31,7 @@ class Overlay(abstract.Module):
     real_module: An abstract.Module wrapping the AST for the underlying module.
   """
 
-  def __init__(self, ctx, name, member_map, ast):
+  def __init__(self, ctx, name, member_map, ast) -> None:
     """Initialize the overlay.
 
     Args:
@@ -65,7 +65,7 @@ class Overlay(abstract.Module):
     else:
       return self.real_module
 
-  def items(self):
+  def items(self) -> list:
     items = super().items()
     items += [
         (name, item)
@@ -90,11 +90,11 @@ class Overlay(abstract.Module):
     return member
 
 
-def add_name(name, builder):
+def add_name(name, builder) -> Callable[[Any, Any], Any]:
   """Turns (name, ctx, module) -> val signatures into (ctx, module) -> val."""
   return lambda ctx, module: builder(name, ctx, module)
 
 
-def drop_module(builder):
+def drop_module(builder) -> Callable[[Any, Any], Any]:
   """Turns (ctx) -> val signatures into (ctx, module) -> val."""
   return lambda ctx, module: builder(ctx)

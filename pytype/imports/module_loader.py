@@ -10,7 +10,7 @@ from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class _PathFinder:
@@ -123,7 +123,7 @@ class ModuleLoader(base.ModuleLoader):
     else:
       return self._load_pyi(mod_info)
 
-  def log_module_not_found(self, module_name: str):
+  def log_module_not_found(self, module_name: str) -> None:
     log.warning(
         "Couldn't import module %s %r in (path=%r) imports_map: %s",
         module_name,

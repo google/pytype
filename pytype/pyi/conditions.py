@@ -2,17 +2,19 @@
 
 import ast as astlib
 
+from typing import Any
+
 from pytype.ast import visitor as ast_visitor
 from pytype.pyi import types
 from pytype.pytd import slots as cmp_slots
 
-_ParseError = types.ParseError
+_ParseError: type[types.ParseError] = types.ParseError
 
 
 class ConditionEvaluator(ast_visitor.BaseVisitor):
   """Evaluates if statements in pyi files."""
 
-  def __init__(self, options):
+  def __init__(self, options) -> None:
     super().__init__(ast=astlib)
     self._compares = {
         astlib.Eq: cmp_slots.EQ,
@@ -83,7 +85,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     msg += "Supported checks are sys.platform and sys.version_info"
     raise _ParseError(msg)
 
-  def visit_Attribute(self, node):
+  def visit_Attribute(self, node) -> bool | str | None:
     if not isinstance(node.value, astlib.Name):
       self.fail()
     name = f"{node.value.id}.{node.attr}"
@@ -94,7 +96,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
         return bool(getattr(self._options, node.attr))
     self.fail(name)
 
-  def visit_Slice(self, node):
+  def visit_Slice(self, node) -> slice:
     return slice(node.lower, node.upper, node.step)
 
   def visit_Index(self, node):
@@ -103,13 +105,13 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
   def visit_Pyval(self, node):
     return node.value
 
-  def visit_Subscript(self, node):
+  def visit_Subscript(self, node) -> tuple[Any, Any]:
     return (node.value, node.slice)
 
-  def visit_Tuple(self, node):
+  def visit_Tuple(self, node) -> tuple:
     return tuple(node.elts)
 
-  def visit_BoolOp(self, node):
+  def visit_BoolOp(self, node) -> bool:
     if isinstance(node.op, astlib.Or):
       return any(node.values)
     elif isinstance(node.op, astlib.And):
@@ -123,7 +125,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     else:
       raise _ParseError(f"Unexpected unary operator: {node.op}")
 
-  def visit_Compare(self, node):
+  def visit_Compare(self, node) -> bool:
     if isinstance(node.left, tuple):
       ident = node.left
     else:
@@ -137,7 +139,7 @@ def evaluate(test: astlib.AST, options) -> bool:
   return ConditionEvaluator(options).visit(test)
 
 
-def _is_int_tuple(value):
+def _is_int_tuple(value) -> bool:
   """Return whether the value is a tuple of integers."""
   return isinstance(value, tuple) and all(isinstance(v, int) for v in value)
 

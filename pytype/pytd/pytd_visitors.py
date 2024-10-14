@@ -5,8 +5,11 @@ specialized to pytype are in visitors.py. If you see a visitor there that you'd
 like to use, feel free to propose moving it here.
 """
 
+from typing import Any, TypeVar
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
+
+_T0 = TypeVar("_T0")
 
 
 # TODO(rechen): IsNamedTuple is being used to disable visitors that shouldn't
@@ -25,7 +28,7 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
   as the signature order determines lookup order.
   """
 
-  def VisitTypeDeclUnit(self, node):
+  def VisitTypeDeclUnit(self, node) -> pytd.TypeDeclUnit:
     return pytd.TypeDeclUnit(
         name=node.name,
         constants=tuple(sorted(node.constants)),
@@ -45,7 +48,7 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
     # The order of a namedtuple's fields should always be preserved.
     return IsNamedTuple(node)
 
-  def VisitClass(self, node):
+  def VisitClass(self, node) -> pytd.Class:
     if self._PreserveConstantsOrdering(node):
       constants = node.constants
     else:
@@ -68,31 +71,31 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
         exceptions=tuple(sorted(node.exceptions)),
     )
 
-  def VisitUnionType(self, node):
+  def VisitUnionType(self, node) -> pytd.UnionType:
     return pytd.UnionType(tuple(sorted(node.type_list)))
 
 
 class ClassTypeToNamedType(base_visitor.Visitor):
   """Change all ClassType objects to NameType objects."""
 
-  def VisitClassType(self, node):
+  def VisitClassType(self, node) -> pytd.NamedType:
     return pytd.NamedType(node.name)
 
 
 class CollectTypeParameters(base_visitor.Visitor):
   """Visitor that accumulates type parameters in its "params" attribute."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._seen = set()
     self.params = []
 
-  def EnterTypeParameter(self, p):
+  def EnterTypeParameter(self, p) -> None:
     if p.name not in self._seen:
       self.params.append(p)
       self._seen.add(p.name)
 
-  def EnterParamSpec(self, p):
+  def EnterParamSpec(self, p) -> None:
     self.EnterTypeParameter(p)
 
 
@@ -103,19 +106,19 @@ class ExtractSuperClasses(base_visitor.Visitor):
   to lists of pytd.Type.
   """
 
-  def __init__(self):
+  def __init__(self) -> None:
     super().__init__()
     self._superclasses = {}
 
-  def _Key(self, node):
+  def _Key(self, node: _T0) -> _T0:
     # This method should be implemented by subclasses.
     return node
 
-  def VisitTypeDeclUnit(self, module):
+  def VisitTypeDeclUnit(self, module) -> dict[Any, list]:
     del module
     return self._superclasses
 
-  def EnterClass(self, cls):
+  def EnterClass(self, cls) -> None:
     bases = []
     for p in cls.bases:
       base = self._Key(p)
@@ -127,7 +130,7 @@ class ExtractSuperClasses(base_visitor.Visitor):
 class RenameModuleVisitor(base_visitor.Visitor):
   """Renames a TypeDeclUnit."""
 
-  def __init__(self, old_module_name, new_module_name):
+  def __init__(self, old_module_name, new_module_name) -> None:
     """Constructor.
 
     Args:
@@ -176,7 +179,7 @@ class RenameModuleVisitor(base_visitor.Visitor):
     else:
       return node
 
-  def VisitClassType(self, node):
+  def VisitClassType(self, node: _T0) -> pytd.ClassType | _T0:
     new_name = self._MaybeNewName(node.name)
     if new_name != node.name:
       return pytd.ClassType(new_name, node.cls)

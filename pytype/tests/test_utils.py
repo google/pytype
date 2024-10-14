@@ -1,6 +1,7 @@
 """Utility class and function for tests."""
 
 import collections
+from collections.abc import Callable
 import copy
 import dataclasses
 import io
@@ -11,6 +12,7 @@ import shutil
 import sys
 import textwrap
 import tokenize
+from typing import Any, TypeVar
 
 import pycnite.mapping
 import pycnite.types
@@ -25,24 +27,27 @@ from pytype.file_utils import makedirs
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
 from pytype.pytd import slots
+from pytype.state import SimpleFrame
 
 import unittest
+
+_TTempdir = TypeVar("_TTempdir", bound="Tempdir")
 
 
 class Tempdir:
   """Context handler for creating temporary directories."""
 
-  def __enter__(self):
+  def __enter__(self: _TTempdir) -> _TTempdir:
     self.path = compatible_tempfile.mkdtemp()
     return self
 
-  def create_directory(self, filename):
+  def create_directory(self, filename) -> str:
     """Create a subdirectory in the temporary directory."""
     path = path_utils.join(self.path, filename)
     makedirs(path)
     return path
 
-  def create_file(self, filename, indented_data=None):
+  def create_file(self, filename, indented_data=None) -> str:
     """Create a file in the temporary directory. Dedents the data if needed."""
     filedir, filename = path_utils.split(filename)
     if filedir:
@@ -60,14 +65,14 @@ class Tempdir:
         fi.write(data)
     return path
 
-  def delete_file(self, filename):
+  def delete_file(self, filename) -> None:
     os.unlink(path_utils.join(self.path, filename))
 
-  def __exit__(self, error_type, value, tb):
+  def __exit__(self, error_type: None, value: None, tb: None) -> bool:
     shutil.rmtree(path=self.path)
     return False  # reraise any exceptions
 
-  def __getitem__(self, filename):
+  def __getitem__(self, filename) -> str:
     """Get the full path for an entry in this directory."""
     return path_utils.join(self.path, filename)
 
@@ -81,7 +86,7 @@ class FakeCode:
 class FakeOpcode:
   """Util class for generating fake Opcode for testing."""
 
-  def __init__(self, filename, line, endline, col, endcol, methodname):
+  def __init__(self, filename, line, endline, col, endcol, methodname) -> None:
     self.code = FakeCode(filename, methodname)
     self.line = line
     self.endline = endline
@@ -89,7 +94,7 @@ class FakeOpcode:
     self.endcol = endcol
     self.name = "FAKE_OPCODE"
 
-  def to_stack(self):
+  def to_stack(self) -> list[SimpleFrame]:
     return [frame_state.SimpleFrame(self)]
 
 
@@ -105,7 +110,7 @@ def fake_stack(length):
 class FakePrettyPrinter(pretty_printer_base.PrettyPrinterBase):
   """Fake pretty printer for constructing an error log."""
 
-  def __init__(self):
+  def __init__(self) -> None:
     options = config.Options.create()
     super().__init__(make_context(options))
 
@@ -133,7 +138,7 @@ class OperatorsTestMixin:
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def check_expr(self, expr, assignments, expected_return):
+  def check_expr(self, expr, assignments, expected_return) -> None:
     """Check the expression."""
     # Note that testing "1+2" as opposed to "x=1; y=2; x+y" doesn't really test
     # anything because the peephole optimizer converts "1+2" to "3" and __add__
@@ -151,7 +156,7 @@ class OperatorsTestMixin:
     ty = self.Infer(src)
     self.assertTypesMatchPytd(ty, f"def f() -> {expected_return}: ...")
 
-  def check_binary(self, function_name, op):
+  def check_binary(self, function_name, op) -> None:
     """Check the binary operator."""
     ty = self.Infer(f"""
       class Foo:
@@ -173,7 +178,7 @@ class OperatorsTestMixin:
     """,
     )
 
-  def check_unary(self, function_name, op, ret=None):
+  def check_unary(self, function_name, op, ret=None) -> None:
     """Check the unary operator."""
     ty = self.Infer(f"""
       class Foo:
@@ -192,7 +197,7 @@ class OperatorsTestMixin:
     """,
     )
 
-  def check_reverse(self, function_name, op):
+  def check_reverse(self, function_name, op) -> None:
     """Check the reverse operator."""
     ty = self.Infer(f"""
       class Foo:
@@ -225,7 +230,7 @@ class OperatorsTestMixin:
     """,
     )
 
-  def check_inplace(self, function_name, op):
+  def check_inplace(self, function_name, op) -> None:
     """Check the inplace operator."""
     ty = self.Infer(f"""
       class Foo:
@@ -252,7 +257,7 @@ class InplaceTestMixin:
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def _check_inplace(self, op, assignments, expected_return):
+  def _check_inplace(self, op, assignments, expected_return) -> None:
     """Check the inplace operator."""
     assignments = "; ".join(assignments)
     src = f"""
@@ -270,7 +275,7 @@ class TestCollectionsMixin:
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def _testCollectionsObject(self, obj, good_arg, bad_arg, error):  # pylint: disable=invalid-name
+  def _testCollectionsObject(self, obj, good_arg, bad_arg, error) -> None:  # pylint: disable=invalid-name
     result = self.CheckWithErrors(f"""
       import collections
       def f(x: collections.{obj}): ...
@@ -285,7 +290,7 @@ class MakeCodeMixin:
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def make_code(self, int_array, name="testcode"):
+  def make_code(self, int_array, name="testcode") -> pycnite.types.CodeType38:
     """Utility method for creating CodeType objects."""
     return pycnite.types.CodeType38(
         co_argcount=0,
@@ -311,23 +316,23 @@ class MakeCodeMixin:
 class RegexMatcher:
   """Match a regex."""
 
-  def __init__(self, regex):
+  def __init__(self, regex) -> None:
     self.regex = regex
 
   def match(self, message):
     return re.search(self.regex, message, flags=re.DOTALL)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return repr(self.regex)
 
 
 class SequenceMatcher:
   """Match a sequence of substrings in order."""
 
-  def __init__(self, seq):
+  def __init__(self, seq) -> None:
     self.seq = seq
 
-  def match(self, message):
+  def match(self, message) -> bool:
     start = 0
     for s in self.seq:
       i = message.find(s, start)
@@ -336,7 +341,7 @@ class SequenceMatcher:
       start = i + len(s)
     return True
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return repr(self.seq)
 
 
@@ -357,12 +362,12 @@ class ErrorMatcher:
   See tests/test_base_test.py for usage examples.
   """
 
-  ERROR_RE = re.compile(
+  ERROR_RE: re.Pattern[str] = re.compile(
       r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?"
       r"((?P<cmp>([!=]=|[<>]=?))(?P<version>\d+\.\d+))?$"
   )
 
-  def __init__(self, src):
+  def __init__(self, src) -> None:
     # errorlog and marks are set by assert_errors_match_expected()
     self.errorlog = None
     self.marks = None
@@ -376,7 +381,7 @@ class ErrorMatcher:
   def has_error(self):
     return self.errorlog and self.errorlog.has_error()
 
-  def assert_errors_match_expected(self, errorlog):
+  def assert_errors_match_expected(self, errorlog) -> None:
     """Matches expected errors against the errorlog, populating self.marks."""
 
     def _format_error(line, code, mark=None):
@@ -415,7 +420,7 @@ class ErrorMatcher:
     if leftover_errors:
       self._fail("Errors not found:\n" + "\n".join(leftover_errors))
 
-  def _assert_error_messages(self, matchers):
+  def _assert_error_messages(self, matchers) -> None:
     """Assert error messages."""
     assert self.marks is not None
     for mark, error in self.marks.items():
@@ -431,7 +436,7 @@ class ErrorMatcher:
     if matchers:
       self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
-  def assert_diagnostic_messages(self, matchers):
+  def assert_diagnostic_messages(self, matchers) -> None:
     """Assert error messages."""
     assert self.marks is not None
     for mark, error in self.marks.items():
@@ -452,21 +457,21 @@ class ErrorMatcher:
     if matchers:
       self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
-  def assert_error_regexes(self, expected_regexes):
+  def assert_error_regexes(self, expected_regexes) -> None:
     matchers = {k: RegexMatcher(v) for k, v in expected_regexes.items()}
     self._assert_error_messages(matchers)
 
-  def assert_error_sequences(self, expected_sequences):
+  def assert_error_sequences(self, expected_sequences) -> None:
     matchers = {k: SequenceMatcher(v) for k, v in expected_sequences.items()}
     self._assert_error_messages(matchers)
 
-  def assert_diagnostic_regexes(self, expected_diagnostic_regexes):
+  def assert_diagnostic_regexes(self, expected_diagnostic_regexes) -> None:
     matchers = {
         k: RegexMatcher(v) for k, v in expected_diagnostic_regexes.items()
     }
     self.assert_diagnostic_messages(matchers)
 
-  def _parse_comment(self, comment):
+  def _parse_comment(self, comment) -> tuple[Any, Any] | None:
     comment = comment.strip()
     error_match = self.ERROR_RE.fullmatch(comment)
     if not error_match:
@@ -479,7 +484,7 @@ class ErrorMatcher:
         return None
     return error_match.group("code"), error_match.group("mark")
 
-  def _parse_comments(self, src):
+  def _parse_comments(self, src) -> collections.defaultdict[int, Any]:
     """Parse comments."""
     src = io.StringIO(src)
     expected = collections.defaultdict(list)
@@ -515,34 +520,34 @@ class Py310Opcodes:
 
 # pylint: disable=invalid-name
 # Use camel-case to match the unittest.skip* methods.
-def skipIfPy(*versions, reason):
+def skipIfPy(*versions, reason) -> Callable[[Callable], Callable]:
   return unittest.skipIf(sys.version_info[:2] in versions, reason)
 
 
-def skipUnlessPy(*versions, reason):
+def skipUnlessPy(*versions, reason) -> Callable[[Callable], Callable]:
   return unittest.skipUnless(sys.version_info[:2] in versions, reason)
 
 
-def skipBeforePy(version, reason):
+def skipBeforePy(version, reason) -> Callable[[Callable], Callable]:
   return unittest.skipIf(sys.version_info[:2] < version, reason)
 
 
-def skipFromPy(version, reason):
+def skipFromPy(version, reason) -> Callable[[Callable], Callable]:
   return unittest.skipUnless(sys.version_info[:2] < version, reason)
 
 
-def skipOnWin32(reason):
+def skipOnWin32(reason) -> Callable[[Callable], Callable]:
   return unittest.skipIf(sys.platform == "win32", reason)
 
 
-def make_context(options, src=""):
+def make_context(options, src="") -> context.Context:
   """Create a minimal context for tests."""
   return context.Context(
       options=options, loader=load_pytd.Loader(options), src=src
   )
 
 
-def test_data_file(filename):
+def test_data_file(filename) -> str:
   pytype_dir = path_utils.dirname(path_utils.dirname(path_utils.__file__))
   code = path_utils.join(
       pytype_dir, file_utils.replace_separator("test_data/"), filename

@@ -10,7 +10,7 @@ from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 from pytype.types import types
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _make = abstract_utils._make  # pylint: disable=protected-access
 
@@ -21,7 +21,7 @@ class MixinMeta(type):
   __mixin_overloads__: dict[str, type[Any]]
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def __init__(cls, name, superclasses, *args, **kwargs):
+  def __init__(cls: "MixinMeta", name, superclasses, *args, **kwargs) -> None:
     super().__init__(name, superclasses, *args, **kwargs)
     for sup in superclasses:
       if "overloads" in sup.__dict__:
@@ -35,7 +35,7 @@ class MixinMeta(type):
             else:
               setattr(cls, "__mixin_overloads__", {method: sup})
 
-  def super(cls, method):
+  def super(cls: "MixinMeta", method):
     """Imitate super() in a mix-in.
 
     This method is a substitute for
@@ -78,15 +78,15 @@ class PythonConstant(types.PythonConstant, metaclass=MixinMeta):
   "r" etc.).
   """
 
-  overloads = ("__repr__",)
+  overloads: tuple[str] = ("__repr__",)
 
-  def init_mixin(self, pyval):
+  def init_mixin(self, pyval) -> None:
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
     self.is_concrete = True
     self._printing = False
 
-  def str_of_constant(self, printer):
+  def str_of_constant(self, printer) -> str:
     """Get a string representation of this constant.
 
     Args:
@@ -99,7 +99,7 @@ class PythonConstant(types.PythonConstant, metaclass=MixinMeta):
     del printer
     return repr(self.pyval)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if self._printing:  # recursion detected
       const = "[...]"
     else:
@@ -116,13 +116,13 @@ class HasSlots(metaclass=MixinMeta):
   handling of some magic methods (__setitem__ etc.)
   """
 
-  overloads = ("get_special_attribute",)
+  overloads: tuple[str] = ("get_special_attribute",)
 
-  def init_mixin(self):
+  def init_mixin(self) -> None:
     self._slots = {}
     self._super = {}
 
-  def set_slot(self, name, slot):
+  def set_slot(self, name, slot) -> None:
     """Add a new slot to this value."""
     assert name not in self._slots, f"slot {name} already occupied"
     # For getting a slot value, we don't need a ParameterizedClass's type
@@ -135,11 +135,11 @@ class HasSlots(metaclass=MixinMeta):
     self._super[name] = attr
     self._slots[name] = slot
 
-  def set_native_slot(self, name, method):
+  def set_native_slot(self, name, method) -> None:
     """Add a new NativeFunction slot to this value."""
     self.set_slot(name, _make("NativeFunction", name, method, self.ctx))
 
-  def call_pytd(self, node, name, *args):
+  def call_pytd(self, node, name, *args) -> tuple[Any, Any]:
     """Call the (original) pytd version of a method we overwrote."""
     return function.call_function(
         self.ctx,
@@ -175,9 +175,9 @@ class NestedAnnotation(metaclass=MixinMeta):
     one but with the given inner types, again as a (key, typ) sequence.
   """
 
-  overloads = ("formal",)
+  overloads: tuple[str] = ("formal",)
 
-  def init_mixin(self):
+  def init_mixin(self) -> None:
     self.processed = False
     self._seen_for_formal = False  # for calculating the 'formal' property
     self._formal = None
@@ -228,7 +228,7 @@ class LazyMembers(metaclass=MixinMeta):
 
   members: dict[str, cfg.Variable]
 
-  def init_mixin(self, member_map):
+  def init_mixin(self, member_map) -> None:
     self._member_map = member_map
 
   def _convert_member(self, name, member, subst=None):
@@ -266,15 +266,18 @@ class PythonDict(PythonConstant):
   # More methods can be implemented by adding the name to `overloads` and
   # defining the delegating method.
 
-  overloads = PythonConstant.overloads + (
-      "__getitem__",
-      "get",
-      "__contains__",
-      "copy",
-      "__iter__",
-      "items",
-      "keys",
-      "values",
+  overloads: tuple[str, str, str, str, str, str, str, str, str] = (
+      PythonConstant.overloads
+      + (
+          "__getitem__",
+          "get",
+          "__contains__",
+          "copy",
+          "__iter__",
+          "items",
+          "keys",
+          "values",
+      )
   )
 
   def __getitem__(self, key):
@@ -283,7 +286,7 @@ class PythonDict(PythonConstant):
   def get(self, key, default=None):
     return self.pyval.get(key, default)
 
-  def __contains__(self, key):
+  def __contains__(self, key) -> bool:
     return key in self.pyval
 
   def copy(self):

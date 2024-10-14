@@ -1,11 +1,13 @@
 """Trace function arguments, return values and calls to other functions."""
 
 import dataclasses
-from typing import Any
+from typing import TypeVar, Union, Any
 
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+
+_T0 = TypeVar('_T0')
 
 
 @dataclasses.dataclass
@@ -48,7 +50,7 @@ class Function:
   location: Any = dataclasses.field(default=None)
 
 
-def unknown_to_any(typename):
+def unknown_to_any(typename: _T0) -> Union[str, _T0]:
   if escape.UNKNOWN in typename:
     return 'typing.Any'
   return typename
@@ -87,7 +89,7 @@ def get_function_params(pytd_fn):
 class FunctionMap:
   """Collect a map of function types and outbound callgraph edges."""
 
-  def __init__(self, index):
+  def __init__(self, index) -> None:
     self.index = index
     self.fmap = self.init_from_index(index)
 
@@ -106,7 +108,7 @@ class FunctionMap:
       # TODO(mdemello): log this
       return None
 
-  def init_from_index(self, index):
+  def init_from_index(self, index) -> dict[Any, Function]:
     """Initialize the function map."""
     out = {}
     fn_defs = [(k, v) for k, v in index.defs.items() if v.typ == 'FunctionDef']
@@ -130,7 +132,7 @@ class FunctionMap:
     out['module'] = Function(id='module')
     return out
 
-  def add_attr(self, ref, defn):
+  def add_attr(self, ref, defn) -> None:
     """Add an attr access within a function body."""
     attrib = ref.name
     scope = ref.ref_scope
@@ -156,7 +158,7 @@ class FunctionMap:
     else:
       fn.local_attrs.append(attr_access)
 
-  def add_param_def(self, ref, defn):
+  def add_param_def(self, ref, defn) -> None:
     """Add a function parameter definition."""
     fn = self.fmap[ref.ref_scope]
     for param in fn.params:
@@ -165,13 +167,13 @@ class FunctionMap:
         param.type = unwrap_type(self.index.get_pytd(ref.data[0]))
         break
 
-  def add_link(self, ref, defn):
+  def add_link(self, ref, defn) -> None:
     if ref.typ == 'Attribute':
       self.add_attr(ref, defn)
     if defn.typ == 'Param':
       self.add_param_def(ref, defn)
 
-  def add_call(self, call):
+  def add_call(self, call) -> None:
     """Add a function call."""
     scope = call.scope
     if scope not in self.fmap:

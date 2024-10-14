@@ -10,7 +10,7 @@ class BinaryRun:
     ret, out, err = BinaryRun([exe, arg, ...]).communicate()
   """
 
-  def __init__(self, args, dry_run=False):
+  def __init__(self, args, dry_run=False) -> None:
     self.args = args
     self.results = None
 
@@ -31,7 +31,7 @@ class BinaryRun:
     return self.results
 
 
-def can_run(exe, *args):
+def can_run(exe, *args) -> bool:
   """Check if running exe with args works."""
   try:
     BinaryRun([exe] + list(args)).communicate()

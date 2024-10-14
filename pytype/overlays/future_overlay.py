@@ -7,7 +7,7 @@ from pytype.overlays import overlay
 class FutureUtilsOverlay(overlay.Overlay):
   """A custom overlay for the 'future' module."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     member_map = {
         "with_metaclass": metaclass.WithMetaclass.make,
     }

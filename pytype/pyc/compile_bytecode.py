@@ -7,17 +7,18 @@ import marshal
 import re
 import sys
 
-MAGIC = importlib.util.MAGIC_NUMBER
+
+MAGIC: bytes = importlib.util.MAGIC_NUMBER
 
 # This pattern is as per PEP-263.
 ENCODING_PATTERN = "^[ \t\v]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)"
 
 
-def is_comment_only(line):
+def is_comment_only(line) -> bool:
   return re.match("[ \t\v]*#.*", line) is not None
 
 
-def _write32(f, w):
+def _write32(f, w) -> None:
   f.write(
       bytearray(
           [(w >> 0) & 0xFF, (w >> 8) & 0xFF, (w >> 16) & 0xFF, (w >> 24) & 0xFF]
@@ -25,7 +26,7 @@ def _write32(f, w):
   )
 
 
-def write_pyc(f, codeobject, source_size=0, timestamp=0):
+def write_pyc(f, codeobject, source_size=0, timestamp=0) -> None:
   f.write(MAGIC)
   f.write(b"\r\n\0\0")
   _write32(f, timestamp)
@@ -33,14 +34,14 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
   f.write(marshal.dumps(codeobject))
 
 
-def compile_to_pyc(data_file, filename, output, mode):
+def compile_to_pyc(data_file, filename, output, mode) -> None:
   """Compile the source code to byte code."""
   with open(data_file, encoding="utf-8") as fi:
     src = fi.read()
   compile_src_to_pyc(src, filename, output, mode)
 
 
-def strip_encoding(src):
+def strip_encoding(src: str) -> str:
   """Strip encoding from a src string assumed to be read from a file."""
   # Python 2's compile function does not like the line specifying the encoding.
   # So, we strip it off if it is present, replacing it with an empty comment to
@@ -59,7 +60,7 @@ def strip_encoding(src):
   return src
 
 
-def compile_src_to_pyc(src, filename, output, mode):
+def compile_src_to_pyc(src, filename, output, mode) -> None:
   """Compile a string of source code."""
   try:
     codeobject = compile(src, filename, mode)
@@ -71,7 +72,7 @@ def compile_src_to_pyc(src, filename, output, mode):
     write_pyc(output, codeobject)
 
 
-def main():
+def main() -> None:
   if len(sys.argv) != 4:
     sys.exit(1)
   output = sys.stdout.buffer if hasattr(sys.stdout, "buffer") else sys.stdout

@@ -4,11 +4,13 @@
 # pylint: disable=unpacking-non-sequence
 
 import abc
+from collections.abc import Callable, Sequence
 from typing import (
     Dict as _Dict,
     Optional as _Optional,
     Tuple as _Tuple,
     Type as _Type,
+    Any
 )
 
 from pytype import utils
@@ -26,7 +28,7 @@ from pytype.typegraph import cfg
 
 
 # type alias
-Param = overlay_utils.Param
+Param: type[overlay_utils.Param] = overlay_utils.Param
 
 
 def _is_typing_container(cls: pytd.Class):
@@ -43,7 +45,7 @@ class TypingOverlay(overlay.Overlay):
   to import a typing member in a too-low runtime version.
   """
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     # Make sure we have typing available as a dependency
     member_map = typing_overlay.copy()
     ast = ctx.loader.typing
@@ -83,7 +85,7 @@ class TypingOverlay(overlay.Overlay):
 class Redirect(overlay.Overlay):
   """Base class for overlays that redirect to typing."""
 
-  def __init__(self, module, aliases, ctx):
+  def __init__(self, module, aliases, ctx) -> None:
     assert all(v.startswith("typing.") for v in aliases.values())
     member_map = {
         k: _builder_from_name(v[len("typing.") :]) for k, v in aliases.items()
@@ -105,7 +107,9 @@ class Redirect(overlay.Overlay):
     super().__init__(ctx, module, member_map, ast)
 
 
-def _builder_from_name(name):
+def _builder_from_name(
+    name,
+) -> Callable[[Any, Any], Any]:
   def resolve(ctx, module):
     del module  # unused
     pytd_val = ctx.loader.lookup_pytd("typing", name)
@@ -117,7 +121,7 @@ def _builder_from_name(name):
   return resolve
 
 
-def _builder(name, builder):
+def _builder(name, builder) -> Callable[[Any, Any], Any]:
   """Turns (name, ctx) -> val signatures into (ctx, module) -> val."""
   return lambda ctx, module: builder(name, ctx)
 
@@ -125,10 +129,10 @@ def _builder(name, builder):
 class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__("Union", ctx)
 
-  def _build_value(self, node, inner, ellipses):
+  def _build_value(self, node, inner, ellipses) -> abstract.Union:
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
     return abstract.Union(inner, self.ctx)
 
@@ -148,7 +152,7 @@ class Annotated(abstract.AnnotationClass):
 class Final(abstract.AnnotationClass):
   """Implementation of typing.Final[T]."""
 
-  def _build_value(self, node, inner, ellipses):
+  def _build_value(self, node, inner, ellipses) -> abstract.FinalAnnotation:
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
     if len(inner) != 1:
       error = "typing.Final must wrap a single type"
@@ -163,7 +167,9 @@ class Final(abstract.AnnotationClass):
 class Tuple(overlay_utils.TypingContainer):
   """Implementation of typing.Tuple."""
 
-  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
+  def _get_value_info(
+      self, inner, ellipses, allowed_ellipses=frozenset()
+  ):
     if ellipses:
       # An ellipsis may appear at the end of the parameter list as long as it is
       # not the only parameter.
@@ -179,7 +185,7 @@ class Tuple(overlay_utils.TypingContainer):
 class Callable(overlay_utils.TypingContainer):
   """Implementation of typing.Callable[...]."""
 
-  def getitem_slot(self, node, slice_var):
+  def getitem_slot(self, node, slice_var) -> tuple:
     content = abstract_utils.maybe_extract_tuple(slice_var)
     inner, ellipses = self._build_inner(content)
     args = inner[0]
@@ -219,7 +225,9 @@ class Callable(overlay_utils.TypingContainer):
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
 
-  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
+  def _get_value_info(
+      self, inner, ellipses, allowed_ellipses=frozenset()
+  ):
     if isinstance(inner[0], list):
       template = list(range(len(inner[0]))) + [
           t.name for t in self.base_cls.template
@@ -242,7 +250,7 @@ class Callable(overlay_utils.TypingContainer):
 class TypeVarError(Exception):
   """Raised if an error is encountered while initializing a TypeVar."""
 
-  def __init__(self, message, bad_call=None):
+  def __init__(self, message, bad_call=None) -> None:
     super().__init__(message)
     self.bad_call = bad_call
 
@@ -288,7 +296,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
         args.posargs[0], "name", str, arg_type_desc="a constant str"
     )
 
-  def _get_typeparam_args(self, node, args):
+  def _get_typeparam_args(self, node, args) -> tuple[tuple, Any, Any, Any]:
     constraints = tuple(
         self._get_annotation(node, c, "constraint") for c in args.posargs[1:]
     )
@@ -308,7 +316,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
       raise TypeVarError("ambiguous **kwargs not allowed")
     return constraints, bound, covariant, contravariant
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple:
     """Call typing.TypeVar()."""
     args = args.simplify(node, self.ctx)
     try:
@@ -328,7 +336,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
 class TypeVar(_TypeVariable):
   """Representation of typing.TypeVar, as a function."""
 
-  _ABSTRACT_CLASS = abstract.TypeParameter
+  _ABSTRACT_CLASS: type[abstract.TypeParameter] = abstract.TypeParameter
 
   @classmethod
   def make(cls, ctx, module):
@@ -354,7 +362,7 @@ class TypeVar(_TypeVariable):
 class ParamSpec(_TypeVariable):
   """Representation of typing.ParamSpec, as a function."""
 
-  _ABSTRACT_CLASS = abstract.ParamSpec
+  _ABSTRACT_CLASS: type[abstract.ParamSpec] = abstract.ParamSpec
 
   @classmethod
   def make(cls, ctx, module):
@@ -375,7 +383,7 @@ class ParamSpec(_TypeVariable):
 class Cast(abstract.PyTDFunction):
   """Implements typing.cast."""
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     if args.posargs:
       _, value = self.ctx.annotation_utils.extract_and_init_annotation(
           node, "typing.cast", args.posargs[0]
@@ -387,7 +395,7 @@ class Cast(abstract.PyTDFunction):
 class Never(abstract.Singleton):
   """Implements typing.Never as a singleton."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__("Never", ctx)
     # Sets cls to Type so that runtime usages of Never don't cause pytype to
     # think that Never is being used illegally in type annotations.
@@ -397,7 +405,7 @@ class Never(abstract.Singleton):
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
-  def __init__(self, name, signatures, kind, decorators, ctx):
+  def __init__(self, name, signatures, kind, decorators, ctx) -> None:
     super().__init__(name, signatures, kind, decorators, ctx)
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
@@ -411,7 +419,7 @@ class NewType(abstract.PyTDFunction):
     self._internal_name_counter += 1
     return val
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple[Any, Any]:
     args = args.simplify(node, self.ctx)
     self.match_args(node, args, match_all_views=True)
     # As long as the types match we do not really care about the actual
@@ -454,7 +462,8 @@ class NewType(abstract.PyTDFunction):
 class Overload(abstract.PyTDFunction):
   """Implementation of typing.overload."""
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self, node, func, args, alias_map=None) -> tuple:
     """Marks that the given function is an overload."""
     del func, alias_map  # unused
     self.match_args(node, args)
@@ -480,7 +489,7 @@ class FinalDecorator(abstract.PyTDFunction):
     del module
     return super().make("final", ctx, "typing")
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple:
     """Marks that the given function is final."""
     del func, alias_map  # unused
     self.match_args(node, args)
@@ -503,7 +512,9 @@ class FinalDecorator(abstract.PyTDFunction):
 class Generic(overlay_utils.TypingContainer):
   """Implementation of typing.Generic."""
 
-  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
+  def _get_value_info(
+      self, inner, ellipses, allowed_ellipses=frozenset()
+  ) -> tuple[Sequence[str], Sequence, type[abstract.ParameterizedClass]]:
     template, inner = abstract_utils.build_generic_template(inner, self)
     return template, inner, abstract.ParameterizedClass
 
@@ -511,7 +522,7 @@ class Generic(overlay_utils.TypingContainer):
 class Optional(abstract.AnnotationClass):
   """Implementation of typing.Optional."""
 
-  def _build_value(self, node, inner, ellipses):
+  def _build_value(self, node, inner, ellipses) -> Union:
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
     if len(inner) != 1:
       error = "typing.Optional can only contain one type parameter"
@@ -561,7 +572,7 @@ class Literal(overlay_utils.TypingContainer):
 class Concatenate(abstract.AnnotationClass):
   """Implementation of typing.Concatenate[...]."""
 
-  def _build_value(self, node, inner, ellipses):
+  def _build_value(self, node, inner, ellipses) -> abstract.Concatenate:
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
     return abstract.Concatenate(list(inner), self.ctx)
 
@@ -569,11 +580,11 @@ class Concatenate(abstract.AnnotationClass):
 class ForwardRef(abstract.PyTDClass):
   """Implementation of typing.ForwardRef."""
 
-  def __init__(self, ctx, module):
+  def __init__(self, ctx, module) -> None:
     pyval = ctx.loader.lookup_pytd(module, "ForwardRef")
     super().__init__("ForwardRef", pyval, ctx)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple:
     # From https://docs.python.org/3/library/typing.html#typing.ForwardRef:
     #   Class used for internal typing representation of string forward
     #   references. [...] ForwardRef should not be instantiated by a user
@@ -591,7 +602,7 @@ class ForwardRef(abstract.PyTDClass):
 class DataclassTransformBuilder(abstract.PyTDFunction):
   """Minimal implementation of typing.dataclass_transform."""
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple:
     del func, alias_map  # unused
     # We are not yet doing anything with the args but since we have a type
     # signature available we might as well check it.
@@ -607,10 +618,10 @@ class DataclassTransformBuilder(abstract.PyTDFunction):
 class DataclassTransform(abstract.SimpleValue):
   """Minimal implementation of typing.dataclass_transform."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx) -> None:
     super().__init__("<dataclass_transform>", ctx)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None) -> tuple:
     del func, alias_map  # unused
     arg = args.posargs[0]
     for d in arg.data:
@@ -650,7 +661,7 @@ def get_re_builder(member):
 
 
 # name -> lowest_supported_version
-_unsupported_members = {
+_unsupported_members: dict[str, tuple[int, int]] = {
     "LiteralString": (3, 11),
     "TypeVarTuple": (3, 11),
     "Unpack": (3, 11),
@@ -658,7 +669,7 @@ _unsupported_members = {
 
 
 # name -> (builder, lowest_supported_version)
-typing_overlay = {
+typing_overlay: dict[Any, tuple[Any, tuple[int, int] | None]] = {
     "Annotated": (_builder("Annotated", Annotated), (3, 9)),
     "Any": (overlay.drop_module(build_any), None),
     "Callable": (_builder("Callable", Callable), None),

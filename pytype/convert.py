@@ -3,7 +3,7 @@
 import contextlib
 import logging
 import types
-from typing import Any
+from typing import TypeVar, Any
 
 import pycnite
 from pytype import datatypes
@@ -27,7 +27,9 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
-log = logging.getLogger(__name__)
+_T1 = TypeVar("_T1")
+
+log: logging.Logger = logging.getLogger(__name__)
 
 _MAX_IMPORT_DEPTH = 12
 
@@ -155,7 +157,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       return constant_type.__name__
 
-  def _type_to_name(self, t):
+  def _type_to_name(self, t) -> tuple[str, Any]:
     """Convert a type to its name."""
     assert t.__class__ is type
     if t is types.FunctionType:
@@ -184,7 +186,7 @@ class Converter(utils.ContextWeakrefMixin):
     subst = subst or datatypes.AliasingDict()
     return self.constant_to_value(pytd_cls, subst)
 
-  def tuple_to_value(self, content):
+  def tuple_to_value(self, content) -> abstract.Tuple:
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
     value = abstract.Tuple(content, self.ctx)
@@ -199,7 +201,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       raise ValueError(f"Invalid bool value: {value!r}")
 
-  def build_concrete_value(self, value, typ):
+  def build_concrete_value(self, value, typ) -> abstract.ConcreteValue:
     typ = self.primitive_classes[typ]
     return abstract.ConcreteValue(value, typ, self.ctx)
 
@@ -274,16 +276,16 @@ class Converter(utils.ContextWeakrefMixin):
     """Create a VM tuple from the given sequence."""
     return self.tuple_to_value(content).to_variable(node)
 
-  def make_typed_dict_builder(self):
+  def make_typed_dict_builder(self) -> typed_dict.TypedDictBuilder:
     """Make a typed dict builder."""
     return typed_dict.TypedDictBuilder(self.ctx)
 
-  def make_typed_dict(self, name, pytd_cls):
+  def make_typed_dict(self, name, pytd_cls) -> typed_dict.TypedDictClass:
     """Make a typed dict from a pytd class."""
     builder = typed_dict.TypedDictBuilder(self.ctx)
     return builder.make_class_from_pyi(name, pytd_cls)
 
-  def make_namedtuple_builder(self):
+  def make_namedtuple_builder(self) -> named_tuple.NamedTupleClassBuilder:
     """Make a namedtuple builder."""
     return named_tuple.NamedTupleClassBuilder(self.ctx)
 
@@ -292,7 +294,7 @@ class Converter(utils.ContextWeakrefMixin):
     builder = named_tuple.NamedTupleClassBuilder(self.ctx)
     return builder.make_class_from_pyi(name, pytd_cls)
 
-  def apply_dataclass_transform(self, cls_var, node):
+  def apply_dataclass_transform(self, cls_var, node: _T1) -> tuple[_T1, Any]:
     cls = abstract_utils.get_atomic_value(cls_var)
     # We need to propagate the metadata key since anything in the entire tree of
     # subclasses is a dataclass, even without a decorator.
@@ -376,7 +378,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       return new_container
 
-  def widen_type(self, container):
+  def widen_type(self, container) -> abstract.BaseValue:
     """Widen a tuple to an iterable, or a dict to a mapping."""
     if container.full_name == "builtins.tuple":
       return self._copy_type_parameters(container, "typing", "Iterable")
@@ -605,7 +607,7 @@ class Converter(utils.ContextWeakrefMixin):
         need_node[0] = True
         return node
 
-      recursive = isinstance(pyval, pytd.LateType) and pyval.recursive
+      recursive = isinstance(pyval, pytd.LateType) and pyval.recursive  # pytype: disable=attribute-error
       if recursive:
         context = self.ctx.allow_recursive_convert()
       else:
@@ -630,7 +632,7 @@ class Converter(utils.ContextWeakrefMixin):
         #     d = {"a": 1j}
         if recursive:
           annot = abstract.LateAnnotation(
-              pyval.name, self.ctx.vm.frames, self.ctx
+              pyval.name, self.ctx.vm.frames, self.ctx  # pytype: disable=attribute-error
           )
           annot.set_type(value)
           value = annot
@@ -641,7 +643,7 @@ class Converter(utils.ContextWeakrefMixin):
     """Resolve a late type, possibly by loading a module."""
     return self.ctx.loader.load_late_type(late_type)
 
-  def _create_module(self, ast):
+  def _create_module(self, ast) -> abstract.Module:
     if not ast:
       raise abstract_utils.ModuleLoadError()
     data = (

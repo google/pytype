@@ -5,14 +5,17 @@ import errno
 import os
 import re
 import sys
+from typing import Optional, TypeVar
 
 from pytype.platform_utils import path_utils
+
+_T0 = TypeVar("_T0")
 
 
 PICKLE_EXT = ".pickled"
 
 
-def recursive_glob(path):
+def recursive_glob(path: _T0) -> list[_T0]:
   """Call recursive glob iff ** is in the pattern."""
   if "*" not in path:
     # Glob isn't needed.
@@ -32,7 +35,7 @@ def replace_extension(filename, new_extension):
     return name + "." + new_extension
 
 
-def makedirs(path):
+def makedirs(path) -> None:
   """Create a nested directory, but don't fail if any of it already exists."""
   try:
     os.makedirs(path)
@@ -98,7 +101,7 @@ def expand_globpaths(globpaths, cwd=None):
   return expand_paths(paths, cwd)
 
 
-def expand_source_files(filenames, cwd=None):
+def expand_source_files(filenames, cwd=None) -> set:
   """Expand a space-separated string of filenames passed in as sources.
 
   This is a helper function for handling command line arguments that specify a
@@ -138,7 +141,7 @@ def expand_pythonpath(pythonpath, cwd=None):
     return []
 
 
-def replace_separator(path: str):
+def replace_separator(path: str) -> str:
   """replace `/` with `os.path.sep`, replace `:` with `os.pathsep`."""
   if sys.platform == "win32":
     return path.replace("/", os.path.sep).replace(":", os.pathsep)
@@ -146,7 +149,7 @@ def replace_separator(path: str):
     return path
 
 
-def is_file_script(filename, directory=None):
+def is_file_script(filename, directory=None) -> Optional[bool]:
   # This is for python files that do not have the .py extension
   # of course we assume that they start with a shebang
   file_path = expand_path(filename, directory)

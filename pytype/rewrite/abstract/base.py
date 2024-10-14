@@ -12,6 +12,11 @@ from pytype.rewrite.flow import variables
 from pytype.types import types
 from typing_extensions import Self
 
+_SelfBaseValue = TypeVar('_SelfBaseValue', bound=types.BaseValue)
+_TBaseValue = TypeVar('_TBaseValue', bound=types.BaseValue)
+_TSingleton = TypeVar('_TSingleton', bound='Singleton')
+_TUnion = TypeVar('_TUnion', bound='Union')
+
 _T = TypeVar('_T')
 
 
@@ -36,7 +41,7 @@ class BaseValue(types.BaseValue, abc.ABC):
   # to define it.
   name = ''
 
-  def __init__(self, ctx: ContextType):
+  def __init__(self, ctx: ContextType) -> None:
     self._ctx = ctx
 
   @abc.abstractmethod
@@ -58,10 +63,10 @@ class BaseValue(types.BaseValue, abc.ABC):
   def full_name(self):
     return self.name
 
-  def __eq__(self, other):
+  def __eq__(self, other) -> bool:
     return self.__class__ == other.__class__ and self._attrs == other._attrs
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash((self.__class__, self._ctx) + self._attrs)
 
   def to_variable(self, name: str | None = None) -> variables.Variable[Self]:
@@ -97,14 +102,17 @@ class PythonConstant(BaseValue, Generic[_T]):
   """
 
   def __init__(
-      self, ctx: ContextType, constant: _T, allow_direct_instantiation=False):
+      self, ctx: ContextType, constant: _T, allow_direct_instantiation=False
+  ) -> None:
     if self.__class__ is PythonConstant and not allow_direct_instantiation:
-      raise ValueError('Do not instantiate PythonConstant directly. Use '
-                       'ctx.consts[constant] instead.')
+      raise ValueError(
+          'Do not instantiate PythonConstant directly. Use '
+          'ctx.consts[constant] instead.'
+      )
     super().__init__(ctx)
     self.constant = constant
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f'PythonConstant({self.constant!r})'
 
   @property
@@ -122,7 +130,7 @@ class Singleton(BaseValue):
 
   name: str
 
-  def __init__(self, ctx, name, allow_direct_instantiation=False):
+  def __init__(self, ctx, name, allow_direct_instantiation=False) -> None:
     if self.__class__ is Singleton and not allow_direct_instantiation:
       raise ValueError('Do not instantiate Singleton directly. Use '
                        'ctx.consts.singles[name] instead.')
@@ -146,7 +154,7 @@ class Singleton(BaseValue):
 class Union(BaseValue):
   """Union of values."""
 
-  def __init__(self, ctx: ContextType, options: Sequence[BaseValue]):
+  def __init__(self, ctx: ContextType, options: Sequence[BaseValue]) -> None:
     super().__init__(ctx)
     assert len(options) > 1
     flattened_options = []
@@ -157,14 +165,14 @@ class Union(BaseValue):
         flattened_options.append(o)
     self.options = tuple(utils.unique_list(flattened_options))
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return ' | '.join(repr(o) for o in self.options)
 
   @property
   def _attrs(self):
     return (frozenset(self.options),)
 
-  def instantiate(self):
+  def instantiate(self: _TUnion) -> _TUnion:
     return Union(self._ctx, tuple(o.instantiate() for o in self.options))
 
 

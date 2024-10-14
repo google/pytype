@@ -1,11 +1,16 @@
 """Data structures and algorithms for boolean equations."""
 
 import collections
+from collections.abc import Callable, Generator
 import itertools
+from typing import Any, TypeVar
 
 from pytype.pytd import pytd_utils
 
-chain = itertools.chain.from_iterable
+_TFalseValue = TypeVar("_TFalseValue", bound="FalseValue")
+_TTrueValue = TypeVar("_TTrueValue", bound="TrueValue")
+
+chain: Callable = itertools.chain.from_iterable
 
 
 class BooleanTerm:
@@ -56,43 +61,43 @@ class BooleanTerm:
 class TrueValue(BooleanTerm):
   """Class for representing "TRUE"."""
 
-  def simplify(self, assignments):
+  def simplify(self: _TTrueValue, assignments) -> _TTrueValue:
     return self
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "TRUE"
 
-  def __str__(self):
+  def __str__(self) -> str:
     return "TRUE"
 
-  def extract_pivots(self, assignments):
+  def extract_pivots(self, assignments) -> dict:
     return {}
 
-  def extract_equalities(self):
+  def extract_equalities(self) -> tuple[()]:
     return ()
 
 
 class FalseValue(BooleanTerm):
   """Class for representing "FALSE"."""
 
-  def simplify(self, assignments):
+  def simplify(self: _TFalseValue, assignments) -> _TFalseValue:
     return self
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return "FALSE"
 
-  def __str__(self):
+  def __str__(self) -> str:
     return "FALSE"
 
-  def extract_pivots(self, assignments):
+  def extract_pivots(self, assignments) -> dict[None, None]:
     return {}
 
-  def extract_equalities(self):
+  def extract_equalities(self) -> tuple[()]:
     return ()
 
 
-TRUE = TrueValue()
-FALSE = FalseValue()
+TRUE: TrueValue = TrueValue()
+FALSE: FalseValue = FalseValue()
 
 
 def simplify_exprs(exprs, result_type, stop_term, skip_term):
@@ -144,7 +149,7 @@ class _Eq(BooleanTerm):
 
   __slots__ = ("left", "right")
 
-  def __init__(self, left, right):
+  def __init__(self, left, right) -> None:
     """Initialize an equality.
 
     Args:
@@ -154,13 +159,13 @@ class _Eq(BooleanTerm):
     self.left = left
     self.right = right
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Eq({self.left!r}, {self.right!r})"
 
-  def __str__(self):
+  def __str__(self) -> str:
     return f"{self.left} == {self.right}"
 
-  def __hash__(self):
+  def __hash__(self) -> int:
     return hash((self.left, self.right))
 
   def __eq__(self, other):
@@ -170,7 +175,7 @@ class _Eq(BooleanTerm):
         and self.right == other.right
     )
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
   def simplify(self, assignments):
@@ -193,7 +198,7 @@ class _Eq(BooleanTerm):
     else:
       return self if self.right in assignments[self.left] else FALSE
 
-  def extract_pivots(self, assignments):
+  def extract_pivots(self, assignments) -> dict:
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
     if self.left in assignments and self.right in assignments:
       intersection = assignments[self.left] & assignments[self.right]
@@ -207,11 +212,11 @@ class _Eq(BooleanTerm):
           self.right: frozenset((self.left,)),
       }
 
-  def extract_equalities(self):
+  def extract_equalities(self) -> tuple[tuple[Any, Any]]:
     return ((self.left, self.right),)
 
 
-def _expr_set_hash(expr_set):
+def _expr_set_hash(expr_set) -> int:
   # We sort the hash of individual expressions so that two equal sets
   # have the same hash value.
   return hash(tuple(sorted(hash(e) for e in expr_set)))
@@ -225,7 +230,7 @@ class _And(BooleanTerm):
 
   __slots__ = ("exprs",)
 
-  def __init__(self, exprs):
+  def __init__(self, exprs) -> None:
     """Initialize a conjunction.
 
     Args:
@@ -236,13 +241,13 @@ class _And(BooleanTerm):
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.exprs == other.exprs
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"And({list(self.exprs)!r})"
 
-  def __str__(self):
+  def __str__(self) -> str:
     return "(" + " & ".join(str(t) for t in self.exprs) + ")"
 
   def __hash__(self):
@@ -265,7 +270,7 @@ class _And(BooleanTerm):
           pivots[name] = values
     return {var: values for var, values in pivots.items() if values}
 
-  def extract_equalities(self):
+  def extract_equalities(self) -> tuple:
     return tuple(chain(expr.extract_equalities() for expr in self.exprs))
 
 
@@ -277,7 +282,7 @@ class _Or(BooleanTerm):
 
   __slots__ = ("exprs",)
 
-  def __init__(self, exprs):
+  def __init__(self, exprs) -> None:
     """Initialize a disjunction.
 
     Args:
@@ -288,13 +293,13 @@ class _Or(BooleanTerm):
   def __eq__(self, other):  # for unit tests
     return self.__class__ == other.__class__ and self.exprs == other.exprs
 
-  def __ne__(self, other):
+  def __ne__(self, other) -> bool:
     return not self == other
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Or({list(self.exprs)!r})"
 
-  def __str__(self):
+  def __str__(self) -> str:
     return "(" + " | ".join(str(t) for t in self.exprs) + ")"
 
   def __hash__(self):
@@ -305,7 +310,7 @@ class _Or(BooleanTerm):
         (e.simplify(assignments) for e in self.exprs), _Or, TRUE, FALSE
     )
 
-  def extract_pivots(self, assignments):
+  def extract_pivots(self, assignments) -> dict:
     """Extract the pivots. See BooleanTerm.extract_pivots()."""
     pivots = {}  # dict of frozenset
     for expr in self.exprs:
@@ -317,7 +322,7 @@ class _Or(BooleanTerm):
           pivots[name] = values
     return pivots
 
-  def extract_equalities(self):
+  def extract_equalities(self) -> tuple:
     return tuple(chain(expr.extract_equalities() for expr in self.exprs))
 
 
@@ -401,13 +406,13 @@ class Solver:
 
   ANY_VALUE = "?"
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.variables = set()
     self.implications = collections.defaultdict(dict)
     self.ground_truth = TRUE
     self.assignments = None
 
-  def __str__(self):
+  def __str__(self) -> str:
     lines = []
     count_false, count_true = 0, 0
     if self.ground_truth is not TRUE:
@@ -426,7 +431,7 @@ class Solver:
         count_true,
     )
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     lines = []
     for var in self.variables:
       lines.append(f"solver.register_variable({var!r})")
@@ -440,7 +445,7 @@ class Solver:
     """Register a variable. Call before calling solve()."""
     self.variables.add(variable)
 
-  def always_true(self, formula):
+  def always_true(self, formula) -> None:
     """Register a ground truth. Call before calling solve()."""
     assert formula is not FALSE
     self.ground_truth = And([self.ground_truth, formula])
@@ -457,7 +462,7 @@ class Solver:
     # (ASCII value 126), e.left should always be the variable.
     self.implications[e.left][e.right] = implication
 
-  def _iter_implications(self):
+  def _iter_implications(self) -> Generator[tuple[Any, Any, Any], Any, None]:
     for var, value_to_implication in self.implications.items():
       for value, implication in value_to_implication.items():
         yield (var, value, implication)
@@ -469,7 +474,7 @@ class Solver:
         if implication is not FALSE
     }
 
-  def _get_first_approximation(self):
+  def _get_first_approximation(self) -> dict:
     """Get all (variable, value) combinations to consider.
 
     This gets the (variable, value) combinations that the solver needs to
@@ -514,7 +519,7 @@ class Solver:
 
     return value_assignments
 
-  def _complete(self):
+  def _complete(self) -> None:
     """Insert missing implications.
 
     Insert all implications needed to have one implication for every
