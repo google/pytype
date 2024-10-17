@@ -262,5 +262,5 @@ class Instance(SimpleValue):
       # If we might be the middle of loading this class, don't try to access
       # instance_type_parameters. We don't cache this intermediate type key
       # because we want it to be overwritten by the real one.
-      return frozenset([self.cls])
+      return self.cls
     return super().get_type_key(seen)
