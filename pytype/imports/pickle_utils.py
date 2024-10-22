@@ -103,7 +103,9 @@ def DecodeAst(data: bytes) -> serialize_ast.SerializableAst:
 def LoadAst(
     filename: Path, compress: bool = False, open_function=open
 ) -> serialize_ast.SerializableAst:
-  return _Load(AstDecoder, filename, compress, open_function)
+  return _Load(
+      AstDecoder, filename, compress, open_function
+  )  # pytype: disable=bad-return-type
 
 
 def DecodeBuiltins(data: bytes) -> serialize_ast.ModuleBundle:
