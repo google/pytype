@@ -1,7 +1,5 @@
 # pytype - 🦆✔
 
-<!--* freshness: { exempt: true } *-->
-
 Pytype checks and infers types for your Python code - without requiring type
 annotations. Pytype can:
 
@@ -89,9 +87,9 @@ merge-pyi -i <filepath>.py .pytype/pyi/<filename>.pyi
 
 ## Requirements
 
-You need a Python 3.8-3.11 interpreter to run pytype, as well as an
+You need a Python 3.8-3.12 interpreter to run pytype, as well as an
 interpreter in `$PATH` for the Python version of the code you're analyzing
-(supported: 3.8-3.11).
+(supported: 3.8-3.12).
 
 Platform support:
 
@@ -259,15 +257,12 @@ single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
 * `pyxref`, a cross-references generator.
 
-## 2023 Roadmap
-
-* Typegraph rewrite for improved correctness and performance.
-* Basic Python 3.11 support.
-
 ## License
+
 [Apache 2.0][license]
 
 ## Disclaimer
+
 This is not an official Google product.
 
 [error-classes]: errors.md

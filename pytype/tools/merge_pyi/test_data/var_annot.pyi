@@ -1,1 +1,9 @@
-v: str
+import datetime
+a: int
+b: float
+c: str
+d: bool
+e: datetime.datetime
+f: int
+g: float
+h: str

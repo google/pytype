@@ -38,7 +38,7 @@ class ProtocolTest(test_base.BaseTest):
       f(["foo"])  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"\(x: SupportsAbs\).*\(x: List\[str\]\)"}
+        errors, {"e": r"\(x: SupportsAbs\).*\(x: list\[str\]\)"}
     )
 
   def test_check_iterator_error(self):
@@ -342,7 +342,7 @@ class ProtocolTest(test_base.BaseTest):
         pass
       f([])  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Hashable.*List.*__hash__"})
+    self.assertErrorRegexes(errors, {"e": r"Hashable.*list.*__hash__"})
 
   def test_hash_constant(self):
     errors = self.CheckWithErrors("""
@@ -1320,8 +1320,8 @@ class ProtocolAttributesTest(test_base.BaseTest):
           errors,
           {
               "e": (
-                  r"expected Dict\[str, List\[int\]\], "
-                  r"got Dict\[str, List\[str\]\]"
+                  r"expected dict\[str, list\[int\]\], "
+                  r"got dict\[str, list\[str\]\]"
               )
           },
       )
@@ -1350,8 +1350,8 @@ class ProtocolAttributesTest(test_base.BaseTest):
         errors,
         {
             "e": (
-                r"expected Dict\[str, dataclasses\.Field\[int\]\], "
-                r"got Dict\[str, dataclasses\.Field\[Union\[int, str\]\]\]"
+                r"expected dict\[str, dataclasses\.Field\[int\]\], "
+                r"got dict\[str, dataclasses\.Field\[Union\[int, str\]\]\]"
             )
         },
     )

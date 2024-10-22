@@ -230,8 +230,15 @@ class TestUtils(parser_test_base.ParserTest):
       def List() -> None: ...
     """)
     ast = parser.parse_string(src, options=self.options)
+    expected = textwrap.dedent("""
+      import typing
+
+      x: list[str]
+
+      def List() -> None: ...
+    """)
     self.assertMultiLineEqual(
-        pytd_utils.Print(ast).strip("\n"), src.strip("\n")
+        pytd_utils.Print(ast).strip("\n"), expected.strip("\n")
     )
 
   def test_typing_name_conflict2(self):
@@ -250,13 +257,13 @@ class TestUtils(parser_test_base.ParserTest):
     )
     expected = textwrap.dedent("""
       import typing
-      from typing import Any, List
+      from typing import Any
 
-      x: List[str]
+      x: list[str]
 
       class MyClass:
           List: Any
-          x: typing.List[str]
+          x: list[str]
     """)
     self.assertMultiLineEqual(
         pytd_utils.Print(ast).strip("\n"), expected.strip("\n")
@@ -394,12 +401,12 @@ class PrintTest(parser_test_base.ParserTest):
   def test_reuse_union_name(self):
     src = """
       import typing
-      from typing import Callable, Iterable, Tuple
+      from typing import Callable, Iterable
 
       class Node: ...
 
       class Union:
-          _predicates: Tuple[Callable[[typing.Union[Iterable[Node], Node]], bool], ...]
+          _predicates: tuple[Callable[[typing.Union[Iterable[Node], Node]], bool], ...]
           def __init__(self, *predicates: Callable[[typing.Union[Iterable[Node], Node]], bool]) -> None: ...
     """
     ast = self.Parse(src)

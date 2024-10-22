@@ -60,23 +60,19 @@ _COMPAT_ITEMS = [
 
 # The PEP 484 definition of built-in types.
 # E.g. "typing.List" is used to represent the "list" type.
-TYPING_TO_BUILTIN = {
-    t: t.lower()
+BUILTIN_TO_TYPING = {
+    t.lower(): t
     for t in [
         "List",
         "Dict",
         "Tuple",
         "Set",
         "FrozenSet",
-        "Generator",
         "Type",
-        "Coroutine",
-        "AsyncGenerator",
     ]
 }
 
-
-BUILTIN_TO_TYPING = {v: k for k, v in TYPING_TO_BUILTIN.items()}
+TYPING_TO_BUILTIN = {v: k for k, v in BUILTIN_TO_TYPING.items()}
 
 
 def get_compat_items(none_matches_bool=False):

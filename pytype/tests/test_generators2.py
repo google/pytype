@@ -10,7 +10,7 @@ class GeneratorBasicTest(test_base.BaseTest):
   def test_return_before_yield(self):
     self.Check("""
       from typing import Generator
-      def f() -> generator:
+      def f() -> Generator:
         if __random__:
           return
         yield 5
@@ -116,8 +116,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors,
         {
-            "e1": ["generator[int, int]", "generator[_T, _T2, _V]", "3", "2"],
-            "e2": ["generator[int]", "generator[_T, _T2, _V]", "3", "1"],
+            "e1": ["Generator[int, int]", "Generator[_T, _T2, _V]", "3", "2"],
+            "e2": ["Generator[int]", "Generator[_T, _T2, _V]", "3", "1"],
         },
     )
 
@@ -125,7 +125,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
     self.Check("""
       from typing import Generator
       from types import GeneratorType
-      a: generator = __any_object__
+      a: Generator = __any_object__
       a.gi_code
       a.gi_frame
       a.gi_running

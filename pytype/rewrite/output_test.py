@@ -169,7 +169,7 @@ class ToPytdTypeTest(OutputTestBase):
     t = self.ctx.pytd_converter.to_pytd_type(
         abstract.SimpleClass(self.ctx, 'C', {})
     )
-    self.assertPytdEqual(t, 'Type[C]')
+    self.assertPytdEqual(t, 'type[C]')
 
   def test_mutable_instance(self):
     instance = abstract.MutableInstance(

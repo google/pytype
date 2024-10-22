@@ -4,12 +4,21 @@ Unless forced to by a circular dependency, don't import BaseValue directly from
 this module; use the alias in abstract.py instead.
 """
 
-from typing import Any
+from collections.abc import Collection, Sequence
+from typing import TYPE_CHECKING
 
 from pytype import utils
 from pytype.abstract import abstract_utils
 from pytype.pytd import mro
 from pytype.types import types
+
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype import datatypes  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _instance_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _classes  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import function  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _make = abstract_utils._make  # pylint: disable=protected-access
@@ -29,7 +38,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
   formal = False  # is this type non-instantiable?
 
-  def __init__(self, name, ctx):
+  def __init__(self, name: str, ctx: "context.Context") -> None:
     """Basic initializer for all BaseValues."""
     super().__init__(ctx)
     # This default cls value is used by things like Unsolvable that inherit
@@ -58,29 +67,32 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
   @property
   def module(self):
+    # TODO: b/350643999 - Making this str|None will currently cause lots of
+    # downstream code breakages. Either fix them and annotate types or change it
+    # to not make this `None`-able
     return self._module
 
   @module.setter
-  def module(self, module):
+  def module(self, module: str) -> None:
     self._module = module
     self.update_official_name(self.name)
 
   @property
-  def official_name(self):
+  def official_name(self) -> str | None:
     return self._official_name
 
   @official_name.setter
-  def official_name(self, official_name):
+  def official_name(self, official_name: str) -> None:
     self._official_name = official_name
 
   @property
-  def all_template_names(self):
+  def all_template_names(self) -> "set[BaseValue | str]":
     if self._all_template_names is None:
       self._all_template_names = _get_template(self)
     return self._all_template_names
 
   @property
-  def template(self):
+  def template(self) -> Sequence["BaseValue"]:
     if self._template is None:
       # Won't recompute if `compute_template` throws exception
       self._template = ()
@@ -88,27 +100,29 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     return self._template
 
   @property
-  def full_name(self):
+  def full_name(self) -> str:
     return (self.module + "." if self.module else "") + self.name
 
   def __repr__(self):
     return self.name
 
-  def compute_mro(self):
+  def compute_mro(self) -> tuple["BaseValue", ...]:
     # default for objects with no MRO
     return ()
 
-  def default_mro(self):
+  def default_mro(self) -> tuple["BaseValue", ...]:
     # default for objects with unknown MRO
     return (self, self.ctx.convert.object_type)
 
-  def get_default_fullhash(self):
+  def get_default_fullhash(self) -> int:
     return id(self)
 
-  def get_fullhash(self, seen=None):
+  def get_fullhash(self, seen: set[int] | None = None) -> int:
     return self.get_default_fullhash()
 
-  def get_instance_type_parameter(self, name, node=None):
+  def get_instance_type_parameter(
+      self, name: str, node: "cfg.CFGNode | None" = None
+  ):
     """Get a cfg.Variable of the instance's values for the type parameter.
 
     Treating self as an abstract.Instance, gets the variable of its values for
@@ -127,7 +141,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       node = self.ctx.root_node
     return self.ctx.new_unsolvable(node)
 
-  def get_formal_type_parameter(self, t):
+  def get_formal_type_parameter(
+      self, t  # TODO: b/350643999 - Figure out the type of 't'.
+  ) -> "BaseValue":
     """Get the class's type for the type parameter.
 
     Treating self as a class_mixin.Class, gets its formal type for the given
@@ -143,7 +159,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     del t
     return self.ctx.convert.unsolvable
 
-  def property_get(self, callself, is_class=False):
+  def property_get(
+      self, callself: "cfg.Variable", is_class: bool = False
+  ) -> "BaseValue":
     """Bind this value to the given self or cls.
 
     This function is similar to __get__ except at the abstract level. This does
@@ -164,7 +182,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     del callself, is_class
     return self
 
-  def get_special_attribute(self, unused_node, name, unused_valself):
+  def get_special_attribute(
+      self, unused_node: "cfg.CFGNode", name: str, unused_valself: "cfg.Binding"
+  ) -> "cfg.Variable | None":
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     if name == "__class__":
       if self.full_name == "typing.Protocol":
@@ -181,12 +201,20 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
         return self.cls.to_variable(self.ctx.root_node)
     return None
 
-  def get_own_new(self, node, value):
+  def get_own_new(
+      self, node: "cfg.CFGNode", value: "cfg.Variable"
+  ) -> tuple["cfg.CFGNode", None]:
     """Get this value's __new__ method, if it isn't object.__new__."""
     del value  # Unused, only classes have methods.
     return node, None
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self,
+      node: "cfg.CFGNode",
+      func: "cfg.Binding",
+      args: "function.Args",
+      alias_map: "datatypes.UnionFind | None" = None,
+  ):
     """Call this abstract value with the given arguments.
 
     The posargs and namedargs arguments may be modified by this function.
@@ -214,7 +242,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """Returns the minimum number of arguments needed for a call."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def register_instance(self, instance):  # pylint: disable=unused-arg
+  def register_instance(self, instance: "_instance_base.Instance") -> None:  # pylint: disable=unused-arg
     """Treating self as a class definition, register an instance of it.
 
     This is used for keeping merging call records on instances when generating
@@ -240,11 +268,11 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """Get a PyTD definition for this object."""
     return self.ctx.pytd_convert.value_to_pytd_def(node, self, name)
 
-  def get_default_type_key(self):
+  def get_default_type_key(self) -> "type[BaseValue]":
     """Gets a default type key. See get_type_key."""
     return type(self)
 
-  def get_type_key(self, seen=None):  # pylint: disable=unused-argument
+  def get_type_key(self, seen: set["BaseValue"] | None = None):  # pylint: disable=unused-argument
     """Build a key from the information used to perform type matching.
 
     Get a hashable object containing this value's type information. Type keys
@@ -260,7 +288,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """
     return self.get_default_type_key()
 
-  def instantiate(self, node, container=None):
+  def instantiate(
+      self, node: "cfg.CFGNode", container: "cfg.CFGNode | None" = None
+  ) -> "cfg.Variable":
     """Create an instance of self.
 
     Note that this method does not call __init__, so the instance may be
@@ -289,7 +319,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       return abstract_utils.get_atomic_value(typing.members["Tuple"])
     return _make("AnnotationContainer", self.name, self.ctx, self)
 
-  def to_variable(self, node):
+  def to_variable(self, node: "cfg.CFGNode") -> "cfg.Variable":
     """Build a variable out of this abstract value.
 
     Args:
@@ -304,15 +334,15 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     (binding,) = self.to_variable(node).bindings
     return binding
 
-  def has_varargs(self):
+  def has_varargs(self) -> bool:
     """Return True if this is a function and has a *args parameter."""
     return False
 
-  def has_kwargs(self):
+  def has_kwargs(self) -> bool:
     """Return True if this is a function and has a **kwargs parameter."""
     return False
 
-  def _unique_parameters(self):
+  def _unique_parameters(self) -> "list[cfg.Variable]":
     """Get unique parameter subtypes as variables.
 
     This will retrieve 'children' of this value that contribute to the
@@ -325,7 +355,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """
     return []
 
-  def unique_parameter_values(self):
+  def unique_parameter_values(self) -> "list[Collection[cfg.Binding]]":
     """Get unique parameter subtypes as bindings.
 
     Like _unique_parameters, but returns bindings instead of variables.
@@ -339,7 +369,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
 
     return [_get_values(parameter) for parameter in self._unique_parameters()]
 
-  def init_subclass(self, node, cls):
+  def init_subclass(
+      self, node: "cfg.CFGNode", cls: "_classes.InterpreterClass"
+  ) -> "cfg.CFGNode":
     """Allow metaprogramming via __init_subclass__.
 
     We do not analyse __init_subclass__ methods in the code, but overlays that
@@ -363,13 +395,13 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     del cls
     return node
 
-  def update_official_name(self, _):
+  def update_official_name(self, _: str) -> None:
     """Update the official name."""
 
-  def is_late_annotation(self):
+  def is_late_annotation(self) -> bool:
     return False
 
-  def should_set_self_annot(self):
+  def should_set_self_annot(self) -> bool:
     # To do argument matching for custom generic classes, the 'self' annotation
     # needs to be replaced with a generic type.
 
@@ -394,7 +426,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     # pytype: enable=attribute-error
 
 
-def _get_template(val: Any):
+def _get_template(val: BaseValue) -> set[BaseValue | str]:
   """Get the value's class template."""
   if _isinstance(val, "Class"):
     res = {t.full_name for t in val.template}
@@ -413,7 +445,7 @@ def _get_template(val: Any):
     return set()
 
 
-def _compute_template(val: Any):
+def _compute_template(val: BaseValue) -> Sequence[BaseValue]:
   """Compute the precedence list of template parameters according to C3.
 
   1. For the base class list, if it contains `typing.Generic`, then all the

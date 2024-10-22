@@ -821,7 +821,7 @@ class Postprocessor:
           f.incoming = tuple(nodes[use.lstrip("+-")] for use in dependencies)
 
     # process the option list in the right order:
-    for node in cfg_utils.topological_sort(nodes.values()):
+    for node in cfg_utils.topological_sort(nodes.values()):  # pytype: disable=wrong-arg-types
       value = getattr(self.input_options, node.name)
       if node.processor is not None:
         dependencies = uses.lookup.get(node.processor.__name__, [])

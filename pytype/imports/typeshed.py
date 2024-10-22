@@ -306,7 +306,7 @@ class Typeshed:
       # Give precedence to MISSING_FILE
       if path_rel in self.missing:
         relpath = path_utils.join("nonexistent", path_rel + ".pyi")
-        return self._store.filepath(relpath), builtin_stubs.DEFAULT_SRC
+        return relpath, builtin_stubs.DEFAULT_SRC
       for path in [
           path_utils.join(path_rel, "__init__.pyi"),
           path_rel + ".pyi",

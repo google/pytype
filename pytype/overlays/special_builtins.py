@@ -588,18 +588,25 @@ class AssertType(BuiltinFunction):
     # Convert both args to strings and compare them
     pp = self.ctx.errorlog.pretty_printer
     actual = pp.print_var_type(var, node)
+    # If the 'expected' arg is an actual string, try to check it as is.
+    # This is very fragile and not supported by other type checkers, but in
+    # pytype historically this was the main mode of operation.
     try:
       expected = abstract_utils.get_atomic_python_constant(typ, str)
+      matched_as_string = actual == expected
     except abstract_utils.ConversionError:
-      # NOTE: Converting types to strings is provided as a fallback, but is not
-      # really supported, since there are issues around name resolution.
+      matched_as_string = False
+    # Regardless of whether there was a mismatch or 'expected' isn't a string,
+    # we try to parse it in the context and convert it to a type string again.
+    # This *should* be the main mode of operation, but it may still have issues.
+    if not matched_as_string:
       typ = self.ctx.annotation_utils.extract_annotation(
           node, typ, "assert_type", self.ctx.vm.simple_stack()
       )
       node, instance = self.ctx.vm.init_class_and_forward_node(node, typ)
       expected = pp.print_var_type(instance, node)
-    if actual != expected:
-      self.ctx.errorlog.assert_type(self.ctx.vm.frames, actual, expected)
+      if actual != expected:
+        self.ctx.errorlog.assert_type(self.ctx.vm.frames, actual, expected)
     return node, self.ctx.convert.build_none(node)
 
 

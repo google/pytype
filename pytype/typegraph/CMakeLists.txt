@@ -1,5 +1,6 @@
 add_package()
 
+# BEGIN keep
 pybind11_add_module(
   # NAME -- this must be the fully qualified name.
     pytype.typegraph.cfg
@@ -39,34 +40,44 @@ else()
     OUTPUT_NAME cfg
   )
 endif()
-
+# END keep
 
 py_library(
   NAME
     cfg_utils
   SRCS
     cfg_utils.py
+  DEPS
+    .cfg
 )
 
-# This library is disabled because cfg.py can conflict with the typegraph.cfg
-# extension module.
-# py_library(
-#   NAME
-#     cfg_py
-#   SRCS
-#     cfg.py
-#   DEPS
-#     pytype.utils
-# )
+py_library(
+  NAME
+    typegraph_serializer
+  SRCS
+    typegraph_serializer.py
+  DEPS
+    .cfg
+    pytype.pytd.pytd
+)
 
 cc_library(
   NAME
     cfg_logging
   SRCS
     cfg_logging.cc
-    pylogging.cc
   HDRS
     cfg_logging.h
+  DEPS
+    .pylogging
+)
+
+cc_library(
+  NAME
+    pylogging
+  SRCS
+    pylogging.cc
+  HDRS
     pylogging.h
 )
 
@@ -85,6 +96,8 @@ cc_library(
   SRCS
     solver.cc
     typegraph.cc
+    map_util.h
+    metrics.h
   HDRS
     solver.h
     typegraph.h
@@ -117,6 +130,7 @@ cc_test(
     map_util_test
   SRCS
     map_util_test.cc
+    map_util.h
 )
 
 cc_test(
@@ -133,6 +147,7 @@ cc_test(
     solver_test
   SRCS
     solver_test.cc
+    test_util.h
   DEPS
     .typegraph
 )
@@ -142,18 +157,9 @@ cc_test(
     typegraph_test
   SRCS
     typegraph_test.cc
+    test_util.h
   DEPS
     .typegraph
-)
-
-py_library(
-  NAME
-    typegraph_serializer
-  SRCS
-    typegraph_serializer.py
-  DEPS
-    .cfg
-    pytype.pytd.pytd
 )
 
 py_test(

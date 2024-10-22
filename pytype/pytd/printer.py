@@ -99,7 +99,7 @@ class _Imports:
 
   def get_alias(self, name: str):
     if name.startswith("typing."):
-      return self._typing.members.get(utils.strip_prefix(name, "typing."))
+      return self._typing.members.get(name.removeprefix("typing."))
     return self._reverse_alias_map.get(name)
 
   def to_import_statements(self):
@@ -136,7 +136,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def __init__(self, multiline_args=False):
     super().__init__()
-    self.class_names = []  # allow nested classes
+    self.class_names = []  # can contain nested classes
     self.in_alias = False
     self.in_parameter = False
     self.in_literal = False
@@ -246,7 +246,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def _StripUnitPrefix(self, name):
     if self._unit:
-      return utils.strip_prefix(name, f"{self._unit.name}.")
+      return name.removeprefix(f"{self._unit.name}.")
     else:
       return name
 
@@ -358,9 +358,8 @@ class PrintVisitor(base_visitor.Visitor):
         "typing.OrderedDict",
     ):
       return False
-    if node.type == f"Type[{full_typing_name}]":
+    if node.type == f"type[{full_typing_name}]":
       self._imports.add(full_typing_name, node.name)
-      self._imports.decrement_typing_count("Type")
       self._local_names.remove(node.name)
       return True
 
@@ -614,20 +613,39 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
-    # For parameterized class, for example: ClsName[T, V].
-    # Its name is `ClsName` before `[`.
-    class_name = self.class_names[-1].split("[")[0] if self.class_names else ""
+
+    def class_name():
+      if not self.class_names:
+        return ""
+      # For the typical case with a nested class, `self.class_names` looks like:
+      # ['module.submodule.Class', 'module.submodule.Class.NestedClass']
+      # And `node.type` looks like: 'module.submodule.Class.NestedClass'.
+      # So we can just take the innermost class name and they will match.
+      #
+      # However, if `visitors.RemoveNamePrefix()` has been applied, then it's:
+      # ['Class', 'NestedClass']
+      # And `node.type` looks like: 'Class.NestedClass'.
+      # So, need to join the class names for these values to match.
+      prefixes_have_been_removed = (
+          "." in node.type and "." not in self.class_names[-1]
+      )
+      if prefixes_have_been_removed:
+        return ".".join(_strip_generics(c) for c in self.class_names)
+      return _strip_generics(self.class_names[-1])
+
     if isinstance(self.old_node.type, pytd.AnythingType):
       # Abbreviated form. "Any" is the default.
       self._imports.decrement_typing_count("Any")
       return node.name + suffix
-    elif node.name == "self" and class_name == node.type.split("[")[0]:
+    # TODO: this should not be relying on the parameter names "self"/"cls".
+    elif node.name == "self" and class_name() == _strip_generics(node.type):
       self._DecrementParameterImports(node.type)
       return node.name + suffix
     elif node.name == "cls" and re.fullmatch(
-        rf"Type\[{class_name}(\[.+\])?\]", node.type
+        rf"(?:Type|type)\[{class_name()}(?:\[.+\])?\]", node.type
     ):
-      self._imports.decrement_typing_count("Type")
+      if node.type.startswith("Type"):
+        self._imports.decrement_typing_count("Type")
       self._DecrementParameterImports(node.type[5:-1])
       return node.name + suffix
     elif node.type is None:
@@ -736,13 +754,6 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitModule(self, node):
     return "module"
 
-  def MaybeCapitalize(self, name):
-    """Capitalize a generic type, if necessary."""
-    if name in pep484.BUILTIN_TO_TYPING:
-      return self._FromTyping(pep484.BUILTIN_TO_TYPING[name])
-    else:
-      return name
-
   def VisitGenericType(self, node):
     """Convert a generic type to a string."""
     parameters = node.parameters
@@ -758,15 +769,10 @@ class PrintVisitor(base_visitor.Visitor):
       else:
         assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
-    return (
-        self.MaybeCapitalize(node.base_type)
-        + "["
-        + ", ".join(str(p) for p in parameters)
-        + "]"
-    )
+    return node.base_type + "[" + ", ".join(str(p) for p in parameters) + "]"
 
   def VisitCallableType(self, node):
-    typ = self.MaybeCapitalize(node.base_type)
+    typ = node.base_type
     if len(node.args) == 1 and node.args[0] in self._paramspec_names:
       return f"{typ}[{node.args[0]}, {node.ret}]"
     elif node.args and "Concatenate" in node.args[0]:
@@ -870,3 +876,8 @@ class PrintVisitor(base_visitor.Visitor):
     base = self._FromTyping("Annotated")
     annotations = ", ".join(node.annotations)
     return f"{base}[{node.base_type}, {annotations}]"
+
+
+def _strip_generics(type_name: str) -> str:
+  """Strips generic parameters from a type name."""
+  return type_name.split("[", 1)[0]

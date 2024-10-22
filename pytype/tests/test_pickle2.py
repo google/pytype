@@ -87,6 +87,10 @@ class PickleTest(test_base.BaseTest):
         import baz
         assert_type(baz.Baz.x, 'foo.Foo')
       """)
+      self.Check("""
+        import baz, foo
+        assert_type(baz.Baz.x, foo.Foo)
+      """)
 
 
 if __name__ == "__main__":

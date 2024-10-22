@@ -123,9 +123,19 @@ class PYITest(test_base.BaseTest):
       self.Check(
           """
         import foo
-        assert_type(foo.X1, "Type[List[int]]")
-        assert_type(foo.X2, "Type[List[foo.Z[str]]]")
-        assert_type(foo.X3, "Type[Union[foo.Z[int], int]]")
+        assert_type(foo.X1, "type[list[int]]")
+        assert_type(foo.X2, "type[list[foo.Z[str]]]")
+        assert_type(foo.X3, "type[Union[foo.Z[int], int]]")
+      """,
+          pythonpath=[d.path],
+      )
+      self.Check(
+          """
+        from typing import Type, List, Union
+        import foo
+        assert_type(foo.X1, Type[List[int]])
+        assert_type(foo.X2, Type[List[foo.Z[str]]])
+        assert_type(foo.X3, Type[Union[foo.Z[int], int]])
       """,
           pythonpath=[d.path],
       )
@@ -212,7 +222,7 @@ class PYITestPython3Feature(test_base.BaseTest):
     ]):
       self.Check("""
         import bar
-        assert_type(bar.Y, "Type[Literal['a', 'b', 'c', 'd']]")
+        assert_type(bar.Y, "type[Literal['a', 'b', 'c', 'd']]")
       """)
 
   def test_literal_in_dataclass(self):

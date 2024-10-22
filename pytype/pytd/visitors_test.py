@@ -493,9 +493,9 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     expected = textwrap.dedent("""
       import foo
-      from typing import Any, List, Union
+      from typing import Any, Union
 
-      def f(x: Union[int, slice]) -> List[Any]: ...
+      def f(x: Union[int, slice]) -> list[Any]: ...
       def g(x: foo.C.C2) -> None: ...
     """).strip()
     tree = self.Parse(src)
@@ -708,12 +708,10 @@ class TestVisitors(parser_test_base.ParserTest):
           D = A.B.C
     """)
     expected = textwrap.dedent("""
-      from typing import Type
-
       class foo.A:
           class foo.A.B:
               class foo.A.B.C: ...
-              D: Type[foo.A.B.C]
+              D: type[foo.A.B.C]
     """).strip()
     self.assertMultiLineEqual(
         expected,
@@ -735,11 +733,14 @@ class TestVisitors(parser_test_base.ParserTest):
         b: A.B
         def f(self, x: A.B) -> A.B: ...
     """)
-    expected = textwrap.dedent("""
-      from typing import Type
+    ast = self.Parse(src)
 
+    ast = ast.Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
       foo.b: foo.A.B
-      foo.C: Type[foo.A.B]
+      foo.C: type[foo.A.B]
 
       class foo.A:
           class foo.A.B: ...
@@ -749,34 +750,93 @@ class TestVisitors(parser_test_base.ParserTest):
           def f(self, x: foo.A.B) -> foo.A.B: ...
 
       def foo.f(x: foo.A.B) -> foo.A.B: ...
-    """).strip()
-    self.assertMultiLineEqual(
-        expected,
-        pytd_utils.Print(
-            self.Parse(src)
-            .Replace(name="foo")
-            .Visit(visitors.ResolveLocalNames())
-        ),
+    """).strip(),
     )
 
-  def test_add_name_prefix_on_nested_class_method(self):
+    # Check that even after `RemoveNamePrefix`, the type annotation for `self`
+    # is skipped from being printed.
+    ast = ast.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
+      b: A.B
+      C: type[A.B]
+
+      class A:
+          class B: ...
+
+      class D:
+          b: A.B
+          def f(self, x: A.B) -> A.B: ...
+
+      def f(x: A.B) -> A.B: ...
+    """).strip(),
+    )
+
+  def test_add_name_prefix_on_nested_method(self):
     src = textwrap.dedent("""
       class A:
         class B:
           def copy(self) -> A.B: ...
     """)
-    expected = textwrap.dedent("""
+    ast = self.Parse(src)
+
+    ast = ast.Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
       class foo.A:
           class foo.A.B:
               def copy(self) -> foo.A.B: ...
-    """).strip()
+    """).strip(),
+    )
+
+    # Check that even after `RemoveNamePrefix`, the type annotation for `self`
+    # is skipped from being printed.
+    ast = ast.Visit(visitors.RemoveNamePrefix())
     self.assertMultiLineEqual(
-        expected,
-        pytd_utils.Print(
-            self.Parse(src)
-            .Replace(name="foo")
-            .Visit(visitors.ResolveLocalNames())
-        ),
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
+      class A:
+          class B:
+              def copy(self) -> A.B: ...
+    """).strip(),
+    )
+
+  def test_add_name_prefix_on_classmethod(self):
+    src = textwrap.dedent("""
+      class A:
+          @classmethod
+          def foo(cls, a: int) -> int: ...
+          @classmethod
+          def bar(cls) -> A: ...
+    """)
+    ast = self.Parse(src)
+
+    ast = ast.Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
+      class foo.A:
+          @classmethod
+          def foo(cls, a: int) -> int: ...
+          @classmethod
+          def bar(cls) -> foo.A: ...
+    """).strip(),
+    )
+
+    # Check that even after `RemoveNamePrefix`, the type annotation for `cls`
+    # is skipped from being printed.
+    ast = ast.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(
+        pytd_utils.Print(ast),
+        textwrap.dedent("""
+      class A:
+          @classmethod
+          def foo(cls, a: int) -> int: ...
+          @classmethod
+          def bar(cls) -> A: ...
+    """).strip(),
     )
 
   def test_print_merge_types(self):
@@ -806,7 +866,7 @@ class TestVisitors(parser_test_base.ParserTest):
         pytd.NamedType("tuple"),
         (pytd.NamedType("str"), pytd.NamedType("float")),
     )
-    self.assertEqual("Tuple[str, float]", pytd_utils.Print(t))
+    self.assertEqual("tuple[str, float]", pytd_utils.Print(t))
 
   def test_verify_heterogeneous_tuple(self):
     # Error: does not inherit from Generic
@@ -1095,13 +1155,11 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertMultiLineEqual(
         pytd_utils.Print(self.Parse(src), multiline_args=True),
         textwrap.dedent("""
-           from typing import List
-
            def f(
                x: int,
                y: str,
                z: bool
-           ) -> List[str]: ...
+           ) -> list[str]: ...
         """).strip(),
     )
 
@@ -1234,12 +1292,10 @@ class RemoveNamePrefixTest(parser_test_base.ParserTest):
           D = A.B.C
     """)
     expected = textwrap.dedent("""
-      from typing import Type
-
       class A:
           class B:
               class C: ...
-              D: Type[A.B.C]
+              D: type[A.B.C]
     """).strip()
     tree = self.Parse(src)
 

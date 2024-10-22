@@ -1,7 +1,7 @@
 """Implementation of types from the fiddle library."""
 
 import re
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -16,6 +16,8 @@ from pytype.pytd import pytd
 Node = Any
 Variable = Any
 
+if TYPE_CHECKING:
+  from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
 # Cache instances, so that we don't generate two different classes when
 # Config[Foo] is used in two separate places. We use a tuple of the abstract
@@ -156,7 +158,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 
   def new_slot(
       self, node, unused_cls, *args, **kwargs
-  ) -> tuple[Node, abstract.Instance]:
+  ) -> tuple[Node, "cfg.Variable"]:
     """Create a Config or Partial instance from args."""
 
     underlying = args[0].data[0]
@@ -166,7 +168,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     node, ret = make_instance(self.name, underlying, node, self.ctx)
     return node, ret.to_variable(node)
 
-  def getitem_slot(self, node, index_var) -> tuple[Node, abstract.Instance]:
+  def getitem_slot(self, node, index_var) -> tuple[Node, "cfg.Variable"]:
     """Specialize the generic class with the value of index_var."""
 
     underlying = index_var.data[0]

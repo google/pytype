@@ -65,6 +65,7 @@ class AnyStrTest(test_base.BaseTest):
       self.Check("""
         import foo
         assert_type(foo.dofoo().name, 'Optional[str]')
+        assert_type(foo.dofoo().name, str | None)
       """)
 
 

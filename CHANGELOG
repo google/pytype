@@ -1,3 +1,28 @@
+Version 2024.10.11:
+
+Updates:
+* Drop support for Python 3.8 and 3.9.
+
+* Make merge_pyi not to overwrite existing type annotations.
+
+* When printing types (e.g. in error messages or  `reveal_type`), print generic
+  builtin names in lowercase.
+
+  Old: `from typing import List; List[Foo]`
+  New: `list[Foo]`
+
+Bug fixes:
+* Unpin dependency on networkx, which means pytype now supports >=3.3.
+* Emit all unused/duplicate files with --unused_imports_info_files option,
+  rather than only one per unique module name.
+* Change return types of AsyncGenerator's methods to coroutines. This brings
+  pytype's definition in line with the definition on typeshed and reflects the
+  fact that asynchronous generators defined using the `async def`/`yield` syntax
+  have methods returning coroutines rather than just arbitrary awaitables.
+* Fix type guards propagating invisibile bindings. Fixes some incorrect "used
+  after deleted" errors with Python 3.12.
+* Fix resolution of ParamSpec in files with circular imports.
+
 Version 2024.09.13:
 
 Updates:

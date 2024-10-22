@@ -9,7 +9,6 @@ from typing import TypeVar, cast
 
 from pytype import datatypes
 from pytype import module_utils
-from pytype import utils
 from pytype.pytd import base_visitor
 from pytype.pytd import escape
 from pytype.pytd import mro
@@ -1206,6 +1205,7 @@ class CreateTypeParametersForSignatures(Visitor):
       return pytd_utils.Print(
           sig.return_type
       ) == safe_class_name and pytd_utils.Print(sig.params[0].type) in (
+          f"type[{safe_class_name}]",
           f"Type[{safe_class_name}]",
           safe_class_name,
       )
@@ -1320,9 +1320,7 @@ class StripExternalNamePrefix(Visitor):
   """
 
   def VisitNamedType(self, node):
-    new_name = utils.strip_prefix(
-        node.name, parser_constants.EXTERNAL_NAME_PREFIX
-    )
+    new_name = node.name.removeprefix(parser_constants.EXTERNAL_NAME_PREFIX)
     return node.Replace(name=new_name)
 
 

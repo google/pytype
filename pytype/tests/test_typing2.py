@@ -189,7 +189,7 @@ class TypingTest(test_base.BaseTest):
             "e3": r"'Any'.*must be a list of argument types or ellipsis",
             "e4": r"bool or str.*Must be constant",
             "e5": r"int or str.*Must be constant",
-            "e6": r"instance of List\[int\].*Must be constant",
+            "e6": r"instance of list\[int\].*Must be constant",
             "e7": r"instance of int",
             "e8": r"Callable.*expected 2.*got 3",
             "e9": r"'Any'.*must be a list of argument types or ellipsis",
@@ -225,11 +225,11 @@ class TypingTest(test_base.BaseTest):
         errors,
         {
             "e1": (
-                r"instance of List\[Type\[Union\[int, str\]\]\].*"
+                r"instance of list\[type\[Union\[int, str\]\]\].*"
                 r"Must be constant"
             ),
             "e2": (
-                r"instance of List\[Type\[Union\[int, str\]\]\].*Must be"
+                r"instance of list\[type\[Union\[int, str\]\]\].*Must be"
                 r" constant"
             ),
         },
@@ -636,11 +636,11 @@ class TypingTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors,
         {
-            "e1": ["Expected: List[nothing]", "Actually returned: List[None]"],
+            "e1": ["Expected: list[nothing]", "Actually returned: list[None]"],
             "e2": ["Expected: (x: Never)", "Actually passed: (x: int)"],
             "e3": [
-                "Expected: (x: List[nothing])",
-                "Actually passed: (x: List[int])",
+                "Expected: (x: list[nothing])",
+                "Actually passed: (x: list[int])",
             ],
             "e4": ["Allowed", "_T: Never", "New", "_T: int"],
         },
@@ -1271,7 +1271,7 @@ class TypeAliasTest(test_base.BaseTest):
           self.Check(
               """
             import foo
-            assert_type(foo.X, "Type[int]")
+            assert_type(foo.X, "type[int]")
           """,
               pythonpath=[d.path],
           )

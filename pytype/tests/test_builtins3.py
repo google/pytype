@@ -431,7 +431,7 @@ class BuiltinTests3(test_base.BaseTest):
   def test_str_join_error(self):
     errors = self.CheckWithErrors("', '.join([1, 2, 3])  # wrong-arg-types[e]")
     self.assertErrorRegexes(
-        errors, {"e": r"Expected.*Iterable\[str\].*Actual.*List\[int\]"}
+        errors, {"e": r"Expected.*Iterable\[str\].*Actual.*list\[int\]"}
     )
 
   def test_int_protocols(self):

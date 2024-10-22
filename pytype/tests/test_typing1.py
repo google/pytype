@@ -176,7 +176,7 @@ class TypingTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors,
         {
-            "e1": r".*Expected:.*str.*\nActually passed:.*Type\[int\].*",
+            "e1": r".*Expected:.*str.*\nActually passed:.*type\[int\].*",
             "e2": r".*Expected:.*type.*\nActually passed:.*str.*",
             "e3": r".*Expected:.*str.*\nActually passed:.*Union.*",
             "e4": (

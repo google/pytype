@@ -46,7 +46,7 @@ class StdLibTestsBasic(test_base.BaseTest, test_utils.TestCollectionsMixin):
     self._testCollectionsObject("Container", "[]", "42", r"Container.*int")
 
   def test_collections_hashable(self):
-    self._testCollectionsObject("Hashable", "42", "[]", r"Hashable.*List")
+    self._testCollectionsObject("Hashable", "42", "[]", r"Hashable.*list")
 
   def test_collections_iterable(self):
     self._testCollectionsObject("Iterable", "[]", "42", r"Iterable.*int")
@@ -160,7 +160,7 @@ class StdlibTestsFeatures(test_base.BaseTest, test_utils.TestCollectionsMixin):
 
   def test_collections_generator(self):
     self._testCollectionsObject(
-        "Generator", "i for i in range(42)", "42", r"generator.*int"
+        "Generator", "i for i in range(42)", "42", r"Generator.*int"
     )
 
   def test_collections_reversible(self):

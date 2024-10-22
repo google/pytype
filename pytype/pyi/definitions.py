@@ -6,7 +6,6 @@ from collections.abc import Sequence
 import itertools
 from typing import Any, TypeVar
 
-from pytype import utils
 from pytype.pyi import classdef
 from pytype.pyi import metadata
 from pytype.pyi import types
@@ -560,7 +559,7 @@ class Definitions:
       name = f"{prefix}.{name_base}"
     else:
       name = self._resolve_alias(name)
-    name = utils.strip_prefix(name, parser_constants.EXTERNAL_NAME_PREFIX)
+    name = name.removeprefix(parser_constants.EXTERNAL_NAME_PREFIX)
     if name == target:
       return True
     module, target_base = target.rsplit(".", 1)
@@ -589,11 +588,8 @@ class Definitions:
     if t.name is None:
       return False
     module, _, name = t.name.rpartition(".")
-    return (
-        not module
-        and name in pep484.BUILTIN_TO_TYPING
-        or module == "typing"
-        and name in pep484.ALL_TYPING_NAMES
+    return (not module and name in pep484.BUILTIN_TO_TYPING) or (
+        module == "typing" and name in pep484.ALL_TYPING_NAMES
     )
 
   def _check_for_illegal_parameters(self, base_type, parameters, is_callable):

@@ -1170,20 +1170,26 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
     )
     return None
   target = frame.lookup_name(target_name)
-  # Forward all the target's bindings to the current node, so we don't have
-  # visibility problems later.
-  target.PasteVariable(target, node)
-  old_data = set(target.data)
+
+  # Forward all the target's visible bindings to the current node. We're going
+  # to add new bindings soon, which would otherwise hide the old bindings, kinda
+  # like assigning the variable to a new value.
+  for b in target.Bindings(node):
+    target.PasteBinding(b, node)
+
+  # Add missing bindings to the target variable.
+  old_data = set(target.Data(node))
   new_instance = ret.instantiate_parameter(node, abstract_utils.T)
+  new_data = set(new_instance.data)
   for b in new_instance.bindings:
-    if b.data not in target.data:
+    if b.data not in old_data:
       target.PasteBinding(b, node)
 
   # Create a boolean return variable with True bindings for values that
   # originate from the type guard type and False for the rest.
   typeguard_return = ctx.program.NewVariable()
-  for b in target.bindings:
-    boolvals = {b.data not in old_data} | {b.data in new_instance.data}
+  for b in target.Bindings(node):
+    boolvals = {b.data not in old_data} | {b.data in new_data}
     for v in boolvals:
       typeguard_return.AddBinding(ctx.convert.bool_values[v], {b}, node)
   return typeguard_return
