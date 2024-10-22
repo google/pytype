@@ -4,7 +4,7 @@ Unless forced to by a circular dependency, don't import BaseValue directly from
 this module; use the alias in abstract.py instead.
 """
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from typing import TYPE_CHECKING
 
 from pytype import utils
@@ -355,7 +355,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """
     return []
 
-  def unique_parameter_values(self) -> "list[list[cfg.Binding]]":
+  def unique_parameter_values(self) -> "list[Collection[cfg.Binding]]":
     """Get unique parameter subtypes as bindings.
 
     Like _unique_parameters, but returns bindings instead of variables.
