@@ -1,10 +1,12 @@
 """Abstract representation of functions defined in the module under analysis."""
 
 import collections
+from collections.abc import Callable, Generator, Mapping
 import contextlib
 import hashlib
 import itertools
 import logging
+from typing import TYPE_CHECKING
 
 from pytype.abstract import _classes
 from pytype.abstract import _function_base
@@ -19,11 +21,24 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
 
-log = logging.getLogger(__name__)
+
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype import datatypes  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype import matcher  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype import state  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _base  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.blocks import blocks  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.pyc import opcodes  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
-def _matches_generator_helper(type_obj, allowed_types):
+
+def _matches_generator_helper(
+    type_obj: "_base.BaseValue", allowed_types: tuple[str, ...]
+) -> bool:
   """Check if type_obj matches a Generator/AsyncGenerator type."""
   if isinstance(type_obj, _typing.Union):
     return all(
@@ -40,17 +55,17 @@ def _matches_generator_helper(type_obj, allowed_types):
     ) or _isinstance(base_cls, "AMBIGUOUS_OR_EMPTY")
 
 
-def _matches_generator(type_obj):
+def _matches_generator(type_obj: "_base.BaseValue") -> bool:
   allowed_types = ("Generator", "Iterable", "Iterator")
   return _matches_generator_helper(type_obj, allowed_types)
 
 
-def _matches_async_generator(type_obj):
+def _matches_async_generator(type_obj: "_base.BaseValue") -> bool:
   allowed_types = ("AsyncGenerator", "AsyncIterable", "AsyncIterator")
   return _matches_generator_helper(type_obj, allowed_types)
 
 
-def _hash_all_dicts(*hash_args):
+def _hash_all_dicts(*hash_args) -> bytes:
   """Convenience method for hashing a sequence of dicts."""
   components = (
       abstract_utils.get_dict_fullhash_component(d, names=n)
@@ -61,7 +76,9 @@ def _hash_all_dicts(*hash_args):
   ).digest()
 
 
-def _check_classes(var, check):
+def _check_classes(
+    var: "cfg.Variable | None", check: "Callable[[_base.BaseValue], bool]"
+) -> bool:
   """Check whether the cls of each value in `var` is a class and passes `check`.
 
   Args:
@@ -97,17 +114,17 @@ class InterpreterFunction(_function_base.SignedFunction):
   @classmethod
   def make(
       cls,
-      name,
+      name: str,
       *,
-      def_opcode,
-      code,
-      f_locals,
-      f_globals,
+      def_opcode: "opcodes.Opcode",
+      code: "blocks.OrderedCode",
+      f_locals: _instances.LazyConcreteDict,
+      f_globals: _instances.LazyConcreteDict,
       defaults,
       kw_defaults,
       closure,
-      annotations,
-      ctx,
+      annotations: "dict[str, _base.BaseValue]",
+      ctx: "context.Context",
   ):
     """Get an InterpreterFunction.
 
@@ -187,18 +204,18 @@ class InterpreterFunction(_function_base.SignedFunction):
 
   def __init__(
       self,
-      name,
-      def_opcode,
-      code,
-      f_locals,
-      f_globals,
+      name: str,
+      def_opcode: "opcodes.Opcode",
+      code: "blocks.OrderedCode",
+      f_locals: _instances.LazyConcreteDict,
+      f_globals: _instances.LazyConcreteDict,
       defaults,
       kw_defaults,
       closure,
-      annotations,
+      annotations: "dict[str, _base.BaseValue]",
       overloads,
-      ctx,
-  ):
+      ctx: "context.Context",
+  ) -> None:
     log.debug("Creating InterpreterFunction %r for %r", name, code.name)
     self.bound_class = _function_base.BoundInterpreterFunction
     self.doc = code.consts[0] if code.consts else None
@@ -232,7 +249,9 @@ class InterpreterFunction(_function_base.SignedFunction):
           abstract_utils.V: signature.annotations["return"],
       }
       coroutine_type = _classes.ParameterizedClass(
-          ctx.convert.coroutine_type, params, ctx
+          ctx.convert.coroutine_type,
+          params,
+          ctx,  # pytype: disable=wrong-arg-types
       )
       signature.annotations["return"] = coroutine_type
     self._check_signature()
@@ -251,7 +270,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     yield
     self._store_call_records = old
 
-  def _check_signature(self):
+  def _check_signature(self) -> None:
     """Validate function signature."""
     for ann in self.signature.annotations.values():
       if isinstance(ann, _typing.FinalAnnotation):
@@ -308,7 +327,9 @@ class InterpreterFunction(_function_base.SignedFunction):
               f"{input_pytd}",
           )
 
-  def _build_signature(self, name, annotations):
+  def _build_signature(
+      self, name: str, annotations: "dict[str, _base.BaseValue]"
+  ) -> function.Signature:
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
@@ -335,7 +356,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         annotations,
     )
 
-  def _update_signature_scope_from_closure(self):
+  def _update_signature_scope_from_closure(self) -> None:
     # If this is a nested function in an instance method and the nested function
     # accesses 'self', then the first variable in the closure is 'self'. We use
     # 'self' to update the scopes of any type parameters in the nested method's
@@ -352,18 +373,24 @@ class InterpreterFunction(_function_base.SignedFunction):
     if isinstance(instance.cls, _classes.InterpreterClass):
       self.update_signature_scope(instance.cls)
 
-  def get_first_opcode(self):
+  def get_first_opcode(self) -> "opcodes.Opcode":
     return self.code.get_first_opcode(skip_noop=True)
 
-  def argcount(self, _):
+  def argcount(self, _) -> int:
     return self.code.argcount
 
-  def match_args(self, node, args, alias_map=None, match_all_views=False):
+  def match_args(
+      self,
+      node: "cfg.CFGNode",
+      args: function.Args,
+      alias_map: "datatypes.UnionFind | None" = None,
+      match_all_views: bool = False,
+  ):
     if not self.signature.has_param_annotations:
       return
     return super().match_args(node, args, alias_map, match_all_views)
 
-  def _inner_cls_check(self, last_frame):
+  def _inner_cls_check(self, last_frame: "state.Frame") -> None:
     """Check if the function and its nested class use same type parameter."""
     # get all type parameters from function annotations
     all_type_parameters = []
@@ -403,7 +430,9 @@ class InterpreterFunction(_function_base.SignedFunction):
     """Get the functions that describe this function's signature."""
     return self._active_overloads or [self]
 
-  def iter_signature_functions(self):
+  def iter_signature_functions(
+      self,
+  ) -> Generator["InterpreterFunction", None, None]:
     """Loop through signatures, setting each as the primary one in turn."""
     if not self._all_overloads:
       yield self
@@ -417,7 +446,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         self._active_overloads = old_overloads
 
   @contextlib.contextmanager
-  def reset_overloads(self):
+  def reset_overloads(self) -> Generator[None, None, None]:
     if self._all_overloads == self._active_overloads:
       yield
       return
@@ -428,7 +457,12 @@ class InterpreterFunction(_function_base.SignedFunction):
     finally:
       self._active_overloads = old_overloads
 
-  def _find_matching_sig(self, node, args, alias_map):
+  def _find_matching_sig(
+      self,
+      node: "cfg.CFGNode",
+      args: function.Args,
+      alias_map: "datatypes.UnionFind | None",
+  ) -> "tuple[function.Signature, list[matcher.GoodMatch], dict[str, cfg.Variable]]":
     error = None
     for f in self.signature_functions():
       try:
@@ -443,12 +477,14 @@ class InterpreterFunction(_function_base.SignedFunction):
         return f.signature, substs, callargs
     raise error  # pylint: disable=raising-bad-type
 
-  def _set_callself_maybe_missing_members(self):
+  def _set_callself_maybe_missing_members(self) -> None:
     if self.ctx.callself_stack:
       for b in self.ctx.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
-  def _is_unannotated_contextmanager_exit(self, func, args):
+  def _is_unannotated_contextmanager_exit(
+      self, func: _function_base.Function, args: function.Args
+  ) -> bool:
     """Returns whether this is an unannotated contextmanager __exit__ method.
 
     If this is a bound method named __exit__ that has no type annotations and is
@@ -472,7 +508,9 @@ class InterpreterFunction(_function_base.SignedFunction):
         and not args.starstarargs
     )
 
-  def _fix_args_for_unannotated_contextmanager_exit(self, node, func, args):
+  def _fix_args_for_unannotated_contextmanager_exit(
+      self, node: "cfg.CFGNode", func: "cfg.Binding", args: function.Args
+  ) -> function.Args:
     """Adjust argument types for a contextmanager's __exit__ method."""
     if not self._is_unannotated_contextmanager_exit(func.data, args):
       return args
@@ -522,7 +560,11 @@ class InterpreterFunction(_function_base.SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
-  def _paramspec_signature(self, callable_type, substs):
+  def _paramspec_signature(
+      self,
+      callable_type: _classes.ParameterizedClass,
+      substs: "list[matcher.GoodMatch]",
+  ) -> str | None:
     # Unpack the paramspec substitution we have created in the matcher.
     rhs = callable_type.formal_type_parameters[0]
     if _isinstance(rhs, "Concatenate"):
@@ -532,7 +574,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       r_pspec = rhs
       r_args = ()
     # TODO(b/217789659): Handle substs[] with multiple entries
-    data = substs[0].get(r_pspec.name)
+    data = substs[0].get(r_pspec.name)  # pytype: disable=attribute-error
     if not data:
       return
     pspec_match = abstract_utils.get_atomic_value(data)
@@ -541,7 +583,13 @@ class InterpreterFunction(_function_base.SignedFunction):
         pspec_match, r_args, return_value, self.ctx
     )
 
-  def _handle_paramspec(self, sig, annotations, substs, callargs):
+  def _handle_paramspec(
+      self,
+      sig: function.Signature,
+      annotations: "dict[str, _classes.CallableClass | _classes.ParameterizedClass]",
+      substs: "list[matcher.GoodMatch]",
+      callargs: function.Args,
+  ) -> None:
     if not sig.has_return_annotation:
       return
     retval = sig.annotations["return"]
@@ -559,8 +607,14 @@ class InterpreterFunction(_function_base.SignedFunction):
           annotations[name] = param_annot
 
   def call(
-      self, node, func, args, alias_map=None, new_locals=False, frame_substs=()
-  ):
+      self,
+      node: "cfg.CFGNode",
+      func: "cfg.Binding",
+      args: function.Args,
+      alias_map: "datatypes.UnionFind | None" = None,
+      new_locals=False,
+      frame_substs=(),
+  ) -> "tuple[cfg.CFGNode, cfg.Variable]":
     if self.is_overload:
       raise error_types.NotCallable(self)
     args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
@@ -755,7 +809,9 @@ class InterpreterFunction(_function_base.SignedFunction):
     self.last_frame = frame
     return node_after_call, typeguard_return or ret
 
-  def get_call_combinations(self, node):
+  def get_call_combinations(
+      self, node: "cfg.CFGNode"
+  ) -> "list[tuple[cfg.CFGNode, Mapping[str, cfg.Binding], cfg.Binding]]":
     """Get this function's call records."""
     all_combinations = []
     signature_data = set()
@@ -801,17 +857,19 @@ class InterpreterFunction(_function_base.SignedFunction):
       all_combinations.append((node, params, ret))
     return all_combinations
 
-  def get_positional_names(self):
+  def get_positional_names(self) -> list[str]:
     return list(self.code.varnames[: self.code.argcount])
 
-  def get_nondefault_params(self):
+  def get_nondefault_params(self) -> Generator[tuple[str, bool], None, None]:
     for i in range(self.nonstararg_count):
       yield self.code.varnames[i], i >= self.code.argcount
 
-  def get_kwonly_names(self):
+  def get_kwonly_names(self) -> list[str]:
     return list(self.code.varnames[self.code.argcount : self.nonstararg_count])
 
-  def get_parameters(self):
+  def get_parameters(
+      self,
+  ) -> Generator[tuple[str, pytd.ParameterKind, bool], None, None]:
     default_pos = self.code.argcount - len(self.defaults)
     i = 0
     for name in self.get_positional_names():
@@ -825,13 +883,15 @@ class InterpreterFunction(_function_base.SignedFunction):
       yield name, pytd.ParameterKind.KWONLY, name in self.kw_defaults
       i += 1
 
-  def has_varargs(self):
+  def has_varargs(self) -> bool:
     return self.code.has_varargs()
 
-  def has_kwargs(self):
+  def has_kwargs(self) -> bool:
     return self.code.has_varkeywords()
 
-  def property_get(self, callself, is_class=False):
+  def property_get(
+      self, callself: "cfg.Variable", is_class: bool = False
+  ) -> _function_base.BoundFunction | _function_base.Function:
     if self.name.endswith(".__init__") and self.signature.param_names:
       self_name = self.signature.param_names[0]
       # If `_has_self_annot` is True, then we've intentionally temporarily
@@ -854,7 +914,7 @@ class InterpreterFunction(_function_base.SignedFunction):
   def is_unannotated_coroutine(self):
     return self.is_coroutine() and not self.signature.has_return_annotation
 
-  def has_empty_body(self):
+  def has_empty_body(self) -> bool:
     # TODO(mdemello): Optimise this.
     ops = list(self.code.code_iter)
     if self.ctx.python_version >= (3, 12):
@@ -872,9 +932,14 @@ class InterpreterFunction(_function_base.SignedFunction):
       return False
     if [op.name for op in ops] != empty_body_ops:
       return False
-    return self.code.consts[ops[op_with_ret_value].arg] is None
+    return (
+        self.code.consts[
+            ops[op_with_ret_value].arg  # pytype: disable=attribute-error
+        ]
+        is None
+    )
 
-  def get_self_type_param(self):
+  def get_self_type_param(self) -> "_base.BaseValue | None":
     if param := super().get_self_type_param():
       return param
     if self.is_overload:
@@ -885,7 +950,9 @@ class InterpreterFunction(_function_base.SignedFunction):
     return None
 
   @contextlib.contextmanager
-  def set_self_annot(self, annot_class):
+  def set_self_annot(
+      self, annot_class: "_base.BaseValue | None"
+  ) -> Generator[None, None, None]:
     if self.is_overload or not self._active_overloads:
       with super().set_self_annot(annot_class):
         yield
