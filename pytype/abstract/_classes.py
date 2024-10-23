@@ -1265,7 +1265,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     )
 
   def get_special_attribute(
-      self, node: cfg.CFGNode, name: str, valself: cfg.Binding
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable
   ) -> cfg.Variable | None:
     if (
         valself

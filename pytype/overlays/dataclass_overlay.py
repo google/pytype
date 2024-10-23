@@ -295,10 +295,10 @@ class Replace(abstract.PyTDFunction):
     default = self.ctx.new_unsolvable(node)
     replace = abstract.SimpleFunction.build(
         name=self.name,
-        param_names=["obj"],
+        param_names=("obj",),
         posonly_count=1,
         varargs_name=None,
-        kwonly_params=[f.name for f in fields],
+        kwonly_params=tuple(f.name for f in fields),
         kwargs_name=None,
         defaults={f.name: default for f in fields},
         annotations={f.name: f.typ for f in fields},

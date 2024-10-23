@@ -183,7 +183,10 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     return self
 
   def get_special_attribute(
-      self, unused_node: "cfg.CFGNode", name: str, unused_valself: "cfg.Binding"
+      self,
+      unused_node: "cfg.CFGNode",
+      name: str,
+      unused_valself: "cfg.Variable",
   ) -> "cfg.Variable | None":
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     if name == "__class__":
