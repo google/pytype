@@ -1272,7 +1272,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return subst if left.pyval == other_value.pyval else None
       elif (
           isinstance(left, abstract.Instance)
-          and left.cls.is_enum
+          and left.cls.is_enum  # pytype: disable=attribute-error
           and isinstance(other_value, abstract.Instance)
           and other_value.cls.is_enum
       ):

@@ -1,6 +1,7 @@
 """Abstract representation of instances."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -9,8 +10,13 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.errors import error_types
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _typing  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
 
 class SimpleValue(_base.BaseValue):
@@ -26,7 +32,7 @@ class SimpleValue(_base.BaseValue):
     members: A name->value dictionary of the instance's attributes.
   """
 
-  def __init__(self, name, ctx):
+  def __init__(self, name: str, ctx: "context.Context"):
     """Initialize a SimpleValue.
 
     Args:
@@ -38,27 +44,31 @@ class SimpleValue(_base.BaseValue):
     self.members = datatypes.MonitorDict()
     # Lazily loaded to handle recursive types.
     # See Instance._load_instance_type_parameters().
-    self._instance_type_parameters = datatypes.AliasingMonitorDict()
+    self._instance_type_parameters: (
+        "datatypes.AliasingMonitorDict[str, cfg.Variable]"
+    ) = datatypes.AliasingMonitorDict()
     # This attribute depends on self.cls, which isn't yet set to its true value.
-    self._maybe_missing_members = None
+    self._maybe_missing_members: bool | None = None
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
-    self._type_key = None
+    self._type_key: "frozenset[_base.BaseValue | _typing.LateAnnotation | tuple[str, frozenset]] | None" = (None)
     self._fullhash = None
     self._cached_changestamps = self._get_changestamps()
 
-  def _get_changestamps(self):
+  def _get_changestamps(self) -> "tuple[int, int]":
     return (
         self.members.changestamp,
         self._instance_type_parameters.changestamp,
     )
 
   @property
-  def instance_type_parameters(self):
+  def instance_type_parameters(
+      self,
+  ) -> "datatypes.AliasingMonitorDict[str, cfg.Variable]":
     return self._instance_type_parameters
 
   @property
-  def maybe_missing_members(self):
+  def maybe_missing_members(self) -> bool:
     if self._maybe_missing_members is None:
       # maybe_missing_members indicates that every attribute access on this
       # object should always succeed. This is usually indicated by the class
@@ -66,19 +76,21 @@ class SimpleValue(_base.BaseValue):
       # This should apply to both the class and instances of the class.
       dyn_self = isinstance(self, class_mixin.Class) and self.is_dynamic
       dyn_cls = isinstance(self.cls, class_mixin.Class) and self.cls.is_dynamic
-      self._maybe_missing_members = dyn_self or dyn_cls
+      self._maybe_missing_members = bool(dyn_self or dyn_cls)
     return self._maybe_missing_members
 
   @maybe_missing_members.setter
-  def maybe_missing_members(self, v):
+  def maybe_missing_members(self, v: bool) -> None:
     self._maybe_missing_members = v
 
-  def has_instance_type_parameter(self, name):
+  def has_instance_type_parameter(self, name: str) -> bool:
     """Check if the key is in `instance_type_parameters`."""
     name = abstract_utils.full_type_name(self, name)
     return name in self.instance_type_parameters
 
-  def get_instance_type_parameter(self, name, node=None):
+  def get_instance_type_parameter(
+      self, name: str, node: "cfg.CFGNode | None" = None
+  ) -> "cfg.Variable":
     name = abstract_utils.full_type_name(self, name)
     param = self.instance_type_parameters.get(name)
     if not param:
@@ -89,7 +101,9 @@ class SimpleValue(_base.BaseValue):
       self.instance_type_parameters[name] = param
     return param
 
-  def merge_instance_type_parameter(self, node, name, value):
+  def merge_instance_type_parameter(
+      self, node: "cfg.CFGNode|None", name: str, value: "cfg.Variable"
+  ) -> None:
     """Set the value of a type parameter.
 
     This will always add to the type parameter unlike set_attribute which will
@@ -109,7 +123,13 @@ class SimpleValue(_base.BaseValue):
     else:
       self.instance_type_parameters[name] = value
 
-  def _call_helper(self, node, obj, binding, args):
+  def _call_helper(
+      self,
+      node: "cfg.CFGNode",
+      obj,
+      binding: "cfg.Binding",
+      args: function.Args,
+  ) -> "tuple[cfg.CFGNode, cfg.Variable]":
     obj_binding = binding if obj == binding.data else obj.to_binding(node)
     node, var = self.ctx.attribute_handler.get_attribute(
         node, obj, "__call__", obj_binding
@@ -119,10 +139,16 @@ class SimpleValue(_base.BaseValue):
     else:
       raise error_types.NotCallable(self)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self,
+      node: "cfg.CFGNode",
+      func: "cfg.Binding",
+      args: function.Args,
+      alias_map: datatypes.UnionFind | None = None,
+  ) -> "tuple[cfg.CFGNode, cfg.Variable]":
     return self._call_helper(node, self, func, args)
 
-  def argcount(self, node):
+  def argcount(self, node: "cfg.CFGNode") -> int:
     node, var = self.ctx.attribute_handler.get_attribute(
         node, self, "__call__", self.to_binding(node)
     )
@@ -133,7 +159,7 @@ class SimpleValue(_base.BaseValue):
       # value will lead to a not-callable error anyways.
       return 0
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"<{self.name} [{self.cls!r}]>"
 
   def _get_class(self):
@@ -152,7 +178,9 @@ class SimpleValue(_base.BaseValue):
   def cls(self, cls):
     self._cls = cls
 
-  def set_class(self, node, var):
+  def set_class(
+      self, node: "cfg.CFGNode", var: "cfg.Variable"
+  ) -> "cfg.CFGNode":
     """Set the __class__ of an instance, for code that does "x.__class__ = y."""
     # Simplification: Setting __class__ is done rarely, and supporting this
     # action would complicate pytype considerably by forcing us to track the
@@ -166,7 +194,7 @@ class SimpleValue(_base.BaseValue):
         self.cls = self.ctx.convert.unsolvable
     return node
 
-  def update_caches(self, force=False):
+  def update_caches(self, force: bool = False) -> None:
     cur_changestamps = self._get_changestamps()
     if self._cached_changestamps == cur_changestamps and not force:
       return
@@ -174,7 +202,7 @@ class SimpleValue(_base.BaseValue):
     self._type_key = None
     self._cached_changestamps = cur_changestamps
 
-  def get_fullhash(self, seen=None):
+  def get_fullhash(self, seen: set[int] | None = None) -> int:
     self.update_caches()
     if not self._fullhash:
       if seen is None:
@@ -190,7 +218,9 @@ class SimpleValue(_base.BaseValue):
       self._fullhash = hash(tuple(components))
     return self._fullhash
 
-  def get_type_key(self, seen=None):
+  def get_type_key(
+      self, seen: set[_base.BaseValue] | None = None
+  ) -> "frozenset[_base.BaseValue | _typing.LateAnnotation | tuple[str, frozenset]] | type[_base.BaseValue]":
     self.update_caches()
     if not self._type_key:
       if seen is None:
@@ -205,33 +235,42 @@ class SimpleValue(_base.BaseValue):
       self._type_key = frozenset(key)
     return self._type_key
 
-  def _unique_parameters(self):
+  def _unique_parameters(self) -> "list[cfg.Variable]":
     parameters = super()._unique_parameters()
     parameters.extend(self.instance_type_parameters.values())
     return parameters
 
-  def instantiate(self, node, container=None):
+  def instantiate(self, node: "cfg.CFGNode", container=None) -> "cfg.Variable":
     return Instance(self, self.ctx, container).to_variable(node)
 
 
 class Instance(SimpleValue):
   """An instance of some object."""
 
-  def __init__(self, cls, ctx, container=None):
+  def __init__(
+      self,
+      cls: "_base.BaseValue | _typing.LateAnnotation",
+      ctx: "context.Context",
+      container=None,
+  ) -> None:
     super().__init__(cls.name, ctx)
     self.cls = cls
     self._instance_type_parameters_loaded = False
     self._container = container
     cls.register_instance(self)
 
-  def _load_instance_type_parameters(self):
+  def _load_instance_type_parameters(self) -> None:
     if self._instance_type_parameters_loaded:
       return
-    all_formal_type_parameters = datatypes.AliasingDict()
+    all_formal_type_parameters: "datatypes.AliasingDict[str, SimpleValue]" = (
+        datatypes.AliasingDict()
+    )
     abstract_utils.parse_formal_type_parameters(
         self.cls, None, all_formal_type_parameters, self._container
     )
-    self._instance_type_parameters = self._instance_type_parameters.copy(
+    self._instance_type_parameters: (
+        "datatypes.AliasingDict[str, cfg.Variable]"
+    ) = self._instance_type_parameters.copy(
         aliases=all_formal_type_parameters.aliases
     )
     for name, param in all_formal_type_parameters.items():
@@ -249,15 +288,19 @@ class Instance(SimpleValue):
     self._instance_type_parameters_loaded = True
 
   @property
-  def full_name(self):
+  def full_name(self) -> str:
     return self.cls.full_name
 
   @property
-  def instance_type_parameters(self):
+  def instance_type_parameters(
+      self,
+  ) -> "datatypes.AliasingDict[str, cfg.Variable]":
     self._load_instance_type_parameters()
     return self._instance_type_parameters
 
-  def get_type_key(self, seen=None):
+  def get_type_key(
+      self, seen: set[_base.BaseValue] | None = None
+  ) -> "frozenset[_base.BaseValue | _typing.LateAnnotation | tuple[str, frozenset]] | type[_base.BaseValue|_typing.LateAnnotation]":
     if not self._type_key and not self._instance_type_parameters_loaded:
       # If we might be the middle of loading this class, don't try to access
       # instance_type_parameters. We don't cache this intermediate type key

@@ -271,7 +271,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     """Get a PyTD definition for this object."""
     return self.ctx.pytd_convert.value_to_pytd_def(node, self, name)
 
-  def get_default_type_key(self) -> "type[BaseValue]":
+  def get_default_type_key(self) -> "type[BaseValue] | frozenset":
     """Gets a default type key. See get_type_key."""
     return type(self)
 

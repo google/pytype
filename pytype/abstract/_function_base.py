@@ -171,10 +171,10 @@ class NativeFunction(Function):
   def call(
       self,
       node: "cfg.CFGNode",
-      func: Function,
+      func: "cfg.Binding",
       args: function.Args,
       alias_map: "datatypes.UnionFind | None" = None,
-  ):
+  ) -> "tuple[cfg.CFGNode, cfg.Variable]":
     sig = None
     if isinstance(
         self.func.__self__,  # pytype: disable=attribute-error
