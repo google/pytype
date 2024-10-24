@@ -183,7 +183,10 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     return self
 
   def get_special_attribute(
-      self, unused_node: "cfg.CFGNode", name: str, unused_valself: "cfg.Binding"
+      self,
+      unused_node: "cfg.CFGNode",
+      name: str,
+      unused_valself: "cfg.Variable",
   ) -> "cfg.Variable | None":
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     if name == "__class__":
@@ -289,7 +292,11 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     return self.get_default_type_key()
 
   def instantiate(
-      self, node: "cfg.CFGNode", container: "cfg.CFGNode | None" = None
+      self,
+      node: "cfg.CFGNode",
+      container: (
+          "_instance_base.SimpleValue | abstract_utils.DummyContainer | None"
+      ) = None,
   ) -> "cfg.Variable":
     """Create an instance of self.
 
