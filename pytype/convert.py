@@ -201,7 +201,7 @@ class Converter(utils.ContextWeakrefMixin):
 
   def build_concrete_value(self, value, typ):
     typ = self.primitive_classes[typ]
-    return abstract.ConcreteValue(value, typ, self.ctx)
+    return abstract.ConcreteValue(value, typ, self.ctx)  # pytype: disable=wrong-arg-types
 
   def build_int(self, node):
     return self.primitive_instances[int].to_variable(node)
