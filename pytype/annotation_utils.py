@@ -191,13 +191,6 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         for name, annot in annotations.items()
     }
 
-  def get_late_annotations(self, annot):
-    if annot.is_late_annotation() and not annot.resolved:
-      yield annot
-    elif isinstance(annot, mixin.NestedAnnotation):
-      for _, typ in annot.get_inner_types():
-        yield from self.get_late_annotations(typ)
-
   def add_scope(self, annot, types, cls, seen=None):
     """Add scope for type parameters.
 
