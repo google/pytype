@@ -26,6 +26,7 @@ if TYPE_CHECKING:
   from pytype import datatypes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype import matcher  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _interpreter_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.pyc import opcodes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
 
@@ -739,7 +740,9 @@ class SignedFunction(Function):
       )
     return [m.subst for m in matches]
 
-  def get_first_opcode(self) -> None:
+  def get_first_opcode(self) -> "opcodes.Opcode | None":
+    # TODO: b/353979649 - This is probably intended as an abstract class
+    # throw an error instead of returning None?
     return None
 
   def set_function_defaults(
