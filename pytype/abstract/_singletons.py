@@ -1,6 +1,8 @@
 """Singleton abstract values."""
 
+from collections.abc import Sequence
 import logging
+from typing import Optional, TYPE_CHECKING, Literal
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -9,7 +11,14 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import function  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _instance_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract_utils  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
 
 class Unknown(_base.BaseValue):
@@ -28,22 +37,24 @@ class Unknown(_base.BaseValue):
   _current_id = 0
 
   # For simplicity, Unknown doesn't emulate descriptors:
-  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
+  IGNORED_ATTRIBUTES: Sequence[str] = ["__get__", "__set__", "__getattribute__"]
 
-  def __init__(self, ctx):
+  def __init__(self, ctx: "context.Context") -> None:
     name = escape.unknown(Unknown._current_id)
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict()
     self.owner = None
     Unknown._current_id += 1
     self.class_name = self.name
-    self._calls = []
+    self._calls: list[
+        tuple[tuple[cfg.Variable, ...], dict[str, cfg.Variable], cfg.Variable]
+    ] = []
     log.info("Creating %s", self.class_name)
 
   def compute_mro(self):
     return self.default_mro()
 
-  def get_fullhash(self, seen=None):
+  def get_fullhash(self, seen: set[int] | None = None) -> int:
     # Unknown needs its own implementation of get_fullhash to ensure equivalent
     # Unknowns produce the same hash. "Equivalent" in this case means "has the
     # same members," so member names are used in the hash instead of id().
@@ -61,10 +72,15 @@ class Unknown(_base.BaseValue):
       return v.to_pytd_type(node)
 
   @classmethod
-  def _make_params(cls, node, args, kwargs):
+  def _make_params(
+      cls,
+      node: cfg.CFGNode,
+      args: Sequence[cfg.Variable],
+      kwargs: dict[str, cfg.Variable],
+  ) -> tuple[pytd.Parameter, ...]:
     """Convert a list of types/variables to pytd parameters."""
 
-    def _make_param(name, p):
+    def _make_param(name: str, p):
       return pytd.Parameter(
           name,
           cls._to_pytd(node, p),
@@ -77,7 +93,9 @@ class Unknown(_base.BaseValue):
     key_params = tuple(_make_param(name, p) for name, p in kwargs.items())
     return pos_params + key_params
 
-  def get_special_attribute(self, node, name, valself):
+  def get_special_attribute(
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable
+  ) -> cfg.Variable | None:
     del node, valself
     if name in self.IGNORED_ATTRIBUTES:
       return None
@@ -97,24 +115,30 @@ class Unknown(_base.BaseValue):
     )
     return new
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self,
+      node: cfg.CFGNode,
+      func: cfg.Binding | None,
+      args: "function.Args",
+      alias_map: datatypes.UnionFind | None = None,
+  ) -> tuple[cfg.CFGNode, cfg.Variable]:
     ret = self.ctx.convert.create_new_unknown(
         node, source=self.owner, action="call:" + self.name
     )
     self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
 
-  def argcount(self, _):
+  def argcount(self, _) -> int:
     return 0
 
-  def to_variable(self, node):
+  def to_variable(self, node: cfg.CFGNode) -> cfg.Variable:
     v = self.ctx.program.NewVariable()
     val = v.AddBinding(self, source_set=[], where=node)
     self.owner = val
     self.ctx.vm.trace_unknown(self.class_name, val)
     return v
 
-  def to_structural_def(self, node, class_name):
+  def to_structural_def(self, node: cfg.CFGNode, class_name: str) -> pytd.Class:
     """Convert this Unknown to a pytd.Class."""
     self_param = (
         pytd.Parameter(
@@ -124,7 +148,11 @@ class Unknown(_base.BaseValue):
     starargs = None
     starstarargs = None
 
-    def _make_sig(args, kwargs, ret):
+    def _make_sig(
+        args: tuple[cfg.Variable, ...],
+        kwargs: dict[str, cfg.Variable],
+        ret: cfg.Variable,
+    ) -> pytd.Signature:
       return pytd.Signature(
           self_param + self._make_params(node, args, kwargs),
           starargs,
@@ -158,7 +186,11 @@ class Unknown(_base.BaseValue):
         template=(),
     )
 
-  def instantiate(self, node, container=None):
+  def instantiate(
+      self,
+      node: cfg.CFGNode,
+      container: "_instance_base.SimpleValue | abstract_utils.DummyContainer | None" = None,
+  ) -> cfg.Variable:
     return self.to_variable(node)
 
 
@@ -167,8 +199,9 @@ class Singleton(_base.BaseValue):
 
   This is essentially an ABC for Unsolvable, Empty, and others.
   """
-
-  _instance = None
+  # TODO: b/350643999 - Should rather be a ClassVar but it breaks build
+  # investigate and fix.
+  _instance: Optional["Singleton"] = None
 
   def __new__(cls, *args, **kwargs):
     # If cls is a subclass of a subclass of Singleton, cls._instance will be
@@ -178,18 +211,30 @@ class Singleton(_base.BaseValue):
       cls._instance = super().__new__(cls)  # pylint: disable=no-value-for-parameter
     return cls._instance
 
-  def get_special_attribute(self, node, name, valself):
+  def get_special_attribute(
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable
+  ) -> cfg.Variable | None:
     del name, valself
     return self.to_variable(node)
 
-  def compute_mro(self):
+  def compute_mro(self) -> tuple[_base.BaseValue, _base.BaseValue]:
     return self.default_mro()
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self,
+      node: cfg.CFGNode,
+      func: cfg.Binding,
+      args: "function.Args",
+      alias_map: datatypes.UnionFind | None = None,
+  ) -> tuple[cfg.CFGNode, cfg.Variable]:
     del func, args
     return node, self.to_variable(node)
 
-  def instantiate(self, node, container=None):
+  def instantiate(
+      self,
+      node: cfg.CFGNode,
+      container: "_instance_base.SimpleValue | abstract_utils.DummyContainer | None" = None,
+  ) -> cfg.Variable:
     return self.to_variable(node)
 
 
@@ -219,19 +264,21 @@ class Empty(Singleton):
   convert.Converter._function_to_def and tracer_vm.CallTracer.pytd_for_types.
   """
 
-  def __init__(self, ctx):
+  def __init__(self, ctx: "context.Context") -> None:
     super().__init__("empty", ctx)
 
 
 class Deleted(Empty):
   """Assigned to variables that have del called on them."""
 
-  def __init__(self, line, ctx):
+  def __init__(self, line: int, ctx: "context.Context") -> None:
     super().__init__(ctx)
     self.line = line
     self.name = "deleted"
 
-  def get_special_attribute(self, node, name, valself):
+  def get_special_attribute(
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable
+  ) -> cfg.Variable:
     del name, valself  # unused
     return self.ctx.new_unsolvable(node)
 
@@ -248,28 +295,30 @@ class Unsolvable(Singleton):
   only need one.
   """
 
-  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
+  IGNORED_ATTRIBUTES: list[str] = ["__get__", "__set__", "__getattribute__"]
 
   # Since an unsolvable gets generated e.g. for every unresolved import, we
   # can have multiple circular Unsolvables in a class' MRO. Treat those special.
   SINGLETON = True
 
-  def __init__(self, ctx):
+  def __init__(self, ctx: "context.Context"):
     super().__init__("unsolveable", ctx)
 
-  def get_special_attribute(self, node, name, _):
+  def get_special_attribute(
+      self, node: cfg.CFGNode, name: str, _
+  ) -> cfg.Variable | None:
     # Overrides Singleton.get_special_attributes.
     if name in self.IGNORED_ATTRIBUTES:
       return None
     else:
       return self.to_variable(node)
 
-  def argcount(self, _):
+  def argcount(self, _) -> Literal[0]:
     return 0
 
 
 class Null(Singleton):
   """A NULL value pushed onto the data stack."""
 
-  def __init__(self, ctx):
+  def __init__(self, ctx: "context.Context"):
     super().__init__("null", ctx)
