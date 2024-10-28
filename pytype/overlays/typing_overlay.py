@@ -184,7 +184,9 @@ class Callable(overlay_utils.TypingContainer):
     inner, ellipses = self._build_inner(content)
     args = inner[0]
     if abstract_utils.is_concrete_list(args):
-      inner[0], inner_ellipses = self._build_inner(args.pyval)
+      # No attribute 'pyval' on pytype.abstract._base.BaseValue
+      args_pyval = args.pyval  # pytype: disable=attribute-error
+      inner[0], inner_ellipses = self._build_inner(args_pyval)
       self.ctx.errorlog.invalid_ellipses(
           self.ctx.vm.frames, inner_ellipses, args.name
       )
