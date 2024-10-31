@@ -86,7 +86,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     self._official_name = official_name
 
   @property
-  def all_template_names(self) -> "set[BaseValue | str]":
+  def all_template_names(self) -> "set[str]":
     if self._all_template_names is None:
       self._all_template_names = _get_template(self)
     return self._all_template_names
@@ -433,7 +433,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     # pytype: enable=attribute-error
 
 
-def _get_template(val: BaseValue) -> set[BaseValue | str]:
+def _get_template(val: BaseValue) -> set[str]:
   """Get the value's class template."""
   if _isinstance(val, "Class"):
     res = {t.full_name for t in val.template}
