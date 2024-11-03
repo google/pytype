@@ -542,9 +542,6 @@ class _TypeVariable(_base.BaseValue):
       )
     return NotImplemented
 
-  def __ne__(self, other: "_TypeVariable") -> bool:
-    return not self == other
-
   def __hash__(self) -> int:
     return hash((
         self.name,
@@ -709,9 +706,6 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     if isinstance(other, type(self)):
       return self.options == other.options
     return NotImplemented
-
-  def __ne__(self, other: "Union") -> bool:
-    return not self == other
 
   def __hash__(self) -> int:
     # Use the names of the parameter values to approximate a hash, to avoid

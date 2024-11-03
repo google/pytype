@@ -785,9 +785,6 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
       )
     return NotImplemented
 
-  def __ne__(self, other: "ParameterizedClass") -> bool:
-    return not self == other
-
   def __hash__(self):
     if self._hash is None:
       if isinstance(

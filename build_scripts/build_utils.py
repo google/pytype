@@ -43,16 +43,10 @@ class BuildConfig:
       )
 
   def __eq__(self, other):
-    return all([
-        self.py_version == other.py_version,
-        self.build_type == other.build_type,
-    ])
-
-  def __ne__(self, other):
-    return any([
-        self.py_version != other.py_version,
-        self.build_type != other.build_type,
-    ])
+    return (
+        self.py_version == other.py_version
+        and self.build_type == other.build_type
+    )
 
   @classmethod
   def current_build_config(cls, debug):

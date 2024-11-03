@@ -562,9 +562,6 @@ class _SetOfTypes(Type, frozen=False, eq=False):
       return frozenset(self.type_list) == frozenset(other.type_list)
     return NotImplemented
 
-  def __ne__(self, other):
-    return not self == other
-
   def __hash__(self):
     return hash(self.type_list)
 

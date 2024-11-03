@@ -170,9 +170,6 @@ class _Eq(BooleanTerm):
         and self.right == other.right
     )
 
-  def __ne__(self, other):
-    return not self == other
-
   def simplify(self, assignments):
     """Simplify this equality.
 
@@ -236,9 +233,6 @@ class _And(BooleanTerm):
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self.exprs == other.exprs
 
-  def __ne__(self, other):
-    return not self == other
-
   def __repr__(self):
     return f"And({list(self.exprs)!r})"
 
@@ -287,9 +281,6 @@ class _Or(BooleanTerm):
 
   def __eq__(self, other):  # for unit tests
     return self.__class__ == other.__class__ and self.exprs == other.exprs
-
-  def __ne__(self, other):
-    return not self == other
 
   def __repr__(self):
     return f"Or({list(self.exprs)!r})"
