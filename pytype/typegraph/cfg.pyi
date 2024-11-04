@@ -21,6 +21,7 @@ class CFGNode:
   bindings: list[Binding]
   name: str
   condition: Optional[Binding]
+  program: Program
 
   def ConnectNew(self, name: Optional[str] = ..., condition: Optional[Binding] = ...) -> CFGNode: ...
   def ConnectTo(self, node: CFGNode) -> None: ...

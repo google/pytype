@@ -2151,6 +2151,7 @@ class VirtualMachine:
         # Some overlays add an __annotations__ dict to an abstract.Instance to
         # replicate runtime type checks on individual instances.
         annot = abstract_utils.get_annotations_dict(obj_val.members)
+        assert annot is not None
         cur_annotations_dict = annot.annotated_locals
       else:
         cur_annotations_dict = None

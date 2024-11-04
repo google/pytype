@@ -1,10 +1,10 @@
 """Utilities for abstract.py."""
 
 import collections
-from collections.abc import Collection, Iterable, Mapping, Sequence
+from collections.abc import Collection, Generator, Iterable, Mapping, Sequence
 import dataclasses
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING, TypeGuard
 
 from pytype import datatypes
 from pytype.pyc import opcodes
@@ -14,16 +14,19 @@ from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
-log = logging.getLogger(__name__)
 
-# Type aliases
-_ArgsDictType = dict[str, cfg.Variable]
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype import state  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _base  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _classes  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _function_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _instance_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _instances  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _typing  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import class_mixin  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
-# We can't import some modules here due to circular deps.
-_ContextType = Any  # context.Context
-_BaseValueType = Any  # abstract.BaseValue
-_ParameterizedClassType = Any  # abstract.ParameterizedClass
-_TypeParamType = Any  # abstract.TypeParameter
+log: logging.Logger = logging.getLogger(__name__)
 
 # Type parameter names matching the ones in builtins.pytd and typing.pytd.
 T = "_T"
@@ -34,14 +37,14 @@ ARGS = "_ARGS"
 RET = "_RET"
 
 # TODO(rechen): Stop supporting all variants except _HAS_DYNAMIC_ATTRIBUTES.
-DYNAMIC_ATTRIBUTE_MARKERS = [
+DYNAMIC_ATTRIBUTE_MARKERS: list[str] = [
     "HAS_DYNAMIC_ATTRIBUTES",
     "_HAS_DYNAMIC_ATTRIBUTES",
     "has_dynamic_attributes",
 ]
 
 # Names defined on every module/class that should be ignored in most cases.
-TOP_LEVEL_IGNORE = frozenset({
+TOP_LEVEL_IGNORE: frozenset[str] = frozenset({
     "__builtins__",
     "__doc__",
     "__file__",
@@ -50,7 +53,7 @@ TOP_LEVEL_IGNORE = frozenset({
     "__name__",
     "__annotations__",
 })
-CLASS_LEVEL_IGNORE = frozenset({
+CLASS_LEVEL_IGNORE: frozenset[str] = frozenset({
     "__builtins__",
     "__class__",
     "__module__",
@@ -60,7 +63,7 @@ CLASS_LEVEL_IGNORE = frozenset({
     "__annotations__",
 })
 
-TYPE_GUARDS = {"typing.TypeGuard", "typing.TypeIs"}
+TYPE_GUARDS: set[str] = {"typing.TypeGuard", "typing.TypeIs"}
 
 
 # A dummy container object for use in instantiating type parameters.
@@ -75,7 +78,7 @@ class DummyContainer:
     self.container = container
 
 
-DUMMY_CONTAINER = DummyContainer(None)
+DUMMY_CONTAINER: DummyContainer = DummyContainer(None)
 
 
 class ConversionError(ValueError):
@@ -97,7 +100,7 @@ class EvaluationError(Exception):
 class GenericTypeError(Exception):
   """The error for user-defined generic types."""
 
-  def __init__(self, annot, error):
+  def __init__(self, annot, error) -> None:
     super().__init__(annot, error)
     self.annot = annot
     self.error = error
@@ -110,7 +113,7 @@ class ModuleLoadError(Exception):
 class AsInstance:
   """Wrapper, used for marking things that we want to convert to an instance."""
 
-  def __init__(self, cls):
+  def __init__(self, cls: pytd.TypeU) -> None:
     self.cls = cls
 
 
@@ -133,11 +136,11 @@ class Local:
       self,
       node: cfg.CFGNode,
       op: opcodes.Opcode | None,
-      typ: _BaseValueType | None,
+      typ: "_base.BaseValue | None",
       orig: cfg.Variable | None,
-      ctx: _ContextType,
+      ctx: "context.Context",
   ):
-    self._ops = [op]
+    self._ops: list[opcodes.Opcode | None] = [op]
     self.final = False
     if typ:
       self.typ = ctx.program.NewVariable([typ], [], node)
@@ -149,7 +152,13 @@ class Local:
     self.ctx = ctx
 
   @classmethod
-  def merge(cls, node, op, local1, local2):
+  def merge(
+      cls,
+      node: cfg.CFGNode,
+      op: opcodes.Opcode,
+      local1: "Local",
+      local2: "Local",
+  ) -> "Local":
     """Merges two locals."""
     ctx = local1.ctx
     typ_values = set()
@@ -165,18 +174,25 @@ class Local:
       orig = local1.orig or local2.orig
     return cls(node, op, typ, orig, ctx)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
 
   @property
-  def stack(self):
+  def stack(self) -> "tuple[state.SimpleFrame, ...]":
     return self.ctx.vm.simple_stack(self._ops[-1])
 
   @property
-  def last_update_op(self):
+  def last_update_op(self) -> opcodes.Opcode | None:
     return self._ops[-1]
 
-  def update(self, node, op, typ, orig, final=False):
+  def update(
+      self,
+      node: cfg.CFGNode,
+      op: opcodes.Opcode,
+      typ: cfg.Variable,
+      orig: cfg.Variable,
+      final: bool = False,
+  ) -> None:
     """Update this variable's annotation and/or value."""
     if op in self._ops:
       return
@@ -190,7 +206,7 @@ class Local:
     if orig:
       self.orig = orig
 
-  def get_type(self, node, name):
+  def get_type(self, node: cfg.CFGNode, name: str) -> Any | None:
     """Gets the variable's annotation."""
     if not self.typ:
       return None
@@ -210,10 +226,15 @@ class Local:
 # Callers are expected to alias them like so:
 #   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
-_ISINSTANCE_CACHE = {}
+_ISINSTANCE_CACHE: dict[str, Any] = {}
 
 
-def _isinstance(obj, name_or_names):
+# TODO : This function is disasterous, does not act as a type guard since it's
+# not a real isinstance, and being passed a string. Also there's no way
+# to type this function and make pytype understand this because pytype does not
+# discriminate different string literals when it comes to overloads. So just the
+# best way here is to remove this function.
+def _isinstance(obj, name_or_names: str | tuple[str, ...]) -> bool:
   """Do an isinstance() call for a class defined in pytype.abstract.
 
   Args:
@@ -253,7 +274,9 @@ class _None:
   pass
 
 
-def get_atomic_value(variable, constant_type=None, default=_None()):
+def get_atomic_value(
+    variable: cfg.Variable, constant_type=None, default=_None()
+):
   """Get the atomic value stored in this variable."""
   if len(variable.bindings) == 1:
     (v,) = variable.bindings
@@ -273,7 +296,7 @@ def get_atomic_value(variable, constant_type=None, default=_None()):
   )
 
 
-def match_atomic_value(variable, typ=None):
+def match_atomic_value(variable: cfg.Variable, typ=None) -> bool:
   try:
     get_atomic_value(variable, typ)
   except ConversionError:
@@ -281,7 +304,7 @@ def match_atomic_value(variable, typ=None):
   return True
 
 
-def get_atomic_python_constant(variable, constant_type=None):
+def get_atomic_python_constant(variable: cfg.Variable, constant_type=None):
   """Get the concrete atomic Python value stored in this variable.
 
   This is used for things that are stored in cfg.Variable, but we
@@ -301,7 +324,7 @@ def get_atomic_python_constant(variable, constant_type=None):
   return atomic.ctx.convert.value_to_constant(atomic, constant_type)
 
 
-def match_atomic_python_constant(variable, typ=None):
+def match_atomic_python_constant(variable: cfg.Variable, typ=None) -> bool:
   try:
     get_atomic_python_constant(variable, typ)
   except ConversionError:
@@ -309,7 +332,12 @@ def match_atomic_python_constant(variable, typ=None):
   return True
 
 
-def get_views(variables, node):
+def get_views(
+    variables: list[cfg.Variable],
+    node: cfg.CFGNode,
+) -> Generator[
+    datatypes.AccessTrackingDict[cfg.Variable, cfg.Binding], Any, None
+]:
   """Get all possible views of the given variables at a particular node.
 
   For performance reasons, this method uses node.CanHaveCombination for
@@ -346,7 +374,7 @@ def get_views(variables, node):
     )
     combinations = (
         (
-            var.AddBinding(node.program.default_data, [], node)
+            var.AddBinding(node.program.default_data, [], node)  # pytype: disable=attribute-error
             for var in variables
         ),
     )
@@ -426,7 +454,12 @@ def get_mro_bases(bases):
     return mro_bases
 
 
-def _merge_type(t0, t1, name, cls):
+def _merge_type(
+    t0: "_instance_base.SimpleValue",
+    t1: "_instance_base.SimpleValue",
+    name: str,
+    cls: "class_mixin.Class",
+) -> "_instance_base.SimpleValue":
   """Merge two types.
 
   Rules: Type `Any` can match any type, we will return the other type if one
@@ -458,8 +491,11 @@ def _merge_type(t0, t1, name, cls):
 
 
 def parse_formal_type_parameters(
-    base, prefix, formal_type_parameters, container=None
-):
+    base: "_classes.InterpreterClass | _classes.PyTDClass | _classes.ParameterizedClass",
+    prefix: str | None,
+    formal_type_parameters: "datatypes.AliasingDict[str, _instance_base.SimpleValue]",
+    container: "_instance_base.SimpleValue | DummyContainer | None" = None,
+) -> None:
   """Parse type parameters from base class.
 
   Args:
@@ -475,18 +511,22 @@ def parse_formal_type_parameters(
     GenericTypeError: If the lazy types of type parameter don't match
   """
 
-  def merge(t0, t1, name):
+  def merge(
+      t0: "_instance_base.SimpleValue",
+      t1: "_instance_base.SimpleValue",
+      name: str,
+  ) -> "_instance_base.SimpleValue":
     return _merge_type(t0, t1, name, base)
 
   if _isinstance(base, "ParameterizedClass"):
     if base.full_name == "typing.Generic":
       return
-    if _isinstance(base.base_cls, ("InterpreterClass", "PyTDClass")):
+    if _isinstance(base.base_cls, ("InterpreterClass", "PyTDClass")):  # pytype: disable=attribute-error
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
-          base.base_cls.all_formal_type_parameters, merge
+          base.base_cls.all_formal_type_parameters, merge  # pytype: disable=attribute-error
       )
-    params = base.get_formal_type_parameters()
+    params = base.get_formal_type_parameters()  # pytype: disable=attribute-error
     if hasattr(container, "cls"):
       container_template = container.cls.template
     else:
@@ -517,7 +557,7 @@ def parse_formal_type_parameters(
   else:
     if _isinstance(base, ("InterpreterClass", "PyTDClass")):
       # merge the type parameters info from base class
-      formal_type_parameters.merge_from(base.all_formal_type_parameters, merge)
+      formal_type_parameters.merge_from(base.all_formal_type_parameters, merge)  # pytype: disable=attribute-error
     if base.template:
       # handle unbound type parameters
       for item in base.template:
@@ -528,7 +568,7 @@ def parse_formal_type_parameters(
             formal_type_parameters[name] = None
 
 
-def full_type_name(val, name):
+def full_type_name(val: "_instance_base.SimpleValue", name: str) -> str:
   """Compute complete type parameter name with scope.
 
   Args:
@@ -551,7 +591,7 @@ def full_type_name(val, name):
   return name
 
 
-def maybe_extract_tuple(t):
+def maybe_extract_tuple(t: cfg.Variable) -> tuple[cfg.Variable, ...]:
   """Returns a tuple of Variables."""
   values = t.data
   if len(values) > 1:
@@ -562,7 +602,9 @@ def maybe_extract_tuple(t):
   return v.pyval
 
 
-def eval_expr(ctx, node, f_globals, f_locals, expr):
+def eval_expr(
+    ctx: "context.Context", node: cfg.CFGNode, f_globals, f_locals, expr
+) -> tuple[Any, EvaluationError | None]:
   """Evaluate an expression with the given node and globals."""
   # This is used to resolve type comments and late annotations.
   #
@@ -619,7 +661,9 @@ def match_type_container(typ, container_type_name: str | tuple[str, ...]):
   return param
 
 
-def get_annotations_dict(members):
+def get_annotations_dict(
+    members: dict[str, cfg.Variable],
+) -> "_instances.AnnotationsDict | None":
   """Get __annotations__ from a members map.
 
   Returns None rather than {} if the dict does not exist so that callers always
@@ -641,15 +685,15 @@ def get_annotations_dict(members):
   return annots if _isinstance(annots, "AnnotationsDict") else None
 
 
-def is_concrete_dict(val: _BaseValueType) -> bool:
+def is_concrete_dict(val: "_base.BaseValue") -> bool:
   return val.is_concrete and _isinstance(val, "Dict")
 
 
-def is_concrete_list(val: _BaseValueType) -> bool:
+def is_concrete_list(val: "_base.BaseValue") -> bool:
   return val.is_concrete and _isinstance(val, "List")
 
 
-def is_indefinite_iterable(val: _BaseValueType) -> bool:
+def is_indefinite_iterable(val: "_base.BaseValue") -> bool:
   """True if val is a non-concrete instance of typing.Iterable."""
   instance = _isinstance(val, "Instance")
   cls_instance = _isinstance(val.cls, "Class")
@@ -667,20 +711,24 @@ def is_indefinite_iterable(val: _BaseValueType) -> bool:
   return False
 
 
-def is_var_indefinite_iterable(var):
+def is_var_indefinite_iterable(var: cfg.Variable) -> bool:
   """True if all bindings of var are indefinite sequences."""
   return all(is_indefinite_iterable(x) for x in var.data)
 
 
-def is_dataclass(val: _BaseValueType) -> bool:
-  return _isinstance(val, "Class") and "__dataclass_fields__" in val.metadata
+def is_dataclass(val: "class_mixin.Class") -> bool:
+  # TODO: b/350643999 - _isinstance call possibly not needed.
+  return _isinstance(val, "Class") and "__dataclass_fields__" in val.metadata  # pytype: disable=attribute-error
 
 
-def is_attrs(val: _BaseValueType) -> bool:
-  return _isinstance(val, "Class") and "__attrs_attrs__" in val.metadata
+def is_attrs(val: "class_mixin.Class") -> bool:
+  # TODO: b/350643999 - _isinstance call possibly not needed.
+  return _isinstance(val, "Class") and "__attrs_attrs__" in val.metadata  # pytype: disable=attribute-error
 
 
-def merged_type_parameter(node, var, param):
+def merged_type_parameter(
+    node: cfg.CFGNode, var: cfg.Variable, param
+) -> cfg.Variable:
   if not var.bindings:
     return node.program.NewVariable()
   if is_var_splat(var):
@@ -689,7 +737,10 @@ def merged_type_parameter(node, var, param):
   return var.data[0].ctx.join_variables(node, params)
 
 
-def is_var_splat(var):
+# TODO: b/350643999 - Annotate this with a type guard instead. Since there's no
+# syntax to typeguard something which is on the property, we would need to
+# change the callsite to pass in var.data[0] instead.
+def is_var_splat(var: cfg.Variable) -> bool:
   if var.data and _isinstance(var.data[0], "Splat"):
     # A splat should never have more than one binding, since we create and use
     # it immediately.
@@ -698,11 +749,11 @@ def is_var_splat(var):
   return False
 
 
-def unwrap_splat(var):
+def unwrap_splat(var: cfg.Variable) -> "cfg.Variable":
   return var.data[0].iterable
 
 
-def is_callable(value: _BaseValueType) -> bool:
+def is_callable(value: "_base.BaseValue") -> bool:
   """Returns whether 'value' is a callable."""
   if _isinstance(
       value, ("Function", "BoundFunction", "ClassMethod", "StaticMethod")
@@ -716,7 +767,9 @@ def is_callable(value: _BaseValueType) -> bool:
   return attr is not None
 
 
-def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
+def expand_type_parameter_instances(
+    bindings: Iterable[cfg.Binding],
+) -> Generator[cfg.Binding, None, None]:
   """Expands any TypeParameterInstance values in `bindings`."""
   bindings = list(bindings)
   seen = set()
@@ -734,7 +787,7 @@ def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
 
 
 def get_type_parameter_substitutions(
-    val: _BaseValueType, type_params: Iterable[_TypeParamType]
+    val: "_base.BaseValue", type_params: "Iterable[_typing.TypeParameter]"
 ) -> Mapping[str, cfg.Variable]:
   """Get values for type_params from val's type parameters."""
   subst = {}
@@ -749,14 +802,16 @@ def get_type_parameter_substitutions(
   return subst
 
 
-def is_type_variable(val: _BaseValueType):
+def is_type_variable(
+    val: "_base.BaseValue",
+) -> "TypeGuard[pytd.TypeParameter|pytd.ParamSpec]":
   """Check if a value is a type variable (TypeVar or ParamSpec)."""
   return _isinstance(val, ("TypeParameter", "ParamSpec"))
 
 
 def build_generic_template(
-    type_params: Sequence[_BaseValueType], base_type: _BaseValueType
-) -> tuple[Sequence[str], Sequence[_TypeParamType]]:
+    type_params: "Sequence[_base.BaseValue]", base_type: "_base.BaseValue"
+) -> "tuple[Sequence[str], Sequence[_typing.TypeParameter]]":
   """Build a typing.Generic template from a sequence of type parameters."""
   if not all(is_type_variable(item) for item in type_params):
     base_type.ctx.errorlog.invalid_annotation(
@@ -775,10 +830,10 @@ def build_generic_template(
         "Parameters to Generic[...] must all be unique",
     )
 
-  return template, type_params
+  return template, type_params  # pytype: disable=bad-return-type
 
 
-def is_generic_protocol(val: _BaseValueType) -> bool:
+def is_generic_protocol(val: "_base.BaseValue") -> bool:
   return (
       _isinstance(val, "ParameterizedClass")
       and val.full_name == "typing.Protocol"
@@ -800,7 +855,9 @@ def combine_substs(
     return ()
 
 
-def flatten(value, classes):
+def flatten(
+    value: "_instance_base.SimpleValue", classes: "list[class_mixin.Class]"
+) -> bool:
   """Flatten the contents of value into classes.
 
   If value is a Class, it is appended to classes.
@@ -818,15 +875,15 @@ def flatten(value, classes):
   """
   # Used by special_builtins.IsInstance and IsSubclass
   if _isinstance(value, "AnnotationClass"):
-    value = value.base_cls
+    value = value.base_cls  # pytype: disable=attribute-error
   if _isinstance(value, "Class"):
     # A single class, no ambiguity.
-    classes.append(value)
+    classes.append(value)  # pytype: disable=container-type-mismatch
     return False
   elif _isinstance(value, "Tuple"):
     # A tuple, need to process each element.
     ambiguous = False
-    for var in value.pyval:
+    for var in value.pyval:  # pytype: disable=attribute-error
       if len(var.bindings) != 1 or flatten(var.bindings[0].data, classes):
         # There were either multiple bindings or ambiguity deeper in the
         # recursion.
@@ -836,7 +893,7 @@ def flatten(value, classes):
     # A Union cannot be used in an isinstance call before Python 3.10, but
     # there's no harm in processing it anyway.
     ambiguous = False
-    for val in value.options:
+    for val in value.options:  # pytype: disable=attribute-error
       if flatten(val, classes):
         ambiguous = True
     return ambiguous
@@ -844,7 +901,11 @@ def flatten(value, classes):
     return True
 
 
-def check_against_mro(ctx, target, class_spec):
+def check_against_mro(
+    ctx: "context.Context",
+    target: "_base.BaseValue",
+    class_spec: "_instance_base.SimpleValue",
+) -> bool | None:
   """Check if any of the classes are in the target's MRO.
 
   Args:
@@ -869,7 +930,7 @@ def check_against_mro(ctx, target, class_spec):
   return None if ambiguous else False
 
 
-def maybe_unwrap_decorated_function(func):
+def maybe_unwrap_decorated_function(func: "_classes.FunctionPyTDClass"):
   # Some decorators, like special_builtins.PropertyInstance, have a
   # 'func' pointer to the decorated function. Note that we check for .data to
   # make sure 'func' is a Variable.
@@ -880,11 +941,11 @@ def maybe_unwrap_decorated_function(func):
   return func.func
 
 
-def unwrap_final(val):
+def unwrap_final(val: "_base.BaseValue") -> "_base.BaseValue":
   """Unwrap Final[T] -> T."""
   if _isinstance(val, "FinalAnnotation"):
     # Final type created via an annotation in the current module
-    return val.annotation
+    return val.annotation  # pytype: disable=attribute-error
   elif _isinstance(val, "Instance") and val.cls.full_name == "typing.Final":
     # Final types loaded from a pyi file get converted to abstract.Instance
     # with cls=typing.Final and instance type parameter T
@@ -892,18 +953,25 @@ def unwrap_final(val):
   return val
 
 
-def is_recursive_annotation(annot):
-  return annot.is_late_annotation() and annot.is_recursive()
+def is_recursive_annotation(
+    annot: "_typing.LateAnnotation | _base.BaseValue",
+) -> bool:
+  # TODO: b/350643999 - This is calling out for a type guard, but under pytype's
+  # type system it's not possible to make this work without using isinstance(..)
+  # We also cannot use isinstance because it will cause circular imports
+  return annot.is_late_annotation() and annot.is_recursive()  # pytype: disable=attribute-error
 
 
-def is_ellipsis(val):
+def is_ellipsis(val) -> bool:
   return val == val.ctx.convert.ellipsis or (
       val.is_concrete and val.pyval == "..."
   )
 
 
 def update_args_dict(
-    args: _ArgsDictType, update: _ArgsDictType, node: cfg.CFGNode
+    args: dict[str, cfg.Variable],
+    update: dict[str, cfg.Variable],
+    node: cfg.CFGNode,
 ) -> None:
   """Update a {str: Variable} dict by merging bindings."""
   for k, v in update.items():
@@ -913,7 +981,9 @@ def update_args_dict(
       args[k] = v
 
 
-def get_generic_type(val: _BaseValueType) -> _ParameterizedClassType | None:
+def get_generic_type(
+    val: "_base.BaseValue",
+) -> "_classes.ParameterizedClass | None":
   """Gets the generic type of an abstract value.
 
   Args:
@@ -932,7 +1002,7 @@ def get_generic_type(val: _BaseValueType) -> _ParameterizedClassType | None:
     return None
   for parent_cls in cls.mro:
     if _isinstance(parent_cls, "ParameterizedClass"):
-      base_cls = parent_cls.base_cls
+      base_cls = parent_cls.base_cls  # pytype: disable=attribute-error
     else:
       base_cls = parent_cls
     if _isinstance(base_cls, "Class") and base_cls.template:
@@ -948,7 +1018,12 @@ def get_generic_type(val: _BaseValueType) -> _ParameterizedClassType | None:
   return None
 
 
-def with_empty_substitutions(subst, pytd_type, node, ctx):
+def with_empty_substitutions(
+    subst: datatypes.AliasingDict[str, cfg.Variable],
+    pytd_type: pytd.Signature,
+    node: cfg.CFGNode,
+    ctx: "context.Context",
+) -> datatypes.AliasingDict[str, cfg.Variable]:
   new_subst = {
       t.full_name: ctx.convert.empty.to_variable(node)
       for t in pytd_utils.GetTypeParameters(pytd_type)
@@ -958,7 +1033,7 @@ def with_empty_substitutions(subst, pytd_type, node, ctx):
 
 
 def get_var_fullhash_component(
-    var: cfg.Variable, seen: set[_BaseValueType] | None = None
+    var: cfg.Variable, seen: "set[_base.BaseValue] | None" = None
 ) -> tuple[Any, ...]:
   return tuple(sorted(v.get_fullhash(seen) for v in var.data))
 
@@ -967,7 +1042,7 @@ def get_dict_fullhash_component(
     vardict: dict[str, cfg.Variable],
     *,
     names: set[str] | None = None,
-    seen: set[_BaseValueType] | None = None,
+    seen: "set[_base.BaseValue] | None" = None,
 ) -> tuple[Any, ...]:
   """Hash a dictionary.
 
@@ -991,7 +1066,9 @@ def get_dict_fullhash_component(
   )
 
 
-def simplify_variable(var, node, ctx):
+def simplify_variable(
+    var: cfg.Variable, node: cfg.CFGNode, ctx: "context.Context"
+) -> cfg.Variable:
   """Deduplicates identical data in `var`."""
   if not var:
     return var
@@ -1006,7 +1083,11 @@ def simplify_variable(var, node, ctx):
   return new_var
 
 
-def _abstractify_value(val, ctx, seen=None):
+def _abstractify_value(
+    val: "_instances.ConcreteValue",
+    ctx: "context.Context",
+    seen: "set[_base.BaseValue] | None" = None,
+) -> "_instances.ConcreteValue":
   """Converts a maybe-abstract value to a concrete one.
 
   Args:
@@ -1022,12 +1103,15 @@ def _abstractify_value(val, ctx, seen=None):
   """
   if seen is None:
     seen = set()
+
   if not val.is_concrete or val in seen:
     return val
   seen = seen | {val}
+
   if not isinstance(val.pyval, (list, tuple)):
     return ctx.convert.get_maybe_abstract_instance(val)
   new_content = []
+
   for elem in val.pyval:
     new_elem_data = [_abstractify_value(v, ctx, seen) for v in elem.data]
     if any(v != new_v for v, new_v in zip(elem.data, new_elem_data)):
@@ -1037,13 +1121,18 @@ def _abstractify_value(val, ctx, seen=None):
       new_content.append(new_elem)
     else:
       new_content.append(elem)
+
   if any(elem != new_elem for elem, new_elem in zip(val.pyval, new_content)):
-    return type(val)(type(val.pyval)(new_content), ctx)
+    # TODO: b/350643999 - There is no type that matches this signature and I
+    # assume it to be dead code, try removing it.
+    return type(val)(type(val.pyval)(new_content), ctx)  # pytype:disable=missing-parameter
   else:
     return val
 
 
-def abstractify_variable(var, ctx):
+def abstractify_variable(
+    var: cfg.Variable, ctx: "context.Context"
+) -> cfg.Variable:
   if not any(v.is_concrete for v in var.data):
     return var
   new_var = ctx.program.NewVariable()

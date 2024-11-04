@@ -5,7 +5,7 @@ this module; use the alias in abstract.py instead.
 """
 
 from collections.abc import Collection, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pytype import utils
 from pytype.abstract import abstract_utils
@@ -405,7 +405,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
   def update_official_name(self, _: str) -> None:
     """Update the official name."""
 
-  def is_late_annotation(self) -> bool:
+  def is_late_annotation(self) -> Literal[False]:
     return False
 
   def should_set_self_annot(self) -> bool:
