@@ -5,9 +5,13 @@ import contextlib
 import keyword
 import threading
 import traceback
+from typing import TYPE_CHECKING
 import weakref
 
 from pytype.platform_utils import path_utils
+
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
 _STYLE_BRIGHT = "\x1b[1m"
 _STYLE_RESET_ALL = "\x1b[0m"
@@ -236,9 +240,9 @@ class ContextWeakrefMixin:
 
   __slots__ = ["ctx_weakref"]
 
-  def __init__(self, ctx):
+  def __init__(self, ctx: "context.Context"):
     self.ctx_weakref = weakref.ref(ctx)
 
   @property
-  def ctx(self):
-    return self.ctx_weakref()
+  def ctx(self) -> "context.Context":
+    return self.ctx_weakref()  # pytype: disable=bad-return-type
