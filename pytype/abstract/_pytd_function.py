@@ -438,7 +438,7 @@ class PyTDFunction(_function_base.Function):
       func: cfg.Binding,
       args: function.Args,
       view: datatypes.AccessTrackingDict,
-      signatures: list[pytd.Signature],
+      signatures: "list[tuple[PyTDSignature, dict[str, cfg.Variable], matcher.GoodMatch]]",
   ) -> tuple[cfg.CFGNode, cfg.Variable, list[function.Mutation]]:
     """Perform a function call that involves multiple signatures."""
     ret_type = self._combine_multiple_returns(signatures)
@@ -489,7 +489,10 @@ class PyTDFunction(_function_base.Function):
     )
     return node, result, mutations
 
-  def _combine_multiple_returns(self, signatures):
+  def _combine_multiple_returns(
+      self,
+      signatures: "list[tuple[PyTDSignature, dict[str, cfg.Variable], matcher.GoodMatch]]",
+  ):
     """Combines multiple return types.
 
     Args:
@@ -522,7 +525,7 @@ class PyTDFunction(_function_base.Function):
       args: function.Args,
       alias_map: datatypes.UnionFind | None,
       match_all_views: bool,
-  ):
+  ) -> "list[list[tuple[PyTDSignature, dict[str, cfg.Variable], matcher.GoodMatch]]]":
     error = None
     matched_signatures = _MatchedSignatures(
         args, self._can_match_multiple(args)

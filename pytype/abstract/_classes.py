@@ -692,7 +692,9 @@ class FunctionPyTDClass(PyTDClass):
   """
 
   def __init__(
-      self, func: "_function_base.Function", ctx: "context.Context"
+      self,
+      func: "_function_base.Function | _function_base.BoundFunction",
+      ctx: "context.Context",
   ) -> None:
     super().__init__(
         "typing.Callable",

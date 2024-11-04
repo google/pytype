@@ -28,9 +28,7 @@ def build_class(
       continue
     if base.is_enum:
       enum_base = abstract_utils.get_atomic_value(
-          ctx.vm.loaded_overlays["enum"].members[
-              "Enum"
-          ]  # pytype: disable=attribute-error
+          ctx.vm.loaded_overlays["enum"].members["Enum"]  # pytype: disable=attribute-error
       )
       return enum_base.make_class(node, props)
     elif base.full_name == "typing.NamedTuple":
@@ -101,8 +99,8 @@ class _TypedDictBuilder(_Builder):
     return c.name in self.CLASSES
 
   def matches_base(self, c: "_classes.PyTDClass") -> bool:
-    return any(  # pytype: disable=attribute-error
-        isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases
+    return any(
+        isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases  # pytype: disable=attribute-error
     )
 
   def matches_mro(self, c: "_classes.PyTDClass") -> bool:
@@ -132,8 +130,8 @@ class _NamedTupleBuilder(_Builder):
     return c.name in self.CLASSES
 
   def matches_base(self, c: "_classes.PyTDClass") -> bool:
-    return any(  # pytype: disable=attribute-error
-        isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases
+    return any(
+        isinstance(b, pytd.ClassType) and self.matches_class(b) for b in c.bases  # pytype: disable=attribute-error
     )
 
   def matches_mro(self, c: "_classes.PyTDClass") -> bool:

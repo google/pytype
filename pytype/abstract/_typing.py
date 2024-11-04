@@ -563,14 +563,16 @@ class _TypeVariable(_base.BaseValue):
   def instantiate(
       self,
       node: "cfg.CFGNode",
-      container: _instance_base.Instance | None = None,
+      container: (
+          _instance_base.SimpleValue | abstract_utils.DummyContainer | None
+      ) = None,
   ) -> "cfg.Variable":
     var = self.ctx.program.NewVariable()
     if container and (
         not isinstance(container, _instance_base.SimpleValue)
         or self.full_name in container.all_template_names
     ):
-      instance = self._INSTANCE_CLASS(self, container, self.ctx)  # pylint: disable=not-callable
+      instance = self._INSTANCE_CLASS(self, container, self.ctx)  # pylint: disable=not-callable  # pytype: disable=wrong-arg-types
       return instance.to_variable(node)
     else:
       for c in self.constraints:

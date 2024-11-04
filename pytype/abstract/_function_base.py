@@ -5,7 +5,7 @@ import contextlib
 import inspect
 import itertools
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import Any, Generic, TYPE_CHECKING, TypeVar
 
 from pytype.abstract import _base
 from pytype.abstract import _classes
@@ -26,6 +26,7 @@ if TYPE_CHECKING:
   from pytype import datatypes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype import matcher  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _interpreter_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import _pytd_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.pyc import opcodes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
 
@@ -39,6 +40,10 @@ class Function(_instance_base.SimpleValue, types.Function):
   """
 
   bound_class: type["BoundFunction"]
+  is_abstract: bool
+  is_classmethod: bool
+  is_overload: bool
+  is_method: bool
 
   def __init__(self, name: str, ctx: "context.Context") -> None:
     super().__init__(name, ctx)
@@ -82,7 +87,7 @@ class Function(_instance_base.SimpleValue, types.Function):
       args: function.Args,
       alias_map: "datatypes.UnionFind | None" = None,
       match_all_views: bool = False,
-  ) -> "list[matcher.GoodMatch]":
+  ):
     """Check whether the given arguments can match the function signature."""
     for a in args.posargs:
       if not a.bindings:
@@ -99,7 +104,7 @@ class Function(_instance_base.SimpleValue, types.Function):
       args: function.Args,
       alias_map: "datatypes.UnionFind | None",
       match_all_views: bool,
-  ) -> "list[matcher.GoodMatch]":
+  ):
     raise NotImplementedError(self.__class__.__name__)
 
   def __repr__(self) -> str:
@@ -256,13 +261,16 @@ class NativeFunction(Function):
     return self
 
 
-class BoundFunction(_base.BaseValue):
+_SomeFunction = TypeVar("_SomeFunction", bound=Function)
+
+
+class BoundFunction(Generic[_SomeFunction], _base.BaseValue):
   """An function type which has had an argument bound into it."""
 
+  underlying: _SomeFunction
+
   def __init__(
-      self,
-      callself: "cfg.Variable",
-      underlying: "_interpreter_function.InterpreterFunction",
+      self, callself: "cfg.Variable", underlying: _SomeFunction
   ) -> None:
     super().__init__(underlying.name, underlying.ctx)
     self.cls = _classes.FunctionPyTDClass(self, self.ctx)
@@ -305,7 +313,7 @@ class BoundFunction(_base.BaseValue):
 
   @property
   def signature(self) -> function.Signature:
-    return self.underlying.signature.drop_first_parameter()
+    return self.underlying.signature.drop_first_parameter()  # pytype: disable=attribute-error
 
   @property
   def callself(self) -> "cfg.Variable":
@@ -335,7 +343,7 @@ class BoundFunction(_base.BaseValue):
             and self.underlying.has_self_annot
         )
       if should_set_self_annot:
-        context = self.underlying.set_self_annot(self._self_annot)
+        context = self.underlying.set_self_annot(self._self_annot)  # pytype: disable=attribute-error
       else:
         context = contextlib.nullcontext()
       with context:
@@ -356,7 +364,7 @@ class BoundFunction(_base.BaseValue):
     return node, ret
 
   def get_positional_names(self) -> Sequence[str]:
-    return self.underlying.get_positional_names()
+    return self.underlying.get_positional_names()  # pytype: disable=attribute-error
 
   def has_varargs(self) -> bool:
     return self.underlying.has_varargs()
@@ -415,7 +423,9 @@ class BoundFunction(_base.BaseValue):
     return super().get_special_attribute(node, name, valself)
 
 
-class BoundInterpreterFunction(BoundFunction):
+class BoundInterpreterFunction(
+    BoundFunction["_interpreter_function.InterpreterFunction"]
+):
   """The method flavor of InterpreterFunction."""
 
   @contextlib.contextmanager
@@ -463,7 +473,7 @@ class ClassMethod(_base.BaseValue):
   def __init__(
       self,
       name: str,
-      method: "_interpreter_function.InterpreterFunction",
+      method: Function,
       callself: "cfg.Variable",
       ctx: "context.Context",
   ) -> None:
@@ -602,7 +612,7 @@ class SignedFunction(Function):
       node: "cfg.CFGNode",
       args: function.Args,
       alias_map: "datatypes.UnionFind | None" = None,
-  ) -> "tuple[list[matcher.GoodMatch], dict[str, cfg.Variable]]":
+  ) -> "tuple[list[Any], dict[str, cfg.Variable]]":
     """Calls match_args() and _map_args()."""
     return self.match_args(node, args, alias_map), self._map_args(node, args)
 
@@ -718,7 +728,7 @@ class SignedFunction(Function):
       args: function.Args,
       alias_map: "datatypes.UnionFind | None",
       match_all_views: bool,
-  ) -> "list[matcher.GoodMatch]":
+  ) -> "list[datatypes.HashableDict[str, cfg.Variable]]":
     args_to_match = []
     self._check_paramspec_args(args)
     for name, arg, formal in self.signature.iter_args(args):
