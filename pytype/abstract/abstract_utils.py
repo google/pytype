@@ -930,15 +930,17 @@ def check_against_mro(
   return None if ambiguous else False
 
 
-def maybe_unwrap_decorated_function(func: "_classes.FunctionPyTDClass"):
+def maybe_unwrap_decorated_function(func: "_function_base.Function"):
   # Some decorators, like special_builtins.PropertyInstance, have a
   # 'func' pointer to the decorated function. Note that we check for .data to
   # make sure 'func' is a Variable.
   try:
-    func.func.data
+    # TODO: b/350643999 - The type here passed in is indeed correct but
+    # the intent of this functions is quite unclear. Figure out and fix it.
+    func.func.data  # pytype: disable=attribute-error
   except AttributeError:
     return None
-  return func.func
+  return func.func  # pytype: disable=attribute-error
 
 
 def unwrap_final(val: "_base.BaseValue") -> "_base.BaseValue":
@@ -1020,7 +1022,7 @@ def get_generic_type(
 
 def with_empty_substitutions(
     subst: datatypes.AliasingDict[str, cfg.Variable],
-    pytd_type: pytd.Signature,
+    pytd_type: "_base.BaseValue",
     node: cfg.CFGNode,
     ctx: "context.Context",
 ) -> datatypes.AliasingDict[str, cfg.Variable]:

@@ -212,7 +212,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       defaults,
       kw_defaults,
       closure,
-      annotations: "dict[str, _base.BaseValue]",
+      annotations: dict[str, pytd.Type],
       overloads,
       ctx: "context.Context",
   ) -> None:
@@ -328,7 +328,7 @@ class InterpreterFunction(_function_base.SignedFunction):
           )
 
   def _build_signature(
-      self, name: str, annotations: "dict[str, _base.BaseValue]"
+      self, name: str, annotations: dict[str, pytd.Type]
   ) -> function.Signature:
     """Build a function.Signature object representing this function."""
     vararg_name = None
@@ -564,7 +564,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       self,
       callable_type: _classes.ParameterizedClass,
       substs: "list[matcher.GoodMatch]",
-  ) -> str | None:
+  ) -> function.Signature | None:
     # Unpack the paramspec substitution we have created in the matcher.
     rhs = callable_type.formal_type_parameters[0]
     if _isinstance(rhs, "Concatenate"):
@@ -593,15 +593,15 @@ class InterpreterFunction(_function_base.SignedFunction):
     if not sig.has_return_annotation:
       return
     retval = sig.annotations["return"]
-    if not (_isinstance(retval, "CallableClass") and retval.has_paramspec()):
+    if not (_isinstance(retval, "CallableClass") and retval.has_paramspec()):  # pytype: disable=attribute-error
       return
     ret_sig = self._paramspec_signature(retval, substs)
     if ret_sig:
       ret_annot = self.ctx.pytd_convert.signature_to_callable(ret_sig)
       annotations["return"] = ret_annot
     for name, _, annot in sig.iter_args(callargs):
-      if _isinstance(annot, "CallableClass") and annot.has_paramspec():
-        param_sig = self._paramspec_signature(annot, substs)
+      if _isinstance(annot, "CallableClass") and annot.has_paramspec():  # pytype: disable=attribute-error
+        param_sig = self._paramspec_signature(annot, substs)  # pytype: disable=wrong-arg-types
         if param_sig:
           param_annot = self.ctx.pytd_convert.signature_to_callable(param_sig)
           annotations[name] = param_annot

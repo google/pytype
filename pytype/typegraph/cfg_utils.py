@@ -21,7 +21,7 @@ DEEP_VARIABLE_LIMIT = 1024
 
 def variable_product(
     variables: list[cfg.Variable],
-) -> Iterable[tuple[cfg.Variable, ...]]:
+) -> Iterable[tuple[cfg.Binding, ...]]:
   """Take the Cartesian product of a number of Variables.
 
   Args:

@@ -142,7 +142,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     return self.ctx.new_unsolvable(node)
 
   def get_formal_type_parameter(
-      self, t  # TODO: b/350643999 - Figure out the type of 't'.
+      self, t: str
   ) -> "BaseValue":
     """Get the class's type for the type parameter.
 

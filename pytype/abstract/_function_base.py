@@ -699,7 +699,7 @@ class SignedFunction(Function):
     for name, _, formal in self.signature.iter_args(args):
       if not _isinstance(formal, "ParameterizedClass"):
         continue
-      params = formal.get_formal_type_parameters()
+      params = formal.get_formal_type_parameters()  # pytype: disable=attribute-error
       if name == self.signature.varargs_name:
         for param in params.values():
           if _isinstance(param, "ParamSpecArgs"):
