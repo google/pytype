@@ -44,10 +44,10 @@ jobs:
             -v "$(pwd):/io" \
             "$DOCKER_IMAGE" \
             /io/build_scripts/wheels/manylinux.sh
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: dist
+          name: dist-${{ matrix.platform }}-${{ matrix.pyver }}
+          path: dist/*.whl
   macosx_wheels:
     name: Python ${{ matrix.python_version }} MacOS wheels
     # Note: the container MacOS version may differ from the SDK
@@ -68,7 +68,18 @@ jobs:
           python-version: ${{ matrix.python_version }}
       - name: Build MacOS wheels
         run: './build_scripts/wheels/macos.sh'
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-py${{ matrix.python_version }}
+          path: dist/*.whl
+  merge:
+    name: Merge artifacts
+    runs-on: ubuntu-latest
+    needs:
+      - manylinux_wheels
+      - macosx_wheels
+    steps:
+      - name: Merge artifacts
+        uses: actions/upload-artifact/merge@v4
         with:
           name: dist
-          path: dist
