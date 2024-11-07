@@ -220,53 +220,42 @@ class Local:
       return None
 
 
-# The _isinstance and _make methods should be used only in pytype.abstract
-# submodules that are unable to reference abstract.py classes due to circular
-# dependencies. To prevent accidental misuse, the methods are marked private.
-# Callers are expected to alias them like so:
-#   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+class _Abstract:
+  """A helper that lazily loads the 'abstract' module to prevent circular deps.
 
-_ISINSTANCE_CACHE: dict[str, Any] = {}
+  Always import it like this:
 
-
-# TODO : This function is disasterous, does not act as a type guard since it's
-# not a real isinstance, and being passed a string. Also there's no way
-# to type this function and make pytype understand this because pytype does not
-# discriminate different string literals when it comes to overloads. So just the
-# best way here is to remove this function.
-def _isinstance(obj, name_or_names: str | tuple[str, ...]) -> bool:
-  """Do an isinstance() call for a class defined in pytype.abstract.
-
-  Args:
-    obj: An instance.
-    name_or_names: A name or tuple of names of classes in pytype.abstract.
-
-  Returns:
-    Whether obj is an instance of name_or_names.
-  """
-  # This function is heavily optimized because of how often it is called - over
-  # 13M times in one analysis of an 1,100-line file that we profiled. The cache
-  # improves performance by about 10% over calling getattr() on the abstract
-  # module every time, and checking the __class__ attribute is about 20% faster
-  # than calling isinstance.
-  if not _ISINSTANCE_CACHE:
-    from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-
-    for attr in dir(abstract):
-      if attr[0].isupper():
-        _ISINSTANCE_CACHE[attr] = getattr(abstract, attr)
-  if name_or_names.__class__ == tuple:
-    class_or_classes = tuple(_ISINSTANCE_CACHE[name] for name in name_or_names)
+  if TYPE_CHECKING:
+    from pytype.abstract import abstract as _abstract
   else:
-    class_or_classes = _ISINSTANCE_CACHE[name_or_names]
-  return isinstance(obj, class_or_classes)
+    _abstract = abstract_utils._abstract  # pylint: disable=protected-access
+  """
+
+  _loaded = False
+
+  def __getattr__(self, name: str) -> object:
+    if not self._loaded:
+      from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top,g-bad-import-order
+
+      # Copy all the attributes from the module to this object.
+      # This is done so that subsequent attribute accesses will not even need to
+      # go through this __getattr__ method and will be resolved directly.
+      self.__dict__.update({
+          attr: getattr(abstract, attr)
+          for attr in dir(abstract)
+          if attr[0].isupper()
+      })
+      self._loaded = True
+
+    return object.__getattribute__(self, name)
 
 
-def _make(cls_name, *args, **kwargs):
-  """Make an instance of cls_name with the given arguments."""
-  from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+if TYPE_CHECKING:
+  from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top,g-bad-import-order
 
-  return getattr(abstract, cls_name)(*args, **kwargs)
+  _abstract = abstract
+else:
+  _abstract = _Abstract()
 
 
 # Sentinel for get_atomic_value
@@ -400,16 +389,16 @@ def get_views(
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
   return (
-      _isinstance(binding.data, "Class")
+      isinstance(binding.data, _abstract.Class)
       and binding.data.full_name == cls.full_name
   )
 
 
 def is_subclass(value, cls):
   """Whether value is a subclass of cls, modulo parameterization."""
-  if _isinstance(value, "Union"):
+  if isinstance(value, _abstract.Union):
     return any(is_subclass(v, cls) for v in value.options)
-  return _isinstance(value, "Class") and any(
+  return isinstance(value, _abstract.Class) and any(
       value_cls.full_name == cls.full_name for value_cls in value.mro
   )
 
@@ -442,7 +431,7 @@ def get_mro_bases(bases):
     mro_bases.append(base)
     # check if it contains user-defined generic types
     if (
-        _isinstance(base, "ParameterizedClass")
+        isinstance(base, _abstract.ParameterizedClass)
         and base.full_name != "typing.Generic"
     ):
       has_user_generic = True
@@ -477,9 +466,9 @@ def _merge_type(
   Raises:
     GenericTypeError: if the types don't match.
   """
-  if t0 is None or _isinstance(t0, "Unsolvable"):
+  if t0 is None or isinstance(t0, _abstract.Unsolvable):
     return t1
-  if t1 is None or _isinstance(t1, "Unsolvable"):
+  if t1 is None or isinstance(t1, _abstract.Unsolvable):
     return t0
   # t0 is a base of t1
   if t0 in t1.mro:
@@ -518,21 +507,23 @@ def parse_formal_type_parameters(
   ) -> "_instance_base.SimpleValue":
     return _merge_type(t0, t1, name, base)
 
-  if _isinstance(base, "ParameterizedClass"):
+  if isinstance(base, _abstract.ParameterizedClass):
     if base.full_name == "typing.Generic":
       return
-    if _isinstance(base.base_cls, ("InterpreterClass", "PyTDClass")):  # pytype: disable=attribute-error
+    if isinstance(
+        base.base_cls, (_abstract.InterpreterClass, _abstract.PyTDClass)
+    ):
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
-          base.base_cls.all_formal_type_parameters, merge  # pytype: disable=attribute-error
+          base.base_cls.all_formal_type_parameters, merge
       )
-    params = base.get_formal_type_parameters()  # pytype: disable=attribute-error
+    params = base.get_formal_type_parameters()
     if hasattr(container, "cls"):
       container_template = container.cls.template
     else:
       container_template = ()
     for name, param in params.items():
-      if _isinstance(param, "TypeParameter"):
+      if isinstance(param, _abstract.TypeParameter):
         # We have type parameter renaming, e.g.,
         #  class List(Generic[T]): pass
         #  class Foo(List[U]): pass
@@ -553,15 +544,15 @@ def parse_formal_type_parameters(
           # Two unrelated containers happen to use the same type
           # parameter but with different types.
           last_type = formal_type_parameters[name]
-          formal_type_parameters[name] = merge(last_type, param, name)
+          formal_type_parameters[name] = merge(last_type, param, name)  # pytype: disable=wrong-arg-types
   else:
-    if _isinstance(base, ("InterpreterClass", "PyTDClass")):
+    if isinstance(base, (_abstract.InterpreterClass, _abstract.PyTDClass)):
       # merge the type parameters info from base class
-      formal_type_parameters.merge_from(base.all_formal_type_parameters, merge)  # pytype: disable=attribute-error
+      formal_type_parameters.merge_from(base.all_formal_type_parameters, merge)
     if base.template:
       # handle unbound type parameters
       for item in base.template:
-        if _isinstance(item, "TypeParameter"):
+        if isinstance(item, _abstract.TypeParameter):
           # This type parameter will be set as `ANY`.
           name = full_type_name(base, item.name)
           if name not in formal_type_parameters:
@@ -578,7 +569,7 @@ def full_type_name(val: "_instance_base.SimpleValue", name: str) -> str:
   Returns:
     The full type parameter name (e.g., List.T).
   """
-  if _isinstance(val, "Instance"):
+  if isinstance(val, _abstract.Instance):
     return full_type_name(val.cls, name)
   # The type is in current `class`
   for t in val.template:
@@ -597,7 +588,7 @@ def maybe_extract_tuple(t: cfg.Variable) -> tuple[cfg.Variable, ...]:
   if len(values) > 1:
     return (t,)
   (v,) = values
-  if not _isinstance(v, "Tuple"):
+  if not isinstance(v, _abstract.Tuple):
     return (t,)
   return v.pyval
 
@@ -653,7 +644,7 @@ def match_type_container(typ, container_type_name: str | tuple[str, ...]):
   if isinstance(container_type_name, str):
     container_type_name = (container_type_name,)
   if not (
-      _isinstance(typ, "ParameterizedClass")
+      isinstance(typ, _abstract.ParameterizedClass)
       and typ.full_name in container_type_name
   ):
     return None
@@ -682,21 +673,21 @@ def get_annotations_dict(
     annots = get_atomic_value(annots_var)
   except ConversionError:
     return None
-  return annots if _isinstance(annots, "AnnotationsDict") else None
+  return annots if isinstance(annots, _abstract.AnnotationsDict) else None
 
 
 def is_concrete_dict(val: "_base.BaseValue") -> bool:
-  return val.is_concrete and _isinstance(val, "Dict")
+  return val.is_concrete and isinstance(val, _abstract.Dict)
 
 
 def is_concrete_list(val: "_base.BaseValue") -> bool:
-  return val.is_concrete and _isinstance(val, "List")
+  return val.is_concrete and isinstance(val, _abstract.List)
 
 
 def is_indefinite_iterable(val: "_base.BaseValue") -> bool:
   """True if val is a non-concrete instance of typing.Iterable."""
-  instance = _isinstance(val, "Instance")
-  cls_instance = _isinstance(val.cls, "Class")
+  instance = isinstance(val, _abstract.Instance)
+  cls_instance = isinstance(val.cls, _abstract.Class)
   if not (instance and cls_instance and not val.is_concrete):
     return False
   for cls in val.cls.mro:
@@ -705,7 +696,7 @@ def is_indefinite_iterable(val: "_base.BaseValue") -> bool:
     elif cls.full_name == "builtins.tuple":
       # A tuple's cls attribute may point to either PyTDClass(tuple) or
       # TupleClass; only the former is indefinite.
-      return _isinstance(cls, "PyTDClass")
+      return isinstance(cls, _abstract.PyTDClass)
     elif cls.full_name == "typing.Iterable":
       return True
   return False
@@ -717,13 +708,16 @@ def is_var_indefinite_iterable(var: cfg.Variable) -> bool:
 
 
 def is_dataclass(val: "class_mixin.Class") -> bool:
-  # TODO: b/350643999 - _isinstance call possibly not needed.
-  return _isinstance(val, "Class") and "__dataclass_fields__" in val.metadata  # pytype: disable=attribute-error
+  # TODO: b/350643999 - isinstance call possibly not needed.
+  return (
+      isinstance(val, _abstract.Class)
+      and "__dataclass_fields__" in val.metadata
+  )
 
 
 def is_attrs(val: "class_mixin.Class") -> bool:
-  # TODO: b/350643999 - _isinstance call possibly not needed.
-  return _isinstance(val, "Class") and "__attrs_attrs__" in val.metadata  # pytype: disable=attribute-error
+  # TODO: b/350643999 - isinstance call possibly not needed.
+  return isinstance(val, _abstract.Class) and "__attrs_attrs__" in val.metadata
 
 
 def merged_type_parameter(
@@ -741,7 +735,7 @@ def merged_type_parameter(
 # syntax to typeguard something which is on the property, we would need to
 # change the callsite to pass in var.data[0] instead.
 def is_var_splat(var: cfg.Variable) -> bool:
-  if var.data and _isinstance(var.data[0], "Splat"):
+  if var.data and isinstance(var.data[0], _abstract.Splat):
     # A splat should never have more than one binding, since we create and use
     # it immediately.
     assert len(var.bindings) == 1
@@ -755,11 +749,17 @@ def unwrap_splat(var: cfg.Variable) -> "cfg.Variable":
 
 def is_callable(value: "_base.BaseValue") -> bool:
   """Returns whether 'value' is a callable."""
-  if _isinstance(
-      value, ("Function", "BoundFunction", "ClassMethod", "StaticMethod")
+  if isinstance(
+      value,
+      (
+          _abstract.Function,
+          _abstract.BoundFunction,
+          _abstract.ClassMethod,
+          _abstract.StaticMethod,
+      ),
   ):
     return True
-  if not _isinstance(value.cls, "Class"):
+  if not isinstance(value.cls, _abstract.Class):
     return False
   _, attr = value.ctx.attribute_handler.get_attribute(
       value.ctx.root_node, value.cls, "__call__"
@@ -775,7 +775,7 @@ def expand_type_parameter_instances(
   seen = set()
   while bindings:
     b = bindings.pop(0)
-    if _isinstance(b.data, "TypeParameterInstance"):
+    if isinstance(b.data, _abstract.TypeParameterInstance):
       if b.data in seen:
         continue
       seen.add(b.data)
@@ -792,7 +792,7 @@ def get_type_parameter_substitutions(
   """Get values for type_params from val's type parameters."""
   subst = {}
   for p in type_params:
-    if _isinstance(val, "Class"):
+    if isinstance(val, _abstract.Class):
       param_value = val.get_formal_type_parameter(p.name).instantiate(
           val.ctx.root_node
       )
@@ -806,7 +806,7 @@ def is_type_variable(
     val: "_base.BaseValue",
 ) -> "TypeGuard[pytd.TypeParameter|pytd.ParamSpec]":
   """Check if a value is a type variable (TypeVar or ParamSpec)."""
-  return _isinstance(val, ("TypeParameter", "ParamSpec"))
+  return isinstance(val, (_abstract.TypeParameter, _abstract.ParamSpec))
 
 
 def build_generic_template(
@@ -835,7 +835,7 @@ def build_generic_template(
 
 def is_generic_protocol(val: "_base.BaseValue") -> bool:
   return (
-      _isinstance(val, "ParameterizedClass")
+      isinstance(val, _abstract.ParameterizedClass)
       and val.full_name == "typing.Protocol"
   )
 
@@ -874,26 +874,26 @@ def flatten(
     True iff a value was ignored during flattening.
   """
   # Used by special_builtins.IsInstance and IsSubclass
-  if _isinstance(value, "AnnotationClass"):
-    value = value.base_cls  # pytype: disable=attribute-error
-  if _isinstance(value, "Class"):
+  if isinstance(value, _abstract.AnnotationClass):
+    value = value.base_cls
+  if isinstance(value, _abstract.Class):
     # A single class, no ambiguity.
-    classes.append(value)  # pytype: disable=container-type-mismatch
+    classes.append(value)
     return False
-  elif _isinstance(value, "Tuple"):
+  elif isinstance(value, _abstract.Tuple):
     # A tuple, need to process each element.
     ambiguous = False
-    for var in value.pyval:  # pytype: disable=attribute-error
+    for var in value.pyval:
       if len(var.bindings) != 1 or flatten(var.bindings[0].data, classes):
         # There were either multiple bindings or ambiguity deeper in the
         # recursion.
         ambiguous = True
     return ambiguous
-  elif _isinstance(value, "Union"):
+  elif isinstance(value, _abstract.Union):
     # A Union cannot be used in an isinstance call before Python 3.10, but
     # there's no harm in processing it anyway.
     ambiguous = False
-    for val in value.options:  # pytype: disable=attribute-error
+    for val in value.options:
       if flatten(val, classes):
         ambiguous = True
     return ambiguous
@@ -945,10 +945,13 @@ def maybe_unwrap_decorated_function(func: "_function_base.Function"):
 
 def unwrap_final(val: "_base.BaseValue") -> "_base.BaseValue":
   """Unwrap Final[T] -> T."""
-  if _isinstance(val, "FinalAnnotation"):
+  if isinstance(val, _abstract.FinalAnnotation):
     # Final type created via an annotation in the current module
-    return val.annotation  # pytype: disable=attribute-error
-  elif _isinstance(val, "Instance") and val.cls.full_name == "typing.Final":
+    return val.annotation
+  elif (
+      isinstance(val, _abstract.Instance)
+      and val.cls.full_name == "typing.Final"
+  ):
     # Final types loaded from a pyi file get converted to abstract.Instance
     # with cls=typing.Final and instance type parameter T
     return get_atomic_value(val.get_instance_type_parameter(T))
@@ -995,25 +998,25 @@ def get_generic_type(
     The type of the value, with concrete type parameters replaced by TypeVars.
     For example, the generic type of `[0]` is `List[T]`.
   """
-  is_class = _isinstance(val, "Class")
+  is_class = isinstance(val, _abstract.Class)
   if is_class:
     cls = val
-  elif _isinstance(val.cls, "Class"):
+  elif isinstance(val.cls, _abstract.Class):
     cls = val.cls
   else:
     return None
   for parent_cls in cls.mro:
-    if _isinstance(parent_cls, "ParameterizedClass"):
-      base_cls = parent_cls.base_cls  # pytype: disable=attribute-error
+    if isinstance(parent_cls, _abstract.ParameterizedClass):
+      base_cls = parent_cls.base_cls
     else:
       base_cls = parent_cls
-    if _isinstance(base_cls, "Class") and base_cls.template:
+    if isinstance(base_cls, _abstract.Class) and base_cls.template:
       ctx = base_cls.ctx
       params = {item.name: item for item in base_cls.template}
-      generic_cls = _make("ParameterizedClass", base_cls, params, ctx)
+      generic_cls = _abstract.ParameterizedClass(base_cls, params, ctx)
       if is_class:
-        return _make(
-            "ParameterizedClass", ctx.convert.type_type, {T: generic_cls}, ctx
+        return _abstract.ParameterizedClass(
+            ctx.convert.type_type, {T: generic_cls}, ctx
         )
       else:
         return generic_cls

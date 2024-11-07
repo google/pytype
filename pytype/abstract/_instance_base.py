@@ -10,13 +10,12 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.errors import error_types
 
-log: logging.Logger = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-
 if TYPE_CHECKING:
   from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _typing  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class SimpleValue(_base.BaseValue):

@@ -30,11 +30,12 @@ if TYPE_CHECKING:
   from pytype.abstract import _instance_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _interpreter_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.pyc import opcodes  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
 
 log: logging.Logger = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 def argname(i: int) -> str:
@@ -44,26 +45,22 @@ def argname(i: int) -> str:
 
 def get_signatures(func: "_function_base.Function") -> "list[Signature]":
   """Gets the given function's signatures."""
-  if _isinstance(func, "PyTDFunction"):
+  if isinstance(func, _abstract.PyTDFunction):
     # TODO: b/350643999 - There's something going wrong here. This is
     # implemented as a non-property method and it's not being called but yet
     # this code somehow doesn't get complained in tests. This will either crash
     # or not run upon reaching this part.
-    return [sig.signature for sig in func.signatures]  # pytype: disable=attribute-error
-  elif _isinstance(func, "InterpreterFunction"):
-    f: "_interpreter_function.InterpreterFunction" = func  # pytype: disable=annotation-type-mismatch
-    return [f.signature for f in f.signature_functions()]
-  elif _isinstance(func, "BoundFunction"):
-    f: "_function_base.BoundFunction" = func  # pytype: disable=annotation-type-mismatch
-    sigs = get_signatures(f.underlying)
+    return [sig.signature for sig in func.signatures]
+  elif isinstance(func, _abstract.InterpreterFunction):
+    return [f.signature for f in func.signature_functions()]
+  elif isinstance(func, _abstract.BoundFunction):
+    sigs = get_signatures(func.underlying)
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
-  elif _isinstance(func, ("ClassMethod", "StaticMethod")):
-    f: "_function_base.ClassMethod | _function_base.StaticMethod" = func  # pytype: disable=annotation-type-mismatch
-    return get_signatures(f.method)
-  elif _isinstance(func, "SignedFunction"):
-    f: "_function_base.SignedFunction" = func  # pytype: disable=annotation-type-mismatch
-    return [f.signature]
-  elif _isinstance(func, "AMBIGUOUS_OR_EMPTY"):
+  elif isinstance(func, (_abstract.ClassMethod, _abstract.StaticMethod)):
+    return get_signatures(func.method)
+  elif isinstance(func, _abstract.SignedFunction):
+    return [func.signature]
+  elif isinstance(func, _abstract.AMBIGUOUS_OR_EMPTY):
     return [Signature.from_any()]
   elif func.__class__.__name__ == "PropertyInstance":
     # NOTE: We typically do not want to treat a PropertyInstance as a callable.
@@ -73,8 +70,8 @@ def get_signatures(func: "_function_base.Function") -> "list[Signature]":
     #   @property
     #   def f()...
     return []
-  elif _isinstance(func.cls, "CallableClass"):
-    return [Signature.from_callable(func.cls)]  # pytype: disable=wrong-arg-types
+  elif isinstance(func.cls, _abstract.CallableClass):
+    return [Signature.from_callable(func.cls)]
   else:
     unwrapped = abstract_utils.maybe_unwrap_decorated_function(func)
     if unwrapped:
@@ -83,7 +80,7 @@ def get_signatures(func: "_function_base.Function") -> "list[Signature]":
               get_signatures(f) for f in unwrapped.data
           )
       )
-    if _isinstance(func, "Instance"):
+    if isinstance(func, _abstract.Instance):
       _, call_var = func.ctx.attribute_handler.get_attribute(
           func.ctx.root_node,
           func,
@@ -184,18 +181,15 @@ class Signature(types.Signature):
     """Postprocess the given annotation."""
     ctx = annotation.ctx
     if name == self.varargs_name:
-      return _make(
-          "ParameterizedClass",
-          ctx.convert.tuple_type,
-          {abstract_utils.T: annotation},
-          ctx,
+      return _abstract.ParameterizedClass(
+          ctx.convert.tuple_type, {abstract_utils.T: annotation}, ctx
       )
     elif name == self.kwargs_name:
       params = {
           abstract_utils.K: ctx.convert.str_type,
           abstract_utils.V: annotation,
       }
-      return _make("ParameterizedClass", ctx.convert.dict_type, params, ctx)
+      return _abstract.ParameterizedClass(ctx.convert.dict_type, params, ctx)
     else:
       return annotation
 
@@ -293,15 +287,15 @@ class Signature(types.Signature):
     Returns:
       A new Concatenate object, or None if type2 cannot be concatenated to.
     """
-    if _isinstance(type2, "ParamSpec"):
+    if isinstance(type2, _abstract.ParamSpec):
       new_args = [type1, type2]
-    elif _isinstance(type2, "Concatenate"):
+    elif isinstance(type2, _abstract.Concatenate):
       # Pytype can't understand this custom isinstance check.
       type2 = cast(Any, type2)
       new_args = [type1] + type2.args + [type2.paramspec]
     else:
       return None
-    return _make("Concatenate", new_args, type1.ctx)
+    return _abstract.Concatenate(new_args, type1.ctx)
 
   def prepend_parameter(self: _SigT, name: str, typ: _base.BaseValue) -> _SigT:
     """Returns a new signature with a `name: typ` param added to the front."""
@@ -676,7 +670,7 @@ class Args:
     if not self.starstarargs or len(self.starstarargs.data) != 1:
       return None
     (kwdict,) = self.starstarargs.data
-    if not _isinstance(kwdict, "Dict"):
+    if not isinstance(kwdict, _abstract.Dict):
       return None
     return kwdict.pyval
 
@@ -807,9 +801,9 @@ class Args:
       # into starstarargs, so set starstarargs to None.
       assert starstarargs is not None
       kwdict = starstarargs.data[0]
-      if _isinstance(kwdict, "Dict") and not kwdict.is_concrete:
+      if isinstance(kwdict, _abstract.Dict) and not kwdict.is_concrete:
         cls = kwdict.cls
-        if _isinstance(cls, "PyTDClass"):
+        if isinstance(cls, _abstract.PyTDClass):
           # If cls is not already parameterized with the key and value types, we
           # parameterize it now to preserve them.
           params = {
@@ -818,7 +812,7 @@ class Args:
               )
               for name in (abstract_utils.K, abstract_utils.V)
           }
-          cls = _make("ParameterizedClass", ctx.convert.dict_type, params, ctx)
+          cls = _abstract.ParameterizedClass(ctx.convert.dict_type, params, ctx)
         starstarargs = cls.instantiate(node)
       else:
         starstarargs = None
@@ -877,7 +871,7 @@ class Args:
 
   def has_opaque_starargs_or_starstarargs(self) -> bool:
     return any(
-        arg and not _isinstance(arg, "PythonConstant")
+        arg and not isinstance(arg, _abstract.PythonConstant)
         for arg in (self.starargs, self.starstarargs)
     )
 
@@ -900,8 +894,8 @@ class ParamSpecMatch(_base.BaseValue):
     return self.to_variable(node)
 
   def prefix(self) -> "tuple[_typing.ParamSpec, ...]":
-    if _isinstance(self.paramspec, "Concatenate"):
-      return self.paramspec.args  # pytype: disable=attribute-error
+    if isinstance(self.paramspec, _abstract.Concatenate):
+      return self.paramspec.args
     else:
       return ()
 
@@ -1108,16 +1102,16 @@ def call_function(
   elif ctx.options.precise_return and len(func_var.bindings) == 1:
     (funcb,) = func_var.bindings
     func = funcb.data
-    if _isinstance(func, "BoundFunction"):
+    if isinstance(func, _abstract.BoundFunction):
       func = func.underlying
-    if _isinstance(func, "PyTDFunction"):
+    if isinstance(func, _abstract.PyTDFunction):
       node, result = PyTDReturnType(
           func.signatures[0].pytd_sig.return_type,
           datatypes.HashableDict(),
           [funcb],
           ctx,
       ).instantiate(node)
-    elif _isinstance(func, "InterpreterFunction"):
+    elif isinstance(func, _abstract.InterpreterFunction):
       sig = func.signature_functions()[0].signature
       ret = sig.annotations.get("return", ctx.convert.unsolvable)
       result = ctx.vm.init_class(node, ret)
@@ -1311,13 +1305,13 @@ def build_paramspec_signature(
   for i, typ in enumerate(r_args):
     name = f"_{i}"
     ret_posargs.append(name)
-    if not _isinstance(typ, "BaseValue"):
+    if not isinstance(typ, _abstract.BaseValue):
       typ = ctx.convert.constant_to_value(typ)
     ann[name] = typ
   # We have done prefix type matching in the matcher, so we can safely strip
   # off the lhs args from the sig by count.
   lhs = pspec_match.paramspec
-  l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
+  l_nargs = len(lhs.args) if isinstance(lhs, _abstract.Concatenate) else 0
   param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
   # All params need to be in the annotations dict or output.py crashes
   sig.populate_annotation_dict(ann, ctx, param_names)

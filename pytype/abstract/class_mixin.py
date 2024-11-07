@@ -3,7 +3,7 @@
 from collections.abc import Mapping, Sequence
 import dataclasses
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from pytype import datatypes
 from pytype.abstract import abstract_utils
@@ -13,10 +13,12 @@ from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
+if TYPE_CHECKING:
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
 log = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-_make = abstract_utils._make  # pylint: disable=protected-access
 
 _InterpreterFunction = Any  # can't import due to a circular dependency
 FunctionMapType = Mapping[str, Sequence[_InterpreterFunction]]
@@ -238,13 +240,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   def _init_protocol_attributes(self):
     """Compute this class's protocol attributes."""
-    if _isinstance(self, "ParameterizedClass"):
+    if isinstance(self, _abstract.ParameterizedClass):
       self.protocol_attributes = self.base_cls.protocol_attributes
       return
     if not self.has_protocol_base():
       self.protocol_attributes = set()
       return
-    if _isinstance(self, "PyTDClass") and self.pytd_cls.name.startswith(
+    if isinstance(self, _abstract.PyTDClass) and self.pytd_cls.name.startswith(
         "typing."
     ):
       protocol_attributes = set()
@@ -287,7 +289,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Compute and cache whether the class sets its own boolean value."""
     # A class's instances can evaluate to False if it defines __bool__ or
     # __len__.
-    if _isinstance(self, "ParameterizedClass"):
+    if isinstance(self, _abstract.ParameterizedClass):
       self.overrides_bool = self.base_cls.overrides_bool
       return
     for cls in self.mro:
@@ -328,7 +330,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Whether the class should be considered implicitly abstract."""
     # Protocols must be marked as abstract to get around the
     # [ignored-abstractmethod] check for interpreter classes.
-    if not _isinstance(self, "InterpreterClass"):
+    if not isinstance(self, _abstract.InterpreterClass):
       return False
     # We check self._bases (immediate bases) instead of self.mro because our
     # builtins and typing stubs are inconsistent about implementing abstract
@@ -400,7 +402,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     node, init = self.ctx.attribute_handler.get_attribute(
         node, self.cls, "__init__"
     )
-    if not init or not any(_isinstance(f, "SignedFunction") for f in init.data):
+    if not init or not any(
+        isinstance(f, _abstract.SignedFunction) for f in init.data
+    ):
       # Only SignedFunctions (InterpreterFunction and SimpleFunction) have
       # interesting side effects.
       return node
@@ -442,8 +446,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       return node, None
     if len(new.bindings) == 1:
       f = new.bindings[0].data
-      if _isinstance(
-          f, "AMBIGUOUS_OR_EMPTY"
+      if isinstance(
+          f, _abstract.AMBIGUOUS_OR_EMPTY
       ) or self.ctx.convert.object_type.is_object_new(f):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
@@ -490,7 +494,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     key = self.ctx.vm.current_opcode or node
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = _make("Instance", self, self.ctx, container)
+      self._instance_cache[key] = _abstract.Instance(self, self.ctx, container)  # pytype: disable=wrong-arg-types
     return self._instance_cache[key]
 
   def _check_not_instantiable(self):
@@ -506,8 +510,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       return
     if self.ctx.vm.frame and self.ctx.vm.frame.func:
       calling_func = self.ctx.vm.frame.func.data
-      if _isinstance(
-          calling_func, "InterpreterFunction"
+      if isinstance(
+          calling_func, _abstract.InterpreterFunction
       ) and calling_func.name.startswith(f"{self.name}."):
         return
     self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
@@ -567,7 +571,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     for row in bases:
       baselist = []
       for base in row:
-        if _isinstance(base, "ParameterizedClass"):
+        if isinstance(base, _abstract.ParameterizedClass):
           base2cls[base.base_cls] = base
           baselist.append(base.base_cls)
         else:
@@ -638,7 +642,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Any subclass of a Parameterized dataclass must inherit attributes from
       # its parent's init.
       # See https://github.com/google/pytype/issues/1104
-      if _isinstance(base_cls, "ParameterizedClass"):
+      if isinstance(base_cls, _abstract.ParameterizedClass):
         type_params = base_cls.formal_type_parameters
         base_cls = base_cls.base_cls
       if metadata_key in base_cls.metadata:

@@ -16,12 +16,14 @@ from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 from pytype.types import types
 
-log: logging.Logger = logging.getLogger(__name__)
-_make = abstract_utils._make  # pylint: disable=protected-access
-
 if TYPE_CHECKING:
   from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype import state  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 def _var_map(
@@ -295,7 +297,7 @@ class Generator(BaseGenerator):
       self, node: cfg.CFGNode, name: str, valself: cfg.Variable
   ):
     if name == "__iter__":
-      f = _make("NativeFunction", name, self.__iter__, self.ctx)
+      f = _abstract.NativeFunction(name, self.__iter__, self.ctx)
       return f.to_variable(node)
     elif name == "__next__":
       return self.to_variable(node)
@@ -325,7 +327,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
         for name, instance_param in tuple(enumerate(content))
         + ((abstract_utils.T, combined_content),)
     }
-    cls = _make("TupleClass", ctx.convert.tuple_type, class_params, ctx)
+    cls = _abstract.TupleClass(ctx.convert.tuple_type, class_params, ctx)
     super().__init__(cls, ctx)
     mixin.PythonConstant.init_mixin(self, content)
     self._hash = None  # memoized due to expensive computation

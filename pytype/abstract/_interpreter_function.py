@@ -21,10 +21,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
 
-
-log: logging.Logger = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-
 if TYPE_CHECKING:
   from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype import datatypes  # pylint: disable=g-bad-import-order,g-import-not-at-top
@@ -34,6 +30,11 @@ if TYPE_CHECKING:
   from pytype.blocks import blocks  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.pyc import opcodes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 def _matches_generator_helper(
@@ -52,7 +53,7 @@ def _matches_generator_helper(
     return (
         isinstance(base_cls, _classes.PyTDClass)
         and base_cls.name in allowed_types
-    ) or _isinstance(base_cls, "AMBIGUOUS_OR_EMPTY")
+    ) or isinstance(base_cls, _abstract.AMBIGUOUS_OR_EMPTY)
 
 
 def _matches_generator(type_obj: "_base.BaseValue") -> bool:
@@ -567,7 +568,7 @@ class InterpreterFunction(_function_base.SignedFunction):
   ) -> function.Signature | None:
     # Unpack the paramspec substitution we have created in the matcher.
     rhs = callable_type.formal_type_parameters[0]
-    if _isinstance(rhs, "Concatenate"):
+    if isinstance(rhs, _abstract.Concatenate):
       r_pspec = rhs.paramspec
       r_args = rhs.args
     else:
@@ -593,15 +594,17 @@ class InterpreterFunction(_function_base.SignedFunction):
     if not sig.has_return_annotation:
       return
     retval = sig.annotations["return"]
-    if not (_isinstance(retval, "CallableClass") and retval.has_paramspec()):  # pytype: disable=attribute-error
+    if not (
+        isinstance(retval, _abstract.CallableClass) and retval.has_paramspec()
+    ):
       return
     ret_sig = self._paramspec_signature(retval, substs)
     if ret_sig:
       ret_annot = self.ctx.pytd_convert.signature_to_callable(ret_sig)
       annotations["return"] = ret_annot
     for name, _, annot in sig.iter_args(callargs):
-      if _isinstance(annot, "CallableClass") and annot.has_paramspec():  # pytype: disable=attribute-error
-        param_sig = self._paramspec_signature(annot, substs)  # pytype: disable=wrong-arg-types
+      if isinstance(annot, _abstract.CallableClass) and annot.has_paramspec():
+        param_sig = self._paramspec_signature(annot, substs)
         if param_sig:
           param_annot = self.ctx.pytd_convert.signature_to_callable(param_sig)
           annotations[name] = param_annot

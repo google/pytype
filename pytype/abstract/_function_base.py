@@ -18,9 +18,6 @@ from pytype.abstract import function
 from pytype.errors import error_types
 from pytype.types import types
 
-log: logging.Logger = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-
 if TYPE_CHECKING:
   from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype import datatypes  # pylint: disable=g-bad-import-order,g-import-not-at-top
@@ -29,6 +26,11 @@ if TYPE_CHECKING:
   from pytype.abstract import _pytd_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.pyc import opcodes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class Function(_instance_base.SimpleValue, types.Function):
@@ -697,16 +699,16 @@ class SignedFunction(Function):
   def _check_paramspec_args(self, args: function.Args) -> None:
     args_pspec, kwargs_pspec = None, None
     for name, _, formal in self.signature.iter_args(args):
-      if not _isinstance(formal, "ParameterizedClass"):
+      if not isinstance(formal, _abstract.ParameterizedClass):
         continue
-      params = formal.get_formal_type_parameters()  # pytype: disable=attribute-error
+      params = formal.get_formal_type_parameters()
       if name == self.signature.varargs_name:
         for param in params.values():
-          if _isinstance(param, "ParamSpecArgs"):
+          if isinstance(param, _abstract.ParamSpecArgs):
             args_pspec = param
       elif name == self.signature.kwargs_name:
         for param in params.values():
-          if _isinstance(param, "ParamSpecKwargs"):
+          if isinstance(param, _abstract.ParamSpecKwargs):
             kwargs_pspec = param
     if args_pspec or kwargs_pspec:
       valid = (

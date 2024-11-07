@@ -19,9 +19,9 @@ if TYPE_CHECKING:
   from pytype.abstract import _classes  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import function  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.typegraph import cfg  # pylint: disable=g-bad-import-order,g-import-not-at-top
-
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-_make = abstract_utils._make  # pylint: disable=protected-access
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
 
 class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
@@ -314,7 +314,10 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     raise NotImplementedError(self.__class__.__name__)
 
   def to_annotation_container(self):
-    if _isinstance(self, "PyTDClass") and self.full_name == "builtins.tuple":
+    if (
+        isinstance(self, _abstract.PyTDClass)
+        and self.full_name == "builtins.tuple"
+    ):
       # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
       # that heterogeneous tuple annotations work. We need the isinstance()
       # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
@@ -324,7 +327,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       ).get_module("Tuple")
       typing.load_lazy_attribute("Tuple")
       return abstract_utils.get_atomic_value(typing.members["Tuple"])
-    return _make("AnnotationContainer", self.name, self.ctx, self)
+    return _abstract.AnnotationContainer(self.name, self.ctx, self)  # pytype: disable=wrong-arg-types
 
   def to_variable(self, node: "cfg.CFGNode") -> "cfg.Variable":
     """Build a variable out of this abstract value.
@@ -412,34 +415,32 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
     # To do argument matching for custom generic classes, the 'self' annotation
     # needs to be replaced with a generic type.
 
-    # We need to disable attribute-error because pytype doesn't understand our
-    # special _isinstance function.
-    # pytype: disable=attribute-error
-    if (
-        not _isinstance(self, "SignedFunction")
-        or not self.signature.param_names
-    ):
+    if not isinstance(self, _abstract.SignedFunction):
+      return False
+    self: _abstract.SignedFunction
+    if not self.signature.param_names:
       # no 'self' to replace
       return False
     # SimpleFunctions are methods we construct internally for generated classes
     # like namedtuples.
-    if not _isinstance(self, ("InterpreterFunction", "SimpleFunction")):
+    if not isinstance(
+        self, (_abstract.InterpreterFunction, _abstract.SimpleFunction)
+    ):
       return False
     # We don't want to clobber our own generic annotations.
     return (
         self.signature.param_names[0] not in self.signature.annotations
         or not self.signature.annotations[self.signature.param_names[0]].formal
     )
-    # pytype: enable=attribute-error
 
 
 def _get_template(val: BaseValue) -> set[str]:
   """Get the value's class template."""
-  if _isinstance(val, "Class"):
+  if isinstance(val, _abstract.Class):
     res = {t.full_name for t in val.template}
-    if _isinstance(val, "ParameterizedClass"):
+    if isinstance(val, _abstract.ParameterizedClass):
       res.update(_get_template(val.base_cls))
-    elif _isinstance(val, ("PyTDClass", "InterpreterClass")):
+    elif isinstance(val, (_abstract.PyTDClass, _abstract.InterpreterClass)):
       for base in val.bases():
         base = abstract_utils.get_atomic_value(
             base, default=val.ctx.convert.unsolvable
@@ -473,12 +474,12 @@ def _compute_template(val: BaseValue) -> Sequence[BaseValue]:
   Raises:
     GenericTypeError: if the type annotation for generic type is incorrect
   """
-  if _isinstance(val, "PyTDClass"):
+  if isinstance(val, _abstract.PyTDClass):
     return [
         val.ctx.convert.constant_to_value(itm.type_param)
         for itm in val.pytd_cls.template
     ]
-  elif not _isinstance(val, "InterpreterClass"):
+  elif not isinstance(val, _abstract.InterpreterClass):
     return ()
   bases = [
       abstract_utils.get_atomic_value(base, default=val.ctx.convert.unsolvable)
@@ -489,7 +490,7 @@ def _compute_template(val: BaseValue) -> Sequence[BaseValue]:
   # Compute the number of `typing.Generic` and collect the type parameters
   for base in bases:
     if base.full_name == "typing.Generic":
-      if _isinstance(base, "PyTDClass"):
+      if isinstance(base, _abstract.PyTDClass):
         raise abstract_utils.GenericTypeError(
             val, "Cannot inherit from plain Generic"
         )
@@ -506,10 +507,10 @@ def _compute_template(val: BaseValue) -> Sequence[BaseValue]:
     # `typing.Generic`
     for base in bases:
       if base.full_name != "typing.Generic":
-        if _isinstance(base, "ParameterizedClass"):
+        if isinstance(base, _abstract.ParameterizedClass):
           for item in base.template:
             param = base.formal_type_parameters.get(item.name)
-            if _isinstance(base, "TypeParameter"):
+            if isinstance(base, _abstract.TypeParameter):
               t = param.with_scope(val.full_name)
               if t not in template:
                 raise abstract_utils.GenericTypeError(
@@ -519,11 +520,11 @@ def _compute_template(val: BaseValue) -> Sequence[BaseValue]:
     # Compute template parameters according to C3
     seqs = []
     for base in bases:
-      if _isinstance(base, "ParameterizedClass"):
+      if isinstance(base, _abstract.ParameterizedClass):
         seq = []
         for item in base.template:
           param = base.formal_type_parameters.get(item.name)
-          if _isinstance(param, "TypeParameter"):
+          if isinstance(param, _abstract.TypeParameter):
             seq.append(param.with_scope(val.full_name))
         seqs.append(seq)
     try:

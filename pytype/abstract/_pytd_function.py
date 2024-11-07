@@ -26,13 +26,14 @@ from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.types import types
 
-log: logging.Logger = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-
-
 if TYPE_CHECKING:
   from pytype import context  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype import matcher  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
+
+log: logging.Logger = logging.getLogger(__name__)
 
 
 class SignatureMutationError(Exception):
@@ -291,7 +292,7 @@ class PyTDFunction(_function_base.Function):
       # - An annotation has a type param that is not ambiguous or empty
       # - The mutation adds a type that is not ambiguous or empty
       def should_check(value):
-        return not _isinstance(value, "AMBIGUOUS_OR_EMPTY")
+        return not isinstance(value, _abstract.AMBIGUOUS_OR_EMPTY)
 
       def compatible_with(new, existing, view):
         """Check whether a new type can be added to a container."""
@@ -376,7 +377,7 @@ class PyTDFunction(_function_base.Function):
         name = list(names)[0] if len(names) == 1 else None
         # Find the container class
         for base in obj.cls.mro:
-          if _isinstance(base, "ParameterizedClass"):
+          if isinstance(base, _abstract.ParameterizedClass):
             cls = base
             break
         else:
@@ -427,7 +428,7 @@ class PyTDFunction(_function_base.Function):
     if len(self.signatures) <= 1:
       return False
     for var in args.get_variables():
-      if any(_isinstance(v, "AMBIGUOUS_OR_EMPTY") for v in var.data):
+      if any(isinstance(v, _abstract.AMBIGUOUS_OR_EMPTY) for v in var.data):
         return True
     # An opaque *args or **kwargs behaves like an unknown.
     return args.has_opaque_starargs_or_starstarargs()
@@ -812,16 +813,16 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     # Make sure the type params from subst get applied to val. constant_to_value
     # does not reliably do the type substitution because it ignores `subst` when
     # caching results.
-    if _isinstance(val, "ParameterizedClass"):
+    if isinstance(val, _abstract.ParameterizedClass):
       inner_types = []
       for k, v in val.formal_type_parameters.items():
-        if _isinstance(v, "TypeParameter") and v.full_name in subst:
+        if isinstance(v, _abstract.TypeParameter) and v.full_name in subst:
           typ = self.ctx.convert.merge_classes(subst[v.full_name].data)
           inner_types.append((k, typ))
         else:
           inner_types.append((k, v))
       val = val.replace(inner_types)
-    elif _isinstance(val, "TypeParameter") and val.full_name in subst:
+    elif isinstance(val, _abstract.TypeParameter) and val.full_name in subst:
       val = self.ctx.convert.merge_classes(subst[val.full_name].data)
     ret = self._paramspec_signature(return_callable, val, subst)
     if ret:

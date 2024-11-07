@@ -27,9 +27,11 @@ if TYPE_CHECKING:
   from pytype.abstract import _function_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _interpreter_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _typing  # pylint: disable=g-bad-import-order,g-import-not-at-top
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+else:
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
 log: logging.Logger = logging.getLogger(__name__)
-_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
 class BuildClass(_base.BaseValue):
@@ -59,7 +61,7 @@ class BuildClass(_base.BaseValue):
           "Invalid ambiguous argument to __build_class__"
       )
     (func,) = funcvar.data
-    if not _isinstance(func, "InterpreterFunction"):
+    if not isinstance(func, _abstract.InterpreterFunction):
       raise abstract_utils.ConversionError(
           "Invalid argument to __build_class__"
       )
@@ -78,7 +80,7 @@ class BuildClass(_base.BaseValue):
           subst.update({
               v.name: any_var
               for v in base.formal_type_parameters.values()
-              if _isinstance(v, "TypeParameter")
+              if isinstance(v, _abstract.TypeParameter)
           })
 
     node, _ = func.call(
@@ -166,7 +168,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     skip = set()
     for mbr in self.members.values():
       for m in mbr.data:
-        if not _isinstance(m, "Function"):
+        if not isinstance(m, _abstract.Function):
           continue
         methods.append(m)
         # We don't need to update the same method twice.
@@ -214,7 +216,9 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       member_data = [
           m
           for m in member.data
-          if _isinstance(m, ("InterpreterClass", "InterpreterFunction"))
+          if isinstance(
+              m, (_abstract.InterpreterClass, _abstract.InterpreterFunction)
+          )
       ]
       if not member_data:
         continue
@@ -294,7 +298,9 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
   def get_own_abstract_methods(self) -> set[str]:
     def _can_be_abstract(var):
-      return any(_isinstance(v, "Function") and v.is_abstract for v in var.data)
+      return any(
+          isinstance(v, _abstract.Function) and v.is_abstract for v in var.data
+      )
 
     return {name for name, var in self.members.items() if _can_be_abstract(var)}
 
@@ -1069,9 +1075,9 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     return [self.formal_type_parameters[i] for i in range(self.num_args)]
 
   def has_paramspec(self) -> bool:
-    return _isinstance(
+    return isinstance(
         self.formal_type_parameters[abstract_utils.ARGS],
-        ("ParamSpec", "Concatenate"),
+        (_abstract.ParamSpec, _abstract.Concatenate),
     )
 
 
@@ -1188,7 +1194,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
       p = self.formal_type_parameters[i]
       if container is abstract_utils.DUMMY_CONTAINER or (
           isinstance(container, _instance_base.SimpleValue)
-          and _isinstance(p, "TypeParameter")
+          and isinstance(p, _abstract.TypeParameter)
           and p.full_name in container.all_template_names
       ):
         content.append(p.instantiate(self.ctx.root_node, container))
@@ -1283,7 +1289,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     except abstract_utils.ConversionError:
       pass
     else:
-      if self._instance and _isinstance(other, "Tuple"):
+      if self._instance and isinstance(other, _abstract.Tuple):
         pyval = self._instance.pyval + other.pyval
         ret = _instances.Tuple(pyval, self.ctx)
         return node, ret.to_variable(node)
