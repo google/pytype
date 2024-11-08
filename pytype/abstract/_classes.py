@@ -27,9 +27,9 @@ if TYPE_CHECKING:
   from pytype.abstract import _function_base  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _interpreter_function  # pylint: disable=g-bad-import-order,g-import-not-at-top
   from pytype.abstract import _typing  # pylint: disable=g-bad-import-order,g-import-not-at-top
-  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top,g-bad-import-order
 else:
-  _abstract = abstract_utils._abstract  # pylint: disable=protected-access
+  _abstract = abstract_utils._abstract  # pylint: disable=protected-access,g-import-not-at-top,g-bad-import-order
 
 log: logging.Logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       name: str,
       bases: list[cfg.Variable],
       members: dict[str, cfg.Variable],
-      cls: _base.BaseValue,
+      cls: class_mixin.Class,
       first_opcode: opcodes.Opcode | None,
       undecorated_methods: class_mixin.FunctionMapType | None,
       ctx: "context.Context",
@@ -332,7 +332,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       container: (
           _instance_base.SimpleValue | abstract_utils.DummyContainer | None
       ) = None,
-  ):
+  ) -> cfg.Variable:
     if self.ctx.vm.current_opcode:
       return self._new_instance(container, node, None).to_variable(node)
     else:
@@ -609,9 +609,9 @@ class PyTDClass(
           _instance_base.SimpleValue | abstract_utils.DummyContainer | None
       ),
       node: cfg.CFGNode,
-      args: function.Args,
+      args: function.Args | None,
   ) -> _instance_base.Instance | _instances.Tuple:
-    if self.full_name == "builtins.tuple" and args.is_empty():
+    if self.full_name == "builtins.tuple" and args.is_empty():  # pytype: disable=attribute-error
       value = _instances.Tuple((), self.ctx)
     else:
       value = _instance_base.Instance(

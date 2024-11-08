@@ -8,26 +8,29 @@ from typing import Any, TYPE_CHECKING
 from pytype import datatypes
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
-from pytype.abstract import mixin  # pylint: disable=unused-import
+from pytype.abstract import mixin
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
 if TYPE_CHECKING:
-  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+  from pytype import context  # pylint: disable=g-import-not-at-top,g-bad-import-order
+  from pytype.abstract import _base  # pylint: disable=g-import-not-at-top,g-bad-import-order
+  from pytype.abstract import _interpreter_function  # pylint: disable=g-import-not-at-top,g-bad-import-order
+  from pytype.abstract import _instance_base  # pylint: disable=g-import-not-at-top,g-bad-import-order
+  from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top,g-bad-import-order
 else:
   _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
-log = logging.getLogger(__name__)
 
-_InterpreterFunction = Any  # can't import due to a circular dependency
-FunctionMapType = Mapping[str, Sequence[_InterpreterFunction]]
+FunctionMapType = Mapping[str, Sequence["_interpreter_function.InterpreterFunction"]]
+log: logging.Logger = logging.getLogger(__name__)
 
 
 # Classes have a metadata dictionary that can store arbitrary metadata for
 # various overlays. We define the dictionary keys here so that they can be
 # shared by abstract.py and the overlays.
-_METADATA_KEYS = {
+_METADATA_KEYS: dict[str, str] = {
     "dataclasses.dataclass": "__dataclass_fields__",
     # attr.s gets resolved to attr._make.attrs in pyi files but intercepted by
     # the attr overlay as attr.s when processing bytecode.
@@ -51,7 +54,7 @@ _METADATA_KEYS = {
 }
 
 
-def get_metadata_key(decorator):
+def get_metadata_key(decorator: str) -> str | None:
   return _METADATA_KEYS.get(decorator)
 
 
@@ -82,10 +85,16 @@ class Attribute:
   default: Any
   kind: str = ""
   init_type: Any = None
-  pytd_const: Any = None
+  pytd_const: pytd.Constant | None = None
 
   @classmethod
-  def from_pytd_constant(cls, const, ctx, *, kw_only=False):
+  def from_pytd_constant(
+      cls,
+      const: pytd.Constant,
+      ctx: "context.Context",
+      *,
+      kw_only: bool = False,
+  ) -> "Attribute":
     """Generate an Attribute from a pytd.Constant."""
     typ = ctx.convert.constant_to_value(const.type)
     # We want to generate the default from the type, not from the value
@@ -103,19 +112,21 @@ class Attribute:
     )
 
   @classmethod
-  def from_param(cls, param, ctx):
+  def from_param(
+      cls, param: pytd.Parameter, ctx: "context.Context"
+  ) -> "Attribute":
     const = pytd.Constant(param.name, param.type, param.optional)
     return cls.from_pytd_constant(
         const, ctx, kw_only=param.kind == pytd.ParameterKind.KWONLY
     )
 
-  def to_pytd_constant(self):
+  def to_pytd_constant(self) -> pytd.Constant | None:
     # TODO(mdemello): This is a bit fragile, but we only call this when
     # constructing a dataclass from a PyTDClass, where the initial Attribute
     # will have been created from a parent PyTDClass.
     return self.pytd_const
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     return str({
         "name": self.name,
         "typ": self.typ,
@@ -158,13 +169,13 @@ class ClassBuilderProperties:
   new_class_var: cfg.Variable | None = None
   class_type: type["Class"] | None = None
   decorators: list[str] | None = None
-  undecorated_methods: FunctionMapType | None = None
+  undecorated_methods: "FunctionMapType | None" = None
 
 
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   """Mix-in to mark all class-like values."""
 
-  overloads = (
+  overloads: Sequence[str] = (
       "_get_class",
       "call",
       "compute_mro",
@@ -173,12 +184,12 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       "update_official_name",
   )
 
-  def __new__(cls, *unused_args, **unused_kwds):
+  def __new__(cls, *unused_args, **unused_kwds) -> "Class":
     """Prevent direct instantiation."""
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls)
 
-  def init_mixin(self, metaclass):
+  def init_mixin(self, metaclass: "Class|None") -> None:
     """Mix-in equivalent of __init__."""
     if metaclass is None:
       metaclass = self._get_inherited_metaclass()
@@ -201,15 +212,17 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   def _get_class(self):
     return self.ctx.convert.type_type
 
-  def bases(self):
+  def bases(self) -> list[cfg.Variable]:
     return []
 
   @property
-  def all_formal_type_parameters(self):
+  def all_formal_type_parameters(
+      self,
+  ) -> "datatypes.AliasingDict[str, _instance_base.SimpleValue]":
     self._load_all_formal_type_parameters()
     return self._all_formal_type_parameters
 
-  def _load_all_formal_type_parameters(self):
+  def _load_all_formal_type_parameters(self) -> None:
     """Load _all_formal_type_parameters."""
     if self._all_formal_type_parameters_loaded:
       return
@@ -231,14 +244,14 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Get the attributes defined by this class."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def has_protocol_base(self):
+  def has_protocol_base(self) -> bool:
     """Returns whether this class inherits directly from typing.Protocol.
 
     Subclasses that may inherit from Protocol should override this method.
     """
     return False
 
-  def _init_protocol_attributes(self):
+  def _init_protocol_attributes(self) -> None:
     """Compute this class's protocol attributes."""
     if isinstance(self, _abstract.ParameterizedClass):
       self.protocol_attributes = self.base_cls.protocol_attributes
@@ -285,7 +298,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         protocol_attributes = {a for a in protocol_attributes if a not in cls}
     self.protocol_attributes = protocol_attributes
 
-  def _init_overrides_bool(self):
+  def _init_overrides_bool(self) -> None:
     """Compute and cache whether the class sets its own boolean value."""
     # A class's instances can evaluate to False if it defines __bool__ or
     # __len__.
@@ -303,7 +316,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Get the abstract methods defined by this class."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def _init_abstract_methods(self):
+  def _init_abstract_methods(self) -> None:
     """Compute this class's abstract methods."""
     # For the algorithm to run, abstract_methods needs to be populated with the
     # abstract methods defined by this class. We'll overwrite the attribute
@@ -323,10 +336,10 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       abstract_methods |= {m for m in cls.abstract_methods if m in cls}
     self.abstract_methods = abstract_methods
 
-  def _has_explicit_abcmeta(self):
+  def _has_explicit_abcmeta(self) -> bool:
     return any(base.full_name == "abc.ABCMeta" for base in self.cls.mro)
 
-  def _has_implicit_abcmeta(self):
+  def _has_implicit_abcmeta(self) -> bool:
     """Whether the class should be considered implicitly abstract."""
     # Protocols must be marked as abstract to get around the
     # [ignored-abstractmethod] check for interpreter classes.
@@ -347,37 +360,37 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     return False
 
   @property
-  def is_abstract(self):
+  def is_abstract(self) -> bool:
     return (
         self._has_explicit_abcmeta() or self._has_implicit_abcmeta()
     ) and bool(self.abstract_methods)
 
-  def is_test_class(self):
+  def is_test_class(self) -> bool:
     return any(
         base.full_name in ("unittest.TestCase", "unittest.case.TestCase")
         for base in self.mro
     )
 
   @property
-  def is_enum(self):
+  def is_enum(self) -> bool:
     return any(cls.full_name == "enum.EnumMeta" for cls in self.cls.mro)
 
   @property
-  def is_protocol(self):
+  def is_protocol(self) -> bool:
     return bool(self.protocol_attributes)
 
   @property
-  def is_typed_dict_class(self):
+  def is_typed_dict_class(self) -> bool:
     return (
         self.full_name == "typing.TypedDict"
         or self.__class__.__name__ == "TypedDictClass"
     )
 
-  def get_annotated_local(self, name):
+  def get_annotated_local(self, name: str) -> abstract_utils.Local | None:
     ann = abstract_utils.get_annotations_dict(self.members)
     return ann and ann.annotated_locals.get(name)
 
-  def _get_inherited_metaclass(self):
+  def _get_inherited_metaclass(self) -> "Class | None":
     for base in self.mro[1:]:
       if (
           isinstance(base, Class)
@@ -387,7 +400,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         return base.cls
     return None
 
-  def call_metaclass_init(self, node):
+  def call_metaclass_init(self, node: cfg.CFGNode) -> cfg.CFGNode:
     """Call the metaclass's __init__ method if it does anything interesting."""
     if self.cls.full_name == "builtins.type":
       return node
@@ -422,13 +435,15 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     node, _ = function.call_function(self.ctx, node, init, args)
     return node
 
-  def call_init_subclass(self, node):
+  def call_init_subclass(self, node: cfg.CFGNode) -> cfg.CFGNode:
     """Call init_subclass(cls) for all base classes."""
     for cls in self.mro:
       node = cls.init_subclass(node, self)
     return node
 
-  def get_own_new(self, node, value):
+  def get_own_new(
+      self, node: cfg.CFGNode, value: cfg.Binding
+  ) -> tuple[cfg.CFGNode, cfg.Variable | None]:
     """Get this value's __new__ method, if it isn't object.__new__.
 
     Args:
@@ -454,7 +469,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         return node, None
     return node, new
 
-  def _call_new_and_init(self, node, value, args):
+  def _call_new_and_init(
+      self, node: cfg.CFGNode, value: cfg.Binding, args: function.Args
+  ) -> tuple[cfg.CFGNode, cfg.Variable | None]:
     """Call __new__ if it has been overridden on the given value."""
     node, new = self.get_own_new(node, value)
     if new is None:
@@ -469,7 +486,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         node = self.call_init(node, val, args)
     return node, variable
 
-  def _call_method(self, node, value, method_name, args):
+  def _call_method(
+      self,
+      node: cfg.CFGNode,
+      value: cfg.Binding,
+      method_name: str,
+      args: function.Args,
+  ) -> cfg.CFGNode:
     node, bound_method = self.ctx.vm.get_bound_method(
         node, value.data, method_name, value
     )
@@ -480,14 +503,18 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       log.debug("%s returned %r", call_repr, ret)
     return node
 
-  def call_init(self, node, value, args):
+  def call_init(
+      self, node: cfg.CFGNode, value: cfg.Binding, args: function.Args
+  ) -> cfg.CFGNode:
     node = self._call_method(node, value, "__init__", args)
     # Call any additional initalizers the class has registered.
     for method in self.additional_init_methods:
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
-  def _new_instance(self, container, node, args):
+  def _new_instance(
+      self, container, node: cfg.CFGNode, args: function.Args | None
+  ):
     """Returns a (possibly cached) instance of 'self'."""
     del args  # unused
     # We allow only one "instance" per code location, regardless of call stack.
@@ -497,7 +524,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       self._instance_cache[key] = _abstract.Instance(self, self.ctx, container)  # pytype: disable=wrong-arg-types
     return self._instance_cache[key]
 
-  def _check_not_instantiable(self):
+  def _check_not_instantiable(self) -> None:
     """Report [not-instantiable] if the class cannot be instantiated."""
     # We report a not-instantiable error if all of the following are true:
     # - The class is abstract.
@@ -516,7 +543,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         return
     self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
 
-  def call(self, node, func, args, alias_map=None):
+  def call(
+      self,
+      node: cfg.CFGNode,
+      func: cfg.Binding,
+      args: function.Args,
+      alias_map: datatypes.UnionFind | None = None,
+  ) -> tuple[cfg.CFGNode, cfg.Variable]:
     del alias_map  # unused
     self._check_not_instantiable()
     node, variable = self._call_new_and_init(node, func, args)
@@ -527,7 +560,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       node = self.call_init(node, val, args)
     return node, variable
 
-  def get_special_attribute(self, node, name, valself):
+  def get_special_attribute(
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable
+  ):
     """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
       # See vm_utils._call_binop_on_bindings: valself == None is a special value
@@ -553,10 +588,10 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       return container.get_special_attribute(node, name, valself)
     return Class.super(self.get_special_attribute)(node, name, valself)
 
-  def has_dynamic_attributes(self):
+  def has_dynamic_attributes(self) -> bool:
     return any(a in self for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS)
 
-  def compute_is_dynamic(self):
+  def compute_is_dynamic(self) -> bool:
     # This needs to be called after self.mro is set.
     return any(
         c.has_dynamic_attributes() for c in self.mro if isinstance(c, Class)
@@ -582,7 +617,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # calc MRO and replace them with original base classes
     return tuple(base2cls[base] for base in mro.MROMerge(newbases))
 
-  def _get_mro_attrs_for_attrs(self, cls_attrs, metadata_key):
+  def _get_mro_attrs_for_attrs(
+      self, cls_attrs: list[Attribute], metadata_key: str
+  ) -> list[Attribute]:
     """Traverse the MRO and collect base class attributes for metadata_key."""
     # For dataclasses, attributes preserve the ordering from the reversed MRO,
     # but derived classes can override the type of an attribute. For attrs,
@@ -607,7 +644,11 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
           base_attrs.append(a)
     return base_attrs + cls_attrs
 
-  def _recompute_attrs_type_from_mro(self, all_attrs, type_params):
+  def _recompute_attrs_type_from_mro(
+      self,
+      all_attrs: dict[str, Attribute],
+      type_params: "dict[str | int, _base.BaseValue]",
+  ) -> None:
     """Traverse the MRO and apply Generic type params to class attributes.
 
     This IS REQUIRED for dataclass instances that inherits from a Generic.
@@ -622,7 +663,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         if typ_name == attr.typ.cls.name:
           attr.typ = typ_obj
 
-  def _get_attrs_from_mro(self, cls_attrs, metadata_key):
+  def _get_attrs_from_mro(
+      self, cls_attrs: list[Attribute], metadata_key: str
+  ) -> Sequence[Attribute]:
     """Traverse the MRO and collect base class attributes for metadata_key."""
 
     if metadata_key == "__attrs_attrs__":
@@ -659,11 +702,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     self._recompute_attrs_type_from_mro(all_attrs, type_params)
     return list(all_attrs.values())
 
-  def record_attr_ordering(self, own_attrs):
+  def record_attr_ordering(self, own_attrs: list[Attribute]) -> None:
     """Records the order of attrs to write in the output pyi."""
     self.metadata["attr_order"] = own_attrs
 
-  def compute_attr_metadata(self, own_attrs, decorator):
+  def compute_attr_metadata(
+      self, own_attrs: list[Attribute], decorator: str
+  ) -> Sequence[Attribute]:
     """Sets combined metadata based on inherited and own attrs.
 
     Args:
@@ -696,7 +741,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
           if isinstance(member, Class):
             member.update_official_name(f"{name}.{member.name}")
 
-  def _convert_str_tuple(self, field_name):
+  def _convert_str_tuple(self, field_name: str) -> tuple[str, ...] | None:
     """Convert __slots__ and similar fields from a Variable to a tuple."""
     field_var = self.members.get(field_name)
     if field_var is None:
@@ -725,7 +770,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         return None
     return tuple(self._mangle(s) for s in names)
 
-  def _mangle(self, name):
+  def _mangle(self, name: str) -> str:
     """Do name-mangling on an attribute name.
 
     See https://goo.gl/X85fHt.  Python automatically converts a name like
