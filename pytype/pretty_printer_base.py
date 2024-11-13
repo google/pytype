@@ -39,7 +39,7 @@ class PrettyPrinterBase(abc.ABC):
 
     def _ellipsis_printer(v):
       if isinstance(v, types.PythonConstant):
-        return v.str_of_constant(_ellipsis_printer)
+        return v.str_of_constant(_ellipsis_printer)  # pytype: disable=attribute-error
       return "..."
 
     return _ellipsis_printer(val)

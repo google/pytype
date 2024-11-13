@@ -23,7 +23,9 @@ else:
   _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
 
-FunctionMapType = Mapping[str, Sequence["_interpreter_function.InterpreterFunction"]]
+FunctionMapType = Mapping[
+    str, Sequence["_interpreter_function.InterpreterFunction"]
+]
 log: logging.Logger = logging.getLogger(__name__)
 
 

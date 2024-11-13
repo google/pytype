@@ -984,7 +984,7 @@ class LateAnnotation:
       return instance.to_variable(node)
 
   def get_special_attribute(
-      self, node: "cfg.CFGNode", name: str, valself: "cfg.Variable"
+      self, node: "cfg.CFGNode", name: str, valself: "cfg.Variable | None"
   ) -> "cfg.Variable | None":
     if name == "__getitem__" and not self.resolved:
       container = _base.BaseValue.to_annotation_container(self)  # pytype: disable=wrong-arg-types

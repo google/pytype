@@ -277,7 +277,7 @@ class AttributeErrorPrinter:
       obj_repr = self._pp.print_type(obj)
       return BadAttr(obj_repr, BadAttrType.SYMBOL)
     elif isinstance(obj, types.Module):
-      return BadAttr(obj.name, BadAttrType.MODULE)
+      return BadAttr(obj.name, BadAttrType.MODULE)  # pytype: disable=attribute-error
     else:
       obj_repr = self._pp.print_type(obj)
       return BadAttr(obj_repr, BadAttrType.OBJECT)

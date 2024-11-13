@@ -571,7 +571,7 @@ class PyTDClass(
 
   def load_lazy_attribute(
       self, name: str, subst: str | None = None, store: bool = True
-  ) -> cfg.Variable:
+  ) -> cfg.Variable | None:
     try:
       return super().load_lazy_attribute(name, subst, store)
     except self.ctx.convert.TypeParameterError as e:
@@ -737,7 +737,8 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
       self,
       base_cls: PyTDClass | InterpreterClass,
       formal_type_parameters: (
-          abstract_utils.LazyFormalTypeParameters | dict[str, _base.BaseValue]
+          abstract_utils.LazyFormalTypeParameters
+          | dict[str | int, _base.BaseValue]
       ),
       ctx: "context.Context",
       template: tuple["_typing.TypeParameter", ...] | None = None,
@@ -954,15 +955,16 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
   def get_inner_types(self) -> ItemsView[int | str, _base.BaseValue]:
     return self.formal_type_parameters.items()
 
-  def update_inner_type(self, key: str, typ: _base.BaseValue) -> None:
+  def update_inner_type(self, key: str | int, typ: _base.BaseValue) -> None:
     self.formal_type_parameters[key] = typ
 
   def replace(
       self,
       inner_types: (
-          abstract_utils.LazyFormalTypeParameters | dict[str, _base.BaseValue]
+          abstract_utils.LazyFormalTypeParameters
+          | Sequence[tuple[int, _base.BaseValue]]
       ),
-  ) -> "ParameterizedClass":
+  ) -> "ParameterizedClass | LiteralClass":
     inner_types = dict(inner_types)
     if isinstance(self, LiteralClass):
       if inner_types == self.formal_type_parameters:
@@ -1270,7 +1272,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     )
 
   def get_special_attribute(
-      self, node: cfg.CFGNode, name: str, valself: cfg.Variable
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable | None
   ) -> cfg.Variable | None:
     if (
         valself

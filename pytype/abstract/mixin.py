@@ -1,5 +1,6 @@
 """Mixins for abstract.py."""
 
+from collections.abc import Callable, Iterable, Sequence
 import logging
 from typing import Any, TYPE_CHECKING
 
@@ -11,11 +12,15 @@ from pytype.typegraph import cfg
 from pytype.types import types
 
 if TYPE_CHECKING:
+  from pytype import datatypes  # pylint: disable=g-import-not-at-top, g-bad-import-order
   from pytype.abstract import abstract as _abstract  # pylint: disable=g-import-not-at-top, g-bad-import-order
+  from pytype.abstract import _base  # pylint: disable=g-import-not-at-top, g-bad-import-order
+  from pytype.abstract import _function_base  # pylint: disable=g-import-not-at-top, g-bad-import-order
 else:
   _abstract = abstract_utils._abstract  # pylint: disable=protected-access
 
-log = logging.getLogger(__name__)
+log: logging.Logger = logging.getLogger(__name__)
+###
 
 
 class MixinMeta(type):
@@ -24,7 +29,7 @@ class MixinMeta(type):
   __mixin_overloads__: dict[str, type[Any]]
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def __init__(cls, name, superclasses, *args, **kwargs):
+  def __init__(cls, name: str, superclasses, *args, **kwargs) -> None:
     super().__init__(name, superclasses, *args, **kwargs)
     for sup in superclasses:
       if "overloads" in sup.__dict__:
@@ -81,15 +86,22 @@ class PythonConstant(types.PythonConstant, metaclass=MixinMeta):
   "r" etc.).
   """
 
-  overloads = ("__repr__",)
+  overloads: tuple[str, ...] = ("__repr__",)
 
-  def init_mixin(self, pyval):
+  def init_mixin(
+      self,
+      # TODO: b/350643999 - the type here is too complex and non-sensical
+      # probably this indicates that this codes need refactoring or either
+      # the type here is truly intended to be "Any" which also is bad.
+      # Fix the type.
+      pyval: "_base.BaseValue | datatypes.MonitorDict[Any, cfg.Variable] | dict[str, cfg.Variable] | Sequence[cfg.Variable] | None",
+  ) -> None:
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
     self.is_concrete = True
     self._printing = False
 
-  def str_of_constant(self, printer):
+  def str_of_constant(self, printer: "Callable[[_base.BaseValue], str]") -> str:
     """Get a string representation of this constant.
 
     Args:
@@ -102,7 +114,7 @@ class PythonConstant(types.PythonConstant, metaclass=MixinMeta):
     del printer
     return repr(self.pyval)
 
-  def __repr__(self):
+  def __repr__(self) -> str:
     if self._printing:  # recursion detected
       const = "[...]"
     else:
@@ -119,13 +131,13 @@ class HasSlots(metaclass=MixinMeta):
   handling of some magic methods (__setitem__ etc.)
   """
 
-  overloads = ("get_special_attribute",)
+  overloads: tuple[str, ...] = ("get_special_attribute",)
 
-  def init_mixin(self):
+  def init_mixin(self) -> None:
     self._slots = {}
     self._super = {}
 
-  def set_slot(self, name, slot):
+  def set_slot(self, name: str, slot: "_function_base.Function") -> None:
     """Add a new slot to this value."""
     assert name not in self._slots, f"slot {name} already occupied"
     # For getting a slot value, we don't need a ParameterizedClass's type
@@ -142,11 +154,13 @@ class HasSlots(metaclass=MixinMeta):
     self._super[name] = attr
     self._slots[name] = slot
 
-  def set_native_slot(self, name, method):
+  def set_native_slot(self, name, method) -> None:
     """Add a new NativeFunction slot to this value."""
     self.set_slot(name, _abstract.NativeFunction(name, method, self.ctx))
 
-  def call_pytd(self, node, name, *args):
+  def call_pytd(
+      self, node: cfg.CFGNode, name: str, *args
+  ) -> tuple[cfg.CFGNode, cfg.Variable]:
     """Call the (original) pytd version of a method we overwrote."""
     return function.call_function(
         self.ctx,
@@ -156,11 +170,16 @@ class HasSlots(metaclass=MixinMeta):
         fallback_to_unsolvable=False,
     )
 
-  def get_special_attribute(self, node, name, valself):
+  def get_special_attribute(
+      self, node: cfg.CFGNode, name: str, valself: cfg.Variable | None
+  ) -> cfg.Variable | None:
     if name not in self._slots:
       return HasSlots.super(self.get_special_attribute)(node, name, valself)
     if valself:
-      slot = self._slots[name].property_get(valself.variable)
+      # TODO: b/350643999 - Type here seems to be correct on all callsites
+      # but the type checker rejects this attribute access. Figure out what this
+      # code is truely doing
+      slot = self._slots[name].property_get(valself.variable)  # pytype: disable=attribute-error
       attr = self.ctx.program.NewVariable([slot], [valself], node)
     else:
       attr = self.ctx.program.NewVariable([self._slots[name]], [], node)
@@ -182,15 +201,15 @@ class NestedAnnotation(metaclass=MixinMeta):
     one but with the given inner types, again as a (key, typ) sequence.
   """
 
-  overloads = ("formal",)
+  overloads: tuple[str, ...] = ("formal",)
 
-  def init_mixin(self):
+  def init_mixin(self) -> None:
     self.processed = False
     self._seen_for_formal = False  # for calculating the 'formal' property
     self._formal = None
 
   @property
-  def formal(self):
+  def formal(self) -> bool:
     """See BaseValue.formal."""
     # We can't compute self.formal in __init__ because doing so would force
     # evaluation of our type parameters during initialization, possibly
@@ -207,13 +226,13 @@ class NestedAnnotation(metaclass=MixinMeta):
       self._formal = formal
     return formal
 
-  def get_inner_types(self):
+  def get_inner_types(self) -> "Iterable[tuple[int | str, _base.BaseValue]]":
     raise NotImplementedError()
 
-  def update_inner_type(self, key, typ):
+  def update_inner_type(self, key: int, typ: "_base.BaseValue"):
     raise NotImplementedError()
 
-  def replace(self, inner_types):
+  def replace(self, inner_types: "Sequence[tuple[int, _base.BaseValue]]"):
     raise NotImplementedError()
 
 
@@ -235,10 +254,10 @@ class LazyMembers(metaclass=MixinMeta):
 
   members: dict[str, cfg.Variable]
 
-  def init_mixin(self, member_map):
+  def init_mixin(self, member_map: dict[str, cfg.Variable]) -> None:
     self._member_map = member_map
 
-  def _convert_member(self, name, member, subst=None):
+  def _convert_member(self, name: str, member, subst=None) -> cfg.Variable:
     raise NotImplementedError()
 
   def load_lazy_attribute(self, name, subst=None, store=True):
@@ -273,7 +292,7 @@ class PythonDict(PythonConstant):
   # More methods can be implemented by adding the name to `overloads` and
   # defining the delegating method.
 
-  overloads = PythonConstant.overloads + (
+  overloads: Sequence[str] = PythonConstant.overloads + (
       "__getitem__",
       "get",
       "__contains__",
@@ -290,20 +309,20 @@ class PythonDict(PythonConstant):
   def get(self, key, default=None):
     return self.pyval.get(key, default)
 
-  def __contains__(self, key):
+  def __contains__(self, key) -> bool:
     return key in self.pyval
 
-  def copy(self):
-    return self.pyval.copy()
+  def copy(self) -> "_base.BaseValue | None":
+    return self.pyval.copy()  # pytype: disable=attribute-error
 
   def __iter__(self):
     return iter(self.pyval)
 
   def items(self):
-    return self.pyval.items()
+    return self.pyval.items()  # pytype: disable=attribute-error
 
   def keys(self):
-    return self.pyval.keys()
+    return self.pyval.keys()  # pytype: disable=attribute-error
 
   def values(self):
-    return self.pyval.values()
+    return self.pyval.values()  # pytype: disable=attribute-error

@@ -186,7 +186,7 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       self,
       unused_node: "cfg.CFGNode",
       name: str,
-      unused_valself: "cfg.Variable",
+      unused_valself: "cfg.Variable | None",
   ) -> "cfg.Variable | None":
     """Fetch a special attribute (e.g., __get__, __iter__)."""
     if name == "__class__":
