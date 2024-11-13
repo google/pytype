@@ -29,7 +29,7 @@ _V4 = TypeVar('_V4')
 
 
 Text = str
-
+class _Final: ...
 
 # These functions do not exist in typing.py. They are here for documentation
 # purposes and to make it easier for pytype to type-check arguments to TypeVar
