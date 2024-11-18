@@ -98,36 +98,32 @@ class Node(
     Returns:
       Transformed version of this node.
     """
-    return _Visit(self, visitor, *args, **kwargs)
+    return _Visit(self, visitor, set(), *args, **kwargs)
 
   def Replace(self, **kwargs):
     return msgspec.structs.replace(self, **kwargs)
 
 
-# The set of visitor names currently being processed.
-_visiting = set()
-
-
-def _Visit(node, visitor, *args, **kwargs):
+def _Visit(node, visitor, visiting, *args, **kwargs):
   """Visit the node."""
   name = type(visitor).__name__
-  recursive = name in _visiting
-  _visiting.add(name)
+  recursive = name in visiting
+  visiting.add(name)
 
   start = metrics.get_cpu_clock()
   try:
-    return _VisitNode(node, visitor, *args, **kwargs)
+    return _VisitNode(node, visitor, visiting, *args, **kwargs)
   finally:
     if not recursive:
-      _visiting.remove(name)
+      visiting.remove(name)
       elapsed = metrics.get_cpu_clock() - start
       metrics.get_metric("visit_" + name, metrics.Distribution).add(elapsed)
-      if _visiting:
+      if visiting:
         metrics.get_metric(
             "visit_nested_" + name, metrics.Distribution).add(elapsed)
 
 
-def _VisitNode(node, visitor, *args, **kwargs):
+def _VisitNode(node, visitor, visiting, *args, **kwargs):
   """Transform a node and all its children using a visitor.
 
   This will iterate over all children of this node, and also process certain
@@ -135,29 +131,29 @@ def _VisitNode(node, visitor, *args, **kwargs):
   elements visited, or primitive types, which will be returned as-is.
 
   Args:
-    node: The node to transform. Either an actual instance of Node, or a
-          tuple found while scanning a node tree, or any other type (which will
-          be returned unmodified).
+    node: The node to transform. Either an actual instance of Node, or a tuple
+      found while scanning a node tree, or any other type (which will be
+      returned unmodified).
     visitor: The visitor to apply. If this visitor has a "Visit<Name>" method,
-          with <Name> the name of the Node class, a callback will be triggered,
-          and the transformed version of this node will be whatever the callback
-          returned.  Before calling the Visit callback, the following
-          attribute(s) on the Visitor class will be populated:
-            visitor.old_node: The node before the child nodes were visited.
-
-          Additionally, if the visitor has a "Enter<Name>" method, that method
-          will be called on the original node before descending into it. If
-          "Enter<Name>" returns False, the visitor will not visit children of
-          this node. If "Enter<name>" returns a set of field names, those field
-          names will not be visited. Otherwise, "Enter<Name>" should return
-          None, to indicate that nodes will be visited normally.
-
-          "Enter<Name>" is called pre-order; "Visit<Name> and "Leave<Name>" are
-          called post-order.  A counterpart to "Enter<Name>" is "Leave<Name>",
-          which is intended for any clean-up that "Enter<Name>" needs (other
-          than that, it's redundant, and could be combined with "Visit<Name>").
+      with <Name> the name of the Node class, a callback will be triggered, and
+      the transformed version of this node will be whatever the callback
+      returned.  Before calling the Visit callback, the following attribute(s)
+      on the Visitor class will be populated: visitor.old_node: The node before
+      the child nodes were visited.  Additionally, if the visitor has a
+      "Enter<Name>" method, that method will be called on the original node
+      before descending into it. If "Enter<Name>" returns False, the visitor
+      will not visit children of this node. If "Enter<name>" returns a set of
+      field names, those field names will not be visited. Otherwise,
+      "Enter<Name>" should return None, to indicate that nodes will be visited
+      normally.  "Enter<Name>" is called pre-order; "Visit<Name> and
+      "Leave<Name>" are called post-order.  A counterpart to "Enter<Name>" is
+      "Leave<Name>", which is intended for any clean-up that "Enter<Name>" needs
+      (other than that, it's redundant, and could be combined with
+      "Visit<Name>").
+    visiting: The set of visitor names currently being processed.
     *args: Passed to visitor callbacks.
     **kwargs: Passed to visitor callbacks.
+
   Returns:
     The transformed Node (which *may* be the original node but could be a new
      node, even if the contents are the same).
@@ -167,7 +163,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
     changed = False
     new_children = []
     for child in node:
-      new_child = _VisitNode(child, visitor, *args, **kwargs)
+      new_child = _VisitNode(child, visitor, visiting, *args, **kwargs)
       if new_child is not child:
         changed = True
       new_children.append(new_child)
@@ -208,7 +204,7 @@ def _VisitNode(node, visitor, *args, **kwargs):
     if name in skip_children:
       new_child = child
     else:
-      new_child = _VisitNode(child, visitor, *args, **kwargs)
+      new_child = _VisitNode(child, visitor, visiting, *args, **kwargs)
       if new_child is not child:
         changed = True
     new_children.append(new_child)
