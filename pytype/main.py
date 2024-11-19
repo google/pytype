@@ -6,6 +6,7 @@ Usage:
   pytype [flags] file.py
 """
 
+from collections.abc import Sequence
 import cProfile
 import logging
 import signal
@@ -103,7 +104,8 @@ def _fix_spaces(argv):
   return escaped_argv
 
 
-def main():
+# Use a dummy parameter to be able to be run under absl.app.run(...)
+def main(_: Sequence[str]):
   try:
     options = config.Options(
         _fix_spaces(_expand_args(sys.argv[1:])), command_line=True
@@ -147,4 +149,4 @@ def _run_pytype(options):
 
 
 if __name__ == "__main__":
-  sys.exit(main() or 0)
+  sys.exit(main([]) or 0)
