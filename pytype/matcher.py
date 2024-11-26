@@ -1550,6 +1550,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   ):
     # TODO(mdemello): Unify with _match_signature_args_against_callable()
     param_match = self._get_param_matcher(other_type)
+    # Checking type against the same type should happen quite often. This check
+    # helps avoiding near-infinite type expansion for recursive generic types
+    # which are identical.
+    if left is other_type:
+      return subst
     for i in range(left.num_args):
       left_arg = left.formal_type_parameters[i]
       right_arg = other_type.formal_type_parameters[i]
