@@ -541,6 +541,17 @@ class TypedDictFunctionalTest(test_base.BaseTest):
     """,
     )
 
+    self.Check("""
+      from typing import Any, Generic, TypedDict, TypeVar, is_typeddict
+      T = TypeVar('T')
+      class Foo(TypedDict, Generic[T]):
+        foo: str
+        bar: T
+      x: Foo
+      assert_type(x['foo'], str)
+      assert_type(x['bar'], Any)  # TODO(b/328744430): Properly support generics.
+    """)
+
   def test_ambiguous_field_type(self):
     self.CheckWithErrors("""
       from typing_extensions import TypedDict
@@ -1011,6 +1022,28 @@ class IsTypedDictTest(test_base.BaseTest):
         y: int
       X_is_typeddict: bool
       Y_is_not_typeddict: bool
+    """,
+    )
+
+  def test_generic(self):
+    ty = self.Infer("""
+      from typing import Generic, TypedDict, TypeVar, is_typeddict
+      T = TypeVar('T')
+      class X(TypedDict, Generic[T]):
+        bar: T
+      if is_typeddict(X):
+        X_is_typeddict = True
+      else:
+        X_is_not_typeddict = True
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Any, TypeVar, TypedDict
+      T = TypeVar('T')
+      class X(TypedDict):
+        bar: Any  # TODO(b/328744430): Properly support generic TypedDicts.
+      X_is_typeddict: bool
     """,
     )
 

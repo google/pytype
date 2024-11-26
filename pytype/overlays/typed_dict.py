@@ -41,14 +41,18 @@ class TypedDictProperties:
   def add(self, k, v, total):
     """Adds key and value."""
     req = _is_required(v)
-    if req is None:
+    if isinstance(v, abstract.TypeParameter):
+      # TODO(b/328744430): Properly support generic TypedDicts.
+      # For now, mark all type parameters as Any to avoid erroring out entirely.
+      value = v.ctx.convert.unsolvable
+    elif req is None:
       value = v
     elif isinstance(v, abstract.ParameterizedClass):
       value = v.formal_type_parameters[abstract_utils.T]
     else:
       value = v.ctx.convert.unsolvable
     required = total if req is None else req
-    self.fields[k] = value  # pylint: disable=unsupported-assignment-operation
+    self.fields[k] = value
     if required:
       self.required.add(k)
 
@@ -118,7 +122,16 @@ class TypedDictBuilder(abstract.PyTDClass):
     """Check that all base classes are valid."""
     for base_var in bases:
       for base in base_var.data:
-        if not isinstance(base, (TypedDictClass, TypedDictBuilder)):
+        # Allow inheriting only from TypedDict and from Generic, e.g.:
+        # `class Foo(TypedDict, Generic[T])`
+        if not (
+            isinstance(base, (TypedDictClass, TypedDictBuilder))
+            or (
+                isinstance(base, abstract.ParameterizedClass)
+                and isinstance(base.base_cls, (abstract.PyTDClass))
+                and base.base_cls.full_name == "typing.Generic"
+            )
+        ):
           details = (
               f"TypedDict {cls_name} cannot inherit from a non-TypedDict class."
           )
