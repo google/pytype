@@ -1,7 +1,7 @@
 """Utilities for abstract.py."""
 
 import collections
-from collections.abc import Collection, Generator, Iterable, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 import dataclasses
 import logging
 from typing import Any, TYPE_CHECKING, TypeGuard
@@ -841,9 +841,9 @@ def is_generic_protocol(val: "_base.BaseValue") -> bool:
 
 
 def combine_substs(
-    substs1: Collection[dict[str, cfg.Variable]] | None,
-    substs2: Collection[dict[str, cfg.Variable]] | None,
-) -> Collection[dict[str, cfg.Variable]]:
+    substs1: Sequence[Mapping[str, cfg.Variable]] | None,
+    substs2: Sequence[Mapping[str, cfg.Variable]] | None,
+) -> Sequence[Mapping[str, cfg.Variable]]:
   """Combines the two collections of type parameter substitutions."""
   if substs1 and substs2:
     return tuple({**sub1, **sub2} for sub1 in substs1 for sub2 in substs2)  # pylint: disable=g-complex-comprehension

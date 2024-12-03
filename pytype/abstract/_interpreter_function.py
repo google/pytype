@@ -636,7 +636,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     # lower frames (ones closer to the end of self.ctx.vm.frames) take
     # precedence over higher ones.
     for frame in reversed(self.ctx.vm.frames):
-      annotation_substs = abstract_utils.combine_substs(
+      annotation_substs = abstract_utils.combine_substs(  # pytype: disable=wrong-arg-types
           frame.substs, annotation_substs
       )
     # Keep type parameters without substitutions, as they may be needed for

@@ -1,7 +1,7 @@
 """Utilities for inline type annotations."""
 
 import collections
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 import dataclasses
 import itertools
 from typing import Any
@@ -27,6 +27,21 @@ class AnnotatedValue:
 class AnnotationUtils(utils.ContextWeakrefMixin):
   """Utility class for inline type annotations."""
 
+  def __init__(self, ctx):
+    super().__init__(ctx)
+    # calling sub_one_annotation is costly, due to calling multiple of chained
+    # constructors (via annot.replace) and generating complex data structure.
+    # And in some corner cases which includes recursive generic types with
+    # overloads, it causes massive call to construction of bad match which calls
+    # sub_one_annotations. We only store caches in case when all types are
+    # ground i.e. subst is empty.
+    # A better solution might be not to make those seemingly redundant request
+    # from the type checker, but for now this is a comprimise to gain
+    # performance in those weird corner cases.
+    self.annotation_sub_cache: dict[
+        tuple[cfg.CFGNode, abstract.BaseValue], abstract.BaseValue
+    ] = dict()
+
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):
     """Apply type parameter substitutions to a dictionary of annotations."""
     if substs and all(substs):
@@ -42,7 +57,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       self,
       node: cfg.CFGNode,
       annot: abstract.TypeParameter,
-      substs: Sequence[dict[str, cfg.Variable]],
+      substs: Sequence[Mapping[str, cfg.Variable]],
       instantiate_unbound: bool,
   ) -> abstract.BaseValue:
     """Helper for sub_one_annotation."""
@@ -68,16 +83,38 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         vals = [annot]
     return self.ctx.convert.merge_classes(vals)
 
-  def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
+  def sub_one_annotation(
+      self,
+      node: cfg.CFGNode,
+      annot: abstract.BaseValue,
+      substs: Sequence[Mapping[str, cfg.Variable]],
+      instantiate_unbound: bool = True,
+  ):
 
     def get_type_parameter_subst(annotation):
       return self._get_type_parameter_subst(
           node, annotation, substs, instantiate_unbound
       )
+    do_caching = not substs or (len(substs) == 1 and not substs[0])
 
-    return self._do_sub_one_annotation(node, annot, get_type_parameter_subst)
+    if do_caching:
+      res = self.annotation_sub_cache.get((node, annot), None)
+      if res:
+        return res
 
-  def _do_sub_one_annotation(self, node, annot, get_type_parameter_subst_fn):
+    res = self._do_sub_one_annotation(node, annot, get_type_parameter_subst)
+    if do_caching:
+      self.annotation_sub_cache[(node, annot)] = res
+    return res
+
+  def _do_sub_one_annotation(
+      self,
+      node: cfg.CFGNode,
+      annot: abstract.BaseValue,
+      get_type_parameter_subst_fn: Callable[
+          [abstract.BaseValue], abstract.BaseValue
+      ],
+  ):
     """Apply type parameter substitutions to an annotation."""
     # We push annotations onto 'stack' and move them to the 'done' stack as they
     # are processed. For each annotation, we also track an 'inner_type_keys'
@@ -92,7 +129,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     done = []
     while stack:
       cur, inner_type_keys = stack.pop()
-      if not cur.formal:
+      if not cur.formal:  # pytype: disable=attribute-error
         done.append(cur)
       elif isinstance(cur, mixin.NestedAnnotation):
         if cur.is_late_annotation() and any(t[0] == cur for t in stack):
@@ -411,7 +448,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       class_substs = abstract_utils.combine_substs(
           substs, [{"typing.Self": self.ctx.vm.frame.first_arg}]
       )
-      type_for_value = self.sub_one_annotation(
+      type_for_value = self.sub_one_annotation(  # pytype: disable=wrong-arg-types
           node, typ, class_substs, instantiate_unbound=False
       )
     else:

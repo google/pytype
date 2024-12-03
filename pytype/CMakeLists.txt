@@ -183,6 +183,7 @@ py_library(
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_library(
