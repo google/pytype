@@ -35,8 +35,14 @@ Text = str
 # purposes and to make it easier for pytype to type-check arguments to TypeVar
 # and ParamSpec.
 def _typevar_new(
-    name: str, *constraints: type | str | None, bound: type | str | None = None,
-    covariant: bool = False, contravariant: bool = False): ...
+    name: str,
+    *constraints: type | str | None,
+    bound: type | str | None = None,
+    covariant: bool = False,
+    contravariant: bool = False,
+    infer_variance: bool = False,
+    default: Any = None,
+): ...
 def _paramspec_new(
     name: str, *constraints: type | str | None, bound: type | str | None = None,
     covariant: bool = False, contravariant: bool = False): ...

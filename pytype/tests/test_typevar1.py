@@ -208,6 +208,41 @@ class TypeVarTest(test_base.BaseTest):
         },
     )
 
+  def test_default(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar("T", default=int)  # pytype: disable=not-supported-yet
+
+      class Foo(Generic[T]):
+        pass
+
+      f = Foo()
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+          from typing import Generic, TypeVar
+
+          T = TypeVar('T')
+
+          class Foo(Generic[T]): ...
+
+          f: Foo[nothing]
+        """,
+    )
+
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar("T", default=int)  # not-supported-yet
+
+      class Foo(Generic[T]):
+        pass
+
+      f = Foo()
+    """)
+
   def test_dont_propagate_pyval(self):
     # in functions like f(x: T) -> T, if T has constraints we should not copy
     # the value of constant types between instances of the typevar.

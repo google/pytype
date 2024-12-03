@@ -301,7 +301,16 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
     contravariant = self._get_namedarg(node, args, "contravariant", False)
     if constraints and bound:
       raise TypeVarError("constraints and a bound are mutually exclusive")
-    extra_kwargs = set(args.namedargs) - {"bound", "covariant", "contravariant"}
+    # `default` is unsupported for now - access it just to generate a warning.
+    # TODO: b/382028836 - actually support the `default` arg to `TypeVar`
+    self._get_namedarg(node, args, "default", None)
+
+    extra_kwargs = set(args.namedargs) - {
+        "bound",
+        "covariant",
+        "contravariant",
+        "default",
+    }
     if extra_kwargs:
       raise TypeVarError("extra keyword arguments: " + ", ".join(extra_kwargs))
     if args.starargs:
@@ -345,7 +354,10 @@ class TypeVar(_TypeVariable):
     if name == "bound":
       return self._get_annotation(node, args.namedargs[name], name)
     else:
-      ret = self._get_constant(args.namedargs[name], name, bool)
+      if name == "default":
+        ret = self._get_annotation(node, args.namedargs[name], name)
+      else:
+        ret = self._get_constant(args.namedargs[name], name, bool)
       # This error is logged only if _get_constant succeeds.
       self.ctx.errorlog.not_supported_yet(
           self.ctx.vm.frames, f'argument "{name}" to TypeVar'
