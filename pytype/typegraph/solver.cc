@@ -421,17 +421,17 @@ bool Solver::CanHaveSolution(
 bool Solver::RecallOrFindSolution(
     const internal::State& state, internal::StateSet& seen_states,
     int current_depth) {
-  const bool* status = map_util::FindOrNull(solved_states_, state);
-  if (status) {
+  auto it = solved_states_.find(state);
+  if (it != solved_states_.end()) {
     state_cache_hits_ += 1;
     query_metrics_.back().set_from_cache(true);
     std::string indent(current_depth, ' ');
-    if (*status) {
+    if (it->second) {
       LOG(INFO) << indent << "Known state: solvable.";
     } else {
       LOG(INFO) << indent << "Known state: not solvable.";
     }
-    return *status;
+    return it->second;
   } else {
     state_cache_misses_ += 1;
   }

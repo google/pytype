@@ -15,26 +15,6 @@ TEST(MapUtilTest, ContainsKeyTest) {
   EXPECT_TRUE(ContainsKey(m, 1));
   EXPECT_FALSE(ContainsKey(m, 2));
 }
-
-TEST(MapUtilTest, FindOrNullTest) {
-  std::unordered_map<int, bool> m;
-  EXPECT_EQ(FindOrNull(m, 1), nullptr);
-  m[1] = true;
-  const bool* res = FindOrNull(m, 1);
-  EXPECT_NE(res, nullptr);
-  EXPECT_EQ(*res, true);
-}
-
-TEST(MapUtilTest, FindPtrOrNullTest) {
-  std::unordered_map<int, std::string*> m;
-  EXPECT_EQ(FindPtrOrNull(m, 1), nullptr);
-  std::string val = "hello";
-  m[1] = &val;
-  std::string* res = FindPtrOrNull(m, 1);
-  EXPECT_NE(res, nullptr);
-  EXPECT_EQ(*res, val);
-}
-
 }  // namespace
 
 }  // namespace map_util

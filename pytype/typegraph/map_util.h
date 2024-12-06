@@ -41,28 +41,6 @@ bool ContainsKey(const M& map, const K<M>& key) {
   return map.find(key) != map.end();
 }
 
-// FindOrNull returns a pointer to the value associated with the
-// given key if it exists, or nullptr otherwise.
-template<typename M>
-const V<M>* FindOrNull(const M& map, const K<M>& key) {
-  auto it = map.find(key);
-  if (it != map.end())
-    return &(it->second);
-  return nullptr;
-}
-
-// FindPtrOrNull returns the pointer value associated with a given key. It is
-// designed to be used with maps of keys to pointers. It does not differentiate
-// between keys that are not in the map and keys that are mapped to nullptr.
-template <typename M>
-V<M> FindPtrOrNull(const M& map, const K<M>& key) {
-  auto it = map.find(key);
-  if (it != map.end())
-    return it->second;
-  // V<M> may not be a pointer type, but we're going to assume it is.
-  return nullptr;
-}
-
 }  // namespace map_util
 
 }  // namespace devtools_python_typegraph

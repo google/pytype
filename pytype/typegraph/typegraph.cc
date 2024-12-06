@@ -185,7 +185,11 @@ bool Binding::IsVisible(const CFGNode* viewpoint) const {
 }
 
 Origin* Binding::FindOrigin(const CFGNode* node) const {
-  return map_util::FindPtrOrNull(node_to_origin_, node);
+  auto it = node_to_origin_.find(node);
+  if (it == node_to_origin_.end()) {
+    return nullptr;
+  }
+  return it->second;
 }
 
 Origin* Binding::FindOrAddOrigin(CFGNode* node) {
