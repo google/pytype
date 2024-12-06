@@ -151,27 +151,6 @@ QueryResult PathCacheTrie::GetResult(const CFGNode* start,
   return {false, nullptr};
 }
 
-bool PathFinder::FindAnyPathToNode(
-    const CFGNode* start,
-    const CFGNode* finish,
-    const CFGNodeSet& blocked) const {
-  std::vector<const CFGNode*> stack;
-  stack.push_back(start);
-  CFGNodeSet seen;
-  const CFGNode* node;
-  while (!stack.empty()) {
-    node = stack.back();
-    stack.pop_back();
-    if (node == finish)
-      return true;
-    if (seen.count(node) || blocked.count(node))
-      continue;
-    seen.insert(node);
-    stack.insert(stack.end(), node->incoming().begin(), node->incoming().end());
-  }
-  return false;
-}
-
 std::deque<const CFGNode*> PathFinder::FindShortestPathToNode(
     const CFGNode* start, const CFGNode* finish,
     const CFGNodeSet& blocked) const {
