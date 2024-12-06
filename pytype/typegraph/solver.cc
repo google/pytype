@@ -54,13 +54,13 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
                       goals_to_remove.begin(), goals_to_remove.end(),
                       std::inserter(new_goals, new_goals.begin()),
                       pointer_less<Binding>());
-  std::vector<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> stack;
-  stack.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+  std::deque<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> queue;
+  queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
   std::vector<RemoveResult> results;
-  while (!stack.empty()) {
-    std::tie(
-        goals_to_remove, seen_goals, removed_goals, new_goals) = *stack.begin();
-    stack.erase(stack.begin());
+  while (!queue.empty()) {
+    std::tie(goals_to_remove, seen_goals, removed_goals, new_goals) =
+        queue.front();
+    queue.pop_front();
     if (goals_to_remove.empty()) {
       results.push_back(RemoveResult(removed_goals, new_goals));
       continue;
@@ -69,21 +69,21 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
     goals_to_remove.erase(goals_to_remove.begin());
     if (seen_goals.count(goal)) {
       // Only process a goal once, to prevent infinite loops.
-      stack.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+      queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
       continue;
     }
     seen_goals.insert(goal);
     const auto* origin = goal->FindOrigin(pos);
     if (!origin) {
       new_goals.insert(goal);
-      stack.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+      queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
       continue;
     }
     removed_goals.insert(goal);
     for (const auto& source_set : origin->source_sets) {
       GoalSet next_goals_to_remove(goals_to_remove);
       next_goals_to_remove.insert(source_set.begin(), source_set.end());
-      stack.emplace_back(std::move(next_goals_to_remove), seen_goals,
+      queue.emplace_back(std::move(next_goals_to_remove), seen_goals,
                          removed_goals, new_goals);
     }
   }
