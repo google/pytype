@@ -350,13 +350,6 @@ TEST(SolverTest, TestPathFinder) {
   CFGNode* n5 = n4->ConnectNew("n5");
   n5->ConnectTo(n5);
   internal::PathFinder f;
-  EXPECT_TRUE(f.FindAnyPathToNode(n1, n1, {}));
-  EXPECT_TRUE(f.FindAnyPathToNode(n1, n1, {n1}));
-  EXPECT_TRUE(f.FindAnyPathToNode(n4, n1, {n1}));
-  EXPECT_TRUE(f.FindAnyPathToNode(n4, n1, {n2}));
-  EXPECT_TRUE(f.FindAnyPathToNode(n4, n1, {n3}));
-  EXPECT_FALSE(f.FindAnyPathToNode(n4, n1, {n4}));
-  EXPECT_FALSE(f.FindAnyPathToNode(n4, n1, {n2, n3}));
   EXPECT_THAT(f.FindShortestPathToNode(n1, n1, {}), ElementsAre(n1));
   EXPECT_THAT(f.FindShortestPathToNode(n1, n1, {n1}), ElementsAre(n1));
   EXPECT_FALSE(f.FindShortestPathToNode(n4, n1, {n1}).empty());

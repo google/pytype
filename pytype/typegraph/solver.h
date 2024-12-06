@@ -150,10 +150,6 @@ class PathFinder {
   PathFinder(const PathFinder&) = delete;
   PathFinder& operator=(const PathFinder&) = delete;
 
-  // Determine whether we can reach a node at all.
-  bool FindAnyPathToNode(const CFGNode* start, const CFGNode* finish,
-                         const CFGNodeSet& blocked) const;
-
   // Find a shortest path from start to finish, going backwards. Returns an
   // empty path if no path exists.
   std::deque<const CFGNode*> FindShortestPathToNode(
