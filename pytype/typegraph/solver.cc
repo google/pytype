@@ -31,6 +31,13 @@ struct RemoveResult {
       removed_goals(removed_goals), new_goals(new_goals) {}
 };
 
+struct RemoveGoalsState {
+  GoalSet goals_to_remove;
+  GoalSet seen_goals;
+  GoalSet removed_goals;
+  GoalSet new_goals;
+};
+
 // Remove all goals that can be fulfilled at the current CFG node.
 // Generates all possible sets of new goals obtained by replacing a goal that
 // originates at the current node with one of its source sets, iteratively,
@@ -39,51 +46,49 @@ struct RemoveResult {
 // avoiding bugs related to transmitting state information across calls.
 static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
                                                        const GoalSet& goals) {
-  GoalSet goals_to_remove;
+  auto state = std::make_shared<RemoveGoalsState>();
   // We can't use set_intersection here because pos->bindings() is a vector.
   for (const auto* goal : pos->bindings()) {
     if (goals.count(goal)) {
-      goals_to_remove.insert(goal);
+      state->goals_to_remove.insert(goal);
     }
   }
-  GoalSet seen_goals;
-  GoalSet removed_goals;
-  GoalSet new_goals;
   std::set_difference(goals.begin(), goals.end(),
-                      goals_to_remove.begin(), goals_to_remove.end(),
-                      std::inserter(new_goals, new_goals.begin()),
+                      state->goals_to_remove.begin(),
+                      state->goals_to_remove.end(),
+                      std::inserter(state->new_goals, state->new_goals.begin()),
                       pointer_less<Binding>());
-  std::deque<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> queue;
-  queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+  std::deque<std::shared_ptr<RemoveGoalsState>> queue;
+  queue.emplace_back(state);
   std::vector<RemoveResult> results;
   while (!queue.empty()) {
-    std::tie(goals_to_remove, seen_goals, removed_goals, new_goals) =
-        queue.front();
+    state = queue.front();
     queue.pop_front();
-    if (goals_to_remove.empty()) {
-      results.push_back(RemoveResult(removed_goals, new_goals));
+    if (state->goals_to_remove.empty()) {
+      results.push_back(RemoveResult(state->removed_goals, state->new_goals));
       continue;
     }
-    const auto* goal = *goals_to_remove.begin();
-    goals_to_remove.erase(goals_to_remove.begin());
-    if (seen_goals.count(goal)) {
+    const auto* goal = *state->goals_to_remove.begin();
+    state->goals_to_remove.erase(state->goals_to_remove.begin());
+    if (state->seen_goals.count(goal)) {
       // Only process a goal once, to prevent infinite loops.
-      queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+      queue.push_back(state);
       continue;
     }
-    seen_goals.insert(goal);
+    state->seen_goals.insert(goal);
     const auto* origin = goal->FindOrigin(pos);
     if (!origin) {
-      new_goals.insert(goal);
-      queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+      state->new_goals.insert(goal);
+      queue.push_back(state);
       continue;
     }
-    removed_goals.insert(goal);
+    state->removed_goals.insert(goal);
     for (const auto& source_set : origin->source_sets) {
-      GoalSet next_goals_to_remove(goals_to_remove);
+      GoalSet next_goals_to_remove(state->goals_to_remove);
       next_goals_to_remove.insert(source_set.begin(), source_set.end());
-      queue.emplace_back(std::move(next_goals_to_remove), seen_goals,
-                         removed_goals, new_goals);
+      queue.emplace_back(std::make_shared<RemoveGoalsState>(
+          std::move(next_goals_to_remove), state->seen_goals,
+          state->removed_goals, state->new_goals));
     }
   }
   return results;
