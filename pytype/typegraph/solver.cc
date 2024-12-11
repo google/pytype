@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <stack>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -27,9 +28,89 @@ namespace internal {
 struct RemoveResult {
   const GoalSet removed_goals;
   const GoalSet new_goals;
-  RemoveResult(const GoalSet& removed_goals, const GoalSet& new_goals):
-      removed_goals(removed_goals), new_goals(new_goals) {}
 };
+
+struct TraverseState {
+  GoalSet goals_to_remove;
+  GoalSet seen_goals;
+  GoalSet removed_goals;
+  GoalSet new_goals;
+};
+
+enum ActionType {
+  TRAVERSE,
+  ADD_GOALS_TO_REMOVE,
+  REMOVE_GOALS_TO_REMOVE,
+  REMOVE_SEEN_GOALS,
+  REMOVE_NEW_GOALS,
+  REMOVE_REMOVED_GOALS,
+};
+
+// We're maintaining a state machine and actions to be able to do a DFS
+// effectively. Rather than having to copy the states that are needed (which
+// are four std::sets) whenever we need to traverse a new node, we keep track
+// of the increment and the decrement between the previous node, and restore
+// to the state of which were before after a node traversal, which is implement
+// through "actions".
+struct Action {
+  ActionType action_type;
+  // Goal either to delete are added to the corresponding set.
+  const Binding* goal;
+  // Not using this for action REMOVE_GOALS_TO_REMOVE, as we are requesting
+  // for removal before the insertion has happened.
+  GoalSet::iterator erase_it;
+};
+
+static void traverse(const CFGNode* position,
+                     std::vector<RemoveResult>& results,
+                     std::stack<Action>& actions, TraverseState& state) {
+  if (state.goals_to_remove.empty()) {
+    results.push_back(
+        {GoalSet(state.removed_goals.begin(), state.removed_goals.end()),
+         GoalSet(state.new_goals.begin(), state.new_goals.end())});
+    return;
+  }
+
+  const Binding* goal = *state.goals_to_remove.begin();
+  state.goals_to_remove.erase(state.goals_to_remove.begin());
+  actions.push({ADD_GOALS_TO_REMOVE, goal, {}});
+
+  if (state.seen_goals.count(goal)) {
+    // Only process a goal once, to prevent infinite loops.
+    actions.push({TRAVERSE, nullptr, {}});
+    return;
+  }
+  auto it = state.seen_goals.insert(goal);
+  actions.push({REMOVE_SEEN_GOALS, nullptr, it.first});
+
+  const auto* origin = goal->FindOrigin(position);
+  if (!origin) {
+    auto it = state.new_goals.insert(goal);
+    if (it.second) {
+      actions.push({REMOVE_NEW_GOALS, nullptr, it.first});
+    }
+    actions.push({TRAVERSE, nullptr, {}});
+    return;
+  }
+
+  it = state.removed_goals.insert(goal);
+  if (it.second) {
+    actions.push({REMOVE_REMOVED_GOALS, nullptr, it.first});
+  }
+  for (const auto& source_set : origin->source_sets) {
+    for (const Binding* next_goal : source_set) {
+      if (!state.goals_to_remove.count(next_goal)) {
+        actions.push({REMOVE_GOALS_TO_REMOVE, next_goal, {}});
+      }
+    }
+    actions.push({TRAVERSE, nullptr, {}});
+    for (const Binding* next_goal : source_set) {
+      if (!state.goals_to_remove.count(next_goal)) {
+        actions.push({ADD_GOALS_TO_REMOVE, next_goal, {}});
+      }
+    }
+  }
+}
 
 // Remove all goals that can be fulfilled at the current CFG node.
 // Generates all possible sets of new goals obtained by replacing a goal that
@@ -39,51 +120,46 @@ struct RemoveResult {
 // avoiding bugs related to transmitting state information across calls.
 static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
                                                        const GoalSet& goals) {
-  GoalSet goals_to_remove;
-  // We can't use set_intersection here because pos->bindings() is a vector.
-  for (const auto* goal : pos->bindings()) {
-    if (goals.count(goal)) {
-      goals_to_remove.insert(goal);
+  TraverseState state;
+  {
+    GoalSet temp_goals_to_remove;
+    // We can't use set_intersection here because pos->bindings() is a vector.
+    for (const auto* goal : pos->bindings()) {
+      if (goals.count(goal)) {
+        state.goals_to_remove.insert(goal);
+      }
     }
+    std::set_difference(goals.begin(), goals.end(),
+                        state.goals_to_remove.begin(),
+                        state.goals_to_remove.end(),
+                        std::inserter(state.new_goals, state.new_goals.begin()),
+                        pointer_less<Binding>());
   }
-  GoalSet seen_goals;
-  GoalSet removed_goals;
-  GoalSet new_goals;
-  std::set_difference(goals.begin(), goals.end(),
-                      goals_to_remove.begin(), goals_to_remove.end(),
-                      std::inserter(new_goals, new_goals.begin()),
-                      pointer_less<Binding>());
-  std::deque<std::tuple<GoalSet, GoalSet, GoalSet, GoalSet>> queue;
-  queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
+  std::stack<Action> actions;
+  actions.push({TRAVERSE, nullptr, {}});
   std::vector<RemoveResult> results;
-  while (!queue.empty()) {
-    std::tie(goals_to_remove, seen_goals, removed_goals, new_goals) =
-        queue.front();
-    queue.pop_front();
-    if (goals_to_remove.empty()) {
-      results.push_back(RemoveResult(removed_goals, new_goals));
-      continue;
-    }
-    const auto* goal = *goals_to_remove.begin();
-    goals_to_remove.erase(goals_to_remove.begin());
-    if (seen_goals.count(goal)) {
-      // Only process a goal once, to prevent infinite loops.
-      queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
-      continue;
-    }
-    seen_goals.insert(goal);
-    const auto* origin = goal->FindOrigin(pos);
-    if (!origin) {
-      new_goals.insert(goal);
-      queue.emplace_back(goals_to_remove, seen_goals, removed_goals, new_goals);
-      continue;
-    }
-    removed_goals.insert(goal);
-    for (const auto& source_set : origin->source_sets) {
-      GoalSet next_goals_to_remove(goals_to_remove);
-      next_goals_to_remove.insert(source_set.begin(), source_set.end());
-      queue.emplace_back(std::move(next_goals_to_remove), seen_goals,
-                         removed_goals, new_goals);
+  while (!actions.empty()) {
+    Action action = actions.top();
+    actions.pop();
+    switch (action.action_type) {
+      case TRAVERSE:
+        traverse(pos, results, actions, state);
+        break;
+      case ADD_GOALS_TO_REMOVE:
+        state.goals_to_remove.insert(action.goal);
+        continue;
+      case REMOVE_GOALS_TO_REMOVE:
+        state.goals_to_remove.erase(action.goal);
+        continue;
+      case REMOVE_SEEN_GOALS:
+        state.seen_goals.erase(action.erase_it);
+        continue;
+      case REMOVE_NEW_GOALS:
+        state.new_goals.erase(action.erase_it);
+        continue;
+      case REMOVE_REMOVED_GOALS:
+        state.removed_goals.erase(action.erase_it);
+        continue;
     }
   }
   return results;
