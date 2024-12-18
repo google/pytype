@@ -27,8 +27,9 @@ namespace internal {
 struct RemoveResult {
   const GoalSet removed_goals;
   const GoalSet new_goals;
-  RemoveResult(const GoalSet& removed_goals, const GoalSet& new_goals):
-      removed_goals(removed_goals), new_goals(new_goals) {}
+  RemoveResult(GoalSet removed_goals, GoalSet new_goals)
+      : removed_goals(std::move(removed_goals)),
+        new_goals(std::move(new_goals)) {}
 };
 
 struct TraverseState {
@@ -39,10 +40,10 @@ struct TraverseState {
   TraverseState() {}
   TraverseState(GoalSet goals_to_remove, GoalSet seen_goals,
                 GoalSet removed_goals, GoalSet new_goals)
-      : goals_to_remove(goals_to_remove),
-        seen_goals(seen_goals),
-        removed_goals(removed_goals),
-        new_goals(new_goals) {}
+      : goals_to_remove(std::move(goals_to_remove)),
+        seen_goals(std::move(seen_goals)),
+        removed_goals(std::move(removed_goals)),
+        new_goals(std::move(new_goals)) {}
 };
 
 // Remove all goals that can be fulfilled at the current CFG node.
@@ -65,7 +66,7 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
                       std::inserter(state.new_goals, state.new_goals.begin()),
                       pointer_less<Binding>());
   std::deque<TraverseState> queue;
-  queue.emplace_back(state);
+  queue.push_back(std::move(state));
   std::vector<RemoveResult> results;
   while (!queue.empty()) {
     state = std::move(queue.front());
