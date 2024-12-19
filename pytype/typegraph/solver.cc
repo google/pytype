@@ -36,9 +36,8 @@ struct RemoveResult {
 struct TraverseState {
   GoalSet goals_to_remove;
   GoalSet seen_goals;
-  GoalSet removed_goals;
-  GoalSet new_goals;
-  TraverseState() {}
+  std::vector<const Binding*> removed_goals;
+  std::vector<const Binding*> new_goals;
 };
 
 enum ActionType {
@@ -78,8 +77,9 @@ static void traverse(const CFGNode* position,
                      std::vector<RemoveResult>& results,
                      std::stack<Action>& actions, TraverseState& state) {
   if (state.goals_to_remove.empty()) {
-    results.emplace_back(GoalSet(state.removed_goals),
-                         GoalSet(state.new_goals));
+    results.emplace_back(
+        GoalSet(state.removed_goals.begin(), state.removed_goals.end()),
+        GoalSet(state.new_goals.begin(), state.new_goals.end()));
     return;
   }
 
@@ -92,23 +92,19 @@ static void traverse(const CFGNode* position,
     actions.emplace(TRAVERSE, nullptr);
     return;
   }
-  auto [it, added] = state.seen_goals.insert(goal);
+  auto [it, _] = state.seen_goals.insert(goal);
   actions.emplace(ERASE_SEEN_GOALS, nullptr, it);
 
   const auto* origin = goal->FindOrigin(position);
   if (!origin) {
-    std::tie(it, added) = state.new_goals.insert(goal);
-    if (added) {
-      actions.emplace(ERASE_NEW_GOALS, nullptr, it);
-    }
+    state.new_goals.push_back(goal);
+    actions.emplace(ERASE_NEW_GOALS, nullptr);
     actions.emplace(TRAVERSE, nullptr);
     return;
   }
 
-  std::tie(it, added) = state.removed_goals.insert(goal);
-  if (added) {
-    actions.emplace(ERASE_REMOVED_GOALS, nullptr, it);
-  }
+  state.removed_goals.push_back(goal);
+  actions.emplace(ERASE_REMOVED_GOALS, nullptr);
   for (const auto& source_set : origin->source_sets) {
     for (const Binding* next_goal : source_set) {
       if (!state.goals_to_remove.count(next_goal)) {
@@ -163,10 +159,10 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
         state.seen_goals.erase(action.erase_it);
         break;
       case ERASE_NEW_GOALS:
-        state.new_goals.erase(action.erase_it);
+        state.new_goals.pop_back();
         break;
       case ERASE_REMOVED_GOALS:
-        state.removed_goals.erase(action.erase_it);
+        state.removed_goals.pop_back();
         break;
     }
   }
