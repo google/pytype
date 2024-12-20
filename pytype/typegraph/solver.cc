@@ -42,6 +42,7 @@ struct TraverseState {
 
 enum ActionType {
   TRAVERSE,
+  TRAVERSE_ALL_SOURCE_SETS,
   INSERT_GOALS_TO_REMOVE,
   ERASE_GOALS_TO_REMOVE,
   ERASE_SEEN_GOALS,
@@ -57,20 +58,35 @@ enum ActionType {
 // through "actions".
 struct Action {
   ActionType action_type;
-  // Goal either to delete are added to the corresponding set.
-  const Binding* goal;
-  // The iterator is for std::set and this is stable upon deletion and insertion
-  // if it's not directly the element being deleted or inserted. We will only
-  // try to erase the element on the exact node traversal, so we can safely
-  // reuse the iterator that was returned from the insertion.
-  // Not using this for action ERASE_GOALS_TO_REMOVE, as we are requesting
-  // for removal before the insertion has happened.
-  GoalSet::iterator erase_it;
+  union {
+    // Goal either to delete are added to the corresponding set.
+    const Binding* goal;
+    // The iterator is for std::set and this is stable upon deletion and
+    // insertion if it's not directly the element being deleted or inserted.
+    // We will only try to erase the element on the exact node traversal, so
+    // we can safely reuse the iterator that was returned from the insertion.
+    // Not using this for action ERASE_GOALS_TO_REMOVE, as we are requesting
+    // for removal before the insertion has happened.
+    GoalSet::iterator erase_it;
+    struct {
+      // Source set to handle by a TRAVERSE_ALL_SOURCE_SETS action. This is
+      // never the same as source_sets_end for actions on the actions stack.
+      std::set<SourceSet>::const_iterator source_sets_it;
+      // End of the source sets in a TRAVERSE_ALL_SOURCE_SETS action.
+      std::set<SourceSet>::const_iterator source_sets_end;
+    };
+  };
+
   Action(ActionType action_type, const Binding* goal)
       : action_type(action_type), goal(goal) {}
-  Action(ActionType action_type, const Binding* goal,
-         GoalSet::iterator erase_it)
-      : action_type(action_type), goal(goal), erase_it(erase_it) {}
+  Action(ActionType action_type, GoalSet::iterator erase_it)
+      : action_type(action_type), erase_it(erase_it) {}
+  Action(ActionType action_type,
+         std::set<SourceSet>::const_iterator source_sets_it,
+         std::set<SourceSet>::const_iterator source_sets_end)
+      : action_type(action_type),
+        source_sets_it(source_sets_it),
+        source_sets_end(source_sets_end) {}
 };
 
 static void traverse(const CFGNode* position,
@@ -93,7 +109,7 @@ static void traverse(const CFGNode* position,
     return;
   }
   auto [it, _] = state.seen_goals.insert(goal);
-  actions.emplace(ERASE_SEEN_GOALS, nullptr, it);
+  actions.emplace(ERASE_SEEN_GOALS, it);
 
   const auto* origin = goal->FindOrigin(position);
   if (!origin) {
@@ -105,18 +121,9 @@ static void traverse(const CFGNode* position,
 
   state.removed_goals.push_back(goal);
   actions.emplace(ERASE_REMOVED_GOALS, nullptr);
-  for (const auto& source_set : origin->source_sets) {
-    for (const Binding* next_goal : source_set) {
-      if (!state.goals_to_remove.count(next_goal)) {
-        actions.emplace(ERASE_GOALS_TO_REMOVE, next_goal);
-      }
-    }
-    actions.emplace(TRAVERSE, nullptr);
-    for (const Binding* next_goal : source_set) {
-      if (!state.goals_to_remove.count(next_goal)) {
-        actions.emplace(INSERT_GOALS_TO_REMOVE, next_goal);
-      }
-    }
+  if (!origin->source_sets.empty()) {
+    actions.emplace(TRAVERSE_ALL_SOURCE_SETS, origin->source_sets.cbegin(),
+                    origin->source_sets.cend());
   }
 }
 
@@ -149,6 +156,21 @@ static std::vector<RemoveResult> remove_finished_goals(const CFGNode* pos,
       case TRAVERSE:
         traverse(pos, results, actions, state);
         break;
+      case TRAVERSE_ALL_SOURCE_SETS: {
+        const auto& source_set = *action.source_sets_it;
+        action.source_sets_it++;
+        if (action.source_sets_it != action.source_sets_end) {
+          actions.push(action);
+        }
+        for (const Binding* next_goal : source_set) {
+          auto [it, added] = state.goals_to_remove.insert(next_goal);
+          if (added) {
+            actions.emplace(ERASE_GOALS_TO_REMOVE, next_goal);
+          }
+        }
+        actions.emplace(TRAVERSE, nullptr);
+        break;
+      }
       case INSERT_GOALS_TO_REMOVE:
         state.goals_to_remove.insert(action.goal);
         break;
