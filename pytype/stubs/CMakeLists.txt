@@ -15,7 +15,6 @@ filegroup(
     builtins/attrs/__init__.pytd
     builtins/builtins.pytd
     builtins/mypy_extensions.pytd
-    builtins/numpy/__init__.pytd
     builtins/protocols.pytd
     builtins/typing.pytd
     stdlib/collections/__init__.pytd
