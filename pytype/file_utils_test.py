@@ -302,5 +302,27 @@ class TestExpandGlobpaths(unittest.TestCase):
       )
 
 
+class TestMergeCSVFiles(unittest.TestCase):
+
+  def test_merge(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("a.csv", "a,b,c\n1,2,3\n4,5,6")
+      d.create_file("b.csv", "a,b,c\n7,8,9\n10,11,12")
+      
+      file_utils.merge_csv(
+        "merged.csv",
+        ["a.csv", "b.csv"],
+      )
+      with open("merged.csv") as f:
+        self.assertEqual(
+          f.read(),
+          "a,b,c\n1,2,3\n4,5,6\n7,8,9\n10,11,12\n"
+        )
+
+      self.assertFalse(path_utils.isfile("a.csv"))
+      self.assertFalse(path_utils.isfile("b.csv"))
+
+
+
 if __name__ == "__main__":
   unittest.main()

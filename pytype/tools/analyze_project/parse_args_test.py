@@ -42,7 +42,7 @@ class TestParser(unittest.TestCase):
 
   def test_parse_no_filename(self):
     args = self.parser.parse_args([])
-    self.assertFalse(hasattr(args, 'inputs'))
+    self.assertEqual(args.inputs, set())
 
   def test_parse_bad_filename(self):
     args = self.parser.parse_args(['this_file_should_not_exist'])
@@ -147,8 +147,9 @@ class TestParser(unittest.TestCase):
 
   def test_defaults(self):
     args = self.parser.parse_args([])
-    for arg in config.ITEMS:
-      self.assertFalse(hasattr(args, arg))
+    defaults = self.parser.config_from_defaults()
+    for key in config.ITEMS:
+      self.assertEqual(getattr(args, key), getattr(defaults, key))
 
   def test_pytype_single_args(self):
     args = self.parser.parse_args(['--disable=import-error'])

@@ -36,9 +36,13 @@ class Parser:
     self.pytype_single_args = pytype_single_args
     self._pytype_arg_map = pytype_config.args_map()
 
+  # Populate initially with defaults, then overwrite with file-configurable.
+  # Ex: output_errors_csv depends on report_errors, which is set by a default (store_false).
   def create_initial_args(self, keys):
     """Creates the initial set of args."""
-    return argparse.Namespace(**{k: None for k in keys})
+    defaults = self._parser.parse_args([])
+    self.clean_args(defaults, keys)
+    return defaults
 
   def config_from_defaults(self):
     defaults = self._parser.parse_args([])
@@ -157,6 +161,7 @@ def make_parser():
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   pytype_config.add_feature_flags(wrapper)
+  config.add_custom_flags(wrapper)
   return Parser(parser, pytype_single_args=wrapper.actions)
 
 

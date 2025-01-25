@@ -5,6 +5,7 @@ import errno
 import os
 import re
 import sys
+import typing
 
 from pytype.platform_utils import path_utils
 
@@ -157,3 +158,12 @@ def is_file_script(filename, directory=None):
       except UnicodeDecodeError:
         return False
       return re.fullmatch(r"#!.+python3?", line) is not None
+    
+
+def merge_csvs(output: str, files: typing.List[str]) -> None:
+  """Merge contents of csv into one output csv file."""
+  with open(output, "w") as f:
+    for file in files:
+      with open(file, "r") as ifile:
+        f.write(ifile.read())
+      os.remove(file)

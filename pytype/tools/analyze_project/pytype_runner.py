@@ -2,6 +2,7 @@
 
 import collections
 from collections.abc import Iterable, Sequence
+import hashlib
 import importlib
 import itertools
 import logging
@@ -186,7 +187,14 @@ class PytypeRunner:
     self.custom_options = [
         (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
     self.keep_going = conf.keep_going
+    self.output_errors_csv = conf.output_errors_csv
     self.jobs = conf.jobs
+
+  def cleanup(self) -> None:
+    if self.output_errors_csv:
+      c = path_utils.relpath(path_utils.dirname(self.ninja_file))
+      files = [f"{c}/{hashlib.blake2b(i.encode(), digest_size=16).hexdigest()}.csv" for i in self.filenames]
+      file_utils.merge_csvs(f"{c}/{self.output_errors_csv}", files=files)
 
   def set_custom_options(self, flags_with_values, binary_flags, report_errors):
     """Merge self.custom_options into flags_with_values and binary_flags."""
@@ -221,6 +229,10 @@ class PytypeRunner:
         '--nofail',
     }
     self.set_custom_options(flags_with_values, binary_flags, report_errors)
+
+    if self.output_errors_csv:
+      flags_with_values['--output-errors-csv'] = '$out_path'
+      
     # Order the flags so that ninja recognizes commands across runs.
     return (
         exe +
@@ -354,6 +366,10 @@ class PytypeRunner:
                   deps=deps,
                   imports=escape_ninja_path(imports),
                   module=module.name))
+      if self.output_errors_csv:
+        f.write('  out_path = {path}.csv\n'.format(
+                path=escape_ninja_path(hashlib.blake2b(module.full_path.encode(), digest_size=16).hexdigest())
+                ))
     return output
 
   def setup_build(self):
@@ -423,4 +439,5 @@ class PytypeRunner:
     ret = self.build()
     if not ret:
       print('Success: no errors found')
+    self.cleanup()
     return ret
