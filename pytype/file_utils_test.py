@@ -306,22 +306,20 @@ class TestMergeCSVFiles(unittest.TestCase):
 
   def test_merge(self):
     with test_utils.Tempdir() as d:
-      d.create_file("a.csv", "a,b,c\n1,2,3\n4,5,6")
-      d.create_file("b.csv", "a,b,c\n7,8,9\n10,11,12")
+      p1 = d.create_file("a.csv", "a,b,c\n1,2,3\n4,5,6\n")
+      p2 = d.create_file("b.csv", "a,b,c\n7,8,9\n10,11,12\n")
+
+      m = d.create_file("merged.csv")
       
-      file_utils.merge_csvs(
-        "merged.csv",
-        ["a.csv", "b.csv"],
-      )
-      with open("merged.csv") as f:
+      file_utils.merge_csvs(m, [p1, p2])
+      with open(m) as f:
         self.assertEqual(
           f.read(),
-          "a,b,c\n1,2,3\n4,5,6\n7,8,9\n10,11,12\n"
+          "a,b,c\n1,2,3\n4,5,6\na,b,c\n7,8,9\n10,11,12\n"
         )
 
-      self.assertFalse(path_utils.isfile("a.csv"))
-      self.assertFalse(path_utils.isfile("b.csv"))
-
+      self.assertFalse(path_utils.isfile(p1))
+      self.assertFalse(path_utils.isfile(p2))
 
 
 if __name__ == "__main__":
