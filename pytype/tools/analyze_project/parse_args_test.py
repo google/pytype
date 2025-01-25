@@ -149,7 +149,7 @@ class TestParser(unittest.TestCase):
     args = self.parser.parse_args([])
     for arg in config.ITEMS:
       self.assertFalse(hasattr(args, arg))
-      
+
   def test_pytype_single_args(self):
     args = self.parser.parse_args(['--disable=import-error'])
     self.assertSequenceEqual(args.disable, ['import-error'])

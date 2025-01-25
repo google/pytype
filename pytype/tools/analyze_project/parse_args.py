@@ -78,7 +78,7 @@ class Parser:
     self._parser.parse_args(argv, args)
     self.clean_args(args, file_config_names)
     # output_errors_csv is dependent on report_errors, so we set it here.
-    args.report_errors = getattr(args, 'output_errors_csv', None) or getattr(args, 'report_errors', True)
+    args.report_errors = hasattr(args, 'output_errors_csv') or getattr(args, 'report_errors', True)
     self.postprocess(args)
     return args
 
