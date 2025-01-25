@@ -158,7 +158,7 @@ def is_file_script(filename, directory=None):
       except UnicodeDecodeError:
         return False
       return re.fullmatch(r"#!.+python3?", line) is not None
-    
+
 
 def merge_csvs(output: str, files: typing.List[str]) -> None:
   """Merge contents of csv into one output csv file."""

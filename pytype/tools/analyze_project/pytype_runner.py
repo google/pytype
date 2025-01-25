@@ -232,7 +232,7 @@ class PytypeRunner:
 
     if self.output_errors_csv:
       flags_with_values['--output-errors-csv'] = '$out_path'
-      
+
     # Order the flags so that ninja recognizes commands across runs.
     return (
         exe +
