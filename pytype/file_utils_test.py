@@ -309,7 +309,7 @@ class TestMergeCSVFiles(unittest.TestCase):
       d.create_file("a.csv", "a,b,c\n1,2,3\n4,5,6")
       d.create_file("b.csv", "a,b,c\n7,8,9\n10,11,12")
       
-      file_utils.merge_csv(
+      file_utils.merge_csvs(
         "merged.csv",
         ["a.csv", "b.csv"],
       )
