@@ -13,7 +13,7 @@ class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
   def test_error_format(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x):
         y = 42
         y.foobar  # attribute-error[e]
@@ -27,7 +27,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertDiagnosticMessages(errors, {"e": message})
 
   def test_error_format_with_source(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
         from typing import List
         def foo(args: List[str]) -> None:
           for arg in args:
@@ -43,7 +43,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertDiagnosticMessages(errors, {"e": message})
 
   def test_error_format_with_source_multiple_lines(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
         from typing import List
         def foo(args: List[str]) -> None:
           for arg in args:

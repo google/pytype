@@ -679,7 +679,7 @@ class TestFunctions(test_base.BaseTest):
     )
 
   def test_wrong_keyword(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x):
         pass
       f("", y=42)  # wrong-keyword-args[e]
@@ -779,7 +779,7 @@ class TestFunctions(test_base.BaseTest):
       )
 
   def test_interpreter_function_in_class(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class A:
         bar = lambda x: x
         def f(self):

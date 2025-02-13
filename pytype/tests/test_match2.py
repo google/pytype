@@ -82,7 +82,7 @@ class MatchTest(test_base.BaseTest):
       )
 
   def test_interpreter_function_against_callable(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Callable
       def f(x: Callable[[bool], int]): ...
       def g1(x: int) -> bool:
@@ -103,7 +103,7 @@ class MatchTest(test_base.BaseTest):
     )
 
   def test_bound_interpreter_function_against_callable(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Callable
 
       class A:
@@ -186,7 +186,7 @@ class MatchTest(test_base.BaseTest):
       )
 
   def test_variable_length_function_against_callable(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Any, Callable
       def f(x: Callable[[int], Any]): pass
       def g1(x: int=0): pass
@@ -205,7 +205,7 @@ class MatchTest(test_base.BaseTest):
     )
 
   def test_callable_instance_against_callable_with_type_parameters(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Callable, TypeVar
       T = TypeVar("T")
       def f(x: Callable[[T], T]): ...
@@ -283,7 +283,7 @@ class MatchTest(test_base.BaseTest):
     """)
 
   def test_typevar_with_bound(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Callable, TypeVar
       T1 = TypeVar("T1", bound=int)
       T2 = TypeVar("T2")

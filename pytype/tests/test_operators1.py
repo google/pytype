@@ -332,7 +332,7 @@ class ReverseTest(test_base.BaseTest, test_utils.OperatorsTestMixin):
   def test_unknown_right(self):
     # Reverse operators are rare enough that it makes sense to assume that the
     # regular operator was called when the right side is ambiguous.
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __sub__(self, other):
           return ""
@@ -375,7 +375,7 @@ class InplaceTest(test_base.BaseTest, test_utils.OperatorsTestMixin):
     self.check_inplace("isub", "-=")
 
   def test_list_add(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class A: pass
       v = []
       v += A()  # unsupported-operands[e]

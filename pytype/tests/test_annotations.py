@@ -67,7 +67,7 @@ class AnnotationTest(test_base.BaseTest):
     )
 
   def test_call_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       s = {1}
       def foo(x: int):
         s.intersection([x])
@@ -92,7 +92,7 @@ class AnnotationTest(test_base.BaseTest):
     #                      "Actually passed: (x: Union[complex, int, str])"]
 
   def test_inner_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x: int):
         return x.upper()  # attribute-error[e]
     """)
@@ -193,7 +193,7 @@ class AnnotationTest(test_base.BaseTest):
     )
 
   def test_ambiguous_annotation(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x: int if __random__ else float):  # invalid-annotation[e1]
         return x
       def foo(x: "int if __random__ else float"):  # invalid-annotation[e2]
@@ -210,7 +210,7 @@ class AnnotationTest(test_base.BaseTest):
     )
 
   def test_bad_string_annotation(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x: str()):  # invalid-annotation[e]
         return x
     """)
@@ -223,7 +223,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_multiple_returns(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x: str, y: str) -> int:
         if x:
           return "foo"  # bad-return-type[e1]
@@ -244,7 +244,7 @@ class AnnotationTest(test_base.BaseTest):
       reason="Logs one error for all bad returns in <=3.9, =3.11",
   )
   def test_ambiguous_return(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x: str) -> int:
         if x:
           y = "foo"
@@ -262,7 +262,7 @@ class AnnotationTest(test_base.BaseTest):
       reason="Logs one error per bad return in 3.10 and 3.12",
   )
   def test_ambiguous_return_310_312(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x: str) -> int:
         if x:
           y = "foo"
@@ -433,7 +433,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_without_forward_decl(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
       def f(a) -> Bar:  # name-error[e]
         return Bar()
 
@@ -450,7 +450,7 @@ class AnnotationTest(test_base.BaseTest):
       class Foo:
         pass
     """)
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
       def f(a: "Foo"):  # name-error[e]
         return B()
 
@@ -460,7 +460,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errorlog, {"e": r"Foo"})
 
   def test_forward_decl_bad_return(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
         def f() -> "Foo":
           return 1  # bad-return-type[e]
 
@@ -471,7 +471,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errorlog, {"e": r"return type.*int"})
 
   def test_confusing_forward_decl(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
         class Foo:
           def foo(self):
             return 4
@@ -490,7 +490,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errorlog, {"e": r"\'bar\'.*Foo"})
 
   def test_return_type_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class FooBar: pass
       def f() -> FooBar:
         return 3  # bad-return-type[e]
@@ -702,7 +702,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_ambiguous_inner_annotation(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List, Union
       def f(x: List[int if __random__ else str]):  # invalid-annotation[e1]
         pass
@@ -755,7 +755,7 @@ class AnnotationTest(test_base.BaseTest):
 
   @test_base.skip("Types not checked due to function.Args.simplify")
   def test_simplified_varargs_and_kwargs(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x, *args: int):
         pass
       def g(x, **kwargs: int):
@@ -828,7 +828,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"x.*None"})
 
   def test_match_late_annotation(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class A:
         def f(self, x: "A"):
           pass
@@ -838,7 +838,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"A.*int"})
 
   def test_recursive_forward_reference(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class A:
         def __init__(self, x: "A"):
           self.foo = x.foo

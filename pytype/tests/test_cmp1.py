@@ -48,7 +48,7 @@ class InTest(test_base.BaseTest):
     )
 
   def test_none(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       x = None
       if "" in x:  # unsupported-operands[e1]
         del x[""]  # unsupported-operands[e2]
@@ -98,7 +98,7 @@ class NotInTest(test_base.BaseTest):
     )
 
   def test_none(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       x = None
       if "" not in x:  # unsupported-operands[e1]
         x[""] = 42  # unsupported-operands[e2]

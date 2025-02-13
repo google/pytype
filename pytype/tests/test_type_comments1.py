@@ -106,7 +106,7 @@ class FunctionCommentTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
 
   def test_multiple_function_comments(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x):
         # type: (None) -> bool
         # type: (str) -> str  # ignored-type-comment[e]
@@ -246,7 +246,7 @@ class FunctionCommentTest(test_base.BaseTest):
     """)
 
   def test_function_too_many_args(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x):
         # type: (int, str) -> None  # invalid-function-type-comment[e]
         y = x
@@ -255,7 +255,7 @@ class FunctionCommentTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Expected 1 args, 2 given"})
 
   def test_function_too_few_args(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x, y, z):
         # type: (int, str) -> None  # invalid-function-type-comment[e]
         y = x
@@ -264,7 +264,7 @@ class FunctionCommentTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Expected 3 args, 2 given"})
 
   def test_function_too_few_args_do_not_count_self(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(self, x, y, z):
         # type: (int, str) -> None  # invalid-function-type-comment[e]
         y = x
@@ -287,7 +287,7 @@ class FunctionCommentTest(test_base.BaseTest):
     """)
 
   def test_invalid_function_args(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x):
         # type: (abc def) -> int  # invalid-function-type-comment[e]
         return x
@@ -299,7 +299,7 @@ class FunctionCommentTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": rf"abc def.*{error_reason}"})
 
   def test_ambiguous_annotation(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def foo(x):
         # type: (int if __random__ else str) -> None  # invalid-function-type-comment[e]
         pass
@@ -461,13 +461,13 @@ class AssignmentCommentTest(test_base.BaseTest):
     )
 
   def test_name_error_inside_comment(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       X = None  # type: Foo  # name-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Foo"})
 
   def test_warn_on_ignored_type_comment(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       X = []
       X[0] = None  # type: str  # ignored-type-comment[e1]
       # type: int  # ignored-type-comment[e2]
@@ -505,7 +505,7 @@ class AssignmentCommentTest(test_base.BaseTest):
     )
 
   def test_module_instance_as_bad_type_comment(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import sys
       x = None  # type: sys  # invalid-annotation[e]
     """)
@@ -644,14 +644,14 @@ class AssignmentCommentTest(test_base.BaseTest):
     )
 
   def test_type_comment_name_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f():
         x = None  # type: Any  # invalid-annotation[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"not defined$"})
 
   def test_type_comment_invalid_syntax(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f():
         x = None  # type: y = 1  # invalid-annotation[e]
     """)
@@ -674,7 +674,7 @@ class AssignmentCommentTest(test_base.BaseTest):
 
   def test_multiple_type_comments(self):
     """We should not allow multiple type comments on one line."""
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       a = 42  # type: int  # type: float  # invalid-directive[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Multiple"})

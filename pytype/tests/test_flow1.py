@@ -373,7 +373,7 @@ class FlowTest(test_base.BaseTest):
     )
 
   def test_call_undefined(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f():
         try:
           func = None

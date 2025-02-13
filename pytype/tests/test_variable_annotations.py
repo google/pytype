@@ -81,7 +81,7 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
     )
 
   def test_illegal_annotations(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List, TypeVar, NoReturn
 
       T = TypeVar('T')

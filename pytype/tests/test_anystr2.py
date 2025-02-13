@@ -133,7 +133,7 @@ class AnyStrTestPy3(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})
 
   def test_constraint_mismatch(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import AnyStr
       def f(x: AnyStr, y: AnyStr): ...
       f("", "")  # ok

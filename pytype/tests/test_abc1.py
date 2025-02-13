@@ -28,7 +28,7 @@ class AbstractMethodTests(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"foo\.Example.*foo"})
 
   def test_stray_abstractmethod(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import abc
       class Example:  # ignored-abstractmethod[e]
         @abc.abstractmethod
@@ -131,7 +131,7 @@ class AbstractMethodTests(test_base.BaseTest):
       )
 
   def test_misplaced_abstractproperty(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import abc
       @abc.abstractproperty
       class Example:

@@ -159,7 +159,7 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
     """)
 
   def test_type_parameter_instance_multiple_bindings(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class A:
         values = 42
       args = {A() if __random__ else True: ""}

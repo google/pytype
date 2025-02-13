@@ -150,7 +150,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_bad_substitution(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List, TypeVar
       S = TypeVar("S")
       T = TypeVar("T")
@@ -234,7 +234,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_print_nested_type_parameter(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List, TypeVar
       T = TypeVar("T", int, float)
       def f(x: List[T]): ...
@@ -245,7 +245,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_constraint_subtyping(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", int, float)
       def f(x: T, y: T): ...
@@ -255,7 +255,7 @@ class TypeVarTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Expected.*y: bool.*Actual.*y: int"})
 
   def test_filter_value(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", str, float)
       def f(x: T, y: T): ...
@@ -306,7 +306,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_enforce_non_constrained_typevar(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar
       T = TypeVar("T")
       def f(x: T, y: T): ...
@@ -382,7 +382,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_optional_typevar(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Optional, TypeVar
       T = TypeVar("T", bound=str)
       def f() -> Optional[T]:

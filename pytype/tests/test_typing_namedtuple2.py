@@ -274,7 +274,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
     )
 
   def test_bad_call(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
         from typing import NamedTuple
         E2 = NamedTuple('Employee2', [('name', str), ('id', int)],  # invalid-namedtuple-arg[e1]  # wrong-keyword-args[e2]
                         birth=str, gender=bool)
@@ -288,7 +288,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
     )
 
   def test_bad_attribute(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
         from typing import NamedTuple
 
         class SubCls(NamedTuple):  # not-writable[e]
@@ -298,7 +298,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
     self.assertErrorRegexes(errorlog, {"e": r".*'__init__'.*[SubCls]"})
 
   def test_bad_arg_count(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
         from typing import NamedTuple
 
         class SubCls(NamedTuple):

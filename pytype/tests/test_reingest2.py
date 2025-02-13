@@ -13,7 +13,7 @@ class ReingestTest(test_base.BaseTest):
       def f(x: T) -> T: return x
     """
     with self.DepTree([("foo.py", foo)]):
-      _, errors = self.InferWithErrors("""
+      errors = self.CheckWithErrors("""
         import foo
         foo.f("")  # wrong-arg-types[e]
       """)
@@ -65,7 +65,7 @@ class ReingestTestPy3(test_base.BaseTest):
           pass
     """
     with self.DepTree([("foo.py", foo)]):
-      _, errors = self.InferWithErrors("""
+      errors = self.CheckWithErrors("""
         import foo
         foo.Foo()  # not-instantiable[e]
         foo.Bar()

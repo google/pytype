@@ -67,7 +67,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_recursive_constructor_bad_attribute(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List
       MyType = List['Foo']
       class Foo:

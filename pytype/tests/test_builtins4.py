@@ -564,7 +564,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     )
 
   def test_int_init(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       int(0, 1)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Union\[bytes, str\].*int"})

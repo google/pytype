@@ -71,7 +71,7 @@ class TestSuperPython3Feature(test_base.BaseTest):
     )
 
   def test_super_without_args_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class A:
         def m(self):
           pass

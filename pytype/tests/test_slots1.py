@@ -75,7 +75,7 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def test_slot_with_non_strings(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:  # bad-slots[e]
         __slots__ = (1, 2, 3)
     """)
@@ -119,7 +119,7 @@ class SlotsTest(test_base.BaseTest):
     )
 
   def test_assign_attribute(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         __slots__ = ("x", "y")
       foo = Foo()
@@ -130,7 +130,7 @@ class SlotsTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"z"})
 
   def test_object(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       object().foo = 42  # not-writable[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"object"})
@@ -143,7 +143,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def test_parameterized_base_class(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List
       class Foo(List[int]):
         __slots__ = ()
@@ -152,7 +152,7 @@ class SlotsTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def test_empty_slots(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         __slots__ = ()
       Foo().foo = 42  # not-writable[e]
@@ -195,7 +195,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def test_generator_attr(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(): yield 42
       f().foo = 42  # not-writable[e]
     """)
@@ -228,7 +228,7 @@ class SlotsTest(test_base.BaseTest):
     """)
 
   def test_name_mangling(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Bar:
         __slots__ = ["__baz"]
         def __init__(self):

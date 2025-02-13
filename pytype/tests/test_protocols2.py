@@ -30,7 +30,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_protocol_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import protocols
 
       def f(x: protocols.SupportsAbs):
@@ -42,7 +42,7 @@ class ProtocolTest(test_base.BaseTest):
     )
 
   def test_check_iterator_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Iterator
       def f(x: Iterator[int]):
         return None
@@ -85,7 +85,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_parameterized_protocol_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Iterator, Iterable
 
       class Foo:
@@ -120,7 +120,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_check_parameterized_protocol_error_multi_signature(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Sequence, Union
 
       class Foo:
@@ -278,7 +278,7 @@ class ProtocolTest(test_base.BaseTest):
       )
 
   def test_inherited_abstract_method_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Iterator
       class Foo:
         def __iter__(self) -> Iterator[str]:

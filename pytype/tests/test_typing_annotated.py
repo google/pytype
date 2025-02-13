@@ -51,21 +51,21 @@ class AnnotatedTest(test_base.BaseTest):
     )
 
   def test_invalid_type(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing_extensions import Annotated
       x: Annotated[0, int] = 0  # invalid-annotation[err]
     """)
     self.assertErrorRegexes(errors, {"err": r"Not a type"})
 
   def test_missing_type(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing_extensions import Annotated
       x: Annotated = 0  # invalid-annotation[err]
     """)
     self.assertErrorRegexes(errors, {"err": r"Not a type"})
 
   def test_missing_annotation(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing_extensions import Annotated
       x: Annotated[int] # invalid-annotation[err]
     """)

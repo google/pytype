@@ -7,7 +7,7 @@ class DisableTest(test_base.BaseTest):
   """Test error disabling."""
 
   def test_invalid_directive(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       x = 1  # pytype: this is not a valid pytype directive.  # invalid-directive
     """)
     # Invalid directives are just a warning, so has_error() should still
@@ -15,7 +15,7 @@ class DisableTest(test_base.BaseTest):
     self.assertFalse(errors.has_error())
 
   def test_invalid_disable_error_name(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       x = 1  # pytype: disable=not-an-error.  # invalid-directive[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Invalid error name.*not-an-error"})
@@ -32,7 +32,7 @@ class DisableTest(test_base.BaseTest):
 
   def test_open_ended_directive(self):
     """Test that disables in the middle of the file can't be left open-ended."""
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       '''This is a docstring.
       def f(x):
         pass

@@ -7,7 +7,7 @@ class TracebackTest(test_base.BaseTest):
   """Tests for tracebacks in error messages."""
 
   def test_no_traceback(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x):
         "hello" + 42  # unsupported-operands[e]
       f("world")
@@ -15,7 +15,7 @@ class TracebackTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"expects str$"})
 
   def test_same_traceback(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x, _):
         x + 42  # unsupported-operands[e]
       def g(x):
@@ -25,7 +25,7 @@ class TracebackTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Called from.*:\n  line 4, in g"})
 
   def test_different_tracebacks(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x):
         x + 42  # unsupported-operands[e1]  # unsupported-operands[e2]
       f("hello")
@@ -40,7 +40,7 @@ class TracebackTest(test_base.BaseTest):
     )
 
   def test_comprehension(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f():
         return {x.upper() for x in range(10)}  # attribute-error[e]
     """)
@@ -49,7 +49,7 @@ class TracebackTest(test_base.BaseTest):
     self.assertEqual(error.methodname, "f")
 
   def test_comprehension_in_traceback(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x):
         return x.upper()  # attribute-error[e]
       def g():

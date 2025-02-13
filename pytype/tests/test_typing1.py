@@ -166,7 +166,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_new_type_arg_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import NewType
       MyInt = NewType(int, 'MyInt')  # wrong-arg-types[e1]
       MyStr = NewType(tp='str', name='MyStr')  # wrong-arg-types[e2]

@@ -72,7 +72,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def test_set(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def foo(self, name, value):
           super(Foo, self).__set__(name, value)  # attribute-error[e]
@@ -143,7 +143,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def test_call_super(self):
-    _, errorlog = self.InferWithErrors("""
+    errorlog = self.CheckWithErrors("""
       class Y:
         pass
 
@@ -207,7 +207,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def test_single_argument_super(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       super(object)
       super(object())  # wrong-arg-types[e]
     """)
@@ -246,7 +246,7 @@ class SuperTest(test_base.BaseTest):
     """)
 
   def test_super_set_attr(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __init__(self):
           super(Foo, self).foo = 42  # not-writable[e]
@@ -254,7 +254,7 @@ class SuperTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"super"})
 
   def test_super_subclass_set_attr(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo: pass
       class Bar(Foo):
         def __init__(self):
@@ -282,7 +282,7 @@ class SuperTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"super"})
 
   def test_super_any_set_attr(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo(__any_object__):
         def __init__(self):
           super(Foo, self).foo = 42  # not-writable[e]

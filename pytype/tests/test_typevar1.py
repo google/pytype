@@ -179,7 +179,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def test_covariant(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", covariant=True)  # not-supported-yet
       U = TypeVar("U", covariant=True if __random__ else False)  # invalid-typevar[e1]
@@ -194,7 +194,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_contravariant(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", contravariant=True)  # not-supported-yet
       U = TypeVar("U", contravariant=True if __random__ else False)  # invalid-typevar[e1]
@@ -504,7 +504,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_late_bound(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar, Union
       T = TypeVar("T", int, float, bound="str")  # invalid-typevar[e1]
       S = TypeVar("S", bound="")  # invalid-typevar[e2]
@@ -609,7 +609,7 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   def test_extra_arguments(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar
       T = TypeVar("T", extra_arg=42)  # invalid-typevar[e1]
       S = TypeVar("S", *__any_object__)  # invalid-typevar[e2]

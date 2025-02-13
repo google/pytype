@@ -57,7 +57,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def test_tuple_printing(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Tuple
       def f(x: Tuple[str, ...]):
         pass
@@ -267,7 +267,7 @@ class TupleTestPython3Feature(test_base.BaseTest):
     )
 
   def test_bad_unpacking_with_slurp(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       a, *b, c = (1,)  # bad-unpacking[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"1 value.*2 variables"})

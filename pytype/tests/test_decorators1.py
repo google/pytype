@@ -108,7 +108,7 @@ class DecoratorsTest(test_base.BaseTest):
     )
 
   def test_bad_keyword(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __init__(self):
           self._bar = 1

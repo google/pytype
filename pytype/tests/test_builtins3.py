@@ -148,7 +148,7 @@ class BuiltinTests3(test_base.BaseTest):
     )
 
   def test_int_init(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       int()
       int(0)
       int("0")

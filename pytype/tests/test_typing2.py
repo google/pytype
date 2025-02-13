@@ -80,7 +80,7 @@ class TypingTest(test_base.BaseTest):
     )
 
   def test_type_union(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Type, Union
       class Foo:
         bar = ...  # type: int
@@ -370,7 +370,7 @@ class TypingTest(test_base.BaseTest):
     )
 
   def test_callable_call_with_varargs_and_kwargs(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Callable
       f = ...  # type: Callable[[], int]
       f(x=3)  # wrong-keyword-args[e1]
@@ -465,7 +465,7 @@ class TypingTest(test_base.BaseTest):
     )
 
   def test_new_type_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import NewType
       MyInt = NewType('MyInt', int)
       MyStr = NewType('MyStr', str)

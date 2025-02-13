@@ -19,7 +19,7 @@ class RecoveryTests(test_base.BaseTest):
 
   def test_complex_init(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import AnyStr, Optional
       class X:
         def __init__(self,

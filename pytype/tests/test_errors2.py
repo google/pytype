@@ -8,7 +8,7 @@ class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
   def test_union(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x: int):
         pass
       if __random__:
@@ -23,7 +23,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def test_invalid_annotations(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Dict, List, Union
       def f1(x: Dict):  # okay
         pass
@@ -44,7 +44,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def test_print_unsolvable(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List
       def f(x: List[nonsense], y: str, z: float):  # name-error
         pass
@@ -55,7 +55,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def test_print_union_of_containers(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x: str):
         pass
       if __random__:
@@ -68,7 +68,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": error})
 
   def test_wrong_brackets(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List
       def f(x: List(str)):  # invalid-annotation[e]
         pass
@@ -76,7 +76,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["<instance of list>"]})
 
   def test_interpreter_class_printing(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo: pass
       def f(x: str): pass
       f(Foo())  # wrong-arg-types[e]
@@ -84,7 +84,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["str", "Foo"]})
 
   def test_print_dict_and_tuple(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Tuple
       tup = None  # type: Tuple[int, ...]
       dct = None  # type: dict[str, int]
@@ -108,7 +108,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def test_move_union_inward(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f() -> str:  # bad-yield-annotation[e]
         y = "hello" if __random__ else 42
         yield y
@@ -118,7 +118,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def test_inner_class_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x: str): pass
       def g():
         class Foo: pass
@@ -127,7 +127,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["x: str", "x: Foo"]})
 
   def test_inner_class_error2(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f():
         class Foo: pass
         def g(x: Foo): pass
@@ -138,7 +138,7 @@ class ErrorTest(test_base.BaseTest):
   def test_clean_namedtuple_names(self):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
     # names and doesn't erase other types accidentally.
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import collections
       X = collections.namedtuple("X", "a b c d")
       Y = collections.namedtuple("Z", "")
@@ -167,7 +167,7 @@ class ErrorTest(test_base.BaseTest):
     )
 
   def test_argument_order(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def g(f: str, a, b, c, d, e,):
         pass
       g(a=1, b=2, c=3, d=4, e=5, f=6)  # wrong-arg-types[e]
@@ -184,7 +184,7 @@ class ErrorTest(test_base.BaseTest):
     """)
 
   def test_inner_class(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f() -> int:
         class Foo:
           pass
@@ -389,7 +389,7 @@ class AssertTypeTest(test_base.BaseTest):
   """Tests for pseudo-builtin assert_type()."""
 
   def test_assert_type(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List, Union
       class A: pass
       def f(x: int, y: List[str], z):
@@ -410,7 +410,7 @@ class AssertTypeTest(test_base.BaseTest):
     )
 
   def test_assert_type_str(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import List, Union
       class A: pass
       def f(x: int, y: List[str], z):
@@ -555,14 +555,14 @@ class ErrorTestPy3(test_base.BaseTest):
     )
 
   def test_protocol_mismatch(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo: pass
       next(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(errors, {"e": ["__next__"]})
 
   def test_protocol_mismatch_partial(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __iter__(self):
           return self
@@ -573,7 +573,7 @@ class ErrorTestPy3(test_base.BaseTest):
     )
 
   def test_generator_send_ret_type(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Generator
       def f() -> Generator[int, str, int]:
         x = yield 1

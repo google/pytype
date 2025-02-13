@@ -260,7 +260,7 @@ class TestBasic(test_base.BaseTest):
     )
 
   def test_deleting_names(self):
-    _, err = self.InferWithErrors("""
+    err = self.CheckWithErrors("""
       g = 17
       assert g == 17
       del g
@@ -324,7 +324,7 @@ class TestBasic(test_base.BaseTest):
       """)
 
   def test_calling_methods_wrong(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Thing:
         def __init__(self, x):
           self.x = x
@@ -349,7 +349,7 @@ class TestBasic(test_base.BaseTest):
       """)
 
   def test_other_class_methods(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Thing:
         def foo(self):
           return 17

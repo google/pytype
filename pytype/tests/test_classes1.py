@@ -285,7 +285,7 @@ class ClassesTest(test_base.BaseTest):
     )
 
   def test_super_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Base:
         def __init__(self, x, y, z):
           pass
@@ -1333,7 +1333,7 @@ class ClassesTest(test_base.BaseTest):
       )
 
   def test_super_new_wrong_arg_count(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __new__(cls, x):
           return super(Foo, cls).__new__(cls, x)  # wrong-arg-count[e]
@@ -1341,7 +1341,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def test_super_init_wrong_arg_count(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __init__(self, x):
           super(Foo, self).__init__(x)  # wrong-arg-count[e]
@@ -1349,7 +1349,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def test_super_new_missing_parameter(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __new__(cls, x):
           # Even when __init__ is defined, too few args is an error.
@@ -1360,7 +1360,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"cls.*__new__"})
 
   def test_new_kwarg(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __new__(cls):
           # ok because __init__ is defined.
@@ -1374,7 +1374,7 @@ class ClassesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"x.*__new__"})
 
   def test_init_kwarg(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def __init__(self):
           # ok because __new__ is defined.

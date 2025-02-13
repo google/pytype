@@ -9,7 +9,7 @@ class GenericBasicTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""
 
   def test_generic_type_params_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Generic
 
       class A(Generic[int]):  # invalid-annotation[e]
@@ -30,7 +30,7 @@ class GenericBasicTest(test_base.BaseTest):
     """)
 
   def test_template_order_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar
 
       T1 = TypeVar('T1')
@@ -69,7 +69,7 @@ class GenericBasicTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"int.*str"})
 
   def test_type_erasure_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Optional, TypeVar, Generic
 
       T = TypeVar('T', int, float)
@@ -97,7 +97,7 @@ class GenericBasicTest(test_base.BaseTest):
     )
 
   def test_inheric_plain_generic_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
      from typing import Generic
 
      class A(Generic):  # invalid-annotation[e]
@@ -169,7 +169,7 @@ class GenericBasicTest(test_base.BaseTest):
       )
 
   def test_class_in_func_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar, Generic, Union
 
       T = TypeVar('T')
@@ -187,7 +187,7 @@ class GenericBasicTest(test_base.BaseTest):
     )
 
   def test_class_in_class_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
      from typing import Optional, TypeVar, Generic, Iterator
 
      T = TypeVar('T', int, float, str)
@@ -213,7 +213,7 @@ class GenericBasicTest(test_base.BaseTest):
     )
 
   def test_signature_type_param(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Optional, TypeVar, Generic
 
       T = TypeVar('T', int, float, str)
@@ -313,7 +313,7 @@ class GenericBasicTest(test_base.BaseTest):
     )
 
   def test_signature_type_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -381,7 +381,7 @@ class GenericBasicTest(test_base.BaseTest):
       )
 
   def test_func_match_for_interpreter_class_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeVar, Generic
 
       T1 = TypeVar('T1')
@@ -453,7 +453,7 @@ class GenericBasicTest(test_base.BaseTest):
       )
 
   def test_type_renaming_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T', int, float)
@@ -546,7 +546,7 @@ class GenericBasicTest(test_base.BaseTest):
     )
 
   def test_unbound_type_parameter_error(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar
 
       T = TypeVar('T')
@@ -594,7 +594,7 @@ class GenericBasicTest(test_base.BaseTest):
       )
 
   def test_any_match_all_types(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       import collections, typing
 
       class DictA(collections.OrderedDict, typing.MutableMapping[int, int]):
