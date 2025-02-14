@@ -119,7 +119,11 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
       # bother with the rest of the bindings (assume strict arg matching)
       for d in arg_var.data:
         if isinstance(d, Buildable):
-          if isinstance(d.underlying, abstract.FUNCTION_TYPES):
+          if isinstance(
+              d.underlying,
+              abstract.FUNCTION_TYPES
+              + (abstract.ClassMethod, abstract.StaticMethod),
+          ):
             # If the underlying type is a function, do not try to instantiate it
             return self.ctx.new_unsolvable(node)
           else:
