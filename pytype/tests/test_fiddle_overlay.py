@@ -19,6 +19,22 @@ class Partial(Generic[T], Buildable[T]):
   def __call__(self, *args, **kwargs): ...
 """
 
+_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET = """
+import dataclasses
+
+import class_with_annotated_method as cwam
+import fiddle
+
+@dataclasses.dataclass(frozen=True)
+class Dataclass:
+  cwam: cwam.ClassWithAnnotatedMethod
+
+fiddle.Config(
+    Dataclass,
+    cwam=fiddle.Config(cwam.ClassWithAnnotatedMethod.method),
+)
+"""
+
 
 class TestDataclassConfig(test_base.BaseTest):
   """Tests for Config wrapping a dataclass."""
@@ -455,6 +471,48 @@ class TestDataclassConfig(test_base.BaseTest):
       self.assertErrorSequences(
           errors, {"e": ["Expected", "x: int", "Actual", "x: str"]}
       )
+
+  def test_pyi_classmethod(self):
+    # TODO(floreina): Remove assertion once `@classmethod` is supported.
+    with self.assertRaises(NotImplementedError):
+      with self.DepTree([
+          ("fiddle.pyi", _FIDDLE_PYI),
+          (
+              "class_with_annotated_method.pyi",
+              # Without PYI resolves into
+              # `pytype.overlays.special_builtins.ClassMethodCallable`,
+              # with PYI resolves into
+              # `pytype.abstract._function_base.ClassMethod`.
+              """
+                class ClassWithAnnotatedMethod:
+                  @classmethod
+                  def method(cls):
+                    ...
+              """,
+          ),
+      ]):
+        self.Check(_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET)
+
+  def test_pyi_staticmethod(self):
+    # TODO(floreina): Remove assertion once `@staticmethod` is supported.
+    with self.assertRaises(NotImplementedError):
+      with self.DepTree([
+          ("fiddle.pyi", _FIDDLE_PYI),
+          (
+              "class_with_annotated_method.pyi",
+              # Without PYI resolves into
+              # `pytype.abstract._interpreter_function.InterpreterFunction`,
+              # with PYI resolves into
+              # `pytype.abstract._function_base.StaticMethod`.
+              """
+                class ClassWithAnnotatedMethod:
+                  @staticmethod
+                  def method():
+                    ...
+              """,
+          ),
+      ]):
+        self.Check(_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET)
 
 
 class TestDataclassPartial(TestDataclassConfig):
