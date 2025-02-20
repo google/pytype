@@ -473,46 +473,42 @@ class TestDataclassConfig(test_base.BaseTest):
       )
 
   def test_pyi_classmethod(self):
-    # TODO(floreina): Remove assertion once `@classmethod` is supported.
-    with self.assertRaises(NotImplementedError):
-      with self.DepTree([
-          ("fiddle.pyi", _FIDDLE_PYI),
-          (
-              "class_with_annotated_method.pyi",
-              # Without PYI resolves into
-              # `pytype.overlays.special_builtins.ClassMethodCallable`,
-              # with PYI resolves into
-              # `pytype.abstract._function_base.ClassMethod`.
-              """
-                class ClassWithAnnotatedMethod:
-                  @classmethod
-                  def method(cls):
-                    ...
-              """,
-          ),
-      ]):
-        self.Check(_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET)
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        (
+            "class_with_annotated_method.pyi",
+            # Without PYI resolves into
+            # `pytype.overlays.special_builtins.ClassMethodCallable`,
+            # with PYI resolves into
+            # `pytype.abstract._function_base.ClassMethod`.
+            """
+              class ClassWithAnnotatedMethod:
+                @classmethod
+                def method(cls):
+                  ...
+            """,
+        ),
+    ]):
+      self.Check(_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET)
 
   def test_pyi_staticmethod(self):
-    # TODO(floreina): Remove assertion once `@staticmethod` is supported.
-    with self.assertRaises(NotImplementedError):
-      with self.DepTree([
-          ("fiddle.pyi", _FIDDLE_PYI),
-          (
-              "class_with_annotated_method.pyi",
-              # Without PYI resolves into
-              # `pytype.abstract._interpreter_function.InterpreterFunction`,
-              # with PYI resolves into
-              # `pytype.abstract._function_base.StaticMethod`.
-              """
-                class ClassWithAnnotatedMethod:
-                  @staticmethod
-                  def method():
-                    ...
-              """,
-          ),
-      ]):
-        self.Check(_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET)
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        (
+            "class_with_annotated_method.pyi",
+            # Without PYI resolves into
+            # `pytype.abstract._interpreter_function.InterpreterFunction`,
+            # with PYI resolves into
+            # `pytype.abstract._function_base.StaticMethod`.
+            """
+              class ClassWithAnnotatedMethod:
+                @staticmethod
+                def method():
+                  ...
+            """,
+        ),
+    ]):
+      self.Check(_DATACLASS_NESTED_ANNOTATED_METHOD_SNIPPET)
 
 
 class TestDataclassPartial(TestDataclassConfig):
