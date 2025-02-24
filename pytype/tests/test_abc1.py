@@ -18,7 +18,7 @@ class AbstractMethodTests(test_base.BaseTest):
           def foo(self) -> None: ...
       """,
       )
-      _, errors = self.InferWithErrors(
+      errors = self.CheckWithErrors(
           """
         import foo
         foo.Example()  # not-instantiable[e]
@@ -73,7 +73,7 @@ class AbstractMethodTests(test_base.BaseTest):
         class Foo(X, Interface): ...
       """,
       )
-      _, errors = self.InferWithErrors(
+      errors = self.CheckWithErrors(
           """
         import foo
         foo.Foo().foo()  # not-instantiable[e]
