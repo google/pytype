@@ -217,7 +217,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"x.*constant"})
 
   def test_bad_return(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
       def foo(x: str, y: str) -> int:
         return "foo"  # bad-return-type
     """)
@@ -342,7 +342,7 @@ class AnnotationTest(test_base.BaseTest):
     )
 
   def test_dict(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
       from typing import Dict, List
       def keys(d: Dict[str, int]):
         return
@@ -352,7 +352,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_sequence(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
       from typing import Sequence
       def f(s: Sequence):
         return s
@@ -363,7 +363,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_optional(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
       from typing import Optional
       def f(s: Optional[int]):
         return s
@@ -373,7 +373,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_set(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
       from typing import Set
       def f(d: Set[str]):
         return
@@ -384,7 +384,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_frozenset(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
       from typing import FrozenSet
       def f(d: FrozenSet[str]):
         return
@@ -950,7 +950,7 @@ class AnnotationTest(test_base.BaseTest):
     ty, _ = self.InferWithErrors("""
       from typing import Dict
       def f(x: Dict[str, str]):
-        x[True] = 42  # container-type-mismatch[e]
+        x[True] = 42  # container-type-mismatch
         return x
       v = f({"a": "b"})
     """)
@@ -1066,7 +1066,7 @@ class AnnotationTest(test_base.BaseTest):
             self = Foo[T2]
       """,
       )
-      _, errors = self.InferWithErrors(
+      errors = self.CheckWithErrors(
           """
         import foo
         def f(x: foo.Foo[int]):
