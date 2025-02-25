@@ -145,7 +145,7 @@ class TestAttribConverters(test_base.BaseTest):
     """)
 
   def test_converter_with_varargs(self):
-    self.CheckWithErrors("""
+    self.Check("""
       import attr
       def convert(*args, **kwargs) -> int:
         return 42

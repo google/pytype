@@ -89,7 +89,7 @@ class ListTest(test_base.BaseTest):
 
   def test_slice_returntype(self):
     # each of the superclasses of list should return their own type when sliced.
-    ty, _ = self.InferWithErrors("""
+    ty = self.Infer("""
       from typing import Sequence, MutableSequence
       a: Sequence[int] = [1]
       b = a[0:1]

@@ -937,7 +937,7 @@ class MethodsTest(test_base.BaseTest):
     )
 
   def test_func_name(self):
-    ty, _ = self.InferWithErrors("""
+    ty = self.Infer("""
       def f():
         pass
       f.func_name = 3.1415

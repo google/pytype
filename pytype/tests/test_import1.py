@@ -1354,7 +1354,7 @@ class ImportTest(test_base.BaseTest):
     init_pyi_1, _ = self.InferWithErrors(
         init_py % "  # import-error", module_name="mod.__init__"
     )
-    submod_pyi_1, _ = self.InferWithErrors(submod_py, module_name="mod.submod")
+    submod_pyi_1 = self.Infer(submod_py, module_name="mod.submod")
     with test_utils.Tempdir() as d:
       init_path = d.create_file(
           file_utils.replace_separator("mod/__init__.pyi"),

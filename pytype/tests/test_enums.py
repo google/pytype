@@ -193,7 +193,7 @@ class EnumOverlayTest(test_base.BaseTest):
         def get_m(name: str) -> M: ...
       """,
       )
-      self.CheckWithErrors(
+      self.Check(
           """
         import foo
         def print_m(name: str):
@@ -1331,7 +1331,7 @@ class EnumOverlayTest(test_base.BaseTest):
           x: Annotated[str, 'property']
       """,
       )
-      self.CheckWithErrors(
+      self.Check(
           """
         import foo
         assert_type(foo.Fn.A.value, int)

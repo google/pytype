@@ -430,7 +430,7 @@ class PyiParamSpecTest(test_base.BaseTest):
       def f(x: str, *, y: int = 0) -> int: ...
     """,
     )]):
-      ty, _ = self.InferWithErrors("""
+      ty = self.Infer("""
         import foo
 
         f = foo.decorator(foo.f)

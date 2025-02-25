@@ -402,7 +402,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
           b: int
       """,
       )
-      ty, unused_errorlog = self.InferWithErrors(
+      ty = self.Infer(
           """
         import foo
         v = None  # type: foo.X

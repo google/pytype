@@ -294,7 +294,7 @@ class TestDataclassConfig(test_base.BaseTest):
 
   def test_typevar(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.CheckWithErrors(f"""
+      self.Check(f"""
         import dataclasses
         import fiddle
         from typing import TypeVar

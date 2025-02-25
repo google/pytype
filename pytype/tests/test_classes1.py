@@ -1187,7 +1187,7 @@ class ClassesTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"C"})
 
   def test_call_parameterized_class(self):
-    self.InferWithErrors("""
+    self.Check("""
       from typing import Deque
       list[str]()
       Deque[str]()

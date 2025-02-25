@@ -47,7 +47,7 @@ class TestFunction(test_base.BaseTest):
   """Tests for @dataclass_transform on functions."""
 
   def test_py_function(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing_extensions import dataclass_transform
 
       # NOTE: The decorator overrides the function body and makes `dc` a
@@ -233,7 +233,7 @@ class TestClass(test_base.BaseTest):
     )
 
   def test_write_pyi(self):
-    ty, _ = self.InferWithErrors("""
+    ty = self.Infer("""
       from typing_extensions import dataclass_transform
       @dataclass_transform()
       class Mixin: ...

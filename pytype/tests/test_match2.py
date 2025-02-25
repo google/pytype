@@ -683,7 +683,7 @@ class NonIterableStringsTest(test_base.BaseTest):
     """)
 
   def test_optional_str_against_plain_iterable(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import Iterable, Optional
       def foo(x: Iterable): ...
 

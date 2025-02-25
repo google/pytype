@@ -391,7 +391,7 @@ class BindingsTest(test_base.BaseTest):
     # Make sure we don't crash due to __path__[0] having no bindings. Previously
     # we were not setting __path__[0] to [unsolvable] if report_errors was False
     self.options.tweak(report_errors=False)
-    self.InferWithErrors("""
+    self.Check("""
       { 'path': __path__[0] }
     """)
 

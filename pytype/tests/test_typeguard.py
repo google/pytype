@@ -80,7 +80,7 @@ class PyiTest(test_base.BaseTest):
 
   @test_utils.skipBeforePy((3, 10), "New in 3.10")
   def test_infer(self):
-    ty, _ = self.InferWithErrors("""
+    ty = self.Infer("""
       from typing import TypeGuard
       def f(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
@@ -94,7 +94,7 @@ class PyiTest(test_base.BaseTest):
     )
 
   def test_infer_extension(self):
-    ty, _ = self.InferWithErrors("""
+    ty = self.Infer("""
       from typing_extensions import TypeGuard
       def f(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
