@@ -3,6 +3,7 @@
 import collections
 from collections.abc import Sequence
 import dataclasses
+import hashlib
 import re
 
 from pytype import config as pytype_config
@@ -395,6 +396,14 @@ class TestGetRunCmd(TestBase):
     options = self.get_options(args)
     self.assertTrue(options.precise_return)
 
+  def test_output_errors_csv_param(self):
+    custom_conf = self.parser.config_from_defaults()
+    custom_conf.output_errors_csv = 'foo.csv'
+    self.runner = make_runner([], [], custom_conf)
+    args = self.runner.get_pytype_command_for_ninja(report_errors=True)
+    options = self.get_options(args)
+    self.assertEqual(options.output_errors_csv, '$out_path')
+
 
 class TestGetModuleAction(TestBase):
   """Tests for PytypeRunner.get_module_action."""
@@ -545,8 +554,10 @@ class TestNinjaPreamble(TestBase):
 class TestNinjaBuildStatement(TestBase):
   """Tests for PytypeRunner.write_build_statement."""
 
-  def write_build_statement(self, *args, **kwargs):
+  def write_build_statement(self, *args, output_errors_csv: bool = False, **kwargs):
     conf = self.parser.config_from_defaults()
+    if output_errors_csv:
+      conf.output_errors_csv = 'foo.csv'
     with test_utils.Tempdir() as d:
       conf.output = d.path
       runner = make_runner([], [], conf)
@@ -638,6 +649,14 @@ class TestNinjaBuildStatement(TestBase):
         Module('', file_utils.replace_separator('symlinked/foo.py'), 'bar.baz'),
         path_utils.join('bar', 'baz.pyi'),
     )
+
+  def test_output_errors_csv(self):
+    _, _, build_statement = self.write_build_statement(
+        Module('', 'foo.py', 'foo'), Action.CHECK, set(), 'imports', '', output_errors_csv=True
+    )
+    f_hash = hashlib.blake2b(Module('', 'foo.py', 'foo').full_path.encode(), digest_size=16).hexdigest()
+    f_name = pytype_runner.escape_ninja_path(f"{f_hash}.csv")
+    self.assertIn(f'  out_path = {f_name}', build_statement)
 
 
 class TestNinjaBody(TestBase):
