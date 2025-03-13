@@ -546,7 +546,7 @@ class EnumMetaInit(abstract.SimpleFunction):
 
     # If there is more than one option, then we don't know what it is, so just
     # wrap it in a tuple.
-    if len(value_var.data) > 1:
+    if len(value_var.data) > 1:  # pytype: disable=attribute-error
       return self.ctx.convert.build_tuple(node, [value_var])
     # If the value is already a tuple (or a NamedTuple, for example), then use
     # that value. Otherwise, wrap it in a tuple.
@@ -660,9 +660,9 @@ class EnumMetaInit(abstract.SimpleFunction):
         for attr_name in member.members:
           if attr_name in ("name", "value"):
             continue
-          member_attrs[attr_name].extend(member.members[attr_name].data)
+          member_attrs[attr_name].extend(member.members[attr_name].data)  # pytype: disable=attribute-error
       cls.members[name] = member.to_variable(node)
-      member_types.extend(value.data)
+      member_types.extend(value.data)  # pytype: disable=attribute-error
     # After processing enum members, there's some work to do on the enum itself.
     # If cls has a __new__, save it for later. (See _get_member_new above.)
     # It needs to be marked as a classmethod, or else pytype will try to
