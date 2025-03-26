@@ -15,7 +15,7 @@ on:
 jobs:
   manylinux_wheels:
     name: Python ${{ matrix.platform }} wheels(${{ matrix.pyver }})
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-24.04'
     strategy:
       matrix:
         platform:
@@ -74,7 +74,7 @@ jobs:
           path: dist/*.whl
   merge:
     name: Merge artifacts
-    runs-on: ubuntu-latest
+    runs-on: 'ubuntu-24.04'
     needs:
       - manylinux_wheels
       - macosx_wheels
