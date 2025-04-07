@@ -26,6 +26,39 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertDiagnosticMessages(errors, {"e": message})
 
+  def test_error_format_with_no_end_line_late_directive_error(self):
+    errors = self.CheckWithErrors("""
+      def f() -> bool:
+        # pytype: disable=bad-return-type # late-directive[e]
+        return 42
+    """)
+    message = textwrap.dedent("""\
+      dummy_input_file:2:1: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: : bad-return-type disabled from here to the end of the file [late-directive]
+        Consider limiting this directive's scope or moving it to the top of the file.
+
+        # pytype: disable=bad-return-type # late-directive[e]\x1b[1m\x1b[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[39m\x1b[0m
+        # pytype: disable=bad-return-type # late-directive[e]
+      \x1b[1m\x1b[31m\x1b[39m\x1b[0m
+    """)
+    self.assertDiagnosticMessages(errors, {"e": message})
+
+  def test_error_format_with_no_end_line_redundant_function_type_comment_error(
+      self,
+  ):
+    errors = self.CheckWithErrors("""
+      def f() -> None:
+        # type: () -> None  # redundant-function-type-comment[e]
+        pass
+    """)
+    message = textwrap.dedent("""\
+      dummy_input_file:2:1: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: : Function type comments cannot be used with annotations [redundant-function-type-comment]
+
+        # type: () -> None  # redundant-function-type-comment[e]\x1b[1m\x1b[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[39m\x1b[0m
+        # type: () -> None  # redundant-function-type-comment[e]
+      \x1b[1m\x1b[31m\x1b[39m\x1b[0m
+    """)
+    self.assertDiagnosticMessages(errors, {"e": message})
+
   def test_error_format_with_source(self):
     errors = self.CheckWithErrors("""
         from typing import List
