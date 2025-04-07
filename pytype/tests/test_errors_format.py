@@ -36,9 +36,8 @@ class ErrorTest(test_base.BaseTest):
       dummy_input_file:2:1: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: : bad-return-type disabled from here to the end of the file [late-directive]
         Consider limiting this directive's scope or moving it to the top of the file.
 
-        # pytype: disable=bad-return-type # late-directive[e]\x1b[1m\x1b[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[39m\x1b[0m
         # pytype: disable=bad-return-type # late-directive[e]
-      \x1b[1m\x1b[31m\x1b[39m\x1b[0m
+      \x1b[1m\x1b[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[39m\x1b[0m
     """)
     self.assertDiagnosticMessages(errors, {"e": message})
 
@@ -53,9 +52,8 @@ class ErrorTest(test_base.BaseTest):
     message = textwrap.dedent("""\
       dummy_input_file:2:1: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: : Function type comments cannot be used with annotations [redundant-function-type-comment]
 
-        # type: () -> None  # redundant-function-type-comment[e]\x1b[1m\x1b[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[39m\x1b[0m
         # type: () -> None  # redundant-function-type-comment[e]
-      \x1b[1m\x1b[31m\x1b[39m\x1b[0m
+      \x1b[1m\x1b[31m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\x1b[39m\x1b[0m
     """)
     self.assertDiagnosticMessages(errors, {"e": message})
 

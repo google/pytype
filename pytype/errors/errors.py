@@ -368,19 +368,32 @@ class Error:
 
     return point_idx
 
+  def _find_line_boundaries(self, line: int) -> list[int]:
+    """Finds the start and end indices of the given line."""
+    return self._find_all_line_split(line, line)
+
   def _visualize_failed_lines(self) -> str:
     """Visualize the line with the errors, highlighting the exact error loc."""
     if not self._filename or not self._line or not self._src:
       return ""
-    point_idx = self._find_all_line_split(self._line - 1, self._endline - 1)
-    if self._line == self._endline:
+    if self._endline == 0:
+      point_idx = self._find_line_boundaries(self._line - 1)
+    else:
+      point_idx = self._find_all_line_split(self._line - 1, self._endline - 1)
+    if len(point_idx) == 2:  # Just one line error.
+      begin_highlight_idx = self._col
+      end_highlight_idx = self._endcol
+      if end_highlight_idx == 0:
+        # Highlight until the end of the line if no end column is specified.
+        end_highlight_idx = point_idx[1]
+        begin_highlight_idx += point_idx[0]
       return (
           self._src[point_idx[0] : point_idx[-1]]
           + "\n"
           + " " * self._col
           + (
               utils.COLOR_ERROR_NAME_TEMPLATE
-              % ("~" * (self._endcol - self._col))
+              % ("~" * (end_highlight_idx - begin_highlight_idx))
           )
       )
 
