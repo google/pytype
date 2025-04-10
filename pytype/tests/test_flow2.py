@@ -95,6 +95,20 @@ class FlowTest(test_base.BaseTest):
       f()
     """)
 
+  def test_try_in_loop(self):
+    self.Check("""
+      def may_fail():
+        pass
+
+      while True:
+        err = None
+        try:
+          may_fail()
+        except ValueError as e:
+          err = str(e)
+        assert_type(err, str|None)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
