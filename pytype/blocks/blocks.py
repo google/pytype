@@ -1,7 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
 from collections.abc import Iterator
-from typing import Any, cast
+from typing import Any, Sequence, cast
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
@@ -333,7 +333,21 @@ def _split_bytecode(bytecode: list[opcodes.Opcode]) -> list[Block]:
   targets = {op.target for op in bytecode if op.target}
   blocks = []
   code = []
-  for op in bytecode:
+  i = 0
+  while i < len(bytecode):
+    op = bytecode[i]
+    # GET_AITER is used only in the context of `async for`
+    # SEND is only used in the context of async for and `yield from`.
+    # These instructions are not used in other context, so it's safe to process
+    # it assuming that these are the only constructs they're being used.
+    if isinstance(op, (opcodes.GET_AITER, opcodes.SEND)):
+      if code:
+        blocks.append(Block(code))
+        code = []
+      block, i = _preprocess_async_for_and_yield(i, bytecode)
+      blocks.append(block)
+      continue
+
     code.append(op)
     if (
         op.no_next()
@@ -344,7 +358,71 @@ def _split_bytecode(bytecode: list[opcodes.Opcode]) -> list[Block]:
     ):
       blocks.append(Block(code))
       code = []
+    i += 1
   return blocks
+
+
+def _preprocess_async_for_and_yield(
+    idx: int,
+    bytecode: Sequence[opcodes.Opcode],
+) -> tuple[Block, int]:
+  """Process async for and yield constructs in a way that pytype can iterate correctly.
+
+  'Async for' constructs starts with GET_AITER instruction and ends with a
+  JUMP_BACKWARD instruction, but we only want to handle the iteration part which
+  starts with GET_AITER and ends with END_SEND, usually comes with the following
+  order of instructions in the exact order:
+  GET_AITER, GET_ANEXT, LOAD_CONST, SEND, YIELD_VALUE, RESUME,
+  JUMP_BACKWARD_NO_INTERRUPT, END_SEND. END_SEND is only present from 3.12 on.
+
+  The reason why we need to pre process async for is because the control flow of
+  async for is drastically different from regular control flows also due to the
+  fact that the termination of the loop happens by STOP_ASYNC_ITERATION
+  exception, not a regular control flow. So we need to split (or merge) the
+  basic blocks in a way that pytype executes in the order that what'd happen in
+  the runtime, so that it doesn't fail with wrong order of execution, which can
+  result in a stack underrun.
+
+  The reason why we do not need to handle the jump back to the begin of loop
+  iteration (It is the JUMP_BACKWARD instruction(s) to GET_ANEXT) is because as
+  there's no exception involved for the jump back, we can treat it normally and
+  expect it to be handled by _split_bytecode and compute_order correctly.
+
+  Args:
+    idx: The index of the GET_AITER instruction.
+    bytecode: A list of instances of opcodes.Opcode
+
+  Returns:
+    A tuple of (Block, int), where the Block is the block containing the
+    iteration part of the async for construct, and the int is the index of the
+    END_SEND instruction.
+  """
+  assert isinstance(bytecode[idx], (opcodes.GET_AITER, opcodes.SEND))
+
+  for i in range(idx + 1, len(bytecode)):
+    op = bytecode[i]
+    if isinstance(op, opcodes.JUMP_BACKWARD_NO_INTERRUPT):
+      end_block_idx = i + 1
+      # In CLEANUP_THROW can be present after JUMP_BACKWARD_NO_INTERRUPT
+      # depending on how the control flow graph is constructed.
+      # Usually, CLEANUP_THROW comes way after
+      if isinstance(bytecode[end_block_idx], opcodes.CLEANUP_THROW):
+        end_block_idx += 1
+
+      # From 3.12 on, END_SEND is present after JUMP_BACKWARD_NO_INTERRUPT
+      if isinstance(bytecode[end_block_idx], opcodes.END_SEND):
+        end_block_idx += 1
+
+      return Block(bytecode[idx:end_block_idx]), end_block_idx
+  # Should be unreachable
+  assert False, "No JUMP_BACKWARD_NO_INTERRUPT found after GET_AITER/SEND"
+
+
+def _is_async_basic_block(block: Block) -> bool:
+  """Returns true if the block is the iteration part of an async for construct."""
+  return isinstance(block.code[0], opcodes.GET_AITER) or isinstance(
+      block.code[0], opcodes.SEND
+  )
 
 
 def compute_order(bytecode: list[opcodes.Opcode]) -> list[Block]:
@@ -360,19 +438,34 @@ def compute_order(bytecode: list[opcodes.Opcode]) -> list[Block]:
     A list of Block instances.
   """
   blocks = _split_bytecode(bytecode)
-  first_op_to_block = {block.code[0]: block for block in blocks}
+  # Usually, jumping into a non-first instruction of a block does not happen
+  # except for async constructs, due to the basic block split logic made in
+  # _preprocess_async_for_and_yield.
+  op_to_block = {}
+  for block in blocks:
+    if not _is_async_basic_block(block):
+      op_to_block[block.code[0]] = block
+    else:
+      for code in block.code:
+        op_to_block[code] = block
   for i, block in enumerate(blocks):
     next_block = blocks[i + 1] if i < len(blocks) - 1 else None
     first_op, last_op = block.code[0], block.code[-1]
+    # Async BBs only have one edge which is to the next BB, because no explicit
+    # jump instruction is present in these blocks.
+    if _is_async_basic_block(block):
+      block.connect_outgoing(next_block)
+      continue
+
     if next_block and not last_op.no_next():
       block.connect_outgoing(next_block)
     if first_op.target:
       # Handles SETUP_EXCEPT -> except block
-      block.connect_outgoing(first_op_to_block[first_op.target])
+      block.connect_outgoing(op_to_block[first_op.target])
     if last_op.target:
-      block.connect_outgoing(first_op_to_block[last_op.target])
+      block.connect_outgoing(op_to_block[last_op.target])
     if last_op.block_target:
-      block.connect_outgoing(first_op_to_block[last_op.block_target])
+      block.connect_outgoing(op_to_block[last_op.block_target])
   return cfg_utils.order_nodes(blocks)
 
 
