@@ -1306,30 +1306,6 @@ def _should_elide_opcode(
         and isinstance(op_items[i + 1][1], END_ASYNC_FOR)
     )
 
-  # In 3.12 all generators are compiled into infinite loops, too. In addition,
-  # YIELD_VALUE inserts exception handling instructions:
-  #     CLEANUP_THROW
-  #     JUMP_BACKWARD
-  # These can appear on their own or they can be inserted between JUMP_BACKWARD
-  # and END_ASYNC_FOR, possibly many times. We keep eliding the `async for` jump
-  # and also elide the exception handling cleanup codes because they're not
-  # relevant for pytype and complicate the block graph.
-  if python_version == (3, 12):
-    return (
-        isinstance(op, CLEANUP_THROW)
-        or (
-            isinstance(op, JUMP_BACKWARD)
-            and i >= 1
-            and isinstance(op_items[i - 1][1], CLEANUP_THROW)
-        )
-        or (
-            isinstance(op, JUMP_BACKWARD)
-            and isinstance(
-                _get_opcode_following_cleanup_throw_jump_pairs(op_items, i + 1),
-                END_ASYNC_FOR,
-            )
-        )
-    )
   return False
 
 
