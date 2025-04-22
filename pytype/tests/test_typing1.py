@@ -103,6 +103,17 @@ class TypingTest(test_base.BaseTest):
     """,
     )
 
+  @test_utils.skipBeforePy((3, 12), "type aliases are new in 3.12")
+  def test_generate_type_alias_312(self):
+    ty = self.Infer("""
+      type MyType = list[str]
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        # TODO: b/412616662 - Generate type MyType = list[str] instead.
+        "MyType = list[str]",
+    )
+
   def test_protocol(self):
     self.Check("""
       from typing_extensions import Protocol

@@ -1139,6 +1139,13 @@ class AnnotationTest(test_base.BaseTest):
       Z = List[int]
     """)
 
+  @test_utils.skipBeforePy((3, 12), "type aliases are new in 3.12")
+  def test_use_builtin_type_alias(self):
+    self.Check("""
+      type MyType = list[str]
+      using_mytype: MyType = ['foo', 'bar']
+    """)
+
   def test_fully_quoted_annotation(self):
     self.Check("""
       from typing import Optional

@@ -3871,7 +3871,32 @@ class VirtualMachine:
     return state
 
   def byte_INTRINSIC_TYPEALIAS(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
+    """This intrinsic creates a type alias and puts the result on the stack."""
+    # https://docs.python.org/3.12/library/dis.html states:
+    # The argument is a tuple of the type alias’s name, type parameters,
+    # and value. There's no need to use the name because there's a STORE_NAME
+    # opcode following the call to this intrinsic.
+    state, param = state.pop()
+    # TODO: b/412616662 - For pytd generation, it's better to generate type
+    # aliases as `type MyType = int`, because the type alias is not callable
+    # if we do Mytype(), thus there should be a diagnostic when you try to call
+    # a type alias. For now, we generate `type MyType = int` as `MyType = int`
+    # because the machinery to make a distinction is not in place yet.
+    # TODO: b/350910471 - support the use of typevar
+    _, typevar, funcv = param.data[0].pyval
+    args = function.Args(
+        posargs=(),
+        namedargs={},
+        starargs=None,
+        starstarargs=None,
+    )
+    _, ret = function.call_function(
+        self.ctx,
+        state.node,
+        funcv,
+        args=args,
+    )
+    state = state.push(ret)
     return state
 
   def byte_INTRINSIC_2_INVALID(self, state):
