@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
         python-version: ['3.10', '3.11', '3.12']
         shard: [shard_1, shard_2, shard_3]  # Keep this synced with ALL_TESTS_SHARD_COUNT
         exclude:
@@ -58,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-22.04]
         python-version: ['3.10', '3.11', '3.12']
     steps:
     - uses: actions/checkout@v4
