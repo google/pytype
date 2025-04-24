@@ -319,9 +319,9 @@ class PrintVisitor(base_visitor.Visitor):
 
     sections = [
         imports,
+        self._FormatTypeParams(self.old_node.type_params),
         aliases,
         constants,
-        self._FormatTypeParams(self.old_node.type_params),
         node.classes,
         node.functions,
     ]

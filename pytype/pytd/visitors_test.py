@@ -1224,18 +1224,18 @@ class RemoveNamePrefixTest(parser_test_base.ParserTest):
     expected_one = textwrap.dedent("""
       from typing import Any, TypeVar
 
-      foo.x: Any
-
       T = TypeVar('T')
+
+      foo.x: Any
 
       class foo.X(Generic[T]): ...
     """).strip()
     expected_two = textwrap.dedent("""
       from typing import Any, TypeVar
 
-      x: Any
-
       T = TypeVar('T')
+
+      x: Any
 
       class X(Generic[T]): ...
     """).strip()

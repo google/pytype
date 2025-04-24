@@ -2852,10 +2852,10 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
         """
       from typing import TypeVar
 
-      Alias = list[list[T]]
-
       S = TypeVar('S')
       T = TypeVar('T')
+
+      Alias = list[list[T]]
 
       def f(x: list[list[S]]) -> S: ...
       def g(x: list[list[str]]) -> str: ...""",
@@ -2871,9 +2871,9 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
         """
       from typing import TypeVar
 
-      DictAlias = dict[int, V]
-
       V = TypeVar('V')
+
+      DictAlias = dict[int, V]
 
       def f(x: dict[int, str]) -> None: ...""",
     )
@@ -2889,10 +2889,10 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
         """
       from typing import TypeVar
 
-      Alias = list[dict[K, V]]
-
       K = TypeVar('K')
       V = TypeVar('V')
+
+      Alias = list[dict[K, V]]
 
       def f(x: list[dict[K, V]]) -> dict[K, V]: ...""",
     )
@@ -2908,10 +2908,10 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
         """
       from typing import TypeVar, Union
 
-      Alias = Union[list[T], list[S]]
-
       S = TypeVar('S')
       T = TypeVar('T')
+
+      Alias = Union[list[T], list[S]]
 
       def f(x: Union[list[S], list[T]]) -> Union[S, T]: ...""",
     )
@@ -2926,9 +2926,9 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
         """
       from typing import TypeVar
 
-      Alias = dict[T, T]
-
       T = TypeVar('T')
+
+      Alias = dict[T, T]
 
       def f(x: dict[str, str]) -> None: ...""",
     )
@@ -3710,10 +3710,10 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
         """
       from typing import Any, Callable, Generic, ParamSpec, TypeVar
 
-      x: X[int, Any]
-
       P = ParamSpec('P')
       T = TypeVar('T')
+
+      x: X[int, Any]
 
       class X(Generic[T, P]):
           f: Callable[P, int]
