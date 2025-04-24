@@ -15,6 +15,7 @@ import contextlib
 import dataclasses
 import difflib
 import enum
+import functools
 import itertools
 import logging
 import re
@@ -41,6 +42,7 @@ from pytype.directors import directors
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib
+from pytype.overlays import typing_overlay
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
@@ -262,6 +264,12 @@ class VirtualMachine:
         obj_var = type_tracker.get_narrowed_match_var(state.node)
         state = self._store_local_or_cellvar(state, name, obj_var)
     return state
+
+  @functools.cached_property
+  def _typings_type_var(self):
+    return typing_overlay.TypeVar.make(self.ctx, None).to_variable(
+        self.ctx.root_node
+    )
 
   def run_instruction(
       self, op: opcodes.Opcode, state: frame_state.FrameState
@@ -3855,7 +3863,24 @@ class VirtualMachine:
     return self._list_to_tuple(state)
 
   def byte_INTRINSIC_TYPEVAR(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
+    """This intrinsic is a synonym to typing.TypeVar."""
+    state, param = state.pop()
+    type_var_name = self.ctx.convert.constant_to_var(
+        param.data[0].pyval, node=state.node
+    )
+    args = function.Args(
+        posargs=(type_var_name,),
+        namedargs={},
+        starargs=None,
+        starstarargs=None,
+    )
+    _, ret = function.call_function(
+        self.ctx,
+        state.node,
+        self._typings_type_var,
+        args=args,
+    )
+    state = state.push(ret)
     return state
 
   def byte_INTRINSIC_PARAMSPEC(self, state):
@@ -3883,7 +3908,7 @@ class VirtualMachine:
     # a type alias. For now, we generate `type MyType = int` as `MyType = int`
     # because the machinery to make a distinction is not in place yet.
     # TODO: b/350910471 - support the use of typevar
-    _, typevar, funcv = param.data[0].pyval
+    _, _, funcv = param.data[0].pyval
     args = function.Args(
         posargs=(),
         namedargs={},

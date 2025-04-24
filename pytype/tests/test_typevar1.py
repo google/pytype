@@ -20,6 +20,38 @@ class TypeVarTest(test_base.BaseTest):
     """,
     )
 
+  @test_utils.skipBeforePy((3, 12), "type aliases are new in 3.12")
+  def test_unused_typevar_pep695(self):
+    ty = self.Infer("""
+      type MyType[T] = list[T]
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import TypeVar
+      T = TypeVar("T")
+      MyType = list[T]
+    """,
+    )
+
+  @test_utils.skipBeforePy((3, 12), "type aliases are new in 3.12")
+  def test_unused_typevar_pep695_switch_order(self):
+    ty = self.Infer("""
+      type FlippedPair[S, T] = tuple[T, S]
+    """)
+    # TODO(b/412616662): This pytd result is wrong, as T and S order should be
+    # flipped but there's no way to represent this properly without printing out
+    # type aliases.
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import TypeVar
+      S = TypeVar('S')
+      T = TypeVar("T")
+      FlippedPair = tuple[T, S]
+    """,
+    )
+
   def test_import_typevar(self):
     with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
