@@ -1368,12 +1368,12 @@ class VirtualMachine:
 
     Args:
       name: Name of the module. E.g. "sys".
-      level: Specifies whether to use absolute or relative imports.
-        -1: (Python <= 3.1) "Normal" import. Try both relative and absolute.
+      level: Specifies whether to use absolute or relative imports. -1: (Python
+        <= 3.1) "Normal" import. Try both relative and absolute.
          0: Absolute import.
          1: "from . import abc"
-         2: "from .. import abc"
-         etc.
+         2: "from .. import abc" etc.
+
     Returns:
       An instance of abstract.Module or None if we couldn't find the module.
     """
@@ -3780,7 +3780,8 @@ class VirtualMachine:
     state, (obj, start, end) = state.popn(3)
     subscr = self.ctx.convert.build_slice(state.node, start, end)
     state, ret = vm_utils.call_binary_operator(
-        state, "__getitem__", obj, subscr, report_errors=True, ctx=self.ctx)
+        state, "__getitem__", obj, subscr, report_errors=True, ctx=self.ctx
+    )
     return state.push(ret)
 
   def byte_STORE_SLICE(self, state, op):
@@ -3799,7 +3800,17 @@ class VirtualMachine:
     return state.push(self.frame.f_locals.to_variable(state.node))
 
   def byte_LOAD_FROM_DICT_OR_GLOBALS(self, state, op):
-    # TODO: b/350910471 - Implement to support PEP 695
+    # TODO: b/350910471 - The implementation here is wrong. It was not possible
+    # to make the python compiler generate this specific bytecode in order to
+    # test this properly, so doing what's mentioned in the python dis
+    # documentation : pop one element from the stack and push unsolvable and
+    # wait for anyone to report a bug so that we can fix this.
+    state, _ = state.pop()
+    self.ctx.errorlog.not_supported_yet(
+        self.frames,
+        "Please report a pytype bug : using LOAD_FROM_DICT_OR_GLOBALS is",
+    )
+    state = state.push(self.ctx.convert.unsolvable.to_variable(state.node))
     return state
 
   def byte_LOAD_FROM_DICT_OR_DEREF(self, state, op):
