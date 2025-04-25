@@ -271,6 +271,12 @@ class VirtualMachine:
         self.ctx.root_node
     )
 
+  @functools.cached_property
+  def _typings_paramspec(self):
+    return typing_overlay.ParamSpec.make(self.ctx, None).to_variable(
+        self.ctx.root_node
+    )
+
   def run_instruction(
       self, op: opcodes.Opcode, state: frame_state.FrameState
   ) -> frame_state.FrameState:
@@ -3884,7 +3890,24 @@ class VirtualMachine:
     return state
 
   def byte_INTRINSIC_PARAMSPEC(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
+    """This intrinsic is a synonym to typing.ParamSpec."""
+    state, param = state.pop()
+    type_var_name = self.ctx.convert.constant_to_var(
+        param.data[0].pyval, node=state.node
+    )
+    args = function.Args(
+        posargs=(type_var_name,),
+        namedargs={},
+        starargs=None,
+        starstarargs=None,
+    )
+    _, ret = function.call_function(
+        self.ctx,
+        state.node,
+        self._typings_paramspec,
+        args=args,
+    )
+    state = state.push(ret)
     return state
 
   def byte_INTRINSIC_TYPEVARTUPLE(self, state):

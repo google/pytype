@@ -104,6 +104,41 @@ class ParamSpecTest(test_base.BaseTest):
     """,
     )
 
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_paramspec_in_type_alias_695(self):
+    ty = self.Infer("""
+      from typing import Callable
+      type Foo[T, **P] = Callable[P, T]
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Callable, ParamSpec
+      P = ParamSpec('P')
+      T = TypeVar('T')
+
+      Foo = Callable[P, T]
+    """,
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_paramspec_in_function_def_695(self):
+    ty = self.Infer("""
+      from typing import Callable
+      def foo[T, **P](a: Callable[P, T]) -> Callable[P, T]:
+        return a
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Callable, ParamSpec
+      P = ParamSpec('P')
+      T = TypeVar('T')
+
+      def foo(a: Callable[P, T]) -> Callable[P, T]: ...
+    """,
+    )
+
   def test_concatenate_in_def(self):
     ty = self.Infer("""
       from typing import Callable, Concatenate, ParamSpec
