@@ -53,6 +53,20 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_type_var_with_bounds_in_type_alias(self):
+    ty = self.Infer("""
+      type Alias[T: int] = list[T]
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import TypeVar
+      T = TypeVar('T', bound=int)
+      Alias = list[T]
+    """,
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
   def test_unused_typevar_pep695_function_type_var_single(self):
     ty = self.Infer("""
       def foo[T, S](a: T) -> T:

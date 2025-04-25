@@ -3931,7 +3931,37 @@ class VirtualMachine:
     return state
 
   def byte_INTRINSIC_TYPEVAR_WITH_BOUND(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
+    """This intrinsic is a synonym of typing.TypeVar('T', bound=...)."""
+    # First parameter(bound_func) is the function object that returns the type
+    # representation of the bound.
+    state, (type_var_name, bound_func) = state.popn(2)
+
+    type_var_name = self.ctx.convert.constant_to_var(
+        type_var_name.data[0].pyval, node=state.node
+    )
+    _, bound = function.call_function(
+        self.ctx,
+        state.node,
+        bound_func,
+        args=function.Args(
+            posargs=(),
+            namedargs={},
+            starargs=None,
+            starstarargs=None,
+        ),
+    )
+    _, ret = function.call_function(
+        self.ctx,
+        state.node,
+        self._typings_type_var,
+        args=function.Args(
+            posargs=(type_var_name,),
+            namedargs={"bound": bound},
+            starargs=None,
+            starstarargs=None,
+        ),
+    )
+    state = state.push(ret)
     return state
 
   def byte_INTRINSIC_TYPEVAR_WITH_CONSTRAINTS(self, state):
