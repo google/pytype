@@ -3939,7 +3939,13 @@ class VirtualMachine:
     return state
 
   def byte_INTRINSIC_SET_FUNCTION_TYPE_PARAMS(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
+    # Second parameter here is a type parameter, it's stored to the
+    # __type_params__ function attribute at runtime, but this information is not
+    # consumed by us. This intrinsic consumes two parameters which is the
+    # function object and the type parameter list and returns the function
+    # object.
+    state, (func, _) = state.popn(2)
+    state = state.push(func)
     return state
 
 

@@ -52,6 +52,39 @@ class TypeVarTest(test_base.BaseTest):
     """,
     )
 
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_function_type_var_single(self):
+    ty = self.Infer("""
+      def foo[T, S](a: T) -> T:
+        return a
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import TypeVar
+      T = TypeVar("T")
+
+      def foo(a: T) -> T: ...
+    """,
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_function_type_var_double(self):
+    ty = self.Infer("""
+      def foo[T, S](a: T, b: S) -> tuple[S, T]:
+        return (a, b)
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import TypeVar
+      S = TypeVar('S')
+      T = TypeVar('T')
+
+      def foo(a: T, b: S) -> tuple[S, T]: ...
+    """,
+    )
+
   def test_import_typevar(self):
     with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
