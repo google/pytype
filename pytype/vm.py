@@ -277,6 +277,12 @@ class VirtualMachine:
         self.ctx.root_node
     )
 
+  @functools.cached_property
+  def _typings_generic(self):
+    return typing_overlay.Generic("Generic", self.ctx).to_variable(
+        self.ctx.root_node
+    )
+
   def run_instruction(
       self, op: opcodes.Opcode, state: frame_state.FrameState
   ) -> frame_state.FrameState:
@@ -3915,8 +3921,12 @@ class VirtualMachine:
     return state
 
   def byte_INTRINSIC_SUBSCRIPT_GENERIC(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
-    return state
+    state, type_parameters = state.pop()
+    state = state.push(self._typings_generic)
+    # This will be a tuple of type parameters in order.
+    state = state.push(type_parameters)
+    # Returning Generic[S, T]
+    return self.binary_operator(state, "__getitem__")
 
   def byte_INTRINSIC_TYPEALIAS(self, state):
     """This intrinsic creates a type alias and puts the result on the stack."""

@@ -404,6 +404,18 @@ class AnnotationTest(test_base.BaseTest):
     """,
     )
 
+  def test_generic_and_double_typevar(self):
+    self.assertNoCrash(
+        self.Check,
+        """
+      import typing
+      _T = typing.TypeVar("_T")
+      _S = typing.TypeVar("_S")
+      class A(typing.Generic[_T, _S]):
+        ...
+    """,
+    )
+
   def test_jump_into_class_through_annotation(self):
     self.Check("""
       class Foo:

@@ -113,6 +113,78 @@ class TypeVarTest(test_base.BaseTest):
     """,
     )
 
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_class_single_type_var(self):
+    ty = self.Infer("""
+      class A[T]: pass
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Any, Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class A(Generic[T]):
+        __type_params__: tuple[Any]
+    """,
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_class_double_type_var(self):
+    ty = self.Infer("""
+      class A[T, S]: pass
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Any, Generic, TypeVar
+      S = TypeVar('S')
+      T = TypeVar('T')
+
+      class A(Generic[T, S]):
+        __type_params__: tuple[Any, Any]
+    """,
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_class_both_generic_and_base(self):
+    errors = self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+      U = TypeVar('U')
+      class A[T, S](Generic[U]): pass # invalid-annotation[e1]
+    """)
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": (
+                r"Invalid type annotation 'A' \nCannot inherit from"
+                r" Generic\[...\] multiple times"
+            ),
+        },
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_class_inherit_from_base(self):
+    ty = self.Infer("""
+        class Base[T]: pass
+        class Derived[S, T](Base[T]): pass
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+        from typing import Any, Generic, TypeVar
+        S = TypeVar('S')
+        T = TypeVar('T')
+
+        class Base(Generic[T]):
+          __type_params__: tuple[Any]
+ 
+        class Derived(Base[T], Generic[S, T]):
+          __type_params__: tuple[Any, Any]
+    """,
+    )
+
   def test_import_typevar(self):
     with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
