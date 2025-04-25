@@ -148,6 +148,20 @@ class TypeVarTest(test_base.BaseTest):
     )
 
   @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_unused_typevar_pep695_type_var_tuple(self):
+    errors = self.CheckWithErrors("""
+      type Tup[*Ts] = ( # not-supported-yet[e1]
+          tuple[int, *Ts] )  # invalid-annotation[e2]
+    """)
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e1": "Using TypeVarTuple in Generics is not supported yet",
+            "e2": "Invalid type annotation '<instance of tuple>' \nNot a type",
+        },
+    )
+
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
   def test_unused_typevar_pep695_class_both_generic_and_base(self):
     errors = self.CheckWithErrors("""
       from typing import Generic, TypeVar

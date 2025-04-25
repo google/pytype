@@ -3917,7 +3917,13 @@ class VirtualMachine:
     return state
 
   def byte_INTRINSIC_TYPEVARTUPLE(self, state):
-    # TODO: b/350910471 - Implement to support PEP 695
+    # We don't even support importing typing.TypeVarTuple so do the minimal to
+    # consume all the parameters, put any on the stack and move on.
+    self.ctx.errorlog.not_supported_yet(
+        self.frames, "Using TypeVarTuple in Generics is"
+    )
+    state, _ = state.pop()
+    state = state.push(self.ctx.convert.unsolvable.to_variable(state.node))
     return state
 
   def byte_INTRINSIC_SUBSCRIPT_GENERIC(self, state):
