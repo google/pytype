@@ -682,6 +682,21 @@ class NotSupportedYetTest(test_base.BaseTest):
       from typing import Final
     """)
 
+  @test_utils.skipBeforePy(
+      (3, 12),
+      "This only happens with 3.12 where it puts LOAD_FAST_AND_CLEAR op",
+  )
+  def test_not_deleted(self):
+    # TODO(b/414069834): This shouldn't be an error.
+    errors = self.CheckWithErrors("""
+      import re
+
+      class Foo():
+        A = [re.compile(r) for r in (r'___', )]
+        B = re.compile(r"dummy") # name-error[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Name 're' is not defined"})
+
 
 if __name__ == "__main__":
   test_base.main()
