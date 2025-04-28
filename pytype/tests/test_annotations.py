@@ -1680,6 +1680,30 @@ class BareAnnotationTest(test_base.BaseTest):
         return x
     """)
 
+  @test_utils.skipBeforePy((3, 10), reason="ParamSpec was there since 3.10")
+  def test_param_spec_args_not_runtime_fail(self):
+    """This test is to check whether the use of ParamSpec.args does not runtime fail."""
+    errors = self.CheckWithErrors("""
+      from typing import ParamSpec, Any, Callable
+      _Args = ParamSpec('_Args')
+
+      async def foo(_: Callable[_Args, Any], *args: _Args.args, **kwargs: _Args.kwargs):
+        async def wrapper(*_: _Args.args, **kwargs: _Args.kwargs) -> Any:
+          return 42
+
+        return await wrapper(*args, **kwargs) # wrong-arg-types[e]
+    """)
+
+    self.assertErrorRegexes(
+        errors,
+        {
+            "e": (
+                r"Function foo.<locals>.wrapper was called with the wrong"
+                r" arguments"
+            )
+        },
+    )
+
 
 if __name__ == "__main__":
   test_base.main()
