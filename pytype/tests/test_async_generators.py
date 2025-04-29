@@ -406,6 +406,20 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       x4: Coroutine[Any, Any, None] = gen().aclose()
     """)
 
+  @test_utils.skipBeforePy((3, 11), "New in 3.11")
+  def test_async_for(self):
+    self.Check("""
+    async def iterate(num):
+      try:
+        async for s in range(num): # pytype: disable=attribute-error
+          if s > 3:
+            yield ''
+      except ValueError as e:
+        yield ''
+      yield ''
+    """)
+
+
 
 if __name__ == "__main__":
   test_base.main()
