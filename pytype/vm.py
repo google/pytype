@@ -1681,19 +1681,35 @@ class VirtualMachine:
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
     name = op.argval
+    deleted_var = None
     try:
       state, val = self.load_local(state, name)
-    except KeyError:
+      if vm_utils.is_deleted_name(state, val):
+        deleted_var = val
+        raise KeyError()
+    except KeyError as e_local:
       try:
         state, val = self.load_global(state, name)
-      except KeyError as e:
+        if vm_utils.is_deleted_name(state, val):
+          deleted_var = val
+          raise e_local
+      except KeyError as e_global:
         try:
           if self._is_private(name):
             # Private names must be explicitly imported.
             self.trace_opcode(op, name, None)
-            raise KeyError(name) from e
+            raise KeyError(name) from e_global
           state, val = self.load_builtin(state, name)
+          if vm_utils.is_deleted_name(state, val):
+            deleted_var = val
+            raise e_global
         except KeyError:
+
+          if deleted_var is not None:
+            vm_utils.check_for_deleted(state, name, deleted_var, self.ctx)
+            self.trace_opcode(op, name, deleted_var)
+            return state.push(deleted_var)
+
           if self._is_private(name) or not self.has_unknown_wildcard_imports:
             one_val = self._name_error_or_late_annotation(state, name)
           else:

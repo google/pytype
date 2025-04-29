@@ -686,16 +686,26 @@ class NotSupportedYetTest(test_base.BaseTest):
       (3, 12),
       "This only happens with 3.12 where it puts LOAD_FAST_AND_CLEAR op",
   )
-  def test_not_deleted(self):
-    # TODO(b/414069834): This shouldn't be an error.
-    errors = self.CheckWithErrors("""
+  def test_re_not_deleted_with_load_fast_and_clear(self):
+    self.Check("""
       import re
 
       class Foo():
         A = [re.compile(r) for r in (r'___', )]
-        B = re.compile(r"dummy") # name-error[e]
+        B = re.compile(r"dummy")
     """)
-    self.assertErrorRegexes(errors, {"e": r"Name 're' is not defined"})
+
+  def test_deleted_x_normally(self):
+    errors = self.CheckWithErrors("""
+      x = 1
+      def f():
+        x = 2
+        del x
+        print(x) # name-error[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"Name 'x' is not defined"}
+    )
 
 
 if __name__ == "__main__":

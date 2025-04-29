@@ -930,6 +930,10 @@ def call_inplace_operator(state, iname, x, y, ctx):
   return state, ret
 
 
+def is_deleted_name(state, var):
+  return any(isinstance(x, abstract.Deleted) for x in var.Data(state.node))
+
+
 def check_for_deleted(state, name, var, ctx):
   for x in var.Data(state.node):
     if isinstance(x, abstract.Deleted):
