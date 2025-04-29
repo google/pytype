@@ -48,6 +48,7 @@ class Opcode:
       "prev",
       "next",
       "target",
+      "end_async_for_target",
       "block_target",
       "code",
       "annotation",
@@ -67,6 +68,9 @@ class Opcode:
     self.prev = None
     self.next = None
     self.target = None
+    # The END_ASYNC_FOR instruction of which we want to make pytype jump to for
+    # this instruction.
+    self.end_async_for_target = None
     self.block_target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
@@ -1306,30 +1310,6 @@ def _should_elide_opcode(
         and isinstance(op_items[i + 1][1], END_ASYNC_FOR)
     )
 
-  # In 3.12 all generators are compiled into infinite loops, too. In addition,
-  # YIELD_VALUE inserts exception handling instructions:
-  #     CLEANUP_THROW
-  #     JUMP_BACKWARD
-  # These can appear on their own or they can be inserted between JUMP_BACKWARD
-  # and END_ASYNC_FOR, possibly many times. We keep eliding the `async for` jump
-  # and also elide the exception handling cleanup codes because they're not
-  # relevant for pytype and complicate the block graph.
-  if python_version == (3, 12):
-    return (
-        isinstance(op, CLEANUP_THROW)
-        or (
-            isinstance(op, JUMP_BACKWARD)
-            and i >= 1
-            and isinstance(op_items[i - 1][1], CLEANUP_THROW)
-        )
-        or (
-            isinstance(op, JUMP_BACKWARD)
-            and isinstance(
-                _get_opcode_following_cleanup_throw_jump_pairs(op_items, i + 1),
-                END_ASYNC_FOR,
-            )
-        )
-    )
   return False
 
 
@@ -1372,6 +1352,33 @@ def _add_jump_targets(ops, offset_to_index):
       op.target = ops[op.arg]
 
 
+def _add_async_for_jump_back_targets(
+    ops: list[Opcode],
+    offset_to_op: dict[int, Opcode],
+    exc_table: pycnite.types.ExceptionTable,
+):
+  """Find the END_ASYNC_FOR target of which is related to a JUMP_BACKWARD instruction.
+
+  Also, assign them in a attribute end_async_for_target so that we can process
+  it later.
+  """
+
+  get_anext_incoming: dict[JUMP_BACKWARD, set[GET_ANEXT]] = {}
+  for op in ops:
+    if isinstance(op, JUMP_BACKWARD) and isinstance(op.target, GET_ANEXT):
+      if op.target not in get_anext_incoming:
+        get_anext_incoming[op.target] = set()
+      get_anext_incoming[op.target].add(op)
+
+  for e in exc_table.entries:
+    if e.start in offset_to_op and isinstance(offset_to_op[e.start], GET_ANEXT):
+      get_anext = offset_to_op[e.start]
+      if get_anext not in get_anext_incoming:
+        continue
+      for jump_backward in get_anext_incoming[get_anext]:
+        jump_backward.end_async_for_target = offset_to_op[e.target]
+
+
 def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> list[Opcode]:
   """Build a list of opcodes from pycnite opcodes."""
   offset_to_op = _make_opcodes(dis_code.opcodes, dis_code.python_version)
@@ -1379,6 +1386,10 @@ def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> list[Opcode]:
     _add_setup_except(offset_to_op, dis_code.exception_table)
   ops, offset_to_idx = _make_opcode_list(offset_to_op, dis_code.python_version)
   _add_jump_targets(ops, offset_to_idx)
+  if dis_code.python_version >= (3, 12):
+    _add_async_for_jump_back_targets(
+        ops, offset_to_op, dis_code.exception_table
+    )
   return ops
 
 

@@ -1,7 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
 from collections.abc import Iterator
-from typing import Any, cast
+from typing import Any, Sequence, cast
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
 import pycnite.types
@@ -316,7 +316,9 @@ def add_pop_block_targets(bytecode: list[opcodes.Opcode]) -> None:
       todo.append((op.next, block_stack))
 
 
-def _split_bytecode(bytecode: list[opcodes.Opcode]) -> list[Block]:
+def _split_bytecode(
+    bytecode: list[opcodes.Opcode], processed_blocks: set[Block], python_version
+) -> list[Block]:
   """Given a sequence of bytecodes, return basic blocks.
 
   This will split the code at "basic block boundaries". These occur at
@@ -333,21 +335,175 @@ def _split_bytecode(bytecode: list[opcodes.Opcode]) -> list[Block]:
   targets = {op.target for op in bytecode if op.target}
   blocks = []
   code = []
-  for op in bytecode:
+  prev_block: Block = None
+  i = 0
+  while i < len(bytecode):
+    op = bytecode[i]
+    # SEND is only used in the context of async for and `yield from`.
+    # These instructions are not used in other context, so it's safe to process
+    # it assuming that these are the only constructs they're being used.
+    if python_version >= (3, 12) and isinstance(op, opcodes.SEND):
+      if code:
+        prev_block = Block(code)
+        blocks.append(prev_block)
+        code = []
+      new_blocks, i = _preprocess_async_for_and_yield(
+          i, bytecode, prev_block, processed_blocks
+      )
+      blocks.extend(new_blocks)
+      prev_block = blocks[-1]
+      continue
+
     code.append(op)
     if (
         op.no_next()
         or op.does_jump()
         or op.pops_block()
         or op.next is None
-        or op.next in targets
+        or (op.next in targets)
+        and (
+            not isinstance(op.next, opcodes.GET_ANEXT)
+            or python_version < (3, 12)
+        )
     ):
-      blocks.append(Block(code))
+      prev_block = Block(code)
+      blocks.append(prev_block)
       code = []
+    i += 1
+
   return blocks
 
 
-def compute_order(bytecode: list[opcodes.Opcode]) -> list[Block]:
+def _preprocess_async_for_and_yield(
+    idx: int,
+    bytecode: Sequence[opcodes.Opcode],
+    prev_block: Block,
+    processed_blocks: set[Block],
+) -> tuple[list[Block], int]:
+  """Process bytecode instructions for yield and async for in a way that pytype can iterate correctly.
+
+  'Async for' and yield statements, contains instructions that starts with SEND
+  and ends with END_SEND.
+
+  The reason why we need to pre process async for is because the control flow of
+  async for is drastically different from regular control flows also due to the
+  fact that the termination of the loop happens by STOP_ASYNC_ITERATION
+  exception, not a regular control flow. So we need to split (or merge) the
+  basic blocks in a way that pytype executes in the order that what'd happen in
+  the runtime, so that it doesn't fail with wrong order of execution, which can
+  result in a stack underrun.
+
+  Args:
+    idx: The index of the SEND instruction.
+    bytecode: A list of instances of opcodes.Opcode
+    prev_block: The previous block that we want to connect the new blocks to.
+    processed_blocks: Blocks that has been processed so that it doesn't get
+      processed again by compute_order.
+
+  Returns:
+    A tuple of (list[Block], int), where the Block is the block containing the
+    iteration part of the async for construct, and the int is the index of the
+    END_SEND instruction.
+  """
+  assert isinstance(bytecode[idx], opcodes.SEND)
+  i = next(
+      i
+      for i in range(idx + 1, len(bytecode))
+      if isinstance(bytecode[i], opcodes.JUMP_BACKWARD_NO_INTERRUPT)
+  )
+
+  end_block_idx = i + 1
+  # In CLEANUP_THROW can be present after JUMP_BACKWARD_NO_INTERRUPT
+  # depending on how the control flow graph is constructed.
+  # Usually, CLEANUP_THROW comes way after
+  if isinstance(bytecode[end_block_idx], opcodes.CLEANUP_THROW):
+    end_block_idx += 1
+
+  # Somehow pytype expects the SEND and YIELD_VALUE to be in different
+  # blocks, so we need to split.
+  send_block = Block(bytecode[idx : idx + 1])
+  yield_value_block = Block(bytecode[idx + 1 : end_block_idx])
+  prev_block.connect_outgoing(send_block)
+  send_block.connect_outgoing(yield_value_block)
+  processed_blocks.update(send_block, yield_value_block)
+  return [send_block, yield_value_block], end_block_idx
+
+
+def _remove_jmp_to_get_anext_and_merge(
+    blocks: list[Block], processed_blocks: set[Block]
+) -> list[Block]:
+  """Remove JUMP_BACKWARD instructions to GET_ANEXT instructions.
+
+  And also merge the block that contains the END_ASYNC_FOR which is part of the
+  same loop of the GET_ANEXT and JUMP_BACKWARD construct, to the JUMP_BACKWARD
+  instruction. This is to ignore the JUMP_BACKWARD because in pytype's eyes it's
+  useless (as it'll jump back to block that it already executed), and also
+  this is the way to make pytype run the code of END_ASYNC_FOR and whatever
+  comes afterwards.
+
+  Args:
+    blocks: A list of Block instances.
+
+  Returns:
+    A list of Block instances after the removal and merge.
+  """
+  op_to_block = {}
+  merge_list = []
+  for block_idx, block in enumerate(blocks):
+    for code in block.code:
+      op_to_block[code] = block_idx
+
+  for block_idx, block in enumerate(blocks):
+    for code in block.code:
+      if code.end_async_for_target:
+        merge_list.append((block_idx, op_to_block[code.end_async_for_target]))
+  map_target = {}
+  for block_idx, block_idx_to_merge in merge_list:
+    # Remove JUMP_BACKWARD instruction as we don't want to execute it.
+    jump_back_op = blocks[block_idx].code.pop()
+    blocks[block_idx].code.extend(blocks[block_idx_to_merge].code)
+    map_target[jump_back_op] = blocks[block_idx_to_merge].code[0]
+
+    if block_idx_to_merge < len(blocks) - 1:
+      blocks[block_idx].connect_outgoing(blocks[block_idx_to_merge + 1])
+    processed_blocks.add(blocks[block_idx])
+
+  to_delete = sorted({to_idx for _, to_idx in merge_list}, reverse=True)
+
+  for block_idx in to_delete:
+    del blocks[block_idx]
+
+  for block in blocks:
+    replace_op = map_target.get(block.code[-1].target, None)
+    if replace_op:
+      block.code[-1].target = replace_op
+
+  return blocks
+
+
+def _remove_jump_back_block(blocks: list[Block]):
+  """Remove JUMP_BACKWARD instructions which are exception handling for async for.
+
+  These are not used during the regular pytype control flow analysis.
+  """
+  new_blocks = []
+  for block in blocks:
+    last_op = block.code[-1]
+    if (
+        isinstance(last_op, opcodes.JUMP_BACKWARD)
+        and isinstance(last_op.target, opcodes.END_SEND)
+        and len(block.code) >= 2
+        and isinstance(block.code[-2], opcodes.CLEANUP_THROW)
+    ):
+      continue
+    new_blocks.append(block)
+
+  return new_blocks
+
+
+def compute_order(
+    bytecode: list[opcodes.Opcode], python_version
+) -> list[Block]:
   """Split bytecode into blocks and order the blocks.
 
   This builds an "ancestor first" ordering of the basic blocks of the bytecode.
@@ -359,10 +515,16 @@ def compute_order(bytecode: list[opcodes.Opcode]) -> list[Block]:
   Returns:
     A list of Block instances.
   """
-  blocks = _split_bytecode(bytecode)
+  processed_blocks = set()
+  blocks = _split_bytecode(bytecode, processed_blocks, python_version)
+  if python_version >= (3, 12):
+    blocks = _remove_jump_back_block(blocks)
+    blocks = _remove_jmp_to_get_anext_and_merge(blocks, processed_blocks)
   first_op_to_block = {block.code[0]: block for block in blocks}
   for i, block in enumerate(blocks):
     next_block = blocks[i + 1] if i < len(blocks) - 1 else None
+    if block in processed_blocks:
+      continue
     first_op, last_op = block.code[0], block.code[-1]
     if next_block and not last_op.no_next():
       block.connect_outgoing(next_block)
@@ -390,7 +552,7 @@ def _order_code(dis_code: pycnite.types.DisassembledCode) -> OrderedCode:
   """
   ops = opcodes.build_opcodes(dis_code)
   add_pop_block_targets(ops)
-  blocks = compute_order(ops)
+  blocks = compute_order(ops, dis_code.python_version)
   return OrderedCode(dis_code.code, ops, blocks)
 
 

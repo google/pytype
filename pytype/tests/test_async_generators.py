@@ -406,6 +406,66 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       x4: Coroutine[Any, Any, None] = gen().aclose()
     """)
 
+  @test_utils.skipBeforePy((3, 11), "New in 3.11")
+  def test_async_gen_coroutines_error(self):
+    """Test whether the async for within async with does not fail at runtime."""
+    self.Check("""
+      def outer(f):
+        async def wrapper(t, *args, **kwargs):
+          if t is None:
+            async with f():
+              async for c in f():
+                yield c
+          else:
+            async for c in f():
+              yield c
+        return wrapper
+    """)
+
+  @test_utils.skipBeforePy((3, 11), "New in 3.11")
+  def test_async_for(self):
+    self.Check("""
+    async def iterate(num):
+      try:
+        async for s in range(num): # pytype: disable=attribute-error
+          if s > 3:
+            yield ''
+      except ValueError as e:
+        yield ''
+      yield ''
+    """)
+
+  @test_utils.skipBeforePy((3, 11), "New in 3.11")
+  def test_async_for_with_control_flow(self):
+    self.Check("""
+        from typing import Any
+        import random
+        async def iterate(stream: Any):
+          async for _ in stream:
+            if (random.randint(0, 100) != 30 or random.randint(0, 100) != 40):
+              continue
+            yield random.randint(0, 100)
+    """)
+
+  @test_utils.skipBeforePy((3, 11), "New in 3.11")
+  def test_async_double_for_loop(self):
+    self.Check("""
+      def outer(f):
+        async def wrapper(t, *args, **kwargs):
+          if t is None:
+            async with f():
+              async for c in f():
+                async for d in f():
+                  yield c + d
+                yield c
+          else:
+              async for c in f():
+                async for d in f():
+                  yield c + d
+                yield c
+        return wrapper
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
