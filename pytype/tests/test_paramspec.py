@@ -611,6 +611,25 @@ class PyiParamSpecTest(test_base.BaseTest):
       """,
       )
 
+  def test_paramspec_in_callable_as_param_not_fail(self):
+    self.Check("""
+    from typing import ParamSpec, Callable
+
+    _P = ParamSpec("_P")
+    CallbleWithParamSpec = Callable[_P, None]
+
+    class A:
+      def __init__(self, callable_1: CallbleWithParamSpec, callable_2: CallbleWithParamSpec):
+        pass
+
+    class B(A):
+      def __init__(self, callable_1: CallbleWithParamSpec, callable_2: CallbleWithParamSpec):
+        super().__init__(
+            callable_1,
+            callable_2,
+        )
+    """)
+
 
 class ContextlibTest(test_base.BaseTest):
   """Test some more complex uses of contextlib."""

@@ -1198,13 +1198,17 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                 type_param_map[t],
                 old_subst.copy(t=b1.AssignToNewVariable(self._node)),
             )
-          else:
-            # If t isn't a TypeVar here it should be a ParamSpec
+          elif t in self._paramspecs:
             assert t in self._paramspecs
             new_var = self.ctx.program.NewVariable()
             new_var.PasteBindingWithNewData(
                 b2, self.ctx.convert.get_maybe_abstract_instance(b2.data)
             )
+            has_error = False
+          else:
+            new_var = self.ctx.program.NewVariable()
+            # Here' it's possibly a ParamSpec but the callpath to this code
+            # somehow does not assign to the self._paramspecs list.
             has_error = False
           # If new_subst contains a TypeVar that is mutually exclusive with t,
           # then we can ignore this error because it is legal for t to not be
