@@ -77,6 +77,8 @@ class Parser:
     args = self.create_initial_args(file_config_names)
     self._parser.parse_args(argv, args)
     self.clean_args(args, file_config_names)
+    # output_errors_csv is dependent on report_errors, so we set it here.
+    args.report_errors = hasattr(args, 'output_errors_csv') or getattr(args, 'report_errors', True)
     self.postprocess(args)
     return args
 
@@ -157,6 +159,7 @@ def make_parser():
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   pytype_config.add_feature_flags(wrapper)
+  config.add_custom_flags(wrapper)
   return Parser(parser, pytype_single_args=wrapper.actions)
 
 
