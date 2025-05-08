@@ -850,6 +850,16 @@ class TypeVarTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*str"})
 
+  @test_utils.skipBeforePy((3, 12), "PEP 695 - 3.12 feature")
+  def test_global_var_not_hidden_by_type_variable(self):
+    self.Check("""
+      Apple: str = 'Apple'
+      type AppleBox[Apple] = tuple[Apple, ...]
+      def print_apple(a: str):
+         print(a)
+      print_apple(Apple)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
