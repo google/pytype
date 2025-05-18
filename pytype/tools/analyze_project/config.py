@@ -7,9 +7,9 @@ import logging
 import os
 import sys
 import textwrap
-from typing import Any
+from typing import Any, Optional
 
-from pytype import config as pytype_config
+from pytype import config as pytype_config, datatypes
 from pytype import file_utils
 from pytype import utils
 from pytype.platform_utils import path_utils
@@ -85,11 +85,21 @@ REPORT_ERRORS_ITEMS = {
 }
 
 
+def _get_pytype_flag(flag: str) -> Optional[pytype_config._Arg]:
+  return next((arg for arg in pytype_config.ALL_OPTIONS if arg.flag == flag), None)
+
+
+CUSTOM_FLAGS = list(filter(None, [
+    _get_pytype_flag('output-errors-csv'),
+]))
+
+
 # The missing fields will be filled in by generate_sample_config_or_die.
 def _pytype_single_items():
   """Args to pass through to pytype_single."""
   out = {}
-  flags = pytype_config.FEATURE_FLAGS + pytype_config.EXPERIMENTAL_FLAGS
+  flags = pytype_config.FEATURE_FLAGS + pytype_config.EXPERIMENTAL_FLAGS + CUSTOM_FLAGS
+
   for arg in flags:
     opt = arg.args[0]
     dest = arg.get('dest')
@@ -289,3 +299,7 @@ def read_config_file_or_die(filepath):
     else:
       logging.info('No config file found. Using default configuration.')
   return ret
+
+
+def add_custom_flags(o: datatypes.ParserWrapper):
+  pytype_config.add_options(o, CUSTOM_FLAGS)
