@@ -168,6 +168,9 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
   ) -> tuple[Node, "cfg.Variable"]:
     """Create a Config or Partial instance from args."""
 
+    if not args:
+      return node, self.ctx.new_unsolvable(node)
+
     underlying = args[0].data[0]
     self._check_init_args(node, underlying, args, kwargs)
 
