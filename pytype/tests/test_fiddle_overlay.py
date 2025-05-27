@@ -665,6 +665,19 @@ class TestFunctionConfig(test_base.BaseTest):
           return fiddle.Config(Simple, 1)
       """)
 
+  def test_no_crash_on_empty_args(self):
+    # pass
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        from typing import cast, Any
+        import fiddle
+
+        def foo(*args):
+          return
+
+        fiddle.Config(foo, *[1, 2], 3)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
