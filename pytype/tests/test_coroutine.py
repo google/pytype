@@ -500,9 +500,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
             var.func()
           return res
 
-        func1(foo.f1())
-        func1(foo.f2())
-        func2(foo.f1())
+        coro1 = func1(foo.f1())
+        coro2 = func1(foo.f2())
+        coro3 = func2(foo.f1())
       """,
           pythonpath=[d.path],
       )
@@ -511,6 +511,10 @@ class GeneratorFeatureTest(test_base.BaseTest):
           """
         import foo
         from typing import Any, Awaitable, Coroutine, List
+
+        coro1: Coroutine[Any, Any, list[str]]
+        coro2: Coroutine[Any, Any, list[str]]
+        coro3: Coroutine[Any, Any, list[str]]
 
         def func1(x: Awaitable[str]) -> Coroutine[Any, Any, List[str]]: ...
         def func2(x: Coroutine[Any, Any, str]) -> Coroutine[Any, Any, List[str]]: ...
@@ -570,7 +574,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
 
       async def main():
         queue = asyncio.Queue()
-        worker(queue)
+        await worker(queue)
     """)
     self.assertTypesMatchPytd(
         ty,
@@ -644,6 +648,59 @@ class GeneratorFeatureTest(test_base.BaseTest):
           if retval != retry_value:
             return retval
       """)
+
+
+class UnusedCoroutineTest(test_base.BaseTest):
+  """Tests for the unused-coroutine error."""
+
+  def test_trigger_unused_coroutine(self):
+    self.CheckWithErrors("""
+      async def sample_coro():
+        return 1
+      sample_coro()  # unused-coroutine
+    """)
+
+  def test_correct_coroutine_usage(self):
+    self.Check("""
+      import asyncio
+
+      async def sample_coro():
+        return 1
+
+      async def main():
+        await sample_coro()
+        x = sample_coro()
+        asyncio.create_task(sample_coro())
+        my_list = [sample_coro()]
+        my_dict = {"a": sample_coro()}
+        return x, my_list, my_dict
+
+      def regular_func(): return 1
+      regular_func()
+    """)
+
+  def test_wrapper_returns_unused_coroutine(self):
+    self.CheckWithErrors("""
+      async def sample_coro():
+        return 1
+      def wrapper():
+        return sample_coro()
+      wrapper()  # unused-coroutine
+    """)
+
+  def test_assign_to_underscore(self):
+    self.Check("""
+      async def sample_coro():
+        return 1
+      _ = sample_coro()
+    """)
+
+  def test_coroutine_in_used_expression(self):
+    self.CheckWithErrors("""
+      async def sample_coro():
+        return 1
+      y = 1 + sample_coro() # unsupported-operands
+    """)
 
 
 if __name__ == "__main__":

@@ -144,7 +144,7 @@ class StdlibTestsFeatures(test_base.BaseTest, test_utils.TestCollectionsMixin):
       collections.AsyncIterator
       collections.AsyncGenerator
       collections.Awaitable
-      collections.Coroutine
+      collections.Coroutine  # pytype: disable=unused-coroutine
     """)
 
   def test_collections_bytestring(self):
@@ -453,7 +453,7 @@ class StdlibTestsFeatures(test_base.BaseTest, test_utils.TestCollectionsMixin):
           pass
         else:
           pass
-      iterate(AsyncIterable())
+      iterate_coro = iterate(AsyncIterable())
     """)
     self.assertTypesMatchPytd(
         ty,
@@ -461,6 +461,9 @@ class StdlibTestsFeatures(test_base.BaseTest, test_utils.TestCollectionsMixin):
       import asyncio
       from typing import Any, Coroutine, TypeVar
       _TAsyncIterable = TypeVar('_TAsyncIterable', bound=AsyncIterable)
+      
+      iterate_coro: Coroutine[Any, Any, None]
+      
       class AsyncIterable:
           def __aiter__(self: _TAsyncIterable) -> _TAsyncIterable: ...
           def __anext__(self) -> Coroutine[Any, Any, int]: ...
