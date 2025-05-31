@@ -1638,6 +1638,18 @@ class VirtualMachine:
     return self._setup_except(state, op)
 
   def byte_POP_TOP(self, state, op):
+    """Pops and discards, checking for an unused coroutine."""
+    value_on_stack = None
+    try:
+      value_on_stack = state.top()
+    except IndexError:
+      pass
+    if value_on_stack and state.node:
+      if any(
+          isinstance(b.data, abstract.Coroutine)
+          for b in value_on_stack.Bindings(state.node)
+      ):
+        self.ctx.errorlog.unused_coroutine(self.frames)
     return state.pop_and_discard()
 
   def byte_DUP_TOP(self, state, op):
