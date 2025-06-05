@@ -1365,6 +1365,12 @@ class VmErrorLog(ErrorLog):
       )
     self.error(stack, err_msg)
 
+  @_error_name("unused-coroutine")
+  def unused_coroutine(self, stack):
+    self.error(
+        stack, "Coroutine result was not used. Did you forget to await it?"
+    )
+
   @_error_name("final-error")
   def _overriding_final(self, stack, cls, base, name, *, is_method, details):
     desc = "method" if is_method else "class attribute"
