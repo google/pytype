@@ -164,9 +164,10 @@ return self.socket.accept()
 # pytype: enable=attribute-error
 ```
 
-If you use a range-starting `disable` without a matching range-ending `enable`,
-a `late-directive` error will occur; this prevents you from accidentally
-disabling an error for the whole file without knowing it.
+Unless sufficiently near to the beginning of a file, if you use a range-starting
+`disable` without a matching range-ending `enable`, a `late-directive` error will
+occur; this prevents you from accidentally disabling an error for the entire
+subsequent remainder of the file by mistake.
 
 ```python
 def f() -> bool:
@@ -203,7 +204,8 @@ It's preferred to use the precise form (`pytype: disable=some-error`) instead of
 you don't accidentally suppress useful errors that you weren't trying to suppress
 that just happen to occur on the same line.
 
-As a special case, `pytype: disable`s and `type: ignore`s can be placed at the top of a file,
+As a special case, `pytype: disable`s and `type: ignore`s can be placed at the top of a file
+(specifically: before the first top-level definition),
 which will make them apply to the entire file. The `disable` will not need a corresponding
 `enable` at the end of the file, but inline `enables` will still affect it, as previously
 described. (`type: ignore`s are never affected by `enables`, anyway.)
