@@ -138,7 +138,7 @@ File "t.py", line 13, in accept: No attribute 'socket' on Server [attribute-erro
 (The reasoning is that if you call `accept()` before `listen()`, Python will
 crash with an `AttributeError`.)
 
-Note that the error message contains the class of the error, in brackets:
+Note that the error message contains, in brackets, the class of the error:
 `attribute-error`
 
 To silence this error, for just this one line, change line 13 to this:
@@ -202,6 +202,11 @@ It's preferred to use the precise form (`pytype: disable=some-error`) instead of
 `type: ignore`, and leave the latter for rare and special circumstances. This is so
 you don't accidentally suppress useful errors that you weren't trying to suppress
 that just happen to occur on the same line.
+
+As a special case, `pytype: disable`s and `type: ignore`s can be placed at the top of a file,
+which will make them apply to the entire file. The `disable` will not need a corresponding
+`enable` at the end of the file, but inline `enables` will still affect it, as previously
+described. (`type: ignore`s are never affected by `enables`, anyway.)
 
 ## Variable annotations
 
