@@ -138,25 +138,25 @@ File "t.py", line 13, in accept: No attribute 'socket' on Server [attribute-erro
 (The reasoning is that if you call `accept()` before `listen()`, Python will
 crash with an `AttributeError`.)
 
-Note that the error message will contain the class of the error:
+Note that the error message contains, in brackets, the class of the error:
 `attribute-error`
 
-To silence this warning, change line 13 to this:
+To silence this error, for just this one line, change line 13 to this:
 
 ```python
-return self.socket.accept()  # pytype: disable=attribute-error
+return self.socket.accept() # pytype: disable=attribute-error
 ```
 
-Alternatively, if there are a lot of these occurrences, put the following at the
-start of the file. A `disable` on a line by itself will disable all these
-warnings for the rest of the file. (This is true even if the `disable` is within
-an indented block.)
+Alternatively, if there are a lot of these occurrences, on a range of lines in the file,
+put the following at the beginning of the range. A `disable` on a line **by itself**
+(regardless of indentation) will disable all these errors for the rest of the range.
 
 ```python
 # pytype: disable=attribute-error
 ```
 
-Use `enable` to re-enable a disabled warning:
+Use a corresponding `enable` (on a line **by itself** (regardless of indentation))
+to end the range, re-enabling a disabled error for lines subsequent to the range:
 
 ```python
 # pytype: disable=attribute-error
@@ -164,14 +164,52 @@ return self.socket.accept()
 # pytype: enable=attribute-error
 ```
 
-There is also a "catch-all". Above, we could have written:
+Unless sufficiently near to the beginning of a file, if you use a range-starting
+`disable` without a matching range-ending `enable`, a `late-directive` error will
+occur; this prevents you from accidentally disabling an error for the entire
+subsequent remainder of the file by mistake.
+
+```python
+def f() -> bool:
+  # pytype: disable=bad-return-type  # late-directive
+  return 42
+# (end of file here)
+```
+
+Within a disabled range, you can also use an inline `enable` directive to re-enable the
+error for a single line, although this is rarely useful.
+
+```python
+# pytype: disable=attribute-error
+self.socket.blah()
+self.foo # pytype: enable=attribute-error #if there is no foo member (according to pytype), this error will display
+return self.socket.accept()
+# pytype: enable=attribute-error
+```
+
+(Suprisingly, in a range (and *only* in a range), the inline enable can be followed
+by an inline disable to disable the error for the line again, which can be followed
+by an inline enable to enable the error for the line again, and so on and so on.
+This quirk of the feature is not expected to be useful.)
+
+There is also a way to suppress every type of error for a single line.
+Above, we could have written:
 
 ```python
 return self.socket.accept()  # type: ignore
 ```
 
 It's preferred to use the precise form (`pytype: disable=some-error`) instead of
-`type: ignore`, and leave the latter for rare and special circumstances.
+`type: ignore`, and leave the latter for rare and special circumstances. This is so
+you don't accidentally suppress useful errors that you weren't trying to suppress
+that just happen to occur on the same line.
+
+As a special case, `pytype: disable`s and `type: ignore`s can be placed at the top of a file
+(specifically: before the first top-level definition on a line **by itself**
+(regardless of indentation)),
+which will make them apply to the entire file. The `disable` will not need a corresponding
+`enable` at the end of the file, but inline `enables` will still affect it, as previously
+described. (`type: ignore`s are never affected by `enables`, anyway.)
 
 ## Variable annotations
 
