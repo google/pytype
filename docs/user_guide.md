@@ -149,14 +149,14 @@ return self.socket.accept() # pytype: disable=attribute-error
 
 Alternatively, if there are a lot of these occurrences, on a range of lines in the file,
 put the following at the beginning of the range. A `disable` on a line **by itself**
-(regardless of indentation) will disable all these warnings for the rest of the range.
+(regardless of indentation) will disable all these errors for the rest of the range.
 
 ```python
 # pytype: disable=attribute-error
 ```
 
 Use a corresponding `enable` (on a line **by itself** (regardless of indentation))
-to end the range, re-enabling a disabled warning for lines subsequent to the range:
+to end the range, re-enabling a disabled error for lines subsequent to the range:
 
 ```python
 # pytype: disable=attribute-error
@@ -165,8 +165,8 @@ return self.socket.accept()
 ```
 
 If you use a range-starting `disable` without a matching range-ending `enable`,
-a `late-directive` error will occur; this prevents you from accidentally disabling the error for
-the whole file without knowing it.
+a `late-directive` error will occur; this prevents you from accidentally
+disabling an error for the whole file without knowing it.
 
 ```python
 def f() -> bool:
@@ -188,7 +188,7 @@ return self.socket.accept()
 
 (Suprisingly, in a range (and *only* in a range), the inline enable can be followed
 by an inline disable to disable the error for the line again, which can be followed
-by an inline enable to disable the error for the line again, and so on and so on.
+by an inline enable to enable the error for the line again, and so on and so on.
 This quirk of the feature is not expected to be useful.)
 
 There is also a way to suppress every type of error for a single line.
