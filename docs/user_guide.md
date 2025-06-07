@@ -205,7 +205,8 @@ you don't accidentally suppress useful errors that you weren't trying to suppres
 that just happen to occur on the same line.
 
 As a special case, `pytype: disable`s and `type: ignore`s can be placed at the top of a file
-(specifically: before the first top-level definition),
+(specifically: before the first top-level definition on a line **by itself**
+(regardless of indentation)),
 which will make them apply to the entire file. The `disable` will not need a corresponding
 `enable` at the end of the file, but inline `enables` will still affect it, as previously
 described. (`type: ignore`s are never affected by `enables`, anyway.)
