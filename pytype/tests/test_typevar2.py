@@ -1217,6 +1217,23 @@ class TypeVarTestPy3(test_base.BaseTest):
             return x
       """)
 
+  def test_check_type_param_against_param_spec(self):
+    self.Check("""
+      import multiprocessing.pool
+      from typing import Callable, ParamSpec, TypeVar, Any
+      _T = TypeVar('_T')
+      _Args = ParamSpec('_Args')
+
+      def decorator() -> Callable[[Callable[_Args, _T]], Callable[_Args, _T]]:
+        pass # pytype: disable=bad-return-type
+      def foo():
+        @decorator()
+        def f(i: int):
+          return i
+        with multiprocessing.pool.ThreadPool(10) as pool:
+          a: list[Any] = pool.map(f, list(range(10))) # TODO: Should be list[int]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

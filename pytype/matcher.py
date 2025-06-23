@@ -757,6 +757,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             for old_value in old_concrete_values:
               if self._satisfies_common_superclass([new_value, old_value]):
                 has_error = False
+              elif isinstance(old_value, function.ParamSpecMatch):
+                # TODO - Technically we need to check the type parameter against
+                # ParamSpec to check case the restrictions are different, but it
+                # seems we don't have the machinery to check that yet in pytype.
+                has_error = False
               elif old_value.cls.is_protocol:
                 with self._track_partially_matched_protocols():
                   protocol_subst = datatypes.AliasingDict(subst)
