@@ -161,6 +161,8 @@ py_library(
   DEPS
     .overlay
     .special_builtins
+    pytype.abstract.abstract
+    pytype.typegraph.cfg
 )
 
 py_library(

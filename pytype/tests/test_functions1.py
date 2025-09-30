@@ -1079,6 +1079,40 @@ class TestFunctions(test_base.BaseTest):
       partial_f(0)
     """)
 
+  def test_functools_partial_overloaded(self):
+    self.Check("""
+      import functools
+      from typing import overload
+      @overload
+      def f(x: int) -> int: ...
+      @overload
+      def f(x: str) -> str: ...
+      def f(x):
+        return x
+      partial_f = functools.partial(f)
+      # TODO(slebedev): This should be functools.partial[int | str].
+      assert_type(partial_f, functools.partial)
+      assert_type(partial_f(1), int)
+      assert_type(partial_f("s"), str)
+    """)
+
+  def test_functools_partial_overloaded_with_star(self):
+    self.Check("""
+      import functools
+      from typing import overload
+      @overload
+      def f(x: int, y: int) -> int: ...
+      @overload
+      def f(x: str, y: str) -> str: ...
+      def f(x, y):
+        return x
+      partial_f = functools.partial(f, 42)
+      def test(*args):
+        # TODO(slebedev): This should be functools.partial[int].
+        assert_type(partial_f, functools.partial)
+        assert_type(partial_f(*args), int)
+    """)
+
   def test_functools_partial_class(self):
     self.Check("""
       import functools

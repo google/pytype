@@ -93,6 +93,7 @@ class BaseTest(unittest.TestCase):
         strict_primitive_comparisons=True,
         strict_none_binding=True,
         use_fiddle_overlay=True,
+        use_functools_partial_overlay=True,
         use_rewrite=_USE_REWRITE,
         validate_version=False,
     )

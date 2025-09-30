@@ -295,6 +295,11 @@ FEATURE_FLAGS = [
     _flag(
         "--use-fiddle-overlay", False, "Support the third-party fiddle library."
     ),
+    _flag(
+        "--use-functools-partial-overlay",
+        False,
+        "Enable precise checks when calling functools.partial objects.",
+    ),
 ] + _OPT_IN_FEATURES
 
 

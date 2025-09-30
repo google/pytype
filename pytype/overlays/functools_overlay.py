@@ -1,7 +1,21 @@
 """Overlay for functools."""
 
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+import threading
+from typing import Any, Self, TYPE_CHECKING
+
+from pytype.abstract import abstract
+from pytype.abstract import function
+from pytype.abstract import mixin
 from pytype.overlays import overlay
 from pytype.overlays import special_builtins
+from pytype.typegraph import cfg
+
+if TYPE_CHECKING:
+  from pytype import context  # pylint: disable=g-import-not-at-top
+
 
 _MODULE_NAME = "functools"
 
@@ -15,5 +29,131 @@ class FunctoolsOverlay(overlay.Overlay):
             "cached_property", special_builtins.Property.make_alias
         ),
     }
+    if ctx.options.use_functools_partial_overlay:
+      member_map["partial"] = Partial
     ast = ctx.loader.import_name(_MODULE_NAME)
     super().__init__(ctx, _MODULE_NAME, member_map, ast)
+
+
+class Partial(abstract.PyTDClass, mixin.HasSlots):
+  """Implementation of functools.partial."""
+
+  def __init__(self, ctx: "context.Context", module: str):
+    pytd_cls = ctx.loader.lookup_pytd(module, "partial")
+    super().__init__("partial", pytd_cls, ctx)
+    mixin.HasSlots.init_mixin(self)
+
+    self._pytd_new = self.pytd_cls.Lookup("__new__")
+
+  def new_slot(
+      self, node, cls, *args, **kwargs
+  ) -> tuple[cfg.CFGNode, cfg.Variable]:
+    # Make sure the call is well typed before binding the partial
+    new = self.ctx.convert.convert_pytd_function(self._pytd_new)
+    _, specialized_obj = function.call_function(
+        self.ctx,
+        node,
+        new.to_variable(node),
+        function.Args((cls, *args), kwargs),
+        fallback_to_unsolvable=False,
+    )
+    [specialized_obj] = specialized_obj.data
+    type_arg = specialized_obj.get_formal_type_parameter("_T")
+    [cls] = cls.data
+    cls = abstract.ParameterizedClass(cls, {"_T": type_arg}, self.ctx)
+    obj = bind_partial(node, cls, args, kwargs, self.ctx)
+    return node, obj.to_variable(node)
+
+  def get_own_new(self, node, value) -> tuple[cfg.CFGNode, cfg.Variable]:
+    new = abstract.NativeFunction("__new__", self.new_slot, self.ctx)
+    return node, new.to_variable(node)
+
+
+def bind_partial(node, cls, args, kwargs, ctx) -> BoundPartial:
+  del node  # Unused.
+  obj = BoundPartial(ctx, cls)
+  obj.underlying = args[0]
+  obj.args = args[1:]
+  obj.kwargs = kwargs
+  return obj
+
+
+class CallContext(threading.local):
+  """A thread-local context for ``NativeFunction.call``."""
+
+  starargs: cfg.Variable | None = None
+  starstarargs: cfg.Variable | None = None
+
+  def forward(
+      self, starargs: cfg.Variable | None, starstarargs: cfg.Variable | None
+  ) -> Self:
+    self.starargs = starargs
+    self.starstarargs = starstarargs
+    return self
+
+  def __enter__(self) -> Self:
+    return self
+
+  def __exit__(self, *exc_info) -> None:
+    self.starargs = None
+    self.starstarargs = None
+
+
+call_context = CallContext()
+
+
+class NativeFunction(abstract.NativeFunction):
+  """A native function that forwards *args and **kwargs to the underlying function."""
+
+  def call(
+      self,
+      node: cfg.CFGNode,
+      func: cfg.Binding,
+      args: function.Args,
+      alias_map: Any | None = None,
+  ) -> tuple[cfg.CFGNode, cfg.Variable]:
+    # ``NativeFunction.call`` does not forward *args and **kwargs to the
+    # underlying function, so we do it here to avoid changing core pytype APIs.
+    starargs = args.starargs
+    starstarargs = args.starstarargs
+    if starargs is not None:
+      starargs = starargs.AssignToNewVariable(node)
+    if starstarargs is not None:
+      starstarargs = starstarargs.AssignToNewVariable(node)
+    with call_context.forward(starargs, starstarargs):
+      return super().call(node, func, args, alias_map)
+
+
+class BoundPartial(abstract.Instance, mixin.HasSlots):
+  """An instance of functools.partial."""
+
+  underlying: cfg.Variable
+  args: Sequence[cfg.Variable]
+  kwargs: Mapping[str, cfg.Variable]
+
+  def __init__(self, ctx, cls, container=None):
+    super().__init__(cls, ctx, container)
+    mixin.HasSlots.init_mixin(self)
+    self.set_slot(
+        "__call__", NativeFunction("__call__", self.call_slot, self.ctx)
+    )
+
+  @property
+  def func(self) -> cfg.Variable:
+    # The ``func`` attribute marks this class as a wrapper for
+    # ``maybe_unwrap_decorated_function``.
+    return self.underlying
+
+  def call_slot(self, node: cfg.CFGNode, *args, **kwargs):
+    return function.call_function(
+        self.ctx,
+        node,
+        self.underlying,
+        function.Args(
+            (*self.args, *args),
+            {**self.kwargs, **kwargs},
+            call_context.starargs,
+            call_context.starstarargs,
+        ),
+        fallback_to_unsolvable=False,
+    )
