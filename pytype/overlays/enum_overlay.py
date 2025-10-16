@@ -49,7 +49,6 @@ _unsupported = (
     "FlagBoundary",
     "verify",
     "property",
-    "member",
     "nonmember",
     "global_enum",
     "show_flag_values",
