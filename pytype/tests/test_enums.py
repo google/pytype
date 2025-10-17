@@ -1634,6 +1634,33 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(foo.E("FOO"), foo.E)
       """)
 
+  def test_member(self):
+    """Tests that enum.member acts as a no-op."""
+    self.Check("""
+      import enum
+
+      class E(enum.Enum):
+        X = enum.member(1)
+
+      assert_type(E.X, E)
+      assert_type(E.X.value, int)
+    """)
+
+  def test_member_with_partial(self):
+    """Tests that enum.member acts as a no-op even with a partial."""
+    self.Check("""
+      import enum
+      import functools
+
+      def foo(x: int) -> int:
+        return x + 1
+
+      class E(enum.Enum):
+        X = enum.member(functools.partial(foo))
+
+      assert_type(E.X, E)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
