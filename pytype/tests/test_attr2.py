@@ -226,9 +226,40 @@ class TestAttribConverters(test_base.BaseTest):
       @attr.s
       class Foo:
         x = attr.ib(converter=functools.partial(f))
-      # We don't yet infer the right type for Foo.x in this case, but we at
-      # least want to check that constructing a Foo doesn't generate errors.
-      Foo(x=0)
+      foo = Foo(x=0)
+      assert_type(foo.x, str)
+    """)
+
+  def test_partial_overloaded_as_converter(self):
+    self.Check("""
+      import attr
+      import functools
+      from typing import overload
+      @overload
+      def f(x: int, y: int) -> int:
+        return ''
+      @overload
+      def f(x: str, y: int) -> str:
+        return ''
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=functools.partial(f, 42))
+      foo = Foo(x=0)
+      assert_type(foo.x, int)
+    """)
+
+  def test_partial_class_as_converter(self):
+    self.Check("""
+      import attr
+      import functools
+      class C:
+        def __init__(self, x: int, y: int) -> None:
+          self.x = x
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=functools.partial(C, 42))
+      foo = Foo(x=0)
+      assert_type(foo.x, C)
     """)
 
 

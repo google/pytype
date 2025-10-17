@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 import threading
 from typing import Any, TYPE_CHECKING
 
@@ -129,8 +129,8 @@ class BoundPartial(abstract.Instance, mixin.HasSlots):
   """An instance of functools.partial."""
 
   underlying: cfg.Variable
-  args: Sequence[cfg.Variable]
-  kwargs: Mapping[str, cfg.Variable]
+  args: tuple[cfg.Variable, ...]
+  kwargs: dict[str, cfg.Variable]
 
   def __init__(self, ctx, cls, container=None):
     super().__init__(cls, ctx, container)
@@ -139,11 +139,19 @@ class BoundPartial(abstract.Instance, mixin.HasSlots):
         "__call__", NativeFunction("__call__", self.call_slot, self.ctx)
     )
 
-  @property
-  def func(self) -> cfg.Variable:
-    # The ``func`` attribute marks this class as a wrapper for
-    # ``maybe_unwrap_decorated_function``.
-    return self.underlying
+  def get_signatures(self) -> Sequence[function.Signature]:
+    sigs = []
+    args = function.Args(posargs=self.args, namedargs=self.kwargs)
+    for data in self.underlying.data:
+      for sig in function.get_signatures(data):
+        # Use the partial arguments as defaults in the signature, making them
+        # optional but overwritable.
+        defaults = sig.defaults.copy()
+        for name, value, _ in sig.iter_args(args):
+          if value is not None:
+            defaults[name] = value
+        sigs.append(sig._replace(defaults=defaults))
+    return sigs
 
   def call_slot(self, node: cfg.CFGNode, *args, **kwargs):
     return function.call_function(

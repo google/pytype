@@ -72,6 +72,22 @@ def get_signatures(func: "_function_base.Function") -> "list[Signature]":
     return []
   elif isinstance(func.cls, _abstract.CallableClass):
     return [Signature.from_callable(func.cls)]
+  elif isinstance(func, (_abstract.InterpreterClass, _abstract.PyTDClass)):
+    if isinstance(func, _abstract.PyTDClass) and "__init__" in func:
+      func.load_lazy_attribute("__init__")
+    if (init_var := func.members.get("__init__")) and len(init_var.data) == 1:
+      sigs = []
+      for sig in get_signatures(init_var.data[0]):
+        sig = sig.drop_first_parameter()  # drop "self"
+        sigs.append(
+            sig._replace(annotations=sig.annotations | {"return": func})
+        )
+      return sigs
+    # The class does not have __init__? Bail out!
+    # TODO(slebedev): Consider handling __new__ and metaclass.__call__ here.
+    return [Signature.from_any()]
+  elif hasattr(func, "get_signatures"):
+    return func.get_signatures()
   else:
     unwrapped = abstract_utils.maybe_unwrap_decorated_function(func)
     if unwrapped:
