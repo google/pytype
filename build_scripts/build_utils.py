@@ -153,6 +153,7 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
       "-G",
       "Ninja",
       f"-DPython_ADDITIONAL_VERSIONS={current_config.py_version}",
+      "-DCMAKE_POLICY_VERSION_MINIMUM=3.16",
   ]
   if debug_build:
     cmd.append("-DCMAKE_BUILD_TYPE=Debug")

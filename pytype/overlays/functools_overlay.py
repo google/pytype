@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 import threading
-from typing import Any, Self, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from pytype.abstract import abstract
 from pytype.abstract import function
@@ -12,6 +12,7 @@ from pytype.abstract import mixin
 from pytype.overlays import overlay
 from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
+from typing_extensions import Self
 
 if TYPE_CHECKING:
   from pytype import context  # pylint: disable=g-import-not-at-top
