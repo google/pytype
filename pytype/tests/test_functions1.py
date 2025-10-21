@@ -1079,6 +1079,17 @@ class TestFunctions(test_base.BaseTest):
       partial_f(0)
     """)
 
+  def test_functools_partial_with_starstar(self):
+    self.Check("""
+      import functools
+      def f(a: str, b: int, c: list):
+        pass
+      partial_f = functools.partial(f, "foo")
+
+      def test(**kwargs):
+        partial_f(42, **kwargs)
+    """)
+
   def test_functools_partial_overloaded(self):
     self.Check("""
       import functools

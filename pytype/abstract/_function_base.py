@@ -192,6 +192,7 @@ class NativeFunction(Function):
           self.func.__self__  # pytype: disable=attribute-error
       )
     args = args.simplify(node, self.ctx, match_signature=sig)
+    del sig
     posargs = [u.AssignToNewVariable(node) for u in args.posargs]
     namedargs = {
         k: u.AssignToNewVariable(node) for k, u in args.namedargs.items()

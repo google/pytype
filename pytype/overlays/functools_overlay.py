@@ -115,6 +115,21 @@ class NativeFunction(abstract.NativeFunction):
   ) -> tuple[cfg.CFGNode, cfg.Variable]:
     # ``NativeFunction.call`` does not forward *args and **kwargs to the
     # underlying function, so we do it here to avoid changing core pytype APIs.
+    #
+    # The simplification below ensures that the *args/**kwargs cannot in fact
+    # be split into individual arguments. This logic follow the implementation
+    # in the base class.
+    sig = None
+    if isinstance(
+        self.func.__self__,  # pytype: disable=attribute-error
+        abstract.CallableClass,
+    ):
+      sig = function.Signature.from_callable(
+          self.func.__self__  # pytype: disable=attribute-error
+      )
+    args = args.simplify(node, self.ctx, match_signature=sig)
+    del sig
+
     starargs = args.starargs
     starstarargs = args.starstarargs
     if starargs is not None:
