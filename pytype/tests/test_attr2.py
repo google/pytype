@@ -230,6 +230,20 @@ class TestAttribConverters(test_base.BaseTest):
       assert_type(foo.x, str)
     """)
 
+  def test_partial_with_positional_args_as_converter(self):
+    self.Check("""
+      import attr
+      import functools
+      def f(x: str, y: int) -> int:
+        del x
+        return y
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=functools.partial(f, "foo"))
+      foo = Foo(x=0)
+      assert_type(foo.x, int)
+    """)
+
   def test_partial_overloaded_as_converter(self):
     self.Check("""
       import attr

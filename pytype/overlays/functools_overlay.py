@@ -147,10 +147,37 @@ class BoundPartial(abstract.Instance, mixin.HasSlots):
         # Use the partial arguments as defaults in the signature, making them
         # optional but overwritable.
         defaults = sig.defaults.copy()
+        kwonly_params = [*sig.kwonly_params]
+        bound_param_names = set()
+        pos_only_count = sig.posonly_count
         for name, value, _ in sig.iter_args(args):
-          if value is not None:
-            defaults[name] = value
-        sigs.append(sig._replace(defaults=defaults))
+          if value is None:
+            continue
+          if sig.param_names.index(name) < sig.posonly_count:
+            # The parameter is positional-only, meaning that it cannot be
+            # overwritten via a keyword argument. Remove it.
+            bound_param_names.add(name)
+            sig.posonly_count -= 1
+            continue
+          if name not in sig.kwonly_params:
+            # The parameter can be overwritten via a keyword argument. Note
+            # that we still have to remove it from ``param_names`` to make
+            # sure it cannot be bound by position.
+            bound_param_names.add(name)
+            kwonly_params.append(name)
+
+          defaults[name] = value
+
+        sigs.append(
+            sig._replace(
+                param_names=tuple(
+                    n for n in sig.param_names if n not in bound_param_names
+                ),
+                posonly_count=pos_only_count,
+                kwonly_params=tuple(kwonly_params),
+                defaults=defaults,
+            )
+        )
     return sigs
 
   def call_slot(self, node: cfg.CFGNode, *args, **kwargs):
