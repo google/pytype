@@ -1079,7 +1079,18 @@ class TestFunctions(test_base.BaseTest):
       partial_f(0)
     """)
 
-  def test_functools_partial_with_starstar(self):
+  def test_functools_partial_starstar(self):
+    self.Check("""
+      import functools
+      def f(*, a: str, b: int):
+        pass
+
+      def test(**kwargs):
+        partial_f = functools.partial(f, **kwargs)
+        partial_f()
+    """)
+
+  def test_functools_partial_called_with_starstar(self):
     self.Check("""
       import functools
       def f(a: str, b: int, c: list):
@@ -1088,6 +1099,28 @@ class TestFunctions(test_base.BaseTest):
 
       def test(**kwargs):
         partial_f(42, **kwargs)
+    """)
+
+  def test_functools_star_everywhere(self):
+    self.Check("""
+      import functools
+      def f(a: str, b: int):
+        pass
+
+      def test(args, extra_args):
+        partial_f = functools.partial(f, *args)
+        partial_f(*extra_args)
+    """)
+
+  def test_functools_starstar_everywhere(self):
+    self.Check("""
+      import functools
+      def f(*, a: str, b: int):
+        pass
+
+      def test(**kwargs):
+        partial_f = functools.partial(f, **kwargs)
+        partial_f(**kwargs)
     """)
 
   def test_functools_partial_overloaded(self):
