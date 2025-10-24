@@ -244,6 +244,33 @@ class TestAttribConverters(test_base.BaseTest):
       assert_type(foo.x, int)
     """)
 
+  def test_partial_with_star_args_as_converter(self):
+    self.Check("""
+      import attr
+      import functools
+      def f(*args: str) -> str:
+        return "".join(args)
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=functools.partial(f, "foo", "bar"))
+      foo = Foo(x=0)
+      assert_type(foo.x, str)
+    """)
+
+  def test_partial_as_converter_with_factory(self):
+    # This is a smoke test for signature construction in the functools overlay.
+    self.Check("""
+      import collections
+      import functools
+      import attr
+      @attr.s(auto_attribs=True)
+      class Foo(object):
+        x = attr.ib(
+            factory=dict,
+            converter=functools.partial(collections.defaultdict, lambda: 0),
+        )
+    """)
+
   def test_partial_overloaded_as_converter(self):
     self.Check("""
       import attr
