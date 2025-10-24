@@ -651,6 +651,27 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
     """,
     )
 
+  def test_unpack_tuple(self):
+    # The **kwargs unpacking in the wrapper seems to prevent pytype from
+    # eagerly expanding the splat in the tuple literal.
+    ty = self.Infer("""
+      from typing import Any
+      def f(*, xs: tuple[int, ...], **kwargs: object):
+        def wrapper():
+          out = f(
+              xs=(42, *kwargs.pop("xs", ())),
+              **kwargs,
+          )()
+        return wrapper
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Any, Callable
+      def f(*, xs: tuple[int, ...], **kwargs: object) -> Callable[[], Any]: ...
+    """,
+    )
+
   def test_unpack_nonliteral(self):
     ty = self.Infer("""
       def f(x, **kwargs):

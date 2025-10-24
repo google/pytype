@@ -149,9 +149,12 @@ class Converter(utils.ContextWeakrefMixin):
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
+          elem_var = instance.pyval[t]
+          if abstract_utils.is_var_splat(elem_var):
+            elem_var = abstract_utils.unwrap_splat(elem_var)
           param_values = {
               val: view
-              for val in self._get_values(node, instance.pyval[t], view)
+              for val in self._get_values(node, elem_var, view)
           }
         elif instance.has_instance_type_parameter(t):
           param_values = {
@@ -447,7 +450,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.ParamSpecArgs):
       return pytd.AnythingType()
     else:
-      raise NotImplementedError(v.__class__.__name__)
+      raise NotImplementedError(v, repr(v), v.__class__.__name__)
 
   def signature_to_callable(self, sig):
     """Converts a function.Signature object into a callable object.

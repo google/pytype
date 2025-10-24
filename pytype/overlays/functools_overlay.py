@@ -179,7 +179,12 @@ class BoundPartial(abstract.Instance, mixin.HasSlots):
         for name, value, _ in sig.iter_args(args):
           if value is None:
             continue
-          if sig.param_names.index(name) < sig.posonly_count:
+          if name == sig.varargs_name or name == sig.kwargs_name:
+            continue  # Nothing to do for packed parameters.
+          if (
+              name not in sig.param_names or
+              sig.param_names.index(name) < sig.posonly_count
+          ):
             # The parameter is positional-only, meaning that it cannot be
             # overwritten via a keyword argument. Remove it.
             bound_param_names.add(name)
