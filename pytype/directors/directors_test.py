@@ -317,7 +317,7 @@ class DirectorTest(DirectorTestCase):
       self.assertRegex(str(error), message_regex)
 
     check_warning(
-        "Unknown pytype directive.*disalbe.*", "# pytype: disalbe=test-error"
+        "Unknown pytype directive.*disable.*", "# pytype: disable=test-error"
     )
     check_warning(
         "Invalid error name.*bad-error-name.*",
