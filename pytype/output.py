@@ -149,9 +149,12 @@ class Converter(utils.ContextWeakrefMixin):
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
+          elem_var = instance.pyval[t]
+          if abstract_utils.is_var_splat(elem_var):
+            elem_var = abstract_utils.unwrap_splat(elem_var)
           param_values = {
               val: view
-              for val in self._get_values(node, instance.pyval[t], view)
+              for val in self._get_values(node, elem_var, view)
           }
         elif instance.has_instance_type_parameter(t):
           param_values = {

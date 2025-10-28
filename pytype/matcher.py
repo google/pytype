@@ -1516,7 +1516,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         # accidentally violate _satisfies_common_superclass.
         new_substs = []
         for instance_param in instance.pyval:
-          if copy_params_directly and instance_param.bindings:
+          if abstract_utils.is_var_splat(instance_param):
+            instance_param = abstract_utils.unwrap_splat(instance_param)
+            new_subst = self._match_all_bindings(
+                instance_param, class_param, subst, view
+            )
+          elif copy_params_directly and instance_param.bindings:
             new_subst = {
                 class_param.full_name: view[instance_param].AssignToNewVariable(
                     self._node
@@ -1528,7 +1533,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             )
             if new_subst is None:
               return None
-          new_substs.append(new_subst)
+          if new_subst is not None:
+            new_substs.append(new_subst)
         if new_substs:
           subst = self._merge_substs(subst, new_substs)
       if not instance.pyval:
