@@ -293,13 +293,18 @@ class Replace(abstract.PyTDFunction):
     fields = obj.cls.metadata["__dataclass_fields__"]
     # 0 or more fields can be replaced, so we give every field a default.
     default = self.ctx.new_unsolvable(node)
+    # If the class has unknown bases or is dynamic, we can't know all possible
+    # fields, so we accept arbitrary keyword arguments via kwargs_name.
+    has_unknown_fields = (
+        self.ctx.convert.unsolvable in obj.cls.mro or obj.cls.is_dynamic
+    )
     replace = abstract.SimpleFunction.build(
         name=self.name,
         param_names=("obj",),
         posonly_count=1,
         varargs_name=None,
         kwonly_params=tuple(f.name for f in fields),
-        kwargs_name=None,
+        kwargs_name="kwargs" if has_unknown_fields else None,
         defaults={f.name: default for f in fields},
         annotations={f.name: f.typ for f in fields},
         ctx=self.ctx,

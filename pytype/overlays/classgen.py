@@ -119,8 +119,21 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
       else:
         pos_params.append(param)
 
+    # If the class has unknown bases or is dynamic, we can't know all possible
+    # fields, so accept arbitrary positional and keyword arguments.
+    has_unknown_fields = (
+        self.ctx.convert.unsolvable in cls.mro or cls.is_dynamic
+    )
+
     return overlay_utils.make_method(
-        self.ctx, node, init_method_name, pos_params, 0, kwonly_params
+        self.ctx,
+        node,
+        init_method_name,
+        pos_params,
+        posonly_count=0,
+        kwonly_params=kwonly_params,
+        varargs=Param("args") if has_unknown_fields else None,
+        kwargs=Param("kwargs") if has_unknown_fields else None,
     )
 
   def call(self, node, func, args, alias_map=None):

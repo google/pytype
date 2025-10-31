@@ -429,12 +429,19 @@ class PyTDClass(
       self._populate_decorator_metadata()
     if "__dataclass_fields__" in self.metadata:
       self.match_args = tuple(
-          attr.name for attr in self.metadata["__dataclass_fields__"]
+          attr.name
+          for attr in self.metadata["__dataclass_fields__"]
+          if not attr.kw_only
       )
     elif self.load_lazy_attribute("__match_args__"):
       self.match_args = self._convert_str_tuple("__match_args__") or ()
     else:
-      self.match_args = ()
+      for base in self.mro[1:]:
+        if isinstance(base, class_mixin.Class) and hasattr(base, "match_args"):
+          self.match_args = base.match_args
+          break
+      else:
+        self.match_args = ()
 
   @classmethod
   def make(

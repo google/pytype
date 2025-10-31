@@ -147,6 +147,33 @@ class TestDataclass(test_base.BaseTest):
     """,
     )
 
+  def test_init_unknown_base(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      from foo import Base  # pytype: disable=import-error
+      @dataclasses.dataclass
+      class A(Base):
+        x: int
+      A(x=42)
+      A(x="wrong")  # wrong-arg-types
+      A(x=42, y="from_base")
+      A(42, "from_base")
+    """)
+
+  def test_init_dynamic_base(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      class Base:
+        _HAS_DYNAMIC_ATTRIBUTES = True
+      @dataclasses.dataclass
+      class A(Base):
+        x: int
+      A(x=42)
+      A(x="wrong")  # wrong-arg-types
+      A(x=42, y="from_base")
+      A(42, "from_base")
+    """)
+
   def test_field(self):
     ty = self.Infer("""
       from typing import List
@@ -968,6 +995,31 @@ class TestDataclass(test_base.BaseTest):
         errors, {"e": ["Expected", "str", "Actual", "int"]}
     )
 
+  def test_replace_unknown_base(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      from foo import Base  # pytype: disable=import-error
+      @dataclasses.dataclass
+      class A(Base):
+        x: int
+      a = A(x=42)
+      dataclasses.replace(a, x="wrong")  # wrong-arg-types
+      dataclasses.replace(a, y="from_base")
+    """)
+
+  def test_replace_dynamic_base(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      class Base:
+        _HAS_DYNAMIC_ATTRIBUTES = True
+      @dataclasses.dataclass
+      class A(Base):
+        x: int
+      a = A(x=42)
+      dataclasses.replace(a, x="wrong")  # wrong-arg-types
+      dataclasses.replace(a, y="from_base")
+    """)
+
 
 class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""
@@ -1713,6 +1765,57 @@ class TestPatternMatch(test_base.BaseTest):
           p = foo.Point(x, y)
           match p:
             case foo.Point(x, y):
+              print(f"({x}, {y})")
+            case _:
+              print("not matched")
+      """)
+
+  def test_inheritance(self):
+    with self.DepTree([(
+        "foo.pyi",
+        """
+      import dataclasses
+      @dataclasses.dataclass
+      class Point:
+        x: float
+        y: float
+
+      class OtherPoint(Point):
+        ...
+    """,
+    )]):
+      self.Check("""
+        import foo
+        def f(x, y):
+          p = foo.OtherPoint(x, y)
+          match p:
+            case foo.OtherPoint(x, y):
+              print(f"({x}, {y})")
+            case _:
+              print("not matched")
+      """)
+
+  def test_kw_only(self):
+    with self.DepTree([(
+        "foo.pyi",
+        """
+      import dataclasses
+      @dataclasses.dataclass
+      class Point:
+        x: float
+        _: dataclasses.KW_ONLY
+        y: float
+
+      class PointWithKwOnly(Point):
+        ...
+    """,
+    )]):
+      self.CheckWithErrors("""
+        import foo
+        def f(x, y):
+          p = foo.PointWithKwOnly(x, y=y)
+          match p:
+            case foo.PointWithKwOnly(x, y):  # match-error
               print(f"({x}, {y})")
             case _:
               print("not matched")
