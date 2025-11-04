@@ -676,6 +676,28 @@ class ProtocolTest(test_base.BaseTest):
           pythonpath=[d.path],
       )
 
+  def test_callback_protocol_kw_only(self):
+    self.CheckWithErrors("""
+      from typing import Protocol
+      class Foo(Protocol):
+        def __call__(self, *, x: str) -> str:
+          return x
+
+      def f1() -> str:
+        return ''
+      def f2(x: str) -> str:
+        return ''
+      def f3(x: int) -> str:
+        return str(x)
+
+      def accepts_foo(f: Foo):
+        pass
+
+      accepts_foo(f1)  # wrong-arg-types
+      accepts_foo(f2)
+      accepts_foo(f3)  # wrong-arg-types
+    """)
+
   def test_class_matches_callback_protocol(self):
     self.CheckWithErrors("""
       from typing_extensions import Protocol
