@@ -15,7 +15,7 @@ def f(x: int) -> str:  # pytype: pragma=cache-return
 
 will associate a `cache-return` pragma with the function definition.
 
-Pragmas are currently not considerd a stable end-user feature; they are intended
+Pragmas are currently not considered a stable end-user feature; they are intended
 to be used as a last resort in specific cases, for complex performance or
 analysis issues that cannot be solved by more general heuristics. Reach out to
 the pytype team if you have any questions or advanced use cases you think a
