@@ -1079,6 +1079,17 @@ class TestFunctions(test_base.BaseTest):
       partial_f(0)
     """)
 
+  def test_functools_partial_cls(self):
+    # This is a smoke test that **kwargs do not interfere with the receiver
+    # in partial.__new__.
+    self.Check("""
+      import functools
+      def f(cls):
+        return cls
+      partial_f = functools.partial(f, cls=int)
+      partial_f()
+    """)
+
   def test_functools_partial_starstar(self):
     self.Check("""
       import functools
@@ -1180,7 +1191,7 @@ class TestFunctions(test_base.BaseTest):
   def test_functools_partial_bad_call(self):
     errors = self.CheckWithErrors("""
       import functools
-      functools.partial()  # missing-parameter
+      functools.partial()  # wrong-arg-count
       functools.partial(42)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"Callable.*int"})

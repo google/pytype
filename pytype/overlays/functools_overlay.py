@@ -47,7 +47,7 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
     self._pytd_new = self.pytd_cls.Lookup("__new__")
 
   def new_slot(
-      self, node, cls, *args, **kwargs
+      self, node, cls, func, /, *args, **kwargs
   ) -> tuple[cfg.CFGNode, cfg.Variable]:
     # Make sure the call is well typed before binding the partial
     new = self.ctx.convert.convert_pytd_function(self._pytd_new)
@@ -56,7 +56,7 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
         node,
         new.to_variable(node),
         function.Args(
-            (cls, *args),
+            (cls, func, *args),
             kwargs,
             call_context.starargs,
             call_context.starstarargs,
@@ -67,7 +67,7 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
     type_arg = specialized_obj.get_formal_type_parameter("_T")
     [cls] = cls.data
     cls = abstract.ParameterizedClass(cls, {"_T": type_arg}, self.ctx)
-    obj = bind_partial(node, cls, args, kwargs, self.ctx)
+    obj = bind_partial(node, cls, func, args, kwargs, self.ctx)
     return node, obj.to_variable(node)
 
   def get_own_new(self, node, value) -> tuple[cfg.CFGNode, cfg.Variable]:
@@ -75,11 +75,11 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
     return node, new.to_variable(node)
 
 
-def bind_partial(node, cls, args, kwargs, ctx) -> BoundPartial:
+def bind_partial(node, cls, func, args, kwargs, ctx) -> BoundPartial:
   del node  # Unused.
   obj = BoundPartial(ctx, cls)
-  obj.underlying = args[0]
-  obj.args = args[1:]
+  obj.underlying = func
+  obj.args = args
   obj.kwargs = kwargs
   obj.starargs = call_context.starargs
   obj.starstarargs = call_context.starstarargs
