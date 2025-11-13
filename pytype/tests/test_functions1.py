@@ -1070,6 +1070,20 @@ class TestFunctions(test_base.BaseTest):
     """,
     )
 
+  def test_functools_partial_star(self):
+    self.Check("""
+      from typing import Any
+      import functools
+      def f() -> int :
+        return 42
+      def test(*args):
+        assert_type(functools.partial(*args), functools.partial[Any])
+
+        # This is WAI in pytype, since *args currently overwrite *all* other
+        # arguments, including the ones bound positionally prior to *args.
+        assert_type(functools.partial(f, *args), functools.partial[Any])
+    """)
+
   def test_functools_partial_kw(self):
     self.Check("""
       import functools

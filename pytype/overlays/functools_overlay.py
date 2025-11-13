@@ -49,6 +49,10 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
   def new_slot(
       self, node, cls, func, /, *args, **kwargs
   ) -> tuple[cfg.CFGNode, cfg.Variable]:
+    # We are not using ``cls``, because it is set to unsolvable when
+    # functools.partial is called with *args.
+    del cls
+
     # Make sure the call is well typed before binding the partial
     new = self.ctx.convert.convert_pytd_function(self._pytd_new)
     _, specialized_obj = function.call_function(
@@ -56,7 +60,7 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
         node,
         new.to_variable(node),
         function.Args(
-            (cls, func, *args),
+            (self.to_variable(node), func, *args),
             kwargs,
             call_context.starargs,
             call_context.starstarargs,
@@ -65,8 +69,7 @@ class Partial(abstract.PyTDClass, mixin.HasSlots):
     )
     [specialized_obj] = specialized_obj.data
     type_arg = specialized_obj.get_formal_type_parameter("_T")
-    [cls] = cls.data
-    cls = abstract.ParameterizedClass(cls, {"_T": type_arg}, self.ctx)
+    cls = abstract.ParameterizedClass(self, {"_T": type_arg}, self.ctx)
     obj = bind_partial(node, cls, func, args, kwargs, self.ctx)
     return node, obj.to_variable(node)
 
