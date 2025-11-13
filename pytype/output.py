@@ -123,7 +123,17 @@ class Converter(utils.ContextWeakrefMixin):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.CallableClass):
       assert template == (abstract_utils.ARGS, abstract_utils.RET), template
-      template = list(range(v.num_args)) + [template[1]]
+      should_preserve_paramspec = (
+          v.has_paramspec()
+          and v.num_args == 1
+          and instance
+          and isinstance(
+              instance.get_formal_type_parameter(abstract_utils.ARGS),
+              abstract.Unsolvable,
+          )
+      )
+      if not should_preserve_paramspec:
+        template = list(range(v.num_args)) + [template[1]]
     if self._is_tuple(v, instance):
       if isinstance(v, abstract.TupleClass):
         new_template = range(v.tuple_length)
@@ -176,10 +186,18 @@ class Converter(utils.ContextWeakrefMixin):
         else:
           param_values = {self.ctx.convert.unsolvable: view}
         formal_param = v.get_formal_type_parameter(t)
+        if (
+            t == abstract_utils.ARGS
+            and isinstance(v, abstract.CallableClass)
+            and v.has_paramspec()
+            and [*param_values] == [self.ctx.convert.unsolvable]
+        ):
+          # This is a Callable[P, T] where P is unsolvable.
+          arg = pytd.AnythingType()
         # If the instance's parameter value is unsolvable or the parameter type
         # is recursive, we can get a more precise type from the class. Note that
         # we need to be careful not to introduce unbound type parameters.
-        if (
+        elif (
             isinstance(v, abstract.ParameterizedClass)
             and not formal_param.formal
             and (
@@ -281,7 +299,16 @@ class Converter(utils.ContextWeakrefMixin):
       if self._is_tuple(v, instance):
         homogeneous = False
       elif v.full_name == "typing.Callable":
-        homogeneous = not isinstance(v, abstract.CallableClass)
+        is_callable_with_unsolvable_paramspec = (
+            isinstance(v, abstract.CallableClass)
+            and v.has_paramspec()
+            and len(type_arguments) == 2
+            and isinstance(type_arguments[0], pytd.AnythingType)
+        )
+        homogeneous = (
+            not isinstance(v, abstract.CallableClass)
+            or is_callable_with_unsolvable_paramspec
+        )
       else:
         homogeneous = len(type_arguments) == 1
       return pytd_utils.MakeClassOrContainerType(

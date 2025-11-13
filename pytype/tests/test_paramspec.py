@@ -1,5 +1,7 @@
 """PEP 612 tests."""
 
+import unittest
+
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -203,6 +205,35 @@ class ParamSpecTest(test_base.BaseTest):
 
       a = f(g)
       assert_type(a, Callable[[int], str])
+    """)
+
+  def test_bound_to_any1(self):
+    self.Check("""
+      from typing import Any, Callable, ParamSpec
+
+      P = ParamSpec("P")
+
+      def f(x: Callable[P, int]) -> Callable[P, int]:
+        return x
+
+      def test1(g: Any):
+        assert_type(f(g), Callable[..., int])
+      def test1(g: Callable[..., Any]):
+        assert_type(f(g), Callable[..., int])
+    """)
+
+  @unittest.expectedFailure
+  def test_bound_to_any2(self):
+    self.Check("""
+      from typing import Any, Callable, Concatenate, ParamSpec
+
+      P = ParamSpec("P")
+
+      def f(x: Callable[Concatenate[int, P], int]) -> Callable[Concatenate[int, P], int]:
+        return x
+
+      def test(g: Any):
+        assert_type(f(g), Callable[Concatenate[int, ...], int])
     """)
 
   def test_typevar(self):
