@@ -1,5 +1,0 @@
-You can find prebuilt binaries at https://github.com/kythe/kythe/releases.
-These scripts assume that they are installed to $HOME/kythe.
-
-If you build the tools yourself or install them to a different location,
-make sure to pass the correct public_resources directory to http_server.
