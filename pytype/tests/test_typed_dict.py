@@ -784,6 +784,24 @@ class PyiTypedDictTest(test_base.BaseTest):
     """,
     )
 
+  def test_recursive(self):
+    with self.DepTree([(
+        "foo.pyi",
+        """
+      from typing import Union, Optional
+      from typing_extensions import TypedDict
+      class Foo(TypedDict, total=False):
+        name: str
+        nested: 'Foo'
+    """,
+    )]):
+      self.CheckWithErrors("""
+        import foo
+        foo.Foo(name='foo', a=1)  # wrong-keyword-args
+        # 'nested' cannot be checked because Foo is recursive.
+        foo.Foo(name='foo', nested=45)
+      """)
+
   def test_total_false(self):
     with self.DepTree([
         (

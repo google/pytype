@@ -221,7 +221,9 @@ class TypedDictBuilder(abstract.PyTDClass):
     )
 
     for c in pytd_cls.constants:
-      typ = self.ctx.convert.constant_to_value(c.type)
+      # The field types may refer back to the class being built.
+      with self.ctx.allow_recursive_convert():
+        typ = self.ctx.convert.constant_to_value(c.type)
       props.add(c.name, typ, total)
 
     # Process base classes and generate the __init__ signature.
