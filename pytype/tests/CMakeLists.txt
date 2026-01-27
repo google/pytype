@@ -244,6 +244,15 @@ py_test(
 
 py_test(
   NAME
+    test_signatures
+  SRCS
+    test_signatures.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_slice1
   SRCS
     test_slice1.py
