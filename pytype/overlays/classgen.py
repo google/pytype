@@ -302,7 +302,9 @@ def get_class_locals(cls_name: str, allow_methods: bool, ordering, ctx):
   return out
 
 
-def make_replace_method(ctx, node, cls, *, kwargs_name="kwargs"):
+def make_replace_method(
+    ctx, node, cls, *, name="replace", kwargs_name="kwargs"
+):
   """Create a replace() method for a dataclass."""
   # This is used by several packages that extend dataclass.
   # The signature is
@@ -311,7 +313,7 @@ def make_replace_method(ctx, node, cls, *, kwargs_name="kwargs"):
   return overlay_utils.make_method(
       ctx=ctx,
       node=node,
-      name="replace",
+      name=name,
       return_type=typevar,
       self_param=overlay_utils.Param("self", typevar),
       kwargs=overlay_utils.Param(kwargs_name),
